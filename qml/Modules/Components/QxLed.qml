@@ -7,7 +7,8 @@ Rectangle {
   id: control
 
   property alias labelText: label_txt.text
-  property alias ledColor: led.color
+  property color ledColor: led.color
+  property bool isOn: false
 
   color: Styles.background.dp24
   radius: 6
@@ -39,6 +40,9 @@ Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: width
       radius: parent.width/2
+      color: control.isOn ? Qt.lighter(control.ledColor, 1.4) : Qt.darker(control.ledColor, 1.4)
+
+      border{ color: Qt.darker(control.ledColor, 1.8); width: 3 }
     }
   }
 }

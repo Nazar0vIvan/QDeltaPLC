@@ -7,8 +7,8 @@ import Styles 1.0
 import Components 1.0
 
 Window {
-  width: 800
-  height: 480
+  width: 1000
+  height: 600
   visible: true
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
@@ -29,7 +29,7 @@ Window {
       GridView {
           id: ledsView
 
-          readonly property int columns: 3
+          readonly property int cols: 3
           readonly property int rows: 2
           readonly property int cellSpacing: 10
 
@@ -37,20 +37,21 @@ Window {
           interactive: false
           cellWidth: 100 + cellSpacing
           cellHeight: 200
-          implicitWidth:  columns * cellWidth  + (columns - 1)*cellSpacing
-          implicitHeight: rows    * cellHeight + (rows    - 1)*cellSpacing
+          implicitWidth:  cols*cellWidth  + (cols - 1)*cellSpacing
+          implicitHeight: rows*cellHeight + (rows    - 1)*cellSpacing
 
           Layout.preferredWidth: implicitWidth
           Layout.preferredHeight: implicitHeight
           Layout.alignment: Qt.AlignTop
+          Layout.topMargin: 20
 
           model: ListModel {
-              ListElement { label: "Mains"; color: "yellow"; w: 100; h: 200 }
-              ListElement { label: "RUN";   color: "green";  w: 100; h: 200 }
-              ListElement { label: "G2";    color: "green";  w: 100; h: 200 }
-              ListElement { label: "R1";    color: "red";    w: 70;  h: 140 }
-              ListElement { label: "R2";    color: "red";    w: 70;  h: 140 }
-              ListElement { label: "R3";    color: "red";    w: 70;  h: 140 }
+              ListElement { label: "Mains"; color: "yellow"; isOn: true;  w: 100; h: 200 }
+              ListElement { label: "Y1.6";  color: "green";  isOn: false; w: 100; h: 200 }
+              ListElement { label: "Y1.7";  color: "green";  isOn: false; w: 100; h: 200 }
+              ListElement { label: "Y2.5";  color: "red";    isOn: false; w: 70;  h: 140 }
+              ListElement { label: "Y2.6";  color: "red";    isOn: false; w: 70;  h: 140 }
+              ListElement { label: "Y2.7";  color: "red";    isOn: false; w: 70;  h: 140 }
           }
 
           delegate: Item {
@@ -58,37 +59,42 @@ Window {
               height: ledsView.cellHeight
 
               QxLed {
-                  width: model.w
-                  height: model.h
-                  labelText: model.label
-                  ledColor: model.color
-                  anchors.centerIn: parent
+                anchors.centerIn: parent
+                width: model.w; height: model.h
+                labelText: model.label
+                ledColor: model.color
+                isOn: model.isOn
               }
           }
       }
       QxGroupBox {
-        id: plc_network
+        id: gb_net
+
+        property int fieldHeight: 28
+        property int fieldWidth: 120
+        property int labelWidth: 74
 
         title: qsTr("Network")
+
         Layout.alignment: Qt.AlignTop
-        Layout.preferredWidth: 300; Layout.preferredHeight: 400
+        Layout.preferredWidth: 300;
+        Layout.preferredHeight: 2*gb_net_lyt.spacing + 3*listView_net.spacing + 6*gb_net_lyt.fieldHeight
+        Layout.topMargin: 20
 
         ColumnLayout {
+          id: gb_net_lyt
 
           anchors.fill: parent
-          anchors.topMargin: 20
+          anchors.topMargin: -20
           spacing: 20
 
           ListView {
-            id: listView
-
-            property int fieldHeight: 26
-            property int fieldWidth: 100
-            property int labelWidth: 60
+            id: listView_net
 
             spacing: 10
-            Layout.preferredHeight: 4 * fieldHeight + 3 * spacing
+            Layout.preferredHeight: 4*gb_net.fieldHeight + 3*gb_net.spacing
             Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
 
             model: ListModel {
                 ListElement { labelText: "PC IP :";    text: "192.168.1.1"; }
@@ -98,71 +104,83 @@ Window {
             }
 
             delegate: QxField {
-              width: listView.width
-              height: listView.fieldHeight
+              width: listView_net.width
+              height: gb_net.fieldHeight
               labelText: model.labelText
-              labelWidth: listView.labelWidth
+              labelWidth: gb_net.labelWidth
 
               TextField {
-                  id: txtField
-
-                  height: listView.fieldHeight
-                  width: listView.fieldWidth
+                  height: gb_net.fieldHeight
+                  width: gb_net.fieldWidth
                   readOnly: false
                   text: model.text
                   color: Styles.foreground.high
                   background: Rectangle {
                       color: Styles.background.dp04
+                      radius: 4
                   }
               }
             }
           }
 
           QxField {
-            id: field
-
             labelText: "Status :"
-            labelWidth: 60
+            labelWidth: 74
             Layout.preferredHeight: 20
             Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
 
-            RowLayout {
-
-              spacing: 4
-
-              Text {
-                text: "Disconnected"
-                color: Styles.foreground.high
-              }
-
-              Rectangle {
-                width: 20; height: 20
-                radius: width / 2
-                color: btn_connect.checked ? "limegreen" : "firebrick"
-                border.color: Qt.darker(color, 1.4)
-                border.width: 2
-
-                Behavior on color {
-                  ColorAnimation { duration: 250 }
-                }
-              }
+            Text {
+              text: btn_connect.checked ?  "Connected" : "Disconnected"
+              color: btn_connect.checked ? Styles.minColor : Styles.maxColor
             }
-
-
           }
 
           QxToggleButton {
             id: btn_connect
 
+            Layout.alignment: Qt.AlignTop
             textOn: "Disconnect"
             textOff: "Connect"
-            onTurnedOn: console.log("Started")
-            onTurnedOff: console.log("Stopped")
+            onTurnedOn: ledsView.model.setProperty(1, "isOn", true)
+            onTurnedOff: ledsView.model.setProperty(1, "isOn", false)
           }
 
-          Item { Layout.fillHeight: true }
         }
       }
+      QxGroupBox {
+        id: gb_ctrl
+
+        property int fiedlHeight: 28
+        property int labelWidth: 74
+
+        title: qsTr("Controls")
+
+        Layout.alignment: Qt.AlignTop
+        Layout.preferredWidth: 300;
+        Layout.preferredHeight: gb_net.implicitHeight
+        Layout.topMargin: 20
+
+        ListView {
+          id: listView_ctrl
+
+          spacing: 30
+          anchors.fill: parent
+
+          model: ListModel {
+              ListElement { labelText: "Y1.6"; }
+              ListElement { labelText: "Y1.7"; }
+              ListElement { labelText: "Y2.5";}
+              ListElement { labelText: "Y2.6"; }
+              ListElement { labelText: "Y2.7"; }
+          }
+
+          delegate: QxSwitch {
+            text: model.labelText
+          }
+        }
+      }
+
       Item { Layout.fillWidth: true }
     }
     Logger {

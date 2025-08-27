@@ -9,7 +9,7 @@ GroupBox {
   id: control
 
   label: Label {
-      x: 20; y: height/2 + 6
+      x: 20; y: -height/2
       leftPadding: 10; rightPadding: 10
       topPadding: 6; bottomPadding: 6
       text: control.title
@@ -18,5 +18,9 @@ GroupBox {
         color: Styles.background.dp04
         border{ width: 1; color: Styles.foreground.high }
       }
+  }
+  background: Rectangle {
+    border{ width: 1; color: Styles.foreground.high }
+    color: Styles.background.dp00
   }
 }

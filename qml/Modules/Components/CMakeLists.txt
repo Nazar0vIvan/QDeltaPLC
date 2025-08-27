@@ -8,9 +8,9 @@ qt_add_qml_module(Components
     QML_FILES
         QxLed.qml
         QxGroupBox.qml
-        QxInputField.qml
         QxToggleButton.qml
         QxField.qml
+        QxSwitch.qml
 )
 
 target_link_libraries(Components PRIVATE Qt6::Qml)

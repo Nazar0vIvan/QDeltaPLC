@@ -8,7 +8,6 @@ Button {
     id: root
     property string textOn:  "On"
     property string textOff: "Off"
-    property bool checkableChecked: false
 
     signal turnedOn()
     signal turnedOff()
@@ -20,12 +19,12 @@ Button {
         implicitWidth: 100
         implicitHeight: 30
         radius: 6
-        color: Styles.secondary.base
-        border.color: Styles.background.dp04
+        color: root.checked ? Styles.background.dp04 : Styles.secondary.base
+        border.color: root.checked ? Styles.foreground.high : Styles.secondary.dark
     }
     contentItem: Text {
         text: root.text
-        color: Styles.background.dp00
+        color: root.checked ? Styles.foreground.high : Styles.background.dp00
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         anchors.fill: parent
