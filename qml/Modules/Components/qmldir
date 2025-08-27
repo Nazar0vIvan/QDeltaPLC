@@ -1,4 +1,0 @@
-module qml.Modules.Components
-Led 1.0 Led.qml
-FormComponent 1.0 FormComponent.qml
-CustomGroupBox 1.0 CustomGroupBox.qml

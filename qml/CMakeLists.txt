@@ -1,24 +1,11 @@
 add_subdirectory(Modules/Styles)
+add_subdirectory(Modules/Components)
 
 ## QML ##
 set(QML_FILES
   Main.qml
+  Logger.qml
 )
-
-set(QML_FILES_STYLES
-  Modules/Styles/Styles.qml
-)
-
-# set(QML_FILES_COMPONENTS
-#   Modules/Components/Led.qml
-#   Modules/Components/CustomGroupBox.qml
-#   Modules/Components/FormComponent.qml
-# )
-
-# set(QML_FILES_QMLDIRS
-#   Modules/Styles/qmldir
-#   Modules/Components/qmldir
-# )
 
 qt_add_executable(qdeltaplc
     main.cpp
@@ -35,6 +22,7 @@ target_link_libraries(qdeltaplc
     PRIVATE Qt6::Quick
     PRIVATE Qt6::Gui
     PRIVATE Stylesplugin
+    PRIVATE Componentsplugin
 )
 
 include(GNUInstallDirs)

@@ -2,9 +2,6 @@ pragma Singleton
 import QtQuick 2.12
 
 QtObject {
-
-  readonly property color foo: "red"
-
   readonly property QtObject background: QtObject {
     readonly property color dp00: "#121212"
     readonly property color dp01: "#6C6C6C"

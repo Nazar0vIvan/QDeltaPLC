@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
 
     // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
-    // engine.addImportPath("qrc/qt/qml/qdeltaplc_qml_module/qml/Modules/");
+    engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module/qml/Modules/");
 
     engine.loadFromModule("qdeltaplc_qml_module", "Main");
 
