@@ -7,6 +7,12 @@ set(QML_FILES
   Logger.qml
 )
 
+## CPP ##
+set(CPP_FILES
+  deltaplcsocket.h
+  deltaplcsocket.cpp
+)
+
 qt_add_executable(qdeltaplc
     main.cpp
 )
@@ -16,6 +22,7 @@ qt_add_qml_module(qdeltaplc
     VERSION 1.0
     QML_FILES
       ${QML_FILES}
+      ${CPP_FILES}
 )
 
 target_link_libraries(qdeltaplc

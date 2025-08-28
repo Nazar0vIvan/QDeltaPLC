@@ -12,6 +12,8 @@ TextArea {
   readOnly: true
   selectByMouse: true
   selectionColor: Styles.primary.transparent
+  placeholderText: "Ready ..."
+  placeholderTextColor: Styles.foreground.high
   background: Rectangle {
     color: Styles.background.dp04
     border{color: Styles.foreground.high; width: 1}

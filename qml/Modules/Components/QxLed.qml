@@ -43,6 +43,8 @@ Rectangle {
       color: control.isOn ? Qt.lighter(control.ledColor, 1.4) : Qt.darker(control.ledColor, 1.4)
 
       border{ color: Qt.darker(control.ledColor, 1.8); width: 3 }
+
+      Behavior on color { ColorAnimation { duration: 150 } }
     }
   }
 }

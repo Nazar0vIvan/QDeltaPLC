@@ -7,29 +7,37 @@ import Styles 1.0
 Switch {
   id: control
 
-  implicitWidth: 50
-  implicitHeight: 26
+  signal turnedOn()
+  signal turnedOff()
+
+  checkable: true
 
   contentItem: Text {
-    text: control.text
-    verticalAlignment: Text.AlignVCenter
     anchors.left: indicator.right
-    anchors.leftMargin: 8
-    color: control.checked ? "#4caf50" : "black"
+    anchors.verticalCenter: indicator.verticalCenter
+    anchors.leftMargin: 6
+    verticalAlignment: Text.AlignVCenter
+    text: control.text
+    color: Styles.foreground.high
   }
+
   indicator: Rectangle {
-      implicitWidth: 60
-      implicitHeight: 30
-      radius: height/2
-      color: control.checked ? "#4caf50" : "#999"
+      implicitWidth: control.width
+      implicitHeight: control.height
+      radius: control.height/2
+      color: control.checked ? Styles.secondary.base : Styles.background.dp06
 
       Rectangle {
-          width: 26; height: 26
+          width: control.height-6; height: control.height-6
           radius: width/2
           anchors.verticalCenter: parent.verticalCenter
           x: control.checked ? parent.width - width - 2 : 2
-          color: "white"
+          color: Styles.foreground.high
           Behavior on x { NumberAnimation { duration: 150 } }
       }
+  }
+  onCheckedChanged: {
+      if (checked) turnedOn();
+      else turnedOff();
   }
 }
