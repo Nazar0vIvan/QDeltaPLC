@@ -4,7 +4,7 @@ project(QDeltaPLC VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.6.3 REQUIRED COMPONENTS Core Quick Qml)
+find_package(Qt6 6.6.3 REQUIRED COMPONENTS Core Quick Qml Network)
 
 # With ver. 6.5 RESOURCE_PREFIX for qml modules is ":/qt/qml/"
 qt_standard_project_setup(REQUIRES 6.5)

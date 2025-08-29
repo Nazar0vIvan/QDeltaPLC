@@ -110,16 +110,10 @@ Window {
               labelText: model.labelText
               labelWidth: gb_net.labelWidth
 
-              TextField {
-                  height: gb_net.fieldHeight
-                  width: gb_net.fieldWidth
-                  readOnly: false
-                  text: model.text
-                  color: Styles.foreground.high
-                  background: Rectangle {
-                      color: Styles.background.dp04
-                      radius: 4
-                  }
+              QxTextField {
+                height: gb_net.fieldHeight
+                width: gb_net.fieldWidth
+                text: model.text
               }
             }
           }
@@ -139,16 +133,36 @@ Window {
 
           Item { Layout.fillHeight: true }
 
-          QxToggleButton {
-            id: btn_connect
+          RowLayout {
 
-            Layout.alignment: Qt.AlignTop
-            textOn: "Disconnect"
-            textOff: "Connect"
-            onTurnedOn: ledsView.model.setProperty(1, "isOn", true)
-            onTurnedOff: ledsView.model.setProperty(1, "isOn", false)
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+
+            QxButton {
+              id: btn_submit
+
+              checkable: false
+              text: "Submit"
+
+              onClicked: plcSocket.socketDataChanged({
+                  localAddress: listView_net.model.get(0).text,
+                  localPort:    Number(listView_net.model.get(1).text),
+                  peerAddress:  listView_net.model.get(2).text,
+                  peerPort:     Number(listView_net.model.get(3).text)
+              })
+            }
+
+            QxButton {
+              id: btn_connect
+
+              checkable: true
+              enabled: false
+              textOn: "Disconnect"
+              textOff: "Connect"
+              onTurnedOn: ledsView.model.setProperty(1, "isOn", true)
+              onTurnedOff: ledsView.model.setProperty(1, "isOn", false)
+            }
           }
-
         }
       }
 
@@ -253,8 +267,6 @@ Window {
             }
           }
         }
-
-
       }
 
       Item { Layout.fillWidth: true }

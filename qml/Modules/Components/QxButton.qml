@@ -5,29 +5,30 @@ import QtQuick.Controls.Basic
 import Styles 1.0
 
 Button {
-    id: root
+    id: control
     property string textOn:  "On"
     property string textOff: "Off"
 
     signal turnedOn()
     signal turnedOff()
 
-    checkable: true
+    checkable: false
     text: checked ? textOn : textOff
 
     background: Rectangle {
         implicitWidth: 100
         implicitHeight: 30
         radius: 6
-        color: root.checked ? Styles.background.dp04 : Styles.secondary.base
-        border.color: root.checked ? Styles.foreground.high : Styles.secondary.dark
+        color: control.checked ? Styles.background.dp04 : Styles.secondary.base
+        border.color: control.checked ? Styles.foreground.high : Styles.secondary.dark
+        opacity: control.pressed ? 0.8 : 1
     }
     contentItem: Text {
-        text: root.text
-        color: root.checked ? Styles.foreground.high : Styles.background.dp00
+        anchors.fill: parent
+        text: control.text
+        color: control.checked ? Styles.foreground.high : Styles.background.dp00
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        anchors.fill: parent
     }
 
     onCheckedChanged: {
