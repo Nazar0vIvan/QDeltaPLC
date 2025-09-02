@@ -18,6 +18,13 @@ TextArea {
     color: Styles.background.dp04
     border{color: Styles.foreground.high; width: 1}
   }
+
+  Connections {
+    target: logger
+    function onLogAdded(message){
+      textArea.append(message.text)
+    }
+  }
 }
 
 

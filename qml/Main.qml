@@ -92,15 +92,17 @@ Window {
           ListView {
             id: listView_net
 
+            signal socketDataChanged();
+
             spacing: 10
             Layout.preferredHeight: 4*gb_net.fieldHeight + 3*gb_net.spacing
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
 
             model: ListModel {
-                ListElement { labelText: "PC IP :";    text: "192.168.1.1"; }
+                ListElement { labelText: "PC IP :";    text: "192.168.2.1"; }
                 ListElement { labelText: "PC Port :";  text: "3333"; }
-                ListElement { labelText: "PLC IP :";   text: "192.168.1.5";}
+                ListElement { labelText: "PLC IP :";   text: "192.168.2.5";}
                 ListElement { labelText: "PLC Port :"; text: "2324"; }
             }
 
@@ -114,8 +116,12 @@ Window {
                 height: gb_net.fieldHeight
                 width: gb_net.fieldWidth
                 text: model.text
+
+                onEditingFinished: listView_net.socketDataChanged()
               }
             }
+
+            onSocketDataChanged: btn_submit.enabled = true
           }
 
           QxField {
@@ -144,12 +150,15 @@ Window {
               checkable: false
               text: "Submit"
 
-              onClicked: plcSocket.socketDataChanged({
+              onClicked: {
+                plcSocket.slotSocketDataChanged({
                   localAddress: listView_net.model.get(0).text,
                   localPort:    Number(listView_net.model.get(1).text),
                   peerAddress:  listView_net.model.get(2).text,
                   peerPort:     Number(listView_net.model.get(3).text)
-              })
+                })
+                btn_submit.enabled = false
+              }
             }
 
             QxButton {
@@ -272,8 +281,6 @@ Window {
       Item { Layout.fillWidth: true }
     }
     Logger {
-      id: logger
-
       Layout.fillHeight: true; implicitHeight: 50
       Layout.fillWidth: true;
       Layout.alignment: Qt.AlignTop

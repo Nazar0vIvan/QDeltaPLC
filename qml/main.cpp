@@ -3,6 +3,7 @@
 #include <QQmlContext>
 
 #include "deltaplcsocket.h"
+#include "logger.h"
 
 int main(int argc, char *argv[])
 {
@@ -15,7 +16,9 @@ int main(int argc, char *argv[])
 
     QQmlContext* rootContext = engine.rootContext();
 
-    DeltaPLCSocket plcSocket;
+    rootContext->setContextProperty("logger", Logger::instance());
+
+    DeltaPLCSocket plcSocket("plcSocket");
     rootContext->setContextProperty("plcSocket", &plcSocket);
 
     engine.loadFromModule("qdeltaplc_qml_module", "Main");

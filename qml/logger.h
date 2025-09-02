@@ -2,7 +2,14 @@
 #define LOGGER_H
 
 #include <QObject>
+#include <QDate>
 #include <QDebug>
+
+struct MessageDescriptor {
+    QString text = "";
+    int type = 0;
+    QString initiator = "";
+};
 
 // Singleton
 class Logger : public QObject
@@ -18,10 +25,10 @@ private:
     Logger(QObject *parent = nullptr);
 
 signals:
-    void logAdded(const QString& message);
+    void logAdded(const QVariantMap& message);
 
 public slots:
-    void push(const QString& message);
+    void push(const MessageDescriptor& desc);
 
 };
 

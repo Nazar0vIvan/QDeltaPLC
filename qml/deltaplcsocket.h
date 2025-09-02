@@ -2,6 +2,9 @@
 #define DELTAPLCSOCKET_H
 
 #include <QTcpSocket>
+#include <QThread>
+
+#include "logger.h"
 
 #define LOCAL_ADDRESS "192.168.2.1"
 #define LOCAL_PORT 2222
@@ -12,13 +15,19 @@ class DeltaPLCSocket : public QTcpSocket
 {
     Q_OBJECT
 public:
-    DeltaPLCSocket(QObject *parent = nullptr);
+    DeltaPLCSocket(const QString& name, QObject *parent = nullptr);
+    ~DeltaPLCSocket();
 
 signals:
-    void socketDataChanged(const QVariantMap &data);
+    void socketConfigChanged(const MessageDescriptor& desc);
+    void errorOccurredMessage(const MessageDescriptor& desc);
 
 public slots:
-    void slotSocketDataChanged(const QVariantMap &data);
+    void slotSocketDataChanged(const QVariantMap& data);
+
+private:
+    bool tearDownToUnconnected(int ms = 300);
+    QString hostName;
 };
 
 #endif // DELTAPLCSOCKET_H

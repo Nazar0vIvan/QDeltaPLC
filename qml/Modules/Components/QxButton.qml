@@ -14,6 +14,7 @@ Button {
 
     checkable: false
     text: checked ? textOn : textOff
+    opacity: enabled ? 1.0 : 0.4
 
     background: Rectangle {
         implicitWidth: 100
