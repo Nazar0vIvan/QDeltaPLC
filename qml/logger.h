@@ -5,7 +5,7 @@
 #include <QDate>
 #include <QDebug>
 
-struct MessageDescriptor {
+struct LoggerMessage {
     QString text = "";
     int type = 0;
     QString initiator = "";
@@ -25,10 +25,10 @@ private:
     Logger(QObject *parent = nullptr);
 
 signals:
-    void logAdded(const QVariantMap& message);
+    void logAdded(const QVariantMap& msg);
 
 public slots:
-    void push(const MessageDescriptor& desc);
+    void push(const LoggerMessage& msg);
 
 };
 

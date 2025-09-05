@@ -5,6 +5,9 @@ add_subdirectory(Modules/Components)
 set(QML_FILES
   Main.qml
   Logger.qml
+  NetworkPanel.qml
+  ControlPanel.qml
+  LedPanel.qml
 )
 
 ## CPP ##
@@ -13,6 +16,8 @@ set(CPP_FILES
   deltaplcsocket.cpp
   logger.h
   logger.cpp
+  socketrunner.h
+  socketrunner.cpp
 )
 
 qt_add_executable(qdeltaplc

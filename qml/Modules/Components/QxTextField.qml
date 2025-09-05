@@ -7,8 +7,6 @@ import Styles 1.0
 TextField {
   id: control
 
-  signal editingFinished()
-
   leftPadding: 5
   color: control.readOnly ? Styles.foreground.disabled : Styles.foreground.high
   selectionColor: Styles.primary.highlight
@@ -24,7 +22,6 @@ TextField {
     }
   }
 
-  onEditingFinished:{ control.editingFinished() }
   onAccepted: { editingFinished(); focus = false }
   onFocusChanged: if(focus) selectAll()
 }

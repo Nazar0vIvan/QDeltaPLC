@@ -14,15 +14,22 @@ TextArea {
   selectionColor: Styles.primary.transparent
   placeholderText: "Ready ..."
   placeholderTextColor: Styles.foreground.high
+  textFormat: TextEdit.RichText
   background: Rectangle {
     color: Styles.background.dp04
-    border{color: Styles.foreground.high; width: 1}
+    border{ color: Styles.foreground.high; width: 1 }
   }
 
   Connections {
     target: logger
     function onLogAdded(message){
-      textArea.append(message.text)
+      const colors = {
+          0: "red",
+          1: "green",
+          2: "yellow"
+      }
+      const col = colors[Number(message.type)] || Styles.foreground.high
+      textArea.insert(textArea.length, `<span style="color:${col}">${message.text}</span><br/>`)
     }
   }
 }

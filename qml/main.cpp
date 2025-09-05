@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 
+#include "socketrunner.h"
 #include "deltaplcsocket.h"
 #include "logger.h"
 
@@ -14,12 +15,13 @@ int main(int argc, char *argv[])
     // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
     engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module/qml/Modules/");
 
-    QQmlContext* rootContext = engine.rootContext();
+    SocketRunner runner(new DeltaPLCSocket("plcSocket"), &app);
+    runner.start();
 
-    rootContext->setContextProperty("logger", Logger::instance());
-
-    DeltaPLCSocket plcSocket("plcSocket");
-    rootContext->setContextProperty("plcSocket", &plcSocket);
+    QQmlContext* ctx  = engine.rootContext();
+    ctx->setContextProperty("logger", Logger::instance());
+    ctx->setContextProperty("plcSocket", runner.socket());
+    ctx->setContextProperty("plcRunner", &runner);
 
     engine.loadFromModule("qdeltaplc_qml_module", "Main");
 

@@ -6,6 +6,7 @@ import Styles 1.0
 
 Button {
     id: control
+
     property string textOn:  "On"
     property string textOff: "Off"
 
