@@ -15,16 +15,19 @@ public:
     explicit SocketRunner(QTcpSocket* existingSocket, QObject* parent = nullptr);
     ~SocketRunner() override;
 
-    QObject* socket() const { return m_socket; }
+    Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
 
-    Q_INVOKABLE void setConfig(const QVariantMap& data);
-    Q_INVOKABLE void connectToHost();
+    Q_INVOKABLE void connectToHost(const QVariantMap& data);
     Q_INVOKABLE void disconnectFromHost();
-    Q_INVOKABLE void writeMessage(const QVariantMap& msg);
+    Q_INVOKABLE void writeMessage(const QString& msg);
+
+    QObject* socket() const { return m_socket; }
+    int  socketState() const { return m_socketState; }
 
 signals:
     void threadStartedMessage(const LoggerMessage& msg);
     void threadFinishedMessage(const LoggerMessage& msg);
+    void socketStateChanged();
 
 public slots:
     void start();
@@ -35,6 +38,7 @@ private:
 
     QThread*    m_thread = nullptr;
     QTcpSocket* m_socket = nullptr;
+    int         m_socketState = QAbstractSocket::UnconnectedState;
 };
 
 #endif // SOCKETRUNNER_H

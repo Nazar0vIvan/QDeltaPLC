@@ -26,7 +26,7 @@ TextArea {
       const colors = {
           0: "red",
           1: "green",
-          2: "yellow"
+          2: "white"
       }
       const col = colors[Number(message.type)] || Styles.foreground.high
       textArea.insert(textArea.length, `<span style="color:${col}">${message.text}</span><br/>`)

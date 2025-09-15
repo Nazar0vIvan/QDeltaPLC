@@ -43,9 +43,6 @@ Window {
         Layout.preferredWidth: 300
         Layout.preferredHeight: 370
         Layout.topMargin: 20
-
-        onConnectPressed: plcSocket.slotConnect();
-        onDisconnectPressed: plcSocke.slotDisconnect();
       }
 
       ControlPanel {

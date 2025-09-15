@@ -29,14 +29,9 @@ SocketRunner::~SocketRunner()
     }
 }
 
-void SocketRunner::setConfig(const QVariantMap &data)
+void SocketRunner::connectToHost(const QVariantMap &data)
 {
-    QMetaObject::invokeMethod(m_socket, "setConfig", Qt::QueuedConnection, Q_ARG(QVariantMap, data));
-}
-
-void SocketRunner::connectToHost()
-{
-    QMetaObject::invokeMethod(m_socket, "connectToHost", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(m_socket, "connectToHost", Qt::QueuedConnection, Q_ARG(QVariantMap, data));
 }
 
 void SocketRunner::disconnectFromHost()
@@ -44,9 +39,9 @@ void SocketRunner::disconnectFromHost()
     QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
 }
 
-void SocketRunner::writeMessage(const QVariantMap &msg)
+void SocketRunner::writeMessage(const QString& msg)
 {
-
+    QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QString, msg));
 }
 
 void SocketRunner::attachSocket(QTcpSocket* sock)
@@ -56,8 +51,21 @@ void SocketRunner::attachSocket(QTcpSocket* sock)
         sock->setParent(nullptr);
 
     m_socket = sock;
+
+    m_socketState = m_socket->state();
+    emit socketStateChanged();
+
     m_socket->moveToThread(m_thread);
     wire_lifetimes(m_thread, m_socket);
+
+    // transmit socket state to UI (socket in its own thread)
+    QObject::connect(m_socket, &QAbstractSocket::stateChanged,
+                     this, [this](QAbstractSocket::SocketState s){
+                         if (m_socketState == static_cast<int>(s)) return;
+                         m_socketState = static_cast<int>(s);
+                         emit socketStateChanged();
+                     },
+                     Qt::QueuedConnection);
 
     QObject::connect(m_thread, &QThread::started, m_socket, []{
 

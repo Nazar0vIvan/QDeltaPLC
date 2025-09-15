@@ -19,21 +19,21 @@ public:
     DeltaPLCSocket(const QString& name, QObject *parent = nullptr);
     ~DeltaPLCSocket();
 
-    Q_INVOKABLE void setConfig(const QVariantMap& data);
-    Q_INVOKABLE virtual void connectToHost(const QString &hostName, quint16 port,
-                                           OpenMode openMode = ReadWrite,
-                                           NetworkLayerProtocol protocol = AnyIPProtocol) override;
+    Q_INVOKABLE void connectToHost(const QVariantMap& data);
     Q_INVOKABLE virtual void disconnectFromHost() override;
-    Q_INVOKABLE void writeMessage(const QVariantMap& msg);
+    Q_INVOKABLE void writeMessage(const QString& msg);
 
 signals:
-    void socketBindMessage(const LoggerMessage& msg);
+    void logMessage(const LoggerMessage& msg);
     void errorOccurredMessage(const LoggerMessage& msg);
     void stateChangedMessage(const LoggerMessage& msg);
+
     void destroyedMessage(const LoggerMessage& msg);
 
 public slots:
-    void slotStateChanged(SocketState state);
+    void slotErrorOccurred(QAbstractSocket::SocketError socketError);
+    void slotStateChanged(QAbstractSocket::SocketState state);
+    void slotConnectedMessage();
     void slotReadyRead();
 
 private:

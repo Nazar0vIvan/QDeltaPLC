@@ -13,9 +13,6 @@ QxGroupBox {
   property int fieldWidth: 120
   property int labelWidth: 74
 
-  signal connectPressed()
-  signal disconnectPressed()
-
   title: qsTr("Network")
 
   ColumnLayout {
@@ -25,9 +22,9 @@ QxGroupBox {
     anchors.topMargin: -20
     spacing: 10
 
-    QxField {
-      id: laField // local address
+    QxField { // local address
 
+      id: laField
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "PC IP :"
@@ -36,7 +33,7 @@ QxGroupBox {
         id: la
 
         height: parent.height; width: root.fieldWidth
-        text:"192.168.2.1"
+        text:"192.168.1.1"
         validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
         }
@@ -45,8 +42,8 @@ QxGroupBox {
       }
     }
 
-    QxField {
-      id: lpField // local port
+    QxField { // local port
+      id: lpField
 
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
@@ -63,10 +60,9 @@ QxGroupBox {
       }
     }
 
+    QxField { // peer address
 
-    QxField {
-      id: paField // peer address
-
+      id: paField
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "PLC IP :"
@@ -75,7 +71,7 @@ QxGroupBox {
         id: pa
 
         height: parent.height; width: root.fieldWidth
-        text: "192.168.2.5"
+        text: "192.168.1.2"
         validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
         }
@@ -84,33 +80,46 @@ QxGroupBox {
       }
     }
 
-    QxField {
-      id: pp // peer port
+    QxField { // peer port
+      id: ppField
 
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "PLC Port :"
 
       QxTextField {
-        id: ppText
+        id: pp
 
         height: parent.height; width: root.fieldWidth
-        text: "502"
+        text: "5051"
         validator: IntValidator{ bottom: 0; top: 65535; }
-
-        onEditingFinished: btnSubmit.enabled = true
       }
     }
 
-    QxField {
-      id: statusField // connection status
+    QxField { // message
+      id: msgField
+
+      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      labelWidth: root.labelWidth
+      labelText: "Message"
+
+      QxTextField {
+        id: msg
+
+        height: parent.height; width: root.fieldWidth
+        validator: IntValidator{ bottom: 0; top: 65535; }
+      }
+    }
+
+    QxField { // connection status
+      id: statusField
 
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "Status :"
 
       Text {
-        text: btnConnect.checked ?  "Connected" : "Disconnected"
+        text: plcRunner && plcRunner.socketState === 3 ?  "Connected" : "Disconnected"
         color: btnConnect.checked ? Styles.minColor : Styles.maxColor
         anchors.verticalCenter: parent.verticalCenter
       }
@@ -125,31 +134,40 @@ QxGroupBox {
       Layout.preferredHeight: 30
 
       QxButton {
-        id: btnSubmit
+        id: btnConnect
 
-        checkable: false
-        text: "Submit"
-        enabled: !btnConnect.enabled
-
+        checked: plcRunner && plcRunner.socketState === 3
+        enabled: plcRunner && (
+            plcRunner.socketState === 0 ||
+            plcRunner.socketState === 3
+        )
+        text: checked ? "Disconnect" : "Connect"
         onClicked: {
-          plcRunner.setConfig({
-            localAddress: la.text,
-            localPort:    Number(lp.text),
-            peerAddress:  pa.text,
-            peerPort:     Number(pp.text)
-          })
+          if (!plcRunner) return
+          if (checked) {
+              plcRunner.disconnectFromHost()
+          } else {
+              plcRunner.connectToHost({
+                  localAddress: la.text,
+                  localPort:    Number(lp.text),
+                  peerAddress:  pa.text,
+                  peerPort:     Number(pp.text)
+              })
+          }
         }
       }
 
       QxButton {
-        id: btnConnect
+        id: btnSend
 
-        checkable: true
-        enabled: false
-        textOn: "Disconnect"
-        textOff: "Connect"
-        onTurnedOn: root.connectPressed()
-        onTurnedOff: root.disconnectPressed()
+        checkable: false
+        text: "Send"
+        enabled: plcRunner && plcRunner.socketState === 3
+
+        onClicked: {
+          if (!msg.text) return
+          plcRunner.writeMessage(msg.text)
+        }
       }
     }
   }

@@ -2,50 +2,37 @@
 
 DeltaPLCSocket::DeltaPLCSocket(const QString& name, QObject* parent) : QTcpSocket(parent), hostName{name} {
 
-    connect(this, &DeltaPLCSocket::errorOccurred, this, [this](){ emit errorOccurredMessage({this->errorString(), 0, hostName}); });
+    connect(this, &DeltaPLCSocket::errorOccurred, this, &DeltaPLCSocket::slotErrorOccurred);
     connect(this, &DeltaPLCSocket::stateChanged, this, &DeltaPLCSocket::slotStateChanged);
+    connect(this, &DeltaPLCSocket::connected, this, &DeltaPLCSocket::slotConnectedMessage);
+    connect(this, &DeltaPLCSocket::readyRead,  this, &DeltaPLCSocket::slotReadyRead);
 
-    connect(this, &DeltaPLCSocket::socketBindMessage,  Logger::instance(), &Logger::push);
-    connect(this, &DeltaPLCSocket::errorOccurredMessage, Logger::instance(), &Logger::push);
-    connect(this, &DeltaPLCSocket::stateChangedMessage,  Logger::instance(), &Logger::push);
+    connect(this, &DeltaPLCSocket::logMessage,  Logger::instance(), &Logger::push);
 }
-
 DeltaPLCSocket::~DeltaPLCSocket() {}
 
 // PUBLIC SLOTS
-void DeltaPLCSocket::setConfig(const QVariantMap &data)
+void DeltaPLCSocket::connectToHost(const QVariantMap &data)
 {
     QHostAddress la = QHostAddress(data.value("localAddress").toString());
     qint16 lp = data.value("localPort").toUInt();
     QHostAddress pa = QHostAddress(data.value("peerAddress").toString());
     qint16 pp = data.value("peerPort").toUInt();
 
-    QString text;
-    int type = 0;
-
-    if(!tearDownToUnconnected()) {
-        text = tr("Failed to return to UnconnectedState: %1").arg(errorString());
-        emit socketBindMessage({text, type, hostName});
-        return;
-    }
-    if(!bind(la, lp, QAbstractSocket::DontShareAddress | QAbstractSocket::ReuseAddressHint)) {
-        text = tr("bind(%1:%2) failed").arg(la.toString()).arg(lp);
-    } else {
-        text = tr("bind %1:%2").arg(la.toString()).arg(lp);
-        type = 1;
-        setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
-    }
-    emit socketBindMessage({text, type, hostName});
+    QTcpSocket::connectToHost(pa, pp, QAbstractSocket::ReadWrite);
 }
 
-void DeltaPLCSocket::slotStateChanged(SocketState state)
-{
-    emit stateChangedMessage({stateToString(state), 2, hostName});
+void DeltaPLCSocket::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
+    emit logMessage({this->errorString(), 0, hostName});
 }
 
-void DeltaPLCSocket::connectToHost(const QString &hostName, quint16 port, OpenMode openMode, NetworkLayerProtocol protocol)
+void DeltaPLCSocket::slotStateChanged(QAbstractSocket::SocketState state) {
+    emit logMessage({stateToString(state), 2, hostName});
+}
+
+void DeltaPLCSocket::slotConnectedMessage()
 {
-    QTcpSocket::connectToHost(peerAddress(), peerPort(), QAbstractSocket::ReadWrite);
+    emit logMessage({"Connection has been successfully established", 1, hostName});
 }
 
 void DeltaPLCSocket::disconnectFromHost()
@@ -55,12 +42,20 @@ void DeltaPLCSocket::disconnectFromHost()
 
 void DeltaPLCSocket::slotReadyRead()
 {
-
+    while (this->bytesAvailable() > 0) {
+        QByteArray chunk = this->read(this->bytesAvailable());
+        emit logMessage({"[PLC] Raw:" + QString(chunk), 1, hostName});
+        // qDebug() << "[PLC] Raw:" << chunk;
+    }
 }
 
-void DeltaPLCSocket::writeMessage(const QVariantMap &msg)
+void DeltaPLCSocket::writeMessage(const QString& msg)
 {
-
+    const qint64 bytesCount = write(msg.toUtf8());
+    if (bytesCount == -1) {
+        emit logMessage({"No bytes were written", 0, hostName});
+    }
+    emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 1, hostName});
 }
 
 // PRIVATE
@@ -94,6 +89,26 @@ QString DeltaPLCSocket::stateToString(SocketState state)
         default: return "UnconnectedState";
     }
 }
+
+/*
+QString text;
+int type = 0;
+
+if(!tearDownToUnconnected()) {
+    text = tr("Failed to return to UnconnectedState: %1").arg(errorString());
+    emit socketBindMessage({text, type, hostName});
+    return;
+}
+if(!bind(la, lp, QAbstractSocket::DontShareAddress | QAbstractSocket::ReuseAddressHint)) {
+    text = tr("bind(%1:%2) failed").arg(la.toString()).arg(lp);
+} else {
+    text = tr("bind %1:%2").arg(la.toString()).arg(lp);
+    type = 1;
+    setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
+    QTcpSocket::connectToHost(pa, pp, QAbstractSocket::ReadWrite);
+}
+emit socketBindMessage({text, type, hostName});
+*/
 
 
 
