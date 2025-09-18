@@ -12,8 +12,10 @@ set(QML_FILES
 
 ## CPP ##
 set(CPP_FILES
-  deltaplcsocket.h
-  deltaplcsocket.cpp
+  socketdeltaplc.h
+  socketdeltaplc.cpp
+  socketrdt.h
+  socketrdt.cpp
   logger.h
   logger.cpp
   socketrunner.h

@@ -3,7 +3,7 @@
 #include <QQmlContext>
 
 #include "socketrunner.h"
-#include "deltaplcsocket.h"
+#include "socketdeltaplc.h"
 #include "logger.h"
 
 int main(int argc, char *argv[])
@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
     engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module/qml/Modules/");
 
-    SocketRunner runner(new DeltaPLCSocket("plcSocket"), &app);
+    SocketRunner runner(new SocketDeltaPLC("PLC_AS332T"), &app);
     runner.start();
 
     QQmlContext* ctx  = engine.rootContext();

@@ -1,5 +1,5 @@
-#ifndef DELTAPLCSOCKET_H
-#define DELTAPLCSOCKET_H
+#ifndef SOCKETDELTAPLC_H
+#define SOCKETDELTAPLC_H
 
 #include <QTcpSocket>
 #include <QThread>
@@ -12,12 +12,12 @@
 #define PEER_PORT 3333
 
 
-class DeltaPLCSocket : public QTcpSocket
+class SocketDeltaPLC : public QTcpSocket
 {
     Q_OBJECT
 public:
-    DeltaPLCSocket(const QString& name, QObject *parent = nullptr);
-    ~DeltaPLCSocket();
+    SocketDeltaPLC(const QString& name, QObject *parent = nullptr);
+    ~SocketDeltaPLC();
 
     Q_INVOKABLE void connectToHost(const QVariantMap& data);
     Q_INVOKABLE virtual void disconnectFromHost() override;
@@ -43,4 +43,4 @@ private:
     QString hostName;
 };
 
-#endif // DELTAPLCSOCKET_H
+#endif // SOCKETDELTAPLC_H

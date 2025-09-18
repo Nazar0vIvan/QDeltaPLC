@@ -1,18 +1,18 @@
-#include "deltaplcsocket.h"
+#include "socketdeltaplc.h"
 
-DeltaPLCSocket::DeltaPLCSocket(const QString& name, QObject* parent) : QTcpSocket(parent), hostName{name} {
+SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocket(parent), hostName{name} {
 
-    connect(this, &DeltaPLCSocket::errorOccurred, this, &DeltaPLCSocket::slotErrorOccurred);
-    connect(this, &DeltaPLCSocket::stateChanged, this, &DeltaPLCSocket::slotStateChanged);
-    connect(this, &DeltaPLCSocket::connected, this, &DeltaPLCSocket::slotConnectedMessage);
-    connect(this, &DeltaPLCSocket::readyRead,  this, &DeltaPLCSocket::slotReadyRead);
+    connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::slotErrorOccurred);
+    connect(this, &SocketDeltaPLC::stateChanged, this, &SocketDeltaPLC::slotStateChanged);
+    connect(this, &SocketDeltaPLC::connected, this, &SocketDeltaPLC::slotConnectedMessage);
+    connect(this, &SocketDeltaPLC::readyRead,  this, &SocketDeltaPLC::slotReadyRead);
 
-    connect(this, &DeltaPLCSocket::logMessage,  Logger::instance(), &Logger::push);
+    connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
 }
-DeltaPLCSocket::~DeltaPLCSocket() {}
+SocketDeltaPLC::~SocketDeltaPLC() {}
 
 // PUBLIC SLOTS
-void DeltaPLCSocket::connectToHost(const QVariantMap &data)
+void SocketDeltaPLC::connectToHost(const QVariantMap &data)
 {
     QHostAddress la = QHostAddress(data.value("localAddress").toString());
     qint16 lp = data.value("localPort").toUInt();
@@ -22,44 +22,43 @@ void DeltaPLCSocket::connectToHost(const QVariantMap &data)
     QTcpSocket::connectToHost(pa, pp, QAbstractSocket::ReadWrite);
 }
 
-void DeltaPLCSocket::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
+void SocketDeltaPLC::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
     emit logMessage({this->errorString(), 0, hostName});
 }
 
-void DeltaPLCSocket::slotStateChanged(QAbstractSocket::SocketState state) {
+void SocketDeltaPLC::slotStateChanged(QAbstractSocket::SocketState state) {
     emit logMessage({stateToString(state), 2, hostName});
 }
 
-void DeltaPLCSocket::slotConnectedMessage()
+void SocketDeltaPLC::slotConnectedMessage()
 {
     emit logMessage({"Connection has been successfully established", 1, hostName});
 }
 
-void DeltaPLCSocket::disconnectFromHost()
+void SocketDeltaPLC::disconnectFromHost()
 {
     QTcpSocket::disconnectFromHost();
 }
 
-void DeltaPLCSocket::slotReadyRead()
+void SocketDeltaPLC::slotReadyRead()
 {
-    while (this->bytesAvailable() > 0) {
-        QByteArray chunk = this->read(this->bytesAvailable());
-        emit logMessage({"[PLC] Raw:" + QString(chunk), 1, hostName});
-        // qDebug() << "[PLC] Raw:" << chunk;
-    }
+    QByteArray chunk = readAll();
+    qDebug() << chunk;
+    const qint64 n = chunk.size();
+    emit logMessage({QString::number(n) + " bytes were read from PLC", 3, hostName});
 }
 
-void DeltaPLCSocket::writeMessage(const QString& msg)
+void SocketDeltaPLC::writeMessage(const QString& msg)
 {
     const qint64 bytesCount = write(msg.toUtf8());
     if (bytesCount == -1) {
         emit logMessage({"No bytes were written", 0, hostName});
     }
-    emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 1, hostName});
+    emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, hostName});
 }
 
 // PRIVATE
-bool DeltaPLCSocket::tearDownToUnconnected(int ms)
+bool SocketDeltaPLC::tearDownToUnconnected(int ms)
 {
     if (state() == QAbstractSocket::UnconnectedState)
         return true;
@@ -76,7 +75,7 @@ bool DeltaPLCSocket::tearDownToUnconnected(int ms)
     return state() == QAbstractSocket::UnconnectedState;
 }
 
-QString DeltaPLCSocket::stateToString(SocketState state)
+QString SocketDeltaPLC::stateToString(SocketState state)
 {
     switch (state) {
         case QAbstractSocket::UnconnectedState: return "UnconnectedState";

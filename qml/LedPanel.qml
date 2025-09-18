@@ -24,9 +24,9 @@ GridView {
         ListElement { label: "Mains"; color: "yellow"; isOn: true;  w: 100; h: 200 }
         ListElement { label: "Y1.6";  color: "green";  isOn: false; w: 100; h: 200 }
         ListElement { label: "Y1.7";  color: "green";  isOn: false; w: 100; h: 200 }
-        ListElement { label: "Y2.5";  color: "red";    isOn: false; w: 70;  h: 140 }
-        ListElement { label: "Y2.6";  color: "red";    isOn: false; w: 70;  h: 140 }
         ListElement { label: "Y2.7";  color: "red";    isOn: false; w: 70;  h: 140 }
+        ListElement { label: "Y2.6";  color: "red";    isOn: false; w: 70;  h: 140 }
+        ListElement { label: "Y2.5";  color: "red";    isOn: false; w: 70;  h: 140 }
     }
 
     delegate: Item {
