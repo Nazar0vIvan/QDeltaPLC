@@ -33,14 +33,12 @@ signals:
 public slots:
     void slotErrorOccurred(QAbstractSocket::SocketError socketError);
     void slotStateChanged(QAbstractSocket::SocketState state);
-    void slotConnectedMessage();
+    void slotConnected();
     void slotReadyRead();
 
 private:
     bool tearDownToUnconnected(int ms = 300);
     QString stateToString(SocketState state);
-
-    QString hostName;
 };
 
 #endif // SOCKETDELTAPLC_H

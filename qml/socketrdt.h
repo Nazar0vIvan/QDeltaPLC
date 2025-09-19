@@ -1,9 +1,11 @@
 #ifndef SOCKETRDT_H
 #define SOCKETRDT_H
 
+#include <QObject>
 #include <QUdpSocket>
 #include <QNetworkDatagram>
 #include <QDebug>
+#include <QVariant>
 #include <QVector>
 #include <QByteArray>
 #include <QtEndian>
@@ -45,25 +47,20 @@ struct RDTResponse
 
 class SocketRDT : public QUdpSocket
 {
-
     Q_OBJECT
-
 public:
     SocketRDT(const QString& name, QObject* parent = nullptr);
 
+    Q_INVOKABLE void startStreaming(const QVariantMap& data);
+    Q_INVOKABLE void stopStreaming();
+
 signals:
     void responceChanged(const RDTResponse& responce);
-
-public slots:
-    void slotStartStreaming();
-    void slotStopStreaming();
 
 private slots:
     void slotReadData();
 
 private:
-    QString hostName;
-
     QNetworkDatagram RDTRequest2QNetworkDatagram(const RDTRequest& request);
     RDTResponse QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram);
 };

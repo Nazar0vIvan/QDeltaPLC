@@ -1,14 +1,13 @@
 #include "socketrdt.h"
-#include "socketdeltaplc.h"
 
-SocketRDT::SocketRDT(const QString& name, QObject* parent) : hostName(name), QUdpSocket(parent)
+SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
 {
     // setID(2);
     // setProtocolName("RDT");
 
-    setLocalAddress(QHostAddress(LOCAL_ADDRESS));
+    this->setObjectName(name);
+
     setLocalPort(RDT_LOCAL_PORT);
-    setPeerAddress(QHostAddress(RDT_PEER_ADDRESS));
     setPeerPort(RDT_PEER_PORT);
 
     setOpenMode(QIODeviceBase::ReadWrite);
@@ -60,15 +59,21 @@ RDTResponse SocketRDT::QNetworkDatagram2RDTResponse(const QNetworkDatagram& netw
     return { rdt_sequence, ft_sequence,status, Fx,Fy,Fz,Tx,Ty,Tz };
 }
 
-void SocketRDT::slotStartStreaming()
+void SocketRDT::startStreaming(const QVariantMap& data)
 {
-    connect(this, &SocketRDT::readyRead, this, &SocketRDT::slotReadData);
-    writeDatagram(RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data(), QHostAddress(peerAddress()), peerPort());
+    QHostAddress pa = QHostAddress(data.value("peerAddress").toString());
+    qint16 pp = data.value("peerPort").toUInt();
+
+    setPeerAddress(pa); setPeerPort(pp);
+
+    auto startRequest = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
+    writeDatagram(startRequest, pa, pp);
 }
 
-void SocketRDT::slotStopStreaming()
+void SocketRDT::stopStreaming()
 {
-    writeDatagram(RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data(), QHostAddress(peerAddress()), peerPort());
+    auto stopRequest = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
+    writeDatagram(stopRequest, peerAddress(), peerPort());
 }
 
 void SocketRDT::slotReadData()

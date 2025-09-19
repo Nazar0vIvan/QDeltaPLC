@@ -13,13 +13,10 @@ QxGroupBox {
   property int fieldWidth: 120
   property int labelWidth: 74
 
-  title: qsTr("Network")
-
   ColumnLayout {
-    id: layout
+    id: cl
 
     anchors.fill: parent
-    anchors.topMargin: -20
     spacing: 10
 
     QxField { // local address
@@ -29,16 +26,16 @@ QxGroupBox {
       labelWidth: root.labelWidth
       labelText: "PC IP :"
 
-      QxTextField {
+      TextEdit {
         id: la
 
         height: parent.height; width: root.fieldWidth
-        text:"192.168.1.1"
-        validator: RegularExpressionValidator {
-            regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
-        }
-
-        onEditingFinished: btnSubmit.enabled = true
+        color: Styles.foreground.high
+        text: "192.168.1.1"
+        verticalAlignment: Qt.AlignVCenter
+        readOnly: true
+        selectByMouse: true
+        selectionColor: Styles.primary.highlight
       }
     }
 
@@ -96,21 +93,6 @@ QxGroupBox {
       }
     }
 
-    QxField { // message
-      id: msgField
-
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
-      labelWidth: root.labelWidth
-      labelText: "Message"
-
-      QxTextField {
-        id: msg
-
-        height: parent.height; width: root.fieldWidth
-        validator: IntValidator{ bottom: 0; top: 65535; }
-      }
-    }
-
     QxField { // connection status
       id: statusField
 
@@ -131,11 +113,12 @@ QxGroupBox {
       id: btnlayout
 
       Layout.fillWidth: true
-      Layout.preferredHeight: 30
+      Layout.preferredHeight: root.fieldHeight
 
       QxButton {
         id: btnConnect
 
+        Layout.preferredHeight: root.fieldHeight
         checked: plcRunner && plcRunner.socketState === 3
         enabled: plcRunner && (
             plcRunner.socketState === 0 ||
@@ -154,19 +137,6 @@ QxGroupBox {
                   peerPort:     Number(pp.text)
               })
           }
-        }
-      }
-
-      QxButton {
-        id: btnSend
-
-        checkable: false
-        text: "Send"
-        enabled: plcRunner && plcRunner.socketState === 3
-
-        onClicked: {
-          if (!msg.text) return
-          plcRunner.writeMessage(msg.text)
         }
       }
     }

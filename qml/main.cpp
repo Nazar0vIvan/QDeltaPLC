@@ -15,13 +15,12 @@ int main(int argc, char *argv[])
     // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
     engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module/qml/Modules/");
 
-    SocketRunner runner(new SocketDeltaPLC("PLC_AS332T"), &app);
-    runner.start();
+    SocketRunner plcRunner(new SocketDeltaPLC("PLC_AS332T"), &app);
+    plcRunner.start();
 
     QQmlContext* ctx  = engine.rootContext();
     ctx->setContextProperty("logger", Logger::instance());
-    ctx->setContextProperty("plcSocket", runner.socket());
-    ctx->setContextProperty("plcRunner", &runner);
+    ctx->setContextProperty("plcRunner", &plcRunner);
 
     engine.loadFromModule("qdeltaplc_qml_module", "Main");
 

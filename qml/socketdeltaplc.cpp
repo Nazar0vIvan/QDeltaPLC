@@ -1,11 +1,13 @@
 #include "socketdeltaplc.h"
 
-SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocket(parent), hostName{name} {
+SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocket(parent)
+{
+    this->setObjectName(name);
 
     connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::slotErrorOccurred);
-    connect(this, &SocketDeltaPLC::stateChanged, this, &SocketDeltaPLC::slotStateChanged);
-    connect(this, &SocketDeltaPLC::connected, this, &SocketDeltaPLC::slotConnectedMessage);
-    connect(this, &SocketDeltaPLC::readyRead,  this, &SocketDeltaPLC::slotReadyRead);
+    connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::slotStateChanged);
+    connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::slotConnected);
+    connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::slotReadyRead);
 
     connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
 }
@@ -23,16 +25,16 @@ void SocketDeltaPLC::connectToHost(const QVariantMap &data)
 }
 
 void SocketDeltaPLC::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
-    emit logMessage({this->errorString(), 0, hostName});
+    emit logMessage({this->errorString(), 0, objectName()});
 }
 
 void SocketDeltaPLC::slotStateChanged(QAbstractSocket::SocketState state) {
-    emit logMessage({stateToString(state), 2, hostName});
+    emit logMessage({stateToString(state), 2, objectName()});
 }
 
-void SocketDeltaPLC::slotConnectedMessage()
+void SocketDeltaPLC::slotConnected()
 {
-    emit logMessage({"Connection has been successfully established", 1, hostName});
+    emit logMessage({"Connection has been successfully established", 1, objectName()});
 }
 
 void SocketDeltaPLC::disconnectFromHost()
@@ -45,16 +47,16 @@ void SocketDeltaPLC::slotReadyRead()
     QByteArray chunk = readAll();
     qDebug() << chunk;
     const qint64 n = chunk.size();
-    emit logMessage({QString::number(n) + " bytes were read from PLC", 3, hostName});
+    emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
 
 void SocketDeltaPLC::writeMessage(const QString& msg)
 {
     const qint64 bytesCount = write(msg.toUtf8());
     if (bytesCount == -1) {
-        emit logMessage({"No bytes were written", 0, hostName});
+        emit logMessage({"No bytes were written", 0, objectName()});
     }
-    emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, hostName});
+    emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, objectName()});
 }
 
 // PRIVATE

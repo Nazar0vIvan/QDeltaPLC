@@ -2,22 +2,15 @@
 
 #include "socketrunner.h"
 
-static void wire_lifetimes(QThread* thread, QTcpSocket* socket)
-{
-    QObject::connect(thread, &QThread::finished, socket, &QObject::deleteLater);
-    QObject::connect(socket, &QObject::destroyed, thread, &QThread::quit);
-    QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-}
-
-SocketRunner::SocketRunner(QTcpSocket* existingSocket, QObject* parent)
-    : QObject(parent)
+SocketRunner::SocketRunner(QTcpSocket* socket, QObject* parent) : QObject(parent)
 {
     m_thread = new QThread(this);
     m_thread->setObjectName(QStringLiteral("SocketRunnerThread"));
 
-    attachSocket(existingSocket);
+    attachSocket(socket);
 
-    QObject::connect(qApp, &QCoreApplication::aboutToQuit, this, [this]{ stop(); });
+    connect(this, &SocketRunner::logMessage,  Logger::instance(), &Logger::push);
+    connect(qApp, &QCoreApplication::aboutToQuit, this, [this]{ stop(); });
 }
 
 SocketRunner::~SocketRunner()
@@ -27,6 +20,55 @@ SocketRunner::~SocketRunner()
         m_thread->quit();
         m_thread->wait();
     }
+}
+
+void SocketRunner::attachSocket(QTcpSocket* sock)
+{
+    Q_ASSERT(sock);
+    if (sock->parent()) sock->setParent(nullptr);
+
+    m_socket = sock;
+
+    m_socketState = m_socket->state();
+    emit socketStateChanged();
+
+    m_socket->moveToThread(m_thread);
+
+    connect(m_thread, &QThread::started, this, &SocketRunner::slotThreadStarted);
+    connect(m_thread, &QThread::finished, m_thread, &QThread::deleteLater);
+    connect(m_thread, &QThread::finished, m_socket, &QObject::deleteLater);
+    connect(m_socket, &QObject::destroyed, m_thread, &QThread::quit);
+
+    connect(m_socket, &QAbstractSocket::stateChanged,
+                     this, [this](QAbstractSocket::SocketState s){
+                         if (m_socketState == static_cast<int>(s)) return;
+                         m_socketState = static_cast<int>(s);
+                         emit socketStateChanged();
+                     },
+                     Qt::QueuedConnection);
+}
+
+void SocketRunner::start()
+{
+    if (!m_thread->isRunning())
+        m_thread->start();
+}
+
+void SocketRunner::stop()
+{
+    if (!m_socket) return;
+    QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(m_socket, "deleteLater", Qt::QueuedConnection);
+}
+
+void SocketRunner::slotThreadStarted()
+{
+    emit logMessage({"The thread has started", 1, m_socket->objectName()});
+}
+
+void SocketRunner::slotThreadFinished()
+{
+    emit logMessage({"The thread has finished", 1, m_socket->objectName()});
 }
 
 void SocketRunner::connectToHost(const QVariantMap &data)
@@ -44,46 +86,3 @@ void SocketRunner::writeMessage(const QString& msg)
     QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QString, msg));
 }
 
-void SocketRunner::attachSocket(QTcpSocket* sock)
-{
-    Q_ASSERT(sock);
-    if (sock->parent())
-        sock->setParent(nullptr);
-
-    m_socket = sock;
-
-    m_socketState = m_socket->state();
-    emit socketStateChanged();
-
-    m_socket->moveToThread(m_thread);
-    wire_lifetimes(m_thread, m_socket);
-
-    // transmit socket state to UI (socket in its own thread)
-    QObject::connect(m_socket, &QAbstractSocket::stateChanged,
-                     this, [this](QAbstractSocket::SocketState s){
-                         if (m_socketState == static_cast<int>(s)) return;
-                         m_socketState = static_cast<int>(s);
-                         emit socketStateChanged();
-                     },
-                     Qt::QueuedConnection);
-
-    QObject::connect(m_thread, &QThread::started, m_socket, []{
-
-    });
-}
-
-void SocketRunner::start()
-{
-    if (!m_thread->isRunning())
-        m_thread->start();
-}
-
-void SocketRunner::stop(bool deleteSocket)
-{
-    if (!m_socket) return;
-
-    QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
-    if (deleteSocket) {
-        QMetaObject::invokeMethod(m_socket, "deleteLater", Qt::QueuedConnection);
-    }
-}

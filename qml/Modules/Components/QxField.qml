@@ -10,6 +10,7 @@ Item {
     property string labelText: ""
     property real labelWidth: label.implicitWidth
     property alias color: label.color
+    property alias spacing: rl.spacing
     default property alias content: slot.data
 
     RowLayout {

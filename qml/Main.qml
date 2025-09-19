@@ -8,7 +8,7 @@ import Components 1.0
 
 Window {
   width: 1000
-  height: 600
+  height: 1000
   visible: true
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
@@ -17,49 +17,38 @@ Window {
     id: rl
 
     anchors.fill: parent
-    spacing: 0
+    anchors.topMargin: 10
+    spacing: 10
 
-    RowLayout {
-      id: cl
+    PLCConsole {
+      id: plcPanel
 
-      Layout.fillHeight: true; implicitHeight: 50
       Layout.fillWidth: true;
-      Layout.alignment: Qt.AlignTop
-      Layout.margins: 10
-
-      LedPanel {
-        id: ledPanel
-
-        Layout.preferredWidth: implicitWidth
-        Layout.preferredHeight: implicitHeight
-        Layout.alignment: Qt.AlignTop
-        Layout.topMargin: 20
-      }
-
-      NetworkPanel {
-        id: networkPanel
-
-        Layout.alignment: Qt.AlignTop
-        Layout.preferredWidth: 300
-        Layout.preferredHeight: 370
-        Layout.topMargin: 20
-      }
-
-      ControlPanel {
-        id: controlPanel
-
-        Layout.alignment: Qt.AlignTop
-        Layout.preferredWidth: 300;
-        Layout.preferredHeight: 370
-        Layout.topMargin: 20
-      }
-
-      Item { Layout.fillWidth: true }
+      Layout.preferredHeight: 450
+      Layout.leftMargin: 10; Layout.rightMargin: 10
     }
-    Logger {
-      Layout.fillHeight: true; implicitHeight: 50
+
+    Rectangle {
+      id: separator
+
+      Layout.fillWidth: true
+      Layout.preferredHeight: 2
+      color: Styles.background.dp04
+    }
+
+    FTSConsole {
+      id: ftsPanel
+
       Layout.fillWidth: true;
-      Layout.alignment: Qt.AlignTop
+      Layout.preferredHeight: 250
+      Layout.leftMargin: 10; Layout.rightMargin: 10
+    }
+
+    Logger {
+      id: loggerPanel
+
+      Layout.fillHeight: true
+      Layout.fillWidth: true
     }
   }
 }

@@ -5,9 +5,12 @@ add_subdirectory(Modules/Components)
 set(QML_FILES
   Main.qml
   Logger.qml
-  NetworkPanel.qml
-  ControlPanel.qml
+  NetworkTcpPanel.qml
+  NetworkUdpPanel.qml
+  PLCControlPanel.qml
   LedPanel.qml
+  PLCConsole.qml
+  FTSConsole.qml
 )
 
 ## CPP ##
