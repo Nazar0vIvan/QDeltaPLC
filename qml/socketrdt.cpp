@@ -78,21 +78,20 @@ void SocketRDT::stopStreaming()
 
 void SocketRDT::slotReadData()
 {
-    qDebug() << "rdt ready read";
 
-    //  do{
-    //    QNetworkDatagram FTNetResponseDatagram = receiveDatagram(pendingDatagramSize());
-    //    uint32_t rdt_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().left(4).data());
-    //    uint32_t ft_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().right(32).left(4).data());
-    //    uint32_t status = qFromBigEndian<uint32_t>( FTNetResponseDatagram.data().right(28).left(4).data());
-    //    int32_t Fx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(24).left(4).data());
-    //    int32_t Fy = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(20).left(4).data());
-    //    int32_t Fz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(16).left(4).data());
-    //    int32_t Tx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(12).left(4).data());
-    //    int32_t Ty = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(8).left(4).data());
-    //    int32_t Tz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(4).data());
+    do {
+       QNetworkDatagram FTNetResponseDatagram = receiveDatagram(pendingDatagramSize());
+       uint32_t rdt_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().left(4).data());
+       uint32_t ft_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().right(32).left(4).data());
+       uint32_t status = qFromBigEndian<uint32_t>( FTNetResponseDatagram.data().right(28).left(4).data());
+       int32_t Fx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(24).left(4).data());
+       int32_t Fy = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(20).left(4).data());
+       int32_t Fz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(16).left(4).data());
+       int32_t Tx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(12).left(4).data());
+       int32_t Ty = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(8).left(4).data());
+       int32_t Tz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(4).data());
 
-    //    emit responceChanged(RDTResponse{ rdt_sequence, ft_sequence, status, Fx, Fy, Fz, Tx, Ty, Tz });
+       // emit responceChanged(RDTResponse{ rdt_sequence, ft_sequence, status, Fx, Fy, Fz, Tx, Ty, Tz });
 
-    //  } while(hasPendingDatagrams());
+     } while(hasPendingDatagrams());
 }

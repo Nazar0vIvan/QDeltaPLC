@@ -14,6 +14,8 @@ Rectangle {
   radius: 6
 
   ColumnLayout {
+    id: cl
+
     anchors.fill: parent
     anchors.margins: 10
     spacing: 10

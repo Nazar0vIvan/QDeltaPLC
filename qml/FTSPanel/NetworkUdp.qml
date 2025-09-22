@@ -17,7 +17,6 @@ QxGroupBox {
     id: cl
 
     anchors.fill: parent
-    anchors.topMargin: -20
     spacing: 10
 
     QxField { // local address
@@ -63,7 +62,7 @@ QxGroupBox {
       id: paField
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
-      labelText: "PLC IP :"
+      labelText: "FTS IP :"
 
       QxTextField {
         id: pa
@@ -73,8 +72,6 @@ QxGroupBox {
         validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
         }
-
-        onEditingFinished: btnSubmit.enabled = true
       }
     }
 
@@ -83,7 +80,7 @@ QxGroupBox {
 
     Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
     labelWidth: root.labelWidth
-    labelText: "PLC Port :"
+    labelText: "FTS Port :"
 
     TextEdit {
       id: pp

@@ -5,12 +5,13 @@ add_subdirectory(Modules/Components)
 set(QML_FILES
   Main.qml
   Logger.qml
-  NetworkTcpPanel.qml
-  NetworkUdpPanel.qml
-  PLCControlPanel.qml
-  LedPanel.qml
-  PLCConsole.qml
-  FTSConsole.qml
+  PLCPanel/NetworkTcp.qml
+  PLCPanel/PLCControls.qml
+  PLCPanel/PLCLeds.qml
+  PLCPanel/PLCPanel.qml
+  FTSPanel/FTSPanel.qml
+  FTSPanel/FTSChart.qml
+  FTSPanel/NetworkUdp.qml
 )
 
 ## CPP ##
@@ -42,6 +43,7 @@ target_link_libraries(qdeltaplc
     PRIVATE Qt6::Quick
     PRIVATE Qt6::Gui
     PRIVATE Qt6::Network
+    PRIVATE Qt6::Charts
     PRIVATE Stylesplugin
     PRIVATE Componentsplugin
 )

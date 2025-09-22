@@ -107,7 +107,7 @@ QxGroupBox {
       }
     }
 
-    Item { Layout.fillHeight: true } // spacer
+    Item{ Layout.fillHeight: true }
 
     RowLayout {
       id: btnlayout

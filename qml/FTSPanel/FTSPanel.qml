@@ -15,7 +15,7 @@ Rectangle {
     id: cl
 
     anchors.fill: parent
-    spacing: 20
+    spacing: 30
 
     Text {
       id: title
@@ -31,7 +31,7 @@ Rectangle {
       Layout.fillHeight: true
       Layout.fillWidth: true;
 
-      NetworkUdpPanel {
+      NetworkUdp {
         id: networkUdpPanel
 
         title: qsTr("Network")

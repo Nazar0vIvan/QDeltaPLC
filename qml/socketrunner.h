@@ -12,7 +12,7 @@ class SocketRunner : public QObject
     Q_OBJECT
 
 public:
-    explicit SocketRunner(QTcpSocket* socket, QObject* parent = nullptr);
+    explicit SocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
     ~SocketRunner() override;
 
     Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
@@ -35,10 +35,10 @@ public slots:
     void slotThreadFinished();
 
 private:
-    void attachSocket(QTcpSocket* sock);
+    void attachSocket(QAbstractSocket* sock);
 
     QThread*    m_thread = nullptr;
-    QTcpSocket* m_socket = nullptr;
+    QAbstractSocket* m_socket = nullptr;
     int         m_socketState = QAbstractSocket::UnconnectedState;
 };
 

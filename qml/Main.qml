@@ -3,6 +3,9 @@ import QtQuick.Layouts
 import QtQuick.Controls 2.12
 import QtQuick.Controls.Basic
 
+import "PLCPanel"
+import "FTSPanel"
+
 import Styles 1.0
 import Components 1.0
 
@@ -13,42 +16,49 @@ Window {
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
 
-  ColumnLayout {
-    id: rl
+  SplitView {
+    id: sv
 
+    orientation: Qt.Vertical
     anchors.fill: parent
     anchors.topMargin: 10
-    spacing: 10
 
-    PLCConsole {
-      id: plcPanel
+    ColumnLayout {
+      id: cl
 
-      Layout.fillWidth: true;
-      Layout.preferredHeight: 450
-      Layout.leftMargin: 10; Layout.rightMargin: 10
+      SplitView.fillWidth: true
+      SplitView.fillHeight: true
+      spacing: 10
+
+      PLCPanel {
+        id: plcPanel
+
+        Layout.fillWidth: true;
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+      }
+
+      Rectangle {
+        id: separator
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: 2
+        color: Styles.background.dp04
+      }
+
+      FTSPanel {
+        id: ftsPanel
+
+        Layout.fillWidth: true;
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+      }
+
+      Item {Layout.fillHeight: true}
     }
-
-    Rectangle {
-      id: separator
-
-      Layout.fillWidth: true
-      Layout.preferredHeight: 2
-      color: Styles.background.dp04
-    }
-
-    FTSConsole {
-      id: ftsPanel
-
-      Layout.fillWidth: true;
-      Layout.preferredHeight: 250
-      Layout.leftMargin: 10; Layout.rightMargin: 10
-    }
-
     Logger {
       id: loggerPanel
 
-      Layout.fillHeight: true
-      Layout.fillWidth: true
+      SplitView.fillWidth: true
+      SplitView.preferredHeight: 100
     }
   }
 }

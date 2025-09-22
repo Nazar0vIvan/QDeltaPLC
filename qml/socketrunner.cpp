@@ -2,7 +2,7 @@
 
 #include "socketrunner.h"
 
-SocketRunner::SocketRunner(QTcpSocket* socket, QObject* parent) : QObject(parent)
+SocketRunner::SocketRunner(QAbstractSocket* socket, QObject* parent) : QObject(parent)
 {
     m_thread = new QThread(this);
     m_thread->setObjectName(QStringLiteral("SocketRunnerThread"));
@@ -22,7 +22,7 @@ SocketRunner::~SocketRunner()
     }
 }
 
-void SocketRunner::attachSocket(QTcpSocket* sock)
+void SocketRunner::attachSocket(QAbstractSocket* sock)
 {
     Q_ASSERT(sock);
     if (sock->parent()) sock->setParent(nullptr);

@@ -13,7 +13,7 @@ QxGroupBox {
     id: cl
 
     anchors.fill: parent
-    spacing: 0
+    spacing: 20
 
     RowLayout {
       id: outputs
