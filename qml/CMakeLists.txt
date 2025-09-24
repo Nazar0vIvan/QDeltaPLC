@@ -10,7 +10,6 @@ set(QML_FILES
   PLCPanel/PLCLeds.qml
   PLCPanel/PLCPanel.qml
   FTSPanel/FTSPanel.qml
-  FTSPanel/FTSChart.qml
   FTSPanel/NetworkUdp.qml
 )
 
@@ -24,6 +23,8 @@ set(CPP_FILES
   logger.cpp
   socketrunner.h
   socketrunner.cpp
+  chartbridge.h
+  chartbridge.cpp
 )
 
 qt_add_executable(qdeltaplc
@@ -55,3 +56,5 @@ install(TARGETS qdeltaplc
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+qt_import_qml_plugins(qdeltaplc)

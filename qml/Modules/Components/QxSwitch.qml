@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts
 import QtQuick.Controls 2.12
+import QtQuick.Controls.Basic
 
 import Styles 1.0
 

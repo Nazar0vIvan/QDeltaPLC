@@ -86,3 +86,16 @@ void SocketRunner::writeMessage(const QString& msg)
     QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QString, msg));
 }
 
+void SocketRunner::startStreaming(const QVariantMap &data)
+{
+    QMetaObject::invokeMethod(m_socket, "startStreaming", Qt::QueuedConnection, Q_ARG(QVariantMap, data));
+}
+
+void SocketRunner::stopStreaming()
+{
+    QMetaObject::invokeMethod(m_socket, "stopStreaming", Qt::QueuedConnection);
+}
+
+
+
+

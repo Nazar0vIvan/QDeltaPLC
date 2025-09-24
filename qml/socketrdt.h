@@ -9,7 +9,10 @@
 #include <QVector>
 #include <QByteArray>
 #include <QtEndian>
-#include <QTimer>
+#include <QElapsedTimer>
+#include <QPointF>
+
+#include "logger.h"
 
 /*
   LOCAL ADDRESS: 192.168.1.1 // can't be set
@@ -55,14 +58,26 @@ public:
     Q_INVOKABLE void stopStreaming();
 
 signals:
-    void responceChanged(const RDTResponse& responce);
+    void logMessage(const LoggerMessage& msg);
+    void batchReady(const QVector<QPointF>& points);
+    void streamReset();
 
 private slots:
     void slotReadData();
+    void slotErrorOccurred(QAbstractSocket::SocketError socketError);
+    void slotStateChanged(QAbstractSocket::SocketState state);
 
 private:
     QNetworkDatagram RDTRequest2QNetworkDatagram(const RDTRequest& request);
     RDTResponse QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram);
+    QString stateToString(SocketState state);
+
+    // batching state
+    QVector<QPointF> m_readings; // Fz only
+    QElapsedTimer    m_emitTimer;
+    quint32          m_baseSeq = 0;
+    bool             m_haveBase = false;
+    int              m_emitIntervalMs = 16; // ~60 Hz GUI updates
 };
 
 #endif // SOCKETRDT_H

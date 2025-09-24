@@ -1,6 +1,6 @@
-import QtQuick 2.12
+import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls 2.12
+import QtQuick.Controls
 import QtQuick.Controls.Basic
 
 import "PLCPanel"
@@ -54,6 +54,7 @@ Window {
 
       Item {Layout.fillHeight: true}
     }
+
     Logger {
       id: loggerPanel
 

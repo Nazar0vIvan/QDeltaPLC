@@ -1,7 +1,7 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Controls
 import QtQuick.Controls.Basic
-import QtQuick.Layouts 1.2
+import QtQuick.Layouts
 
 import Styles 1.0
 import Components 1.0
@@ -115,10 +115,10 @@ QxGroupBox {
       id: btnStart
 
       Layout.preferredHeight: root.fieldHeight
-      checked: ftsRunner && ftsRunner.socketState === 3
+      checked: ftsRunner && ftsRunner.socketState === 4
       enabled: ftsRunner && (
           ftsRunner.socketState === 0 ||
-          ftsRunner.socketState === 3
+          ftsRunner.socketState === 4
       )
       text: checked ? "Stop" : "Start"
       onClicked: {
@@ -126,7 +126,10 @@ QxGroupBox {
         if (checked) {
             ftsRunner.stopStreaming()
         } else {
-            ftsRunner.startStreaming()
+            ftsRunner.startStreaming({
+              peerAddress:  pa.text,
+              peerPort:     Number(pp.text)
+            })
         }
       }
     }

@@ -1,29 +1,42 @@
 #include "socketrdt.h"
 
+static constexpr double SAMPLE_HZ = 7000.0;
+static constexpr double DT = 1.0 / SAMPLE_HZ;
+
 SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
 {
-    // setID(2);
-    // setProtocolName("RDT");
-
     this->setObjectName(name);
 
     setLocalPort(RDT_LOCAL_PORT);
     setPeerPort(RDT_PEER_PORT);
-
     setOpenMode(QIODeviceBase::ReadWrite);
 
-    // parmsModel()->setID("rdt");
-    // parmsModel()->appendParameter("rdt_seq", "int",    "ct");
-    // parmsModel()->appendParameter("ft_seq",  "int",    "ct");
-    // parmsModel()->appendParameter("status",  "int",    "ct");
-    // parmsModel()->appendParameter("Fx",      "double", "N",  -1980.0, 1980.0);
-    // parmsModel()->appendParameter("Fy",      "double", "N",  -660.0,  660.0);
-    // parmsModel()->appendParameter("Fz",      "double", "N",  -660.0,  660.0);
-    // parmsModel()->appendParameter("Tx",      "double", "Nm", -60.0,    60.0);
-    // parmsModel()->appendParameter("Ty",      "double", "Nm", -60.0,    60.0);
-    // parmsModel()->appendParameter("Tz",      "double", "Nm", -60.0,    60.0);
-
     connect(this, &SocketRDT::readyRead, this, &SocketRDT::slotReadData);
+    connect(this, &SocketRDT::errorOccurred, this, &SocketRDT::slotErrorOccurred);
+    connect(this, &SocketRDT::stateChanged,  this, &SocketRDT::slotStateChanged);
+    connect(this, &SocketRDT::logMessage,  Logger::instance(), &Logger::push);
+}
+
+void SocketRDT::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
+    emit logMessage({this->errorString(), 0, objectName()});
+}
+
+void SocketRDT::slotStateChanged(QAbstractSocket::SocketState state) {
+    emit logMessage({stateToString(state), 2, objectName()});
+}
+
+QString SocketRDT::stateToString(SocketState state)
+{
+    switch (state) {
+    case QAbstractSocket::UnconnectedState: return "UnconnectedState";
+    case QAbstractSocket::HostLookupState:  return "HostLookupState";
+    case QAbstractSocket::ConnectingState:  return "ConnectingState";
+    case QAbstractSocket::ConnectedState:   return "ConnectedState";
+    case QAbstractSocket::BoundState:       return "BoundState";
+    case QAbstractSocket::ClosingState:     return "ClosingState";
+    case QAbstractSocket::ListeningState:   return "ListeningState";
+    default: return "UnconnectedState";
+    }
 }
 
 QNetworkDatagram SocketRDT::RDTRequest2QNetworkDatagram(const RDTRequest& request)
@@ -66,32 +79,60 @@ void SocketRDT::startStreaming(const QVariantMap& data)
 
     setPeerAddress(pa); setPeerPort(pp);
 
-    auto startRequest = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
-    writeDatagram(startRequest, pa, pp);
+    // reset batching/timeline
+    m_haveBase = false;
+    m_baseSeq = 0;
+    m_readings.clear();
+    m_emitTimer.restart();
+    emit streamReset(); // tell GUI to clear immediately
+
+    const QByteArray startReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
+    writeDatagram(startReq, pa, pp);
+    setSocketState(SocketState::BoundState);
+    qDebug() << "write";
 }
 
 void SocketRDT::stopStreaming()
 {
-    auto stopRequest = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
-    writeDatagram(stopRequest, peerAddress(), peerPort());
+    const QByteArray stopReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
+    writeDatagram(stopReq, peerAddress(), peerPort());
+    emit streamReset();
 }
 
 void SocketRDT::slotReadData()
 {
-
     do {
-       QNetworkDatagram FTNetResponseDatagram = receiveDatagram(pendingDatagramSize());
-       uint32_t rdt_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().left(4).data());
-       uint32_t ft_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().right(32).left(4).data());
-       uint32_t status = qFromBigEndian<uint32_t>( FTNetResponseDatagram.data().right(28).left(4).data());
-       int32_t Fx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(24).left(4).data());
-       int32_t Fy = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(20).left(4).data());
-       int32_t Fz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(16).left(4).data());
-       int32_t Tx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(12).left(4).data());
-       int32_t Ty = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(8).left(4).data());
-       int32_t Tz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(4).data());
+        QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
+        const RDTResponse r = QNetworkDatagram2RDTResponse(dg);
 
-       // emit responceChanged(RDTResponse{ rdt_sequence, ft_sequence, status, Fx, Fy, Fz, Tx, Ty, Tz });
+        if (!m_haveBase) { // if the first read
+            m_baseSeq = r.rdt_sequence;
+            m_haveBase = true;
+            m_emitTimer.restart();
+            m_readings.clear();
+        }
 
-     } while(hasPendingDatagrams());
+        const double t = double(quint32(r.rdt_sequence - m_baseSeq)) * DT;
+
+        const double y = double(r.Fz)/1000000;
+        m_readings.push_back(QPointF(t, y));
+
+        if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
+            emit batchReady(std::exchange(m_readings, {}));
+            m_emitTimer.restart();
+        }
+    } while(hasPendingDatagrams());
+
+    // do {
+    //    QNetworkDatagram FTNetResponseDatagram = receiveDatagram(pendingDatagramSize());
+    //    uint32_t rdt_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().left(4).data());
+    //    uint32_t ft_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().right(32).left(4).data());
+    //    uint32_t status = qFromBigEndian<uint32_t>( FTNetResponseDatagram.data().right(28).left(4).data());
+    //    int32_t Fx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(24).left(4).data());
+    //    int32_t Fy = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(20).left(4).data());
+    //    int32_t Fz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(16).left(4).data());
+    //    int32_t Tx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(12).left(4).data());
+    //    int32_t Ty = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(8).left(4).data());
+    //    int32_t Tz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(4).data());
+    //  } while(hasPendingDatagrams());
 }

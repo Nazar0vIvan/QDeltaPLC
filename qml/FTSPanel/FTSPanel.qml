@@ -1,15 +1,13 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.2
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtCharts
 
 import Styles 1.0
 import Components 1.0
 
-
-Rectangle {
+Item {
   id: root
-
-  color: "transparent"
 
   ColumnLayout {
     id: cl
@@ -37,6 +35,25 @@ Rectangle {
         title: qsTr("Network")
         Layout.preferredWidth: 300
         Layout.preferredHeight: 300
+      }
+
+      ChartView {
+          id: chart
+          width: 600; height: 300
+          legend.visible: false
+          antialiasing: true
+
+          ValueAxis { id: axX; min: 0; max: 10 }   // 5 sec window (for example)
+          ValueAxis { id: axY; min: -400; max: 400 } // adjust for your sensor
+
+          LineSeries {
+              id: series
+              axisX: axX
+              axisY: axY
+              color: "red"
+          }
+
+          Component.onCompleted: chartBridge.setSeries(series)
       }
     }
   }

@@ -17,9 +17,13 @@ public:
 
     Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
 
+    // TCP
     Q_INVOKABLE void connectToHost(const QVariantMap& data);
     Q_INVOKABLE void disconnectFromHost();
     Q_INVOKABLE void writeMessage(const QString& msg);
+    // UDP
+    Q_INVOKABLE void startStreaming(const QVariantMap& data);
+    Q_INVOKABLE void stopStreaming();
 
     int socketState() const { return m_socketState; }
     void start();
