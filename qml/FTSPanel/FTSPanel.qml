@@ -55,6 +55,18 @@ Item {
 
           Component.onCompleted: chartBridge.setSeries(series)
       }
+      ColumnLayout {
+        id: barsCL
+
+        ProgressBar {
+          id: fz
+
+          from: -2000
+          to:   2000
+
+          value: ftsRunner.value
+        }
+      }
     }
   }
 }

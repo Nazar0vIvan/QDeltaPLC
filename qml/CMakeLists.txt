@@ -23,8 +23,8 @@ set(CPP_FILES
   logger.cpp
   socketrunner.h
   socketrunner.cpp
-  chartbridge.h
-  chartbridge.cpp
+  qmlchartbridge.h
+  qmlchartbridge.cpp
 )
 
 qt_add_executable(qdeltaplc

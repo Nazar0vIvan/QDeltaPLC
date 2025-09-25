@@ -2,6 +2,7 @@
 
 static constexpr double SAMPLE_HZ = 7000.0;
 static constexpr double DT = 1.0 / SAMPLE_HZ;
+static constexpr int COUNT_FACTOR = 1000000;
 
 SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
 {
@@ -114,7 +115,7 @@ void SocketRDT::slotReadData()
 
         const double t = double(quint32(r.rdt_sequence - m_baseSeq)) * DT;
 
-        const double y = double(r.Fz)/1000000;
+        const double y = double(r.Fz) / COUNT_FACTOR;
         m_readings.push_back(QPointF(t, y));
 
         if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {

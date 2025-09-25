@@ -1,19 +1,20 @@
 #include <QCoreApplication>
-
 #include "socketrunner.h"
 
-SocketRunner::SocketRunner(QAbstractSocket* socket, QObject* parent) : QObject(parent)
+// ----- AbstractSocketRunner -----
+
+AbstractSocketRunner::AbstractSocketRunner(QAbstractSocket* socket, QObject* parent) : QObject(parent)
 {
     m_thread = new QThread(this);
     m_thread->setObjectName(QStringLiteral("SocketRunnerThread"));
 
     attachSocket(socket);
 
-    connect(this, &SocketRunner::logMessage,  Logger::instance(), &Logger::push);
+    connect(this, &AbstractSocketRunner::logMessage,  Logger::instance(), &Logger::push);
     connect(qApp, &QCoreApplication::aboutToQuit, this, [this]{ stop(); });
 }
 
-SocketRunner::~SocketRunner()
+AbstractSocketRunner::~AbstractSocketRunner()
 {
     stop();
     if (m_thread && m_thread->isRunning()) {
@@ -22,7 +23,7 @@ SocketRunner::~SocketRunner()
     }
 }
 
-void SocketRunner::attachSocket(QAbstractSocket* sock)
+void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
 {
     Q_ASSERT(sock);
     if (sock->parent()) sock->setParent(nullptr);
@@ -34,7 +35,7 @@ void SocketRunner::attachSocket(QAbstractSocket* sock)
 
     m_socket->moveToThread(m_thread);
 
-    connect(m_thread, &QThread::started, this, &SocketRunner::slotThreadStarted);
+    connect(m_thread, &QThread::started, this, &AbstractSocketRunner::slotThreadStarted);
     connect(m_thread, &QThread::finished, m_thread, &QThread::deleteLater);
     connect(m_thread, &QThread::finished, m_socket, &QObject::deleteLater);
     connect(m_socket, &QObject::destroyed, m_thread, &QThread::quit);
@@ -48,50 +49,54 @@ void SocketRunner::attachSocket(QAbstractSocket* sock)
                      Qt::QueuedConnection);
 }
 
-void SocketRunner::start()
+void AbstractSocketRunner::start()
 {
     if (!m_thread->isRunning())
         m_thread->start();
 }
 
-void SocketRunner::stop()
+void AbstractSocketRunner::stop()
 {
     if (!m_socket) return;
     QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
     QMetaObject::invokeMethod(m_socket, "deleteLater", Qt::QueuedConnection);
 }
 
-void SocketRunner::slotThreadStarted()
+void AbstractSocketRunner::slotThreadStarted()
 {
     emit logMessage({"The thread has started", 1, m_socket->objectName()});
 }
 
-void SocketRunner::slotThreadFinished()
+void AbstractSocketRunner::slotThreadFinished()
 {
     emit logMessage({"The thread has finished", 1, m_socket->objectName()});
 }
 
-void SocketRunner::connectToHost(const QVariantMap &data)
+// ----- TcpSocketRunner -----
+
+void TcpSocketRunner::connectToHost(const QVariantMap &data)
 {
     QMetaObject::invokeMethod(m_socket, "connectToHost", Qt::QueuedConnection, Q_ARG(QVariantMap, data));
 }
 
-void SocketRunner::disconnectFromHost()
+void TcpSocketRunner::disconnectFromHost()
 {
     QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
 }
 
-void SocketRunner::writeMessage(const QString& msg)
+void TcpSocketRunner::writeMessage(const QString& msg)
 {
     QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QString, msg));
 }
 
-void SocketRunner::startStreaming(const QVariantMap &data)
+// ----- UdpSocketRunner -----
+
+void UdpSocketRunner::startStreaming(const QVariantMap &data)
 {
     QMetaObject::invokeMethod(m_socket, "startStreaming", Qt::QueuedConnection, Q_ARG(QVariantMap, data));
 }
 
-void SocketRunner::stopStreaming()
+void UdpSocketRunner::stopStreaming()
 {
     QMetaObject::invokeMethod(m_socket, "stopStreaming", Qt::QueuedConnection);
 }

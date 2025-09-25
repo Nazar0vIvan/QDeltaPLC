@@ -1,5 +1,5 @@
-#ifndef CHARTBRIDGE_H
-#define CHARTBRIDGE_H
+#ifndef QMLCHARTBRIDGE_H
+#define QMLCHARTBRIDGE_H
 
 #include <QObject>
 #include <QTimer>
@@ -39,4 +39,4 @@ private:
     int    m_maxPoints = -1;                 // sliding window size
 };
 
-#endif // CHARTBRIDGE_H
+#endif // QMLCHARTBRIDGE_H

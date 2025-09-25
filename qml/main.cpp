@@ -5,7 +5,7 @@
 #include "socketrunner.h"
 #include "socketdeltaplc.h"
 #include "socketrdt.h"
-#include "chartbridge.h"
+#include "qmlchartbridge.h"
 #include "logger.h"
 
 int main(int argc, char *argv[])

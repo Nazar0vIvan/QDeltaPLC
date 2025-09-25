@@ -7,30 +7,29 @@
 
 #include "logger.h"
 
-class SocketRunner : public QObject
+class AbstractSocketRunner : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit SocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
-    ~SocketRunner() override;
+    explicit AbstractSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+    ~AbstractSocketRunner() override;
 
     Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
-
-    // TCP
-    Q_INVOKABLE void connectToHost(const QVariantMap& data);
-    Q_INVOKABLE void disconnectFromHost();
-    Q_INVOKABLE void writeMessage(const QString& msg);
-    // UDP
-    Q_INVOKABLE void startStreaming(const QVariantMap& data);
-    Q_INVOKABLE void stopStreaming();
+    Q_PROPERTY(bool isReading READ isReading NOTIFY isReadingChanged)
+    Q_PROPERTY(QVariant buffer READ buffer NOTIFY bufferChanged)
 
     int socketState() const { return m_socketState; }
+    QVariant buffer() const { return m_buffer; }
+    QVariant isReading() const { return m_isReading; }
+
     void start();
 
 signals:
     void logMessage(const LoggerMessage& msg);
+    void bufferChanged();
     void socketStateChanged();
+    void isReadingChanged();
 
 public slots:
     void stop();
@@ -38,12 +37,45 @@ public slots:
     void slotThreadStarted();
     void slotThreadFinished();
 
+protected:
+    QAbstractSocket* m_socket = nullptr;
+
 private:
     void attachSocket(QAbstractSocket* sock);
 
-    QThread*    m_thread = nullptr;
-    QAbstractSocket* m_socket = nullptr;
-    int         m_socketState = QAbstractSocket::UnconnectedState;
+    QThread* m_thread = nullptr;
+
+    int m_socketState = QAbstractSocket::UnconnectedState;
+    QVariant m_buffer;
+    bool m_isReading = false;
 };
+
+class TcpSocketRunner : public AbstractSocketRunner
+{
+    Q_OBJECT
+
+public:
+    explicit TcpSocketRunner(QObject* parent = nullptr);
+    ~TcpSocketRunner() override;
+
+    Q_INVOKABLE void connectToHost(const QVariantMap& data);
+    Q_INVOKABLE void disconnectFromHost();
+    Q_INVOKABLE void writeMessage(const QString& msg);
+};
+
+class UdpSocketRunner : public AbstractSocketRunner
+{
+    Q_OBJECT
+
+public:
+    explicit UdpSocketRunner(QObject* parent = nullptr);
+    ~UdpSocketRunner() override;
+
+    Q_INVOKABLE void startStreaming(const QVariantMap& data);
+    Q_INVOKABLE void stopStreaming();
+};
+
+
+
 
 #endif // SOCKETRUNNER_H

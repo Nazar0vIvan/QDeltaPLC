@@ -16,8 +16,8 @@ SocketDeltaPLC::~SocketDeltaPLC() {}
 // PUBLIC SLOTS
 void SocketDeltaPLC::connectToHost(const QVariantMap &data)
 {
-    QHostAddress la = QHostAddress(data.value("localAddress").toString());
-    qint16 lp = data.value("localPort").toUInt();
+    // QHostAddress la = QHostAddress(data.value("localAddress").toString());
+    // qint16 lp = data.value("localPort").toUInt();
     QHostAddress pa = QHostAddress(data.value("peerAddress").toString());
     qint16 pp = data.value("peerPort").toUInt();
 

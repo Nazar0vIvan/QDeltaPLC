@@ -1,18 +1,18 @@
 // chartbridge.cpp
-#include "chartbridge.h"
+#include "qmlchartbridge.h"
 
-ChartBridge::ChartBridge(QObject* parent) : QObject(parent)
+QmlChartBridge::QmlChartBridge(QObject* parent) : QObject(parent)
 {
     // ~60 FPS GUI updates; adjust if you want 30/120 Hz
     m_flush.setInterval(16);
-    connect(&m_flush, &QTimer::timeout, this, &ChartBridge::flush);
+    connect(&m_flush, &QTimer::timeout, this, &QmlChartBridge::flush);
     m_flush.start();
 
     // Optional: pre-reserve to reduce reallocations
     m_data.reserve(200000);
 }
 
-void ChartBridge::setSeries(QXYSeries* series)
+void QmlChartBridge::setSeries(QXYSeries* series)
 {
     m_series = series;
     // initial clear
@@ -20,7 +20,7 @@ void ChartBridge::setSeries(QXYSeries* series)
         m_series->replace({});
 }
 
-void ChartBridge::setMaxPoints(int n)
+void QmlChartBridge::setMaxPoints(int n)
 {
     if (n == 0) n = -1; // treat 0 as unlimited
     if (m_maxPoints == n) return;
@@ -35,14 +35,14 @@ void ChartBridge::setMaxPoints(int n)
     }
 }
 
-void ChartBridge::onBatch(const QVector<QPointF>& pts)
+void QmlChartBridge::onBatch(const QVector<QPointF>& pts)
 {
     if (pts.isEmpty()) return;
     QMutexLocker lk(&m_mx);
     m_buffer += pts; // accumulate all points received since last flush
 }
 
-void ChartBridge::reset()
+void QmlChartBridge::reset()
 {
     {
         QMutexLocker lk(&m_mx);
@@ -53,7 +53,7 @@ void ChartBridge::reset()
         m_series->replace({});
 }
 
-void ChartBridge::flush()
+void QmlChartBridge::flush()
 {
     QVector<QPointF> local;
     {
