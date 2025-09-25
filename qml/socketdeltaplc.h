@@ -27,7 +27,6 @@ signals:
     void logMessage(const LoggerMessage& msg);
     void errorOccurredMessage(const LoggerMessage& msg);
     void stateChangedMessage(const LoggerMessage& msg);
-
     void destroyedMessage(const LoggerMessage& msg);
 
 public slots:

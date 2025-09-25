@@ -8,12 +8,12 @@
 #include <QPointF>
 #include <QtCharts/QXYSeries>
 
-class ChartBridge : public QObject
+class QmlChartBridge : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(int maxPoints READ maxPoints WRITE setMaxPoints NOTIFY maxPointsChanged)
 public:
-    explicit ChartBridge(QObject* parent=nullptr);
+    explicit QmlChartBridge(QObject* parent=nullptr);
 
     Q_INVOKABLE void setSeries(QXYSeries* series); // call from QML on Component.onCompleted
 

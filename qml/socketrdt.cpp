@@ -122,18 +122,6 @@ void SocketRDT::slotReadData()
             emit batchReady(std::exchange(m_readings, {}));
             m_emitTimer.restart();
         }
-    } while(hasPendingDatagrams());
 
-    // do {
-    //    QNetworkDatagram FTNetResponseDatagram = receiveDatagram(pendingDatagramSize());
-    //    uint32_t rdt_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().left(4).data());
-    //    uint32_t ft_sequence = qFromBigEndian<uint32_t>(FTNetResponseDatagram.data().right(32).left(4).data());
-    //    uint32_t status = qFromBigEndian<uint32_t>( FTNetResponseDatagram.data().right(28).left(4).data());
-    //    int32_t Fx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(24).left(4).data());
-    //    int32_t Fy = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(20).left(4).data());
-    //    int32_t Fz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(16).left(4).data());
-    //    int32_t Tx = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(12).left(4).data());
-    //    int32_t Ty = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(8).left(4).data());
-    //    int32_t Tz = qFromBigEndian<int32_t>(FTNetResponseDatagram.data().right(4).data());
-    //  } while(hasPendingDatagrams());
+    } while(hasPendingDatagrams());
 }

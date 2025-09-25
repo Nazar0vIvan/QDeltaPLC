@@ -56,6 +56,7 @@ public:
 
     Q_INVOKABLE void startStreaming(const QVariantMap& data);
     Q_INVOKABLE void stopStreaming();
+    Q_INVOKABLE bool isReading = false;
 
 signals:
     void logMessage(const LoggerMessage& msg);
