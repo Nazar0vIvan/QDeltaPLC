@@ -12,16 +12,19 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    SocketRunner plcRunner(new SocketDeltaPLC(QStringLiteral("PLC_AS332T")), &app);
+    TcpSocketRunner plcRunner(new SocketDeltaPLC(QStringLiteral("PLC_AS332T")), &app);
     plcRunner.start();
 
     SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
-    SocketRunner ftsRunner(socketRDT, &app);
+    UdpSocketRunner ftsRunner(socketRDT, &app);
+
+    QObject::connect(socketRDT, &SocketRDT::bufferReady, &ftsRunner, &UdpSocketRunner::onBufferReady, Qt::QueuedConnection);
+
     ftsRunner.start();
 
-    ChartBridge chartBridge;
-    QObject::connect(socketRDT, &SocketRDT::batchReady, &chartBridge, &ChartBridge::onBatch, Qt::QueuedConnection);
-    QObject::connect(socketRDT, &SocketRDT::streamReset, &chartBridge, &ChartBridge::reset, Qt::QueuedConnection);
+    // QmlChartBridge chartBridge;
+    // QObject::connect(socketRDT, &SocketRDT::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
+    // QObject::connect(socketRDT, &SocketRDT::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
 
     QQmlApplicationEngine engine;
     // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
@@ -31,7 +34,7 @@ int main(int argc, char *argv[])
     ctx->setContextProperty("logger", Logger::instance());
     ctx->setContextProperty("plcRunner", &plcRunner);
     ctx->setContextProperty("ftsRunner", &ftsRunner);
-    ctx->setContextProperty("chartBridge", &chartBridge);
+    // ctx->setContextProperty("chartBridge", &chartBridge);
 
     engine.loadFromModule("qdeltaplc_qml_module", "Main");
 

@@ -51,16 +51,16 @@ struct RDTResponse
 class SocketRDT : public QUdpSocket
 {
     Q_OBJECT
+
 public:
-    SocketRDT(const QString& name, QObject* parent = nullptr);
+    explicit SocketRDT(const QString& name, QObject* parent = nullptr);
 
     Q_INVOKABLE void startStreaming(const QVariantMap& data);
     Q_INVOKABLE void stopStreaming();
-    Q_INVOKABLE bool isReading = false;
 
 signals:
     void logMessage(const LoggerMessage& msg);
-    void batchReady(const QVector<QPointF>& points);
+    void bufferReady(const QVector<QPointF>& points);
     void streamReset();
 
 private slots:

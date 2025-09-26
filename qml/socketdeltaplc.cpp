@@ -37,7 +37,7 @@ void SocketDeltaPLC::slotConnected()
     emit logMessage({"Connection has been successfully established", 1, objectName()});
 }
 
-void SocketDeltaPLC::disconnectFromHost()
+void SocketDeltaPLC::disconnect()
 {
     QTcpSocket::disconnectFromHost();
 }

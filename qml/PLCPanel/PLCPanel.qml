@@ -6,7 +6,7 @@ import Styles 1.0
 import Components 1.0
 
 ColumnLayout {
-  id: cl
+  id: rool
 
   spacing: 30
 

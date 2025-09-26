@@ -12,6 +12,7 @@ qt_add_qml_module(Components
         QxField.qml
         QxSwitch.qml
         QxTextField.qml
+        QxProgressBar.qml
 )
 
 target_link_libraries(Components PRIVATE Qt6::Qml)

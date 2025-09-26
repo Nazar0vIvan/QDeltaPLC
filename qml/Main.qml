@@ -52,7 +52,7 @@ Window {
         Layout.leftMargin: 10; Layout.rightMargin: 10
       }
 
-      Item {Layout.fillHeight: true}
+      Item { Layout.fillHeight: true }
     }
 
     Logger {

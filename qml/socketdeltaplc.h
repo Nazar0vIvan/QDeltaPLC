@@ -20,7 +20,7 @@ public:
     ~SocketDeltaPLC();
 
     Q_INVOKABLE void connectToHost(const QVariantMap& data);
-    Q_INVOKABLE virtual void disconnectFromHost() override;
+    Q_INVOKABLE void disconnect();
     Q_INVOKABLE void writeMessage(const QString& msg);
 
 signals:

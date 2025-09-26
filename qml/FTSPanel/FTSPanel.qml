@@ -6,67 +6,75 @@ import QtCharts
 import Styles 1.0
 import Components 1.0
 
-Item {
+ColumnLayout {
   id: root
 
-  ColumnLayout {
-    id: cl
+  spacing: 30
 
-    anchors.fill: parent
-    spacing: 30
+  Text {
+    id: title
 
-    Text {
-      id: title
+    text: qsTr("Schunk FTS Delta-IP68-SI-660-60")
+    color: Styles.foreground.high
+    font{pixelSize: 20; bold: true}
+  }
 
-      text: qsTr("Schunk FTS Delta-IP68-SI-660-60")
-      color: Styles.foreground.high
-      font{pixelSize: 20; bold: true}
+  RowLayout {
+    id: rl
+
+    Layout.preferredHeight: 300
+    Layout.fillWidth: true
+
+    NetworkUdp {
+      id: networkUdpPanel
+
+      title: qsTr("Network")
+      Layout.preferredHeight: parent.height
+      Layout.preferredWidth: 300
     }
 
-    RowLayout {
-      id: rl
+    ColumnLayout {
+      id: barsCL
 
-      Layout.fillHeight: true
-      Layout.fillWidth: true;
+      Layout.preferredHeight: parent.height
+      Layout.preferredWidth: 300
 
-      NetworkUdp {
-        id: networkUdpPanel
+      QxProgressBar {
+        id: fz
 
-        title: qsTr("Network")
-        Layout.preferredWidth: 300
-        Layout.preferredHeight: 300
-      }
+        Layout.preferredHeight: 20
+        Layout.preferredWidth: parent.width
+        Layout.alignment: Qt.AlignTop
 
-      ChartView {
-          id: chart
-          width: 600; height: 300
-          legend.visible: false
-          antialiasing: true
+        from: -2000
+        to:   2000
+        color: "orange"
+        labelText: qsTr("Fz")
 
-          ValueAxis { id: axX; min: 0; max: 10 }   // 5 sec window (for example)
-          ValueAxis { id: axY; min: -400; max: 400 } // adjust for your sensor
-
-          LineSeries {
-              id: series
-              axisX: axX
-              axisY: axY
-              color: "red"
-          }
-
-          Component.onCompleted: chartBridge.setSeries(series)
-      }
-      ColumnLayout {
-        id: barsCL
-
-        ProgressBar {
-          id: fz
-
-          from: -2000
-          to:   2000
-
-          value: ftsRunner.value
-        }
+        value: ftsRunner.lastReading ? Number(ftsRunner.lastReading) : 0.0
       }
     }
+
+    Item { Layout.fillWidth: true }
   }
 }
+
+
+// ChartView {
+//     id: chart
+//     width: 600; height: 300
+//     legend.visible: false
+//     antialiasing: true
+
+//     ValueAxis { id: axX; min: 0; max: 10 }   // 5 sec window (for example)
+//     ValueAxis { id: axY; min: -400; max: 400 } // adjust for your sensor
+
+//     LineSeries {
+//         id: series
+//         axisX: axX
+//         axisY: axY
+//         color: "red"
+//     }
+
+//     Component.onCompleted: chartBridge.setSeries(series)
+// }

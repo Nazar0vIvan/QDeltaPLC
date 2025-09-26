@@ -20,8 +20,8 @@ QxGroupBox {
     spacing: 10
 
     QxField { // local address
-
       id: laField
+
       Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "PC IP :"
@@ -52,8 +52,6 @@ QxGroupBox {
         height: parent.height; width: root.fieldWidth
         text: "59152"
         validator: IntValidator{ bottom: 0; top: 65535; }
-
-        onEditingFinished: btnSubmit.enabled = true
       }
     }
 
@@ -103,7 +101,7 @@ QxGroupBox {
       labelText: "Status :"
 
       Text {
-        text: ftsRunner && ftsRunner.socketState === 3 ?  "Streaming" : "Idle"
+        text: ftsRunner && ftsRunner.isStreaming ?  "Streaming" : "Idle"
         color: text === "Streaming" ? Styles.minColor : Styles.maxColor
         anchors.verticalCenter: parent.verticalCenter
       }
@@ -115,11 +113,8 @@ QxGroupBox {
       id: btnStart
 
       Layout.preferredHeight: root.fieldHeight
-      checked: ftsRunner && ftsRunner.socketState === 4
-      enabled: ftsRunner && (
-          ftsRunner.socketState === 0 ||
-          ftsRunner.socketState === 4
-      )
+      checked: ftsRunner && ftsRunner.isStreaming
+      enabled: ftsRunner
       text: checked ? "Stop" : "Start"
       onClicked: {
         if (!ftsRunner) return

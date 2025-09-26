@@ -119,7 +119,7 @@ void SocketRDT::slotReadData()
         m_readings.push_back(QPointF(t, y));
 
         if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
-            emit batchReady(std::exchange(m_readings, {}));
+            emit bufferReady(std::exchange(m_readings, {}));
             m_emitTimer.restart();
         }
 
