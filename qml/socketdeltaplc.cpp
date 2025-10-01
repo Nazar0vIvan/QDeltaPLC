@@ -4,10 +4,10 @@ SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocke
 {
     this->setObjectName(name);
 
-    connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::slotErrorOccurred);
-    connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::slotStateChanged);
-    connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::slotConnected);
-    connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::slotReadyRead);
+    connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::onErrorOccurred);
+    connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::onStateChanged);
+    connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
+    connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
     connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
 }
@@ -24,25 +24,25 @@ void SocketDeltaPLC::connectToHost(const QVariantMap &data)
     QTcpSocket::connectToHost(pa, pp, QAbstractSocket::ReadWrite);
 }
 
-void SocketDeltaPLC::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
+void SocketDeltaPLC::disconnectFromHost()
+{
+     QTcpSocket::disconnectFromHost();
+}
+
+void SocketDeltaPLC::onErrorOccurred(QAbstractSocket::SocketError socketError) {
     emit logMessage({this->errorString(), 0, objectName()});
 }
 
-void SocketDeltaPLC::slotStateChanged(QAbstractSocket::SocketState state) {
+void SocketDeltaPLC::onStateChanged(QAbstractSocket::SocketState state) {
     emit logMessage({stateToString(state), 2, objectName()});
 }
 
-void SocketDeltaPLC::slotConnected()
+void SocketDeltaPLC::onConnected()
 {
     emit logMessage({"Connection has been successfully established", 1, objectName()});
 }
 
-void SocketDeltaPLC::disconnect()
-{
-    QTcpSocket::disconnectFromHost();
-}
-
-void SocketDeltaPLC::slotReadyRead()
+void SocketDeltaPLC::onReadyRead()
 {
     QByteArray chunk = readAll();
     qDebug() << chunk;

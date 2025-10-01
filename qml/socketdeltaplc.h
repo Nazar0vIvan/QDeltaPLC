@@ -11,7 +11,6 @@
 #define PEER_ADDRESS "192.168.2.5"
 #define PEER_PORT 3333
 
-
 class SocketDeltaPLC : public QTcpSocket
 {
     Q_OBJECT
@@ -20,7 +19,7 @@ public:
     ~SocketDeltaPLC();
 
     Q_INVOKABLE void connectToHost(const QVariantMap& data);
-    Q_INVOKABLE void disconnect();
+    Q_INVOKABLE virtual void disconnectFromHost() override;
     Q_INVOKABLE void writeMessage(const QString& msg);
 
 signals:
@@ -28,12 +27,13 @@ signals:
     void errorOccurredMessage(const LoggerMessage& msg);
     void stateChangedMessage(const LoggerMessage& msg);
     void destroyedMessage(const LoggerMessage& msg);
+    void plcRunning(bool isRunning);
 
 public slots:
-    void slotErrorOccurred(QAbstractSocket::SocketError socketError);
-    void slotStateChanged(QAbstractSocket::SocketState state);
-    void slotConnected();
-    void slotReadyRead();
+    void onErrorOccurred(QAbstractSocket::SocketError socketError);
+    void onStateChanged(QAbstractSocket::SocketState state);
+    void onConnected();
+    void onReadyRead();
 
 private:
     bool tearDownToUnconnected(int ms = 300);

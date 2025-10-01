@@ -9,6 +9,8 @@ Item {
   id: root
 
   property alias labelText: label.text
+  property alias barWidth: pb.width
+
   property alias from: pb.from
   property alias to: pb.to
   property alias color: fill.color
@@ -34,7 +36,7 @@ Item {
     ProgressBar {
       id: pb
 
-      Layout.fillWidth: true
+      Layout.preferredWidth: 200
       Layout.preferredHeight: root.height
       Layout.alignment: Qt.AlignVCenter
 
@@ -44,7 +46,6 @@ Item {
       value: root.value
 
       background: Rectangle {
-          radius: height / 2
           color: root.trackColor
           border.color: Qt.rgba(1, 1, 1, 0.07)
 
@@ -69,19 +70,12 @@ Item {
         Rectangle {
             id: fill
 
-            color: root.barColor
-            radius: parent.height / 2
             height: parent.height
-
-            // Width grows from the center toward the side
             width: host.v >= 0
                    ? (host.posRange === 0 ? 0 : (host.v / host.posRange) * host.halfW)
                    : (host.negRange === 0 ? 0 : (Math.abs(host.v) / host.negRange) * host.halfW)
 
-            // Position from center
             x: host.v >= 0 ? host.halfW : host.halfW - width
-
-            // Hide at (or near) zero to avoid any tiny sliver
             visible: width > 0.5
         }
       }
@@ -89,7 +83,7 @@ Item {
     Text {
       id: valText
 
-      text: Number(root.value).toFixed(2)
+      text: root.value.toFixed(3)
       color: Styles.foreground.high
       Layout.alignment: Qt.AlignVCenter
     }

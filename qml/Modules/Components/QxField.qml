@@ -1,6 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 import Styles 1.0
 
@@ -8,15 +8,16 @@ Item {
     id: root
 
     property string labelText: ""
-    property real labelWidth: label.implicitWidth
+    property int labelWidth: 0
     property alias color: label.color
     property alias spacing: rl.spacing
     default property alias content: slot.data
 
+    implicitWidth: rl.implicitWidth
+    implicitHeight: rl.implicitHeight
+
     RowLayout {
         id: rl
-
-        anchors.fill: parent
 
         Label {
             id: label

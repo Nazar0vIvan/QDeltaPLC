@@ -1,6 +1,6 @@
-import QtQuick 2.15
+import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls 2.12
+import QtQuick.Controls
 import QtQuick.Controls.Basic
 
 import Styles 1.0
@@ -23,13 +23,14 @@ Switch {
   }
 
   indicator: Rectangle {
-      implicitWidth: control.width
-      implicitHeight: control.height
+      width: control.width
+      height: control.height
       radius: control.height/2
       color: control.checked ? Styles.secondary.base : Styles.background.dp06
 
       Rectangle {
-          width: control.height-6; height: control.height-6
+          width: control.height - 6;
+          height: control.height - 6
           radius: width/2
           anchors.verticalCenter: parent.verticalCenter
           x: control.checked ? parent.width - width - 2 : 2

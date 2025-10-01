@@ -29,30 +29,16 @@ ColumnLayout {
       id: networkUdpPanel
 
       title: qsTr("Network")
-      Layout.preferredHeight: parent.height
-      Layout.preferredWidth: 300
+      Layout.preferredHeight: implicitHeight
+      Layout.preferredWidth: implicitWidth
     }
 
-    ColumnLayout {
-      id: barsCL
+    FTSBars {
+      id: bars
 
+      title: qsTr("Data")
       Layout.preferredHeight: parent.height
       Layout.preferredWidth: 300
-
-      QxProgressBar {
-        id: fz
-
-        Layout.preferredHeight: 20
-        Layout.preferredWidth: parent.width
-        Layout.alignment: Qt.AlignTop
-
-        from: -2000
-        to:   2000
-        color: "orange"
-        labelText: qsTr("Fz")
-
-        value: ftsRunner.lastReading ? Number(ftsRunner.lastReading) : 0.0
-      }
     }
 
     Item { Layout.fillWidth: true }

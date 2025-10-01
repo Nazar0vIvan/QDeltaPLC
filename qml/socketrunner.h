@@ -22,15 +22,14 @@ public:
 
     int socketState() const { return m_socketState; }
 
-    void start();
-
 signals:
     void logMessage(const LoggerMessage& msg);
     void bufferChanged();
     void socketStateChanged();
 
 public slots:
-    void stop();
+    void start();
+    void stop(); // connects to aboutToQuit app signal
 
     void onSocketStateChanged(QAbstractSocket::SocketState state);
 
@@ -67,14 +66,15 @@ class UdpSocketRunner : public AbstractSocketRunner
 
 public:
     explicit UdpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+    ~UdpSocketRunner() override;
 
-    Q_PROPERTY(QVariant lastReading READ lastReading NOTIFY lastReadingChanged)
-    Q_PROPERTY(QVariant isStreaming READ isStreaming NOTIFY isStreamingChanged)
+    Q_PROPERTY(QVariantList lastReading READ lastReading NOTIFY lastReadingChanged)
+    Q_PROPERTY(bool isStreaming READ isStreaming NOTIFY isStreamingChanged)
 
     Q_INVOKABLE void startStreaming(const QVariantMap& data);
     Q_INVOKABLE void stopStreaming();
 
-    QVariant lastReading() const { return m_lastReading; }
+    QVariantList lastReading() const { return m_lastReading; }
     bool isStreaming() const { return m_isStreaming; }
 
 signals:
@@ -82,13 +82,13 @@ signals:
     void isStreamingChanged();
 
 public slots:
-    void onBufferReady(const QVector<QPointF>& points);
+    void onBufferReady(const QVector<QVariantList>& readings);
 
 private slots:
     void onPulse();
 
 private:
-    QVariant m_lastReading = QVariant{};
+    QVariantList m_lastReading = {};
     bool m_isStreaming = false;
     QTimer m_timer;
 };

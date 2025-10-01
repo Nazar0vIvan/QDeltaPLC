@@ -12,17 +12,17 @@ SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
     setPeerPort(RDT_PEER_PORT);
     setOpenMode(QIODeviceBase::ReadWrite);
 
-    connect(this, &SocketRDT::readyRead, this, &SocketRDT::slotReadData);
-    connect(this, &SocketRDT::errorOccurred, this, &SocketRDT::slotErrorOccurred);
-    connect(this, &SocketRDT::stateChanged,  this, &SocketRDT::slotStateChanged);
+    connect(this, &SocketRDT::readyRead, this, &SocketRDT::onReadyRead);
+    connect(this, &SocketRDT::errorOccurred, this, &SocketRDT::onErrorOccurred);
+    connect(this, &SocketRDT::stateChanged,  this, &SocketRDT::onStateChanged);
     connect(this, &SocketRDT::logMessage,  Logger::instance(), &Logger::push);
 }
 
-void SocketRDT::slotErrorOccurred(QAbstractSocket::SocketError socketError) {
+void SocketRDT::onErrorOccurred(QAbstractSocket::SocketError socketError) {
     emit logMessage({this->errorString(), 0, objectName()});
 }
 
-void SocketRDT::slotStateChanged(QAbstractSocket::SocketState state) {
+void SocketRDT::onStateChanged(QAbstractSocket::SocketState state) {
     emit logMessage({stateToString(state), 2, objectName()});
 }
 
@@ -56,21 +56,21 @@ QNetworkDatagram SocketRDT::RDTRequest2QNetworkDatagram(const RDTRequest& reques
     return QNetworkDatagram(buffer);
 }
 
-RDTResponse SocketRDT::QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram)
+QVariantList SocketRDT::QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram)
 {
     QByteArray bytes(networkDatagram.data());
 
-    uint32_t rdt_sequence = qFromBigEndian<uint32_t>(bytes.left(4).data());
-    uint32_t ft_sequence = qFromBigEndian<uint32_t>(bytes.right(32).left(4).data());
-    uint32_t status = qFromBigEndian<uint32_t>(bytes.right(28).left(4).data());
-    int32_t Fx = qFromBigEndian<int32_t>(bytes.right(24).left(4).data());
-    int32_t Fy = qFromBigEndian<int32_t>(bytes.right(20).left(4).data());
-    int32_t Fz = qFromBigEndian<int32_t>(bytes.right(16).left(4).data());
-    int32_t Tx = qFromBigEndian<int32_t>(bytes.right(12).left(4).data());
-    int32_t Ty = qFromBigEndian<int32_t>(bytes.right(8).left(4).data());
-    int32_t Tz = qFromBigEndian<int32_t>(bytes.right(4).data());
-
-    return { rdt_sequence, ft_sequence,status, Fx,Fy,Fz,Tx,Ty,Tz };
+    return {
+        qFromBigEndian<uint32_t>(bytes.left(4).data()),
+        qFromBigEndian<uint32_t>(bytes.right(32).left(4).data()),
+        qFromBigEndian<uint32_t>(bytes.right(28).left(4).data()),
+        qFromBigEndian<int32_t>(bytes.right(24).left(4).data()),
+        qFromBigEndian<int32_t>(bytes.right(20).left(4).data()),
+        qFromBigEndian<int32_t>(bytes.right(16).left(4).data()),
+        qFromBigEndian<int32_t>(bytes.right(12).left(4).data()),
+        qFromBigEndian<int32_t>(bytes.right(8).left(4).data()),
+        qFromBigEndian<int32_t>(bytes.right(4).data()),
+    };
 }
 
 void SocketRDT::startStreaming(const QVariantMap& data)
@@ -90,7 +90,6 @@ void SocketRDT::startStreaming(const QVariantMap& data)
     const QByteArray startReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
     writeDatagram(startReq, pa, pp);
     setSocketState(SocketState::BoundState);
-    qDebug() << "write";
 }
 
 void SocketRDT::stopStreaming()
@@ -100,24 +99,25 @@ void SocketRDT::stopStreaming()
     emit streamReset();
 }
 
-void SocketRDT::slotReadData()
+void SocketRDT::onReadyRead()
 {
     do {
         QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
-        const RDTResponse r = QNetworkDatagram2RDTResponse(dg);
+        QVariantList r = QNetworkDatagram2RDTResponse(dg);
+
+        uint32_t rdt_sequence = r[0].toUInt();
 
         if (!m_haveBase) { // if the first read
-            m_baseSeq = r.rdt_sequence;
+            m_baseSeq = rdt_sequence;
             m_haveBase = true;
             m_emitTimer.restart();
             m_readings.clear();
         }
 
-        const double t = double(quint32(r.rdt_sequence - m_baseSeq)) * DT;
+        const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;
+        r.push_back(t);
 
-        const double y = double(r.Fz) / COUNT_FACTOR;
-        m_readings.push_back(QPointF(t, y));
-
+        m_readings.push_back(r);
         if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
             emit bufferReady(std::exchange(m_readings, {}));
             m_emitTimer.restart();

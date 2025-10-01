@@ -6,11 +6,14 @@ set(QML_FILES
   Main.qml
   Logger.qml
   PLCPanel/NetworkTcp.qml
-  PLCPanel/PLCControls.qml
-  PLCPanel/PLCLeds.qml
-  PLCPanel/PLCPanel.qml
+  PLCPanel/DeltaModuleAP.qml
+  PLCPanel/DeltaPanel.qml
+  PLCPanel/LedsPanel.qml
+  PLCPanel/DeltaModuleInput.qml
+  PLCPanel/DeltaModuleOutput.qml
   FTSPanel/FTSPanel.qml
   FTSPanel/NetworkUdp.qml
+  FTSPanel/FTSBars.qml
 )
 
 ## CPP ##

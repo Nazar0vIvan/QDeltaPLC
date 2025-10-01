@@ -30,7 +30,7 @@ Window {
       SplitView.fillHeight: true
       spacing: 10
 
-      PLCPanel {
+      DeltaPanel {
         id: plcPanel
 
         Layout.fillWidth: true;

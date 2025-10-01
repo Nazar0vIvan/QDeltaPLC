@@ -12,15 +12,16 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    TcpSocketRunner plcRunner(new SocketDeltaPLC(QStringLiteral("PLC_AS332T")), &app);
+    TcpSocketRunner plcRunner(new SocketDeltaPLC(QStringLiteral("PLC_AS332T")));
     plcRunner.start();
 
     SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
-    UdpSocketRunner ftsRunner(socketRDT, &app);
-
+    UdpSocketRunner ftsRunner(socketRDT);
     QObject::connect(socketRDT, &SocketRDT::bufferReady, &ftsRunner, &UdpSocketRunner::onBufferReady, Qt::QueuedConnection);
-
     ftsRunner.start();
+
+    QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
+    QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
 
     // QmlChartBridge chartBridge;
     // QObject::connect(socketRDT, &SocketRDT::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);

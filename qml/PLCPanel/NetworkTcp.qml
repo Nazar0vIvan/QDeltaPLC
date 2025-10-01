@@ -13,10 +13,12 @@ QxGroupBox {
   property int fieldWidth: 120
   property int labelWidth: 74
 
+  implicitWidth: leftPadding + cl.implicitWidth + rightPadding
+  implicitHeight: topPadding  +  cl.implicitHeight + bottomPadding
+
   ColumnLayout {
     id: cl
 
-    anchors.fill: parent
     spacing: 10
 
     QxField { // local address
@@ -107,7 +109,26 @@ QxGroupBox {
       }
     }
 
-    Item{ Layout.fillHeight: true }
+    QxField { // message
+      id: msgField
+
+      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      labelWidth: root.labelWidth
+      labelText: "Message:"
+
+      QxTextField {
+        id: msg
+
+        height: parent.height; width: root.fieldWidth
+        validator: IntValidator{ bottom: 0; top: 65535; }
+      }
+    }
+
+    Rectangle { // separator
+      Layout.preferredHeight: 1
+      Layout.fillWidth: true
+      color: Styles.background.dp12
+    }
 
     RowLayout {
       id: btnlayout
@@ -137,6 +158,20 @@ QxGroupBox {
                   peerPort:     Number(pp.text)
               })
           }
+        }
+      }
+
+      QxButton {
+        id: btnSend
+
+        Layout.preferredHeight: root.fieldHeight
+        checkable: false
+        text: "Send"
+        enabled: plcRunner && plcRunner.socketState === 3
+
+        onClicked: {
+          if (!msg.text) return
+          plcRunner.writeMessage(msg.text)
         }
       }
     }

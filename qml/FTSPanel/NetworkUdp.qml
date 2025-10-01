@@ -13,23 +13,27 @@ QxGroupBox {
   property int fieldWidth: 120
   property int labelWidth: 74
 
+  implicitWidth: leftPadding + cl.implicitWidth + rightPadding
+  implicitHeight: topPadding  +  cl.implicitHeight + bottomPadding
+
   ColumnLayout {
     id: cl
 
-    anchors.fill: parent
     spacing: 10
 
     QxField { // local address
       id: laField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "PC IP :"
 
       TextEdit {
         id: la
 
-        height: parent.height; width: root.fieldWidth
+        height: root.fieldHeight
+        width: root.fieldWidth
         color: Styles.foreground.high
         text: "192.168.1.1"
         verticalAlignment: Qt.AlignVCenter
@@ -42,14 +46,16 @@ QxGroupBox {
     QxField { // local port
       id: lpField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "PC Port :"
 
       QxTextField {
         id: lp
 
-        height: parent.height; width: root.fieldWidth
+        height: root.fieldHeight
+        width: root.fieldWidth
         text: "59152"
         validator: IntValidator{ bottom: 0; top: 65535; }
       }
@@ -58,14 +64,16 @@ QxGroupBox {
     QxField { // peer address
 
       id: paField
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "FTS IP :"
 
       QxTextField {
         id: pa
 
-        height: parent.height; width: root.fieldWidth
+        height: root.fieldHeight
+        width: root.fieldWidth
         text: "192.168.1.3"
         validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
@@ -76,14 +84,16 @@ QxGroupBox {
     QxField { // peer port
     id: ppField
 
-    Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+    Layout.preferredWidth: implicitWidth
+    Layout.preferredHeight: root.fieldHeight
     labelWidth: root.labelWidth
     labelText: "FTS Port :"
 
     TextEdit {
       id: pp
 
-      height: parent.height; width: root.fieldWidth
+      height: root.fieldHeight
+      width: root.fieldWidth
       color: Styles.foreground.high
       text: "49152"
       verticalAlignment: Qt.AlignVCenter
@@ -96,7 +106,8 @@ QxGroupBox {
     QxField { // streaming status
       id: statusField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
       labelWidth: root.labelWidth
       labelText: "Status :"
 

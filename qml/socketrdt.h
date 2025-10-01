@@ -10,7 +10,8 @@
 #include <QByteArray>
 #include <QtEndian>
 #include <QElapsedTimer>
-#include <QPointF>
+#include <QVariantList>
+#include <QVariant>
 
 #include "logger.h"
 
@@ -37,6 +38,18 @@ struct RDTRequest
 
 struct RDTResponse
 {
+    Q_GADGET
+    Q_PROPERTY(uint32_t rdt_sequence MEMBER rdt_sequence)
+    Q_PROPERTY(uint32_t ft_sequence MEMBER ft_sequence)
+    Q_PROPERTY(uint32_t status MEMBER status)
+    Q_PROPERTY(int32_t Fx MEMBER Fx)
+    Q_PROPERTY(int32_t Fy MEMBER Fy)
+    Q_PROPERTY(int32_t Fz MEMBER Fz)
+    Q_PROPERTY(int32_t Tx MEMBER Tx)
+    Q_PROPERTY(int32_t Ty MEMBER Ty)
+    Q_PROPERTY(int32_t Tz MEMBER Tz)
+
+public:
     uint32_t rdt_sequence;
     uint32_t ft_sequence;
     uint32_t status;
@@ -47,6 +60,8 @@ struct RDTResponse
     int32_t Ty;
     int32_t Tz;
 };
+
+Q_DECLARE_METATYPE(RDTResponse)
 
 class SocketRDT : public QUdpSocket
 {
@@ -60,21 +75,22 @@ public:
 
 signals:
     void logMessage(const LoggerMessage& msg);
-    void bufferReady(const QVector<QPointF>& points);
+    void bufferReady(const QVector<QVariantList>& points);
     void streamReset();
 
 private slots:
-    void slotReadData();
-    void slotErrorOccurred(QAbstractSocket::SocketError socketError);
-    void slotStateChanged(QAbstractSocket::SocketState state);
+    void onReadyRead();
+    void onErrorOccurred(QAbstractSocket::SocketError socketError);
+    void onStateChanged(QAbstractSocket::SocketState state);
 
 private:
     QNetworkDatagram RDTRequest2QNetworkDatagram(const RDTRequest& request);
-    RDTResponse QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram);
+    //RDTResponse QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram);
+    QVariantList QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram);
     QString stateToString(SocketState state);
 
     // batching state
-    QVector<QPointF> m_readings; // Fz only
+    QVector<QVariantList> m_readings;
     QElapsedTimer    m_emitTimer;
     quint32          m_baseSeq = 0;
     bool             m_haveBase = false;

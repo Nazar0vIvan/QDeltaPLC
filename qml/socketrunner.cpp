@@ -1,4 +1,3 @@
-#include <QCoreApplication>
 #include "socketrunner.h"
 
 // ----- AbstractSocketRunner -----
@@ -11,16 +10,39 @@ AbstractSocketRunner::AbstractSocketRunner(QAbstractSocket* socket, QObject* par
     attachSocket(socket);
 
     connect(this, &AbstractSocketRunner::logMessage,  Logger::instance(), &Logger::push);
-    connect(qApp, &QCoreApplication::aboutToQuit, this, [this]{ stop(); });
 }
 
 AbstractSocketRunner::~AbstractSocketRunner()
 {
-    stop();
-    if (m_thread && m_thread->isRunning()) {
-        m_thread->quit();
-        m_thread->wait();
-    }
+    // CAN'T just call m_socket destructor because it is in the working thread (managed by m_thread)
+    // m_thread itself deletes via parenting to AbstractSocketRunner
+    stop(); // this is a fallback in case if runner is destroyed manually (not by app closing)
+}
+
+void AbstractSocketRunner::start()
+{
+    if (!m_thread->isRunning())
+        m_thread->start();
+}
+
+void AbstractSocketRunner::stop()
+{
+    // you can't directly access m_socket, it is in working thread
+    // guard, if you accidentally call stop() second time it will return
+    auto* sock = std::exchange(m_socket, nullptr);
+    if (!sock) return;
+
+    //  The following must be done:
+    // - block Main Thread
+    // - disconnect, close and delete socket in working thread
+    // - finish working thread EL
+    QMetaObject::invokeMethod(sock, [sock]{
+        sock->disconnectFromHost();
+        sock->close();
+        delete sock;
+    }, Qt::BlockingQueuedConnection); // blocks Main Thread during lambda execution
+    m_thread->quit();
+    m_thread->wait();
 }
 
 void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
@@ -33,26 +55,10 @@ void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
     m_socketState = m_socket->state();
     emit socketStateChanged();
 
-    m_socket->moveToThread(m_thread);
+    m_socket->moveToThread(m_thread); // !!!
 
     connect(m_thread, &QThread::started, this, &AbstractSocketRunner::onThreadStarted);
-    connect(m_thread, &QThread::finished, m_thread, &QThread::deleteLater);
-    connect(m_thread, &QThread::finished, m_socket, &QObject::deleteLater);
-    connect(m_socket, &QObject::destroyed, m_thread, &QThread::quit);
-
     connect(m_socket, &QAbstractSocket::stateChanged, this, &AbstractSocketRunner::onSocketStateChanged, Qt::QueuedConnection);
-}
-
-void AbstractSocketRunner::start()
-{
-    if (!m_thread->isRunning())
-        m_thread->start();
-}
-
-void AbstractSocketRunner::stop()
-{
-    if (!m_socket) return;
-    QMetaObject::invokeMethod(m_socket, "deleteLater", Qt::QueuedConnection);
 }
 
 void AbstractSocketRunner::onSocketStateChanged(QAbstractSocket::SocketState state)
@@ -79,20 +85,17 @@ TcpSocketRunner::TcpSocketRunner(QAbstractSocket* socket, QObject *parent) : Abs
 
 }
 
-TcpSocketRunner::~TcpSocketRunner()
-{
-    if (!m_socket) return;
-    QMetaObject::invokeMethod(m_socket, "disconnect", Qt::QueuedConnection);
-}
+TcpSocketRunner::~TcpSocketRunner() = default;
 
 void TcpSocketRunner::connectToHost(const QVariantMap &data)
 {
+    if (!m_socket) return;
     QMetaObject::invokeMethod(m_socket, "connectToHost", Qt::QueuedConnection, Q_ARG(QVariantMap, data));
 }
 
 void TcpSocketRunner::disconnectFromHost()
 {
-    QMetaObject::invokeMethod(m_socket, "disconnect", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
 }
 
 void TcpSocketRunner::writeMessage(const QString& msg)
@@ -105,7 +108,7 @@ void TcpSocketRunner::writeMessage(const QString& msg)
 UdpSocketRunner::UdpSocketRunner(QAbstractSocket *socket, QObject *parent) : AbstractSocketRunner(socket, parent)
 {
     m_timer.setSingleShot(true);
-    m_timer.setInterval(300); // 300 ms; tune as you like
+    m_timer.setInterval(300);
     connect(&m_timer, &QTimer::timeout, this, [this]{
         if (m_isStreaming) { m_isStreaming = false; emit isStreamingChanged(); }
     });
@@ -113,6 +116,8 @@ UdpSocketRunner::UdpSocketRunner(QAbstractSocket *socket, QObject *parent) : Abs
     connect(m_socket, &QIODevice::readyRead, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
     connect(m_socket, &QIODevice::bytesWritten, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
 }
+
+UdpSocketRunner::~UdpSocketRunner() = default;
 
 void UdpSocketRunner::onPulse()
 {
@@ -133,9 +138,10 @@ void UdpSocketRunner::stopStreaming()
     QMetaObject::invokeMethod(m_socket, "stopStreaming", Qt::QueuedConnection);
 }
 
-void UdpSocketRunner::onBufferReady(const QVector<QPointF> &points)
+void UdpSocketRunner::onBufferReady(const QVector<QVariantList>& readings)
 {
-    m_lastReading = !points.isEmpty() ? points.back().y() : QVariant();
+    if(readings.isEmpty()) return;
+    m_lastReading = readings.back();
     emit lastReadingChanged();
 }
 
