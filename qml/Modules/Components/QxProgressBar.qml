@@ -9,52 +9,39 @@ Item {
   id: root
 
   property alias labelText: label.text
-  property alias barWidth: pb.width
 
+  property int barWidth: 100
   property alias from: pb.from
   property alias to: pb.to
   property alias color: fill.color
+  property alias value: pb.value
 
-  property real value
-  property color trackColor:"#2B2B2B"
-  property color centerLine:"#666666"
+  implicitWidth: rl.implicitWidth
 
   RowLayout {
     id: rl
 
-    anchors.fill: parent
+    height: parent.height
+    spacing: 10
 
     Label {
         id: label
 
-        text: "Name"
-        color: Styles.foreground.high
         verticalAlignment: Text.AlignVCenter
         Layout.alignment: Qt.AlignVCenter
+        color: Styles.foreground.high
     }
 
     ProgressBar {
       id: pb
 
-      Layout.preferredWidth: 200
-      Layout.preferredHeight: root.height
+      Layout.preferredWidth: root.barWidth
+      Layout.preferredHeight: parent.height
       Layout.alignment: Qt.AlignVCenter
 
-      from: 0
-      to: 100
-
-      value: root.value
-
       background: Rectangle {
-          color: root.trackColor
-          border.color: Qt.rgba(1, 1, 1, 0.07)
-
-          Rectangle { // zero line
-              width: 2
-              height: parent.height
-              color: root.centerLine
-              anchors.centerIn: parent
-          }
+          color: Styles.background.dp04
+          border{width: 1; color: Styles.background.dp12}
       }
 
       contentItem: Item {
@@ -80,10 +67,11 @@ Item {
         }
       }
     }
-    Text {
-      id: valText
 
-      text: root.value.toFixed(3)
+    Text {
+      id: valueText
+
+      text: pb.value.toFixed(3)
       color: Styles.foreground.high
       Layout.alignment: Qt.AlignVCenter
     }

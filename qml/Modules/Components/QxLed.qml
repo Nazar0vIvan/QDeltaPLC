@@ -11,13 +11,12 @@ Item {
   property int size: 20
   property bool isOn: false
 
-  implicitWidth: root.size
-  implicitHeight: tag.height + root.size + cl.spacing
+  implicitWidth: cl.implicitWidth
+  implicitHeight: cl.implicitHeight
 
   ColumnLayout {
     id: cl
 
-    anchors.fill: parent
     spacing: 10
 
     Text {

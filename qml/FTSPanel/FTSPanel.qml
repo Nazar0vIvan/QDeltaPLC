@@ -6,44 +6,51 @@ import QtCharts
 import Styles 1.0
 import Components 1.0
 
-ColumnLayout {
+Item {
   id: root
 
-  spacing: 30
+  ColumnLayout {
+    id: cl
 
-  Text {
-    id: title
+    anchors.fill: parent
+    spacing: 40
 
-    text: qsTr("Schunk FTS Delta-IP68-SI-660-60")
-    color: Styles.foreground.high
-    font{pixelSize: 20; bold: true}
-  }
+    Text {
+      id: title
 
-  RowLayout {
-    id: rl
-
-    Layout.preferredHeight: 300
-    Layout.fillWidth: true
-
-    NetworkUdp {
-      id: networkUdpPanel
-
-      title: qsTr("Network")
-      Layout.preferredHeight: implicitHeight
-      Layout.preferredWidth: implicitWidth
+      text: qsTr("Schunk FTS Delta-IP68-SI-660-60")
+      color: Styles.foreground.high
+      font{pixelSize: 20; bold: true}
     }
 
-    FTSBars {
-      id: bars
+    RowLayout {
+      id: rl
 
-      title: qsTr("Data")
-      Layout.preferredHeight: parent.height
-      Layout.preferredWidth: 300
+      Layout.fillWidth: true
+      spacing: 20
+
+      NetworkUdp {
+        id: networkUdp
+
+        title: qsTr("Network")
+        Layout.preferredHeight: implicitHeight
+        Layout.preferredWidth: implicitWidth
+      }
+
+      FTSBars {
+        id: bars
+
+        title: qsTr("Monitoring")
+        Layout.preferredHeight: networkUdp.implicitHeight
+        Layout.preferredWidth: implicitWidth
+      }
+
+      Item { Layout.fillWidth: true }
     }
-
-    Item { Layout.fillWidth: true }
   }
 }
+
+
 
 
 // ChartView {

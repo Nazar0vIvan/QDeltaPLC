@@ -22,74 +22,78 @@ QxGroupBox {
     spacing: 10
 
     QxField { // local address
-
       id: laField
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "PC IP :"
 
-      TextEdit {
+      QxTextField {
         id: la
 
-        height: parent.height; width: root.fieldWidth
-        color: Styles.foreground.high
+        height: root.fieldHeight
+        width: root.fieldWidth
         text: "192.168.1.1"
-        verticalAlignment: Qt.AlignVCenter
         readOnly: true
-        selectByMouse: true
-        selectionColor: Styles.primary.highlight
       }
     }
 
     QxField { // local port
       id: lpField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "PC Port :"
 
       QxTextField {
         id: lp
 
-        height: parent.height; width: root.fieldWidth
+        width: root.fieldWidth
+        height: root.fieldHeight
         text: "3333"
         validator: IntValidator{ bottom: 0; top: 65535; }
-
-        onEditingFinished: btnSubmit.enabled = true
       }
     }
 
     QxField { // peer address
 
       id: paField
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "PLC IP :"
 
       QxTextField {
         id: pa
 
-        height: parent.height; width: root.fieldWidth
+        width: root.fieldWidth
+        height: root.fieldHeight
         text: "192.168.1.2"
         validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
         }
-
-        onEditingFinished: btnSubmit.enabled = true
       }
     }
 
     QxField { // peer port
       id: ppField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "PLC Port :"
 
       QxTextField {
         id: pp
 
-        height: parent.height; width: root.fieldWidth
+        width: root.fieldWidth
+        height: root.fieldHeight
         text: "5051"
         validator: IntValidator{ bottom: 0; top: 65535; }
       }
@@ -98,7 +102,9 @@ QxGroupBox {
     QxField { // connection status
       id: statusField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "Status :"
 
@@ -112,15 +118,17 @@ QxGroupBox {
     QxField { // message
       id: msgField
 
-      Layout.fillWidth: true; Layout.preferredHeight: root.fieldHeight
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "Message:"
 
       QxTextField {
         id: msg
 
-        height: parent.height; width: root.fieldWidth
-        validator: IntValidator{ bottom: 0; top: 65535; }
+        width: root.fieldWidth
+        height: root.fieldHeight
       }
     }
 
@@ -131,10 +139,7 @@ QxGroupBox {
     }
 
     RowLayout {
-      id: btnlayout
-
-      Layout.fillWidth: true
-      Layout.preferredHeight: root.fieldHeight
+      id: btn_rl
 
       QxButton {
         id: btnConnect

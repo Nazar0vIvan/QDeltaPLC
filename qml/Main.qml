@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
 
-import "PLCPanel"
+import "DeltaPanel"
 import "FTSPanel"
 
 import Styles 1.0
@@ -31,7 +31,7 @@ Window {
       spacing: 10
 
       DeltaPanel {
-        id: plcPanel
+        id: deltaPanel
 
         Layout.fillWidth: true;
         Layout.leftMargin: 10; Layout.rightMargin: 10

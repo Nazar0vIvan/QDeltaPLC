@@ -35,28 +35,30 @@ ColumnLayout {
     DeltaModuleAP {
       id: moduleAP_P
 
-      title: qsTr("AS16AP11P-A")
+      title: 'AS16AP11<font color="red">P</font>-A'
       Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: implicitHeight
+      Layout.preferredHeight: networkTcp.implicitHeight
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-      xLabel: 'IN / <font color="red">SOURCE</font'
-      yLabel: 'OUT / <font color="red">SOURCE</font'
+      xLabel: 'IN / <font color="red">SOURCE</font>'
+      yLabel: 'OUT / <font color="red">SOURCE</font>'
       moduleIndex: 1
+
+
     }
-/*
+
     DeltaModuleAP {
       id: moduleAP_T
 
-      title: qsTr("AS16AP11T-A")
-      Layout.preferredWidth: implicitWidth;
-      //Layout.preferredHeight: ledPanel.implicitHeight
+      title: 'AS16AP11<font color="#509dfd">T</font>-A'
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: networkTcp.implicitHeight
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-      xLabel: 'IN / <font color="blue">SINK</font'
-      yLabel: 'OUT / <font color="blue">SINK</font'
+      xLabel: 'IN / <font color="#509dfd">SINK</font>'
+      yLabel: 'OUT / <font color="#509dfd">SINK</font>'
       moduleIndex: 2
     }
 
@@ -65,8 +67,9 @@ ColumnLayout {
 
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
+      Layout.alignment: Qt.AlignTop
     }
-*/
+
     Item { Layout.fillWidth: true }
   }
 }

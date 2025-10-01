@@ -8,10 +8,14 @@ import Styles 1.0
 GroupBox {
   id: control
 
+  topPadding: 30
+  bottomPadding: 20
+
   label: Label {
       x: 20; y: -height/2
       leftPadding: 10; rightPadding: 10
       topPadding: 6; bottomPadding: 6
+      textFormat: Text.RichText
       text: control.title
       color: Styles.foreground.high
       background: Rectangle {

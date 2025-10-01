@@ -18,21 +18,22 @@ QxGroupBox {
   readonly property int rowHeight: 22
   readonly property int labelWidth: 28
   readonly property int switchWidth: 36
-  readonly property int moduleWidth: 110
+  readonly property int viewWidth: 110
+  readonly property int viewHeight: 8*root.rowHeight + 7*spacing
 
   implicitWidth: leftPadding + rl.implicitWidth + rightPadding
-  implicitHeight: topPadding  + rl.implicitHeight + bottomPadding
+  implicitHeight: topPadding + rl.implicitHeight + bottomPadding
 
-  contentItem: RowLayout {
+  RowLayout {
     id: rl
 
-    spacing: 10
+    spacing: 30
 
     ListView {
       id: x_lv
 
-      Layout.preferredWidth: root.moduleWidth
-      Layout.preferredHeight: 8*root.rowHeight + 7*spacing
+      implicitWidth: contentItem.childrenRect.width
+      implicitHeight: contentItem.childrenRect.height
       spacing: 10
 
       interactive: false
@@ -61,12 +62,11 @@ QxGroupBox {
       }
     }
 
-
     ListView {
       id: y_lv
 
-      Layout.preferredWidth: root.moduleWidth
-      Layout.preferredHeight: 8*root.rowHeight + 7*spacing
+      implicitWidth: contentItem.childrenRect.width
+      implicitHeight: contentItem.childrenRect.height
       spacing: 10
 
       interactive: false

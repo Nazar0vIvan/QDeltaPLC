@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     TcpSocketRunner plcRunner(new SocketDeltaPLC(QStringLiteral("PLC_AS332T")));
     plcRunner.start();
 
-    SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
+    SocketRDT* socketRDT = new SocketRDT(QStringLiteral("Schunk_FTS"));
     UdpSocketRunner ftsRunner(socketRDT);
     QObject::connect(socketRDT, &SocketRDT::bufferReady, &ftsRunner, &UdpSocketRunner::onBufferReady, Qt::QueuedConnection);
     ftsRunner.start();

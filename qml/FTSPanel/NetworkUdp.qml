@@ -26,20 +26,17 @@ QxGroupBox {
 
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: root.fieldHeight
+      slotWidth: root.fieldWidth
       labelWidth: root.labelWidth
       labelText: "PC IP :"
 
-      TextEdit {
+      QxTextField {
         id: la
 
         height: root.fieldHeight
         width: root.fieldWidth
-        color: Styles.foreground.high
         text: "192.168.1.1"
-        verticalAlignment: Qt.AlignVCenter
         readOnly: true
-        selectByMouse: true
-        selectionColor: Styles.primary.highlight
       }
     }
 
@@ -89,17 +86,13 @@ QxGroupBox {
     labelWidth: root.labelWidth
     labelText: "FTS Port :"
 
-    TextEdit {
+    QxTextField {
       id: pp
 
       height: root.fieldHeight
       width: root.fieldWidth
-      color: Styles.foreground.high
       text: "49152"
-      verticalAlignment: Qt.AlignVCenter
       readOnly: true
-      selectByMouse: true
-      selectionColor: Styles.primary.highlight
     }
   }
 
@@ -118,7 +111,11 @@ QxGroupBox {
       }
     }
 
-    Item { Layout.fillHeight: true } // spacer
+    Rectangle { // separator
+      Layout.preferredHeight: 1
+      Layout.fillWidth: true
+      color: Styles.background.dp12
+    }
 
     QxButton {
       id: btnStart

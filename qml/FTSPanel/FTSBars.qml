@@ -9,11 +9,19 @@ import Components 1.0
 QxGroupBox {
   id: root
 
+  readonly property int viewWidth: 240
+  readonly property int rowHeight: 20
+  readonly property int barWidth: 160
+
+  implicitWidth: leftPadding + lv.implicitWidth + rightPadding
+  implicitHeight: topPadding + lv.implicitHeight + bottomPadding
+
   ListView {
     id: lv
 
     spacing: 10
-    anchors.fill: parent
+    implicitWidth: contentItem.childrenRect.width
+    implicitHeight: contentItem.childrenRect.height
 
     model: ListModel {
         ListElement { tag: "Fx"; from: -1980.0; to: 1980.0; idx: 3 }
@@ -27,15 +35,16 @@ QxGroupBox {
     delegate: QxProgressBar {
       id: bar
 
-      height: 20
-      width: lv.width
+      height: root.rowHeight
+      width: implicitWidth
+      barWidth: root.barWidth
       color: "orange"
 
       from: model.from
       to: model.to
       labelText: model.tag
 
-      value: -1800.0 // ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ? Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
+      value: ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ? Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
     }
   }
 }

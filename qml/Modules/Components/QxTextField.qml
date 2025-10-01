@@ -8,13 +8,13 @@ TextField {
   id: control
 
   leftPadding: 5
-  color: control.readOnly ? Styles.foreground.disabled : Styles.foreground.high
+  color: Styles.foreground.high
   selectionColor: Styles.primary.highlight
   selectByMouse : true
   readOnly: false
 
   background: Rectangle {
-    color: Styles.background.dp04
+    color: control.readOnly ? "transparent" : Styles.background.dp04
     radius: 4
     border {
       width: control.readOnly ? 0 : control.activeFocus ? 2 : control.hovered ? 0 : 1
@@ -23,5 +23,5 @@ TextField {
   }
 
   onAccepted: { editingFinished(); focus = false }
-  onFocusChanged: if(focus) selectAll()
+  onFocusChanged: if(focus & !readOnly) selectAll()
 }
