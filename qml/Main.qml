@@ -28,13 +28,13 @@ Window {
 
       SplitView.fillWidth: true
       SplitView.fillHeight: true
-      spacing: 10
+      spacing: 20
 
       DeltaPanel {
         id: deltaPanel
 
-        Layout.fillWidth: true;
-        Layout.leftMargin: 10; Layout.rightMargin: 10
+        Layout.fillWidth: true
+        Layout.leftMargin: 20
       }
 
       Rectangle {
@@ -48,8 +48,8 @@ Window {
       FTSPanel {
         id: ftsPanel
 
-        Layout.fillWidth: true;
-        Layout.leftMargin: 10; Layout.rightMargin: 10
+        Layout.fillWidth: true
+        Layout.leftMargin: 20
       }
 
       Item { Layout.fillHeight: true }

@@ -11,6 +11,15 @@
 #define PEER_ADDRESS "192.168.2.5"
 #define PEER_PORT 3333
 
+/*
+  COMMANDS TO PLC:
+  - writeOutputs(int moduleNumber, quint16 mask)
+  - readOutputs(int moduleNumber)
+
+writeOutputs(1, 0b0000'0000'0110'0000) -> PLC read -> PLC send actual Y states as bytearray
+
+*/
+
 class SocketDeltaPLC : public QTcpSocket
 {
     Q_OBJECT
