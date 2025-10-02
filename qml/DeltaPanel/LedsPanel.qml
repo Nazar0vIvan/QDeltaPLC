@@ -31,6 +31,6 @@ GridView {
       size: root.ledSize
       tag: model.label
       ledColor: model.color
-      isOn: model.isOn
+      isOn: (index < 2) ? (plcRunner.socketState === 3) : model.isOn
     }
 }

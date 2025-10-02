@@ -45,9 +45,8 @@ void SocketDeltaPLC::onConnected()
 void SocketDeltaPLC::onReadyRead()
 {
     QByteArray chunk = readAll();
-    qDebug() << chunk;
     const qint64 n = chunk.size();
-    emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
+    emit logMessage({QString::number(n) + " bytes were read from PLC: " + QString::fromUtf8(chunk), 3, objectName()});
 }
 
 void SocketDeltaPLC::writeMessage(const QString& msg)

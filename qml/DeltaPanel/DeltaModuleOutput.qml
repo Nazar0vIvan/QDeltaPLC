@@ -14,7 +14,6 @@ Item {
   property int switchWidth: 20
   property int switchHeight: 10
   property bool isOn: false
-  property int actualWidth
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
@@ -39,8 +38,5 @@ Item {
 
       color: Styles.foreground.high
     }
-  }
-  Component.onCompleted: {
-    actualWidth = width
   }
 }
