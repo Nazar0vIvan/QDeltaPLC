@@ -13,6 +13,8 @@ QxGroupBox {
   required property var yTags
   property string xLabel: "Undefined"
   property string yLabel: "Undefined"
+  required property var xEnabled
+  required property var yEnabled
   property int moduleIndex: 1
 
   readonly property int rowHeight: 22
@@ -56,6 +58,7 @@ QxGroupBox {
 
         required property int index
 
+        enabled: xEnabled[index]
         ledSize: root.rowHeight
         labelText: "X" + root.moduleIndex + "." + index
         tag: root.xTags[index]
@@ -89,10 +92,22 @@ QxGroupBox {
 
         required property int index
 
+        enabled: yEnabled[index]
         switchHeight: root.rowHeight
         switchWidth: root.switchWidth
         labelText: "Y" + root.moduleIndex + "." + index
         tag: root.yTags[index]
+
+        onCheckedChanged: {
+          if(checked) {
+            plcRunner.writeMessage({
+              id: 0,
+              moduleNumber: root.moduleIndex,
+              outputNumber: index,
+              state: checked
+            })
+          }
+        }
       }
     }
   }

@@ -29,14 +29,14 @@ void SocketRDT::onStateChanged(QAbstractSocket::SocketState state) {
 QString SocketRDT::stateToString(SocketState state)
 {
     switch (state) {
-    case QAbstractSocket::UnconnectedState: return "UnconnectedState";
-    case QAbstractSocket::HostLookupState:  return "HostLookupState";
-    case QAbstractSocket::ConnectingState:  return "ConnectingState";
-    case QAbstractSocket::ConnectedState:   return "ConnectedState";
-    case QAbstractSocket::BoundState:       return "BoundState";
-    case QAbstractSocket::ClosingState:     return "ClosingState";
-    case QAbstractSocket::ListeningState:   return "ListeningState";
-    default: return "UnconnectedState";
+        case QAbstractSocket::UnconnectedState: return "UnconnectedState";
+        case QAbstractSocket::HostLookupState:  return "HostLookupState";
+        case QAbstractSocket::ConnectingState:  return "ConnectingState";
+        case QAbstractSocket::ConnectedState:   return "ConnectedState";
+        case QAbstractSocket::BoundState:       return "BoundState";
+        case QAbstractSocket::ClosingState:     return "ClosingState";
+        case QAbstractSocket::ListeningState:   return "ListeningState";
+        default: return "UnconnectedState";
     }
 }
 

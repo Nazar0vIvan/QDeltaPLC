@@ -13,10 +13,11 @@ Item {
   property alias tag: tag.text
   property int ledSize: 10
   property bool isOn: false
-  property int actualWidth
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
+
+  opacity: enabled ? 1.0 : 0.5
 
   RowLayout {
     id: rl
@@ -32,7 +33,7 @@ Item {
 
       Layout.preferredWidth: root.ledSize
       Layout.preferredHeight: root.ledSize
-      color: root.isOn ? "green" : Styles.background.dp04
+      color: root.enabled ? Styles.foreground.disabled : root.isOn ? "green" : Styles.background.dp04
       border{width: 1; color: Styles.background.dp12}
     }
     Text {
@@ -40,8 +41,5 @@ Item {
 
       color: Styles.foreground.high
     }
-  }
-  Component.onCompleted: {
-    actualWidth = width
   }
 }

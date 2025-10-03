@@ -13,10 +13,12 @@ Item {
   property alias tag: tag.text
   property int switchWidth: 20
   property int switchHeight: 10
-  property bool isOn: false
+  property alias checked: sw.checked
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
+
+  opacity: enabled ? 1.0 : 0.5
 
   RowLayout {
     id: rl
@@ -28,10 +30,11 @@ Item {
 
     }
     QxSwitch {
-      id: led
+      id: sw
 
       Layout.preferredWidth: root.switchWidth
       Layout.preferredHeight: root.switchHeight
+      enabled: root.enabled
     }
     Text {
       id: tag

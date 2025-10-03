@@ -12,6 +12,7 @@ Switch {
   signal turnedOff()
 
   checkable: true
+  opacity: enabled ? 1.0 : 0.5
 
   contentItem: Text {
     anchors.left: indicator.right

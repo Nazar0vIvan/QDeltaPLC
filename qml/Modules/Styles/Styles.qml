@@ -18,7 +18,7 @@ QtObject {
   readonly property QtObject foreground: QtObject {
     readonly property color high: "#e0e0e0"
     readonly property color medium: "#A0A0A0"
-    readonly property color disable: "#6C6C6C"
+    readonly property color disabled: "#6C6C6C"
   }
 
   readonly property color minColor: "#4ed964"

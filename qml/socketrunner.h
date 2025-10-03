@@ -57,7 +57,7 @@ public:
 
     Q_INVOKABLE void connectToHost(const QVariantMap& data);
     Q_INVOKABLE void disconnectFromHost();
-    Q_INVOKABLE void writeMessage(const QString& msg);
+    Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
 };
 
 class UdpSocketRunner : public AbstractSocketRunner

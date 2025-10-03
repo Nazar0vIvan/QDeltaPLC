@@ -12,13 +12,11 @@
 #define PEER_PORT 3333
 
 /*
-  COMMANDS TO PLC:
-  - writeOutputs(int moduleNumber, quint16 mask)
-  - readOutputs(int moduleNumber)
-
-writeOutputs(1, 0b0000'0000'0110'0000) -> PLC read -> PLC send actual Y states as bytearray
-
+  COMMAND:
+    cmd_id - payload
+    [byte]   var]
 */
+
 
 class SocketDeltaPLC : public QTcpSocket
 {
@@ -29,7 +27,7 @@ public:
 
     Q_INVOKABLE void connectToHost(const QVariantMap& data);
     Q_INVOKABLE virtual void disconnectFromHost() override;
-    Q_INVOKABLE void writeMessage(const QString& msg);
+    Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
 
 signals:
     void logMessage(const LoggerMessage& msg);

@@ -98,9 +98,9 @@ void TcpSocketRunner::disconnectFromHost()
     QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
 }
 
-void TcpSocketRunner::writeMessage(const QString& msg)
+void TcpSocketRunner::writeMessage(const QVariantMap& cmd)
 {
-    QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QString, msg));
+    QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QVariantMap, cmd));
 }
 
 // ----- UdpSocketRunner -----

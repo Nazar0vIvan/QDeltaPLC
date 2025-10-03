@@ -46,16 +46,59 @@ void SocketDeltaPLC::onReadyRead()
 {
     QByteArray chunk = readAll();
     const qint64 n = chunk.size();
-    emit logMessage({QString::number(n) + " bytes were read from PLC: " + QString::fromUtf8(chunk), 3, objectName()});
+
+    QVector<bool> bits(8);
+    quint8 firstByte = static_cast<quint8>(chunk[0]);
+    for (int i = 0; i < 8; i++) {
+        bits[i] = (firstByte >> i) & 1;
+    }
+
+    qDebug() << chunk[0];
+    qDebug() << firstByte;
+    qDebug() << bits;
+
+    emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
 
-void SocketDeltaPLC::writeMessage(const QString& msg)
+void SocketDeltaPLC::writeMessage(const QVariantMap& cmd)
 {
-    const qint64 bytesCount = write(msg.toUtf8());
+    // const qint64 bytesCount = write(msg.toUtf8());
+    // if (bytesCount == -1) {
+    //     emit logMessage({"No bytes were written", 0, objectName()});
+    // }
+    //
+    QByteArray tosend;
+    switch (cmd.value("id").toInt()) {
+            case 0: { // set outputs
+            const quint8 id      = 8;
+            const quint8 module  = static_cast<quint8>(cmd.value("moduleNumber").toInt());
+            const quint8 output  = static_cast<quint8>(cmd.value("outputNumber").toInt());
+            const quint8 state   = cmd.value("state").toBool() ? 1 : 0;
+
+            tosend.reserve(6);
+            tosend.append(char(id));
+            tosend.append(char(module));
+            tosend.append(char(output));
+            tosend.append(char(state));
+            tosend.append(char(3));
+            tosend.append(char(9));
+
+            qDebug() << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
+            break;
+        }
+        case 1: { // send raw string
+            QByteArray msg = cmd.value("message").toByteArray();
+            tosend.append(char(1));
+            tosend.append(msg);
+            break;
+        }
+    }
+    const qint64 bytesCount = write(tosend);
     if (bytesCount == -1) {
         emit logMessage({"No bytes were written", 0, objectName()});
     }
     emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, objectName()});
+
 }
 
 // PRIVATE

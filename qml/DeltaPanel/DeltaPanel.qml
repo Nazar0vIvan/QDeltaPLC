@@ -40,9 +40,11 @@ ColumnLayout {
       Layout.preferredHeight: networkTcp.implicitHeight
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-      yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
+      yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LED_GREEN", "RUN", "N/D"]
       xLabel: 'IN / <font color="red">SOURCE</font>'
       yLabel: 'OUT / <font color="red">SOURCE</font>'
+      xEnabled: [0,0,0,0,0,0,0,0]
+      yEnabled: [0,0,0,0,0,1,1,0]
       moduleIndex: 1
 
 
@@ -56,9 +58,11 @@ ColumnLayout {
       Layout.preferredHeight: networkTcp.implicitHeight
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-      yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
+      yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LED_RED1", "LED_RED2", "LED_RED3"]
       xLabel: 'IN / <font color="#509dfd">SINK</font>'
       yLabel: 'OUT / <font color="#509dfd">SINK</font>'
+      xEnabled: [0,0,0,0,0,0,0,0]
+      yEnabled: [0,0,0,0,0,1,1,1]
       moduleIndex: 2
     }
 
