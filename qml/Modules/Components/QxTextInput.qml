@@ -7,10 +7,12 @@ import Styles 1.0
 TextField {
   id: control
 
+  property alias placeholder: defaultTxt.text
+
   leftPadding: 5
   color: Styles.foreground.high
   selectionColor: Styles.primary.highlight
-  selectByMouse : true
+  selectByMouse: true
   readOnly: false
 
   background: Rectangle {
@@ -22,6 +24,20 @@ TextField {
     }
   }
 
-  onAccepted: { editingFinished(); focus = false }
-  onFocusChanged: if(focus & !readOnly) selectAll()
+  onAccepted: {
+    editingFinished()
+    focus = false
+  }
+  onFocusChanged: if (focus & !readOnly) selectAll()
+
+  Text {
+    id: defaultTxt
+
+    anchors.fill: parent
+    verticalAlignment: Text.AlignVCenter
+    leftPadding: 5
+    color: Styles.foreground.medium
+    visible: !(control.activeFocus || control.text)
+    font.italic: true
+  }
 }

@@ -9,7 +9,7 @@ import Components 1.0
 GridView {
     id: root
 
-    readonly property int cellSpacing: 10
+    readonly property int cellSpacing: 20
     readonly property int ledSize: 40
 
     interactive: false
@@ -21,16 +21,16 @@ GridView {
     model: ListModel {
         ListElement { label: "Mains"; color: "yellow"; isOn: false }
         ListElement { label: "RUN";   color: "green";  isOn: false }
-        ListElement { label: "Y1.7";  color: "green";  isOn: false }
-        ListElement { label: "Y2.7";  color: "red";    isOn: false }
-        ListElement { label: "Y2.6";  color: "red";    isOn: false }
-        ListElement { label: "Y2.5";  color: "red";    isOn: false }
+        ListElement { label: "LEDG2";  color: "green";  isOn: false }
+        ListElement { label: "LEDR1";  color: "red";    isOn: false }
+        ListElement { label: "LEDR2";  color: "red";    isOn: false }
+        ListElement { label: "LEDR3";  color: "red";    isOn: false }
     }
 
     delegate: QxLed {
-      size: root.ledSize
-      tag: model.label
       ledColor: model.color
+      tag: model.label
+      size: root.ledSize
       isOn: (index < 2) ? (plcRunner.socketState === 3) : model.isOn
     }
 }

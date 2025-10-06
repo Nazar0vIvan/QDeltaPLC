@@ -30,7 +30,7 @@ QxGroupBox {
       labelWidth: root.labelWidth
       labelText: "PC IP :"
 
-      QxTextField {
+      QxTextInput {
         id: la
 
         height: root.fieldHeight
@@ -49,7 +49,7 @@ QxGroupBox {
       labelWidth: root.labelWidth
       labelText: "PC Port :"
 
-      QxTextField {
+      QxTextInput {
         id: lp
 
         width: root.fieldWidth
@@ -68,7 +68,7 @@ QxGroupBox {
       labelWidth: root.labelWidth
       labelText: "PLC IP :"
 
-      QxTextField {
+      QxTextInput {
         id: pa
 
         width: root.fieldWidth
@@ -89,7 +89,7 @@ QxGroupBox {
       labelWidth: root.labelWidth
       labelText: "PLC Port :"
 
-      QxTextField {
+      QxTextInput {
         id: pp
 
         width: root.fieldWidth
@@ -124,7 +124,7 @@ QxGroupBox {
       labelWidth: root.labelWidth
       labelText: "Message:"
 
-      QxTextField {
+      QxTextInput {
         id: msg
 
         width: root.fieldWidth

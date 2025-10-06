@@ -8,11 +8,12 @@ import Styles 1.0
 Switch {
   id: control
 
+  property bool displayonly: false
+
   signal turnedOn()
   signal turnedOff()
 
   checkable: true
-  opacity: enabled ? 1.0 : 0.5
 
   contentItem: Text {
     anchors.left: indicator.right
@@ -37,6 +38,15 @@ Switch {
           x: control.checked ? parent.width - width - 2 : 2
           color: Styles.foreground.high
           Behavior on x { NumberAnimation { duration: 150 } }
+
+          Image {
+            anchors.centerIn: parent
+
+            source: "lock.svg"
+            width: parent.width - 8
+            fillMode: Image.PreserveAspectFit
+            visible: control.displayonly
+          }
       }
   }
   onCheckedChanged: {

@@ -46,7 +46,7 @@ QtObject {
   }
 
   readonly property QtObject fonts: QtObject{
-    readonly property font title:   Qt.font({ family: "Roboto", pixelSize: 16 })
+    readonly property font title:   Qt.font({ family: "Roboto", pixelSize: 16, bold: true })
     readonly property font body:    Qt.font({ family: "Roboto", pixelSize: 14 })
     readonly property font caption: Qt.font({ family: "Roboto", pixelSize: 12 })
   }

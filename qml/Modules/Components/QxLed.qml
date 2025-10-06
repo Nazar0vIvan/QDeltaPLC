@@ -6,8 +6,8 @@ import Styles 1.0
 Item {
   id: root
 
+  property alias ledColor: led.color
   property alias tag: tag.text
-  property color ledColor: led.color
   property int size: 20
   property bool isOn: false
 

@@ -14,7 +14,8 @@ Item {
     property alias spacing: rl.spacing
     default property alias content: slot.data
 
-    implicitWidth: labelWidth + rl.spacing + slotWidth
+    implicitWidth: Math.max(root.labelWidth,
+                            label.implicitWidth) + rl.spacing + slotWidth
 
     RowLayout {
         id: rl
@@ -24,7 +25,7 @@ Item {
         Label {
             id: label
 
-            Layout.preferredWidth: root.labelWidth
+            Layout.preferredWidth: Math.max(root.labelWidth, implicitWidth)
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignVCenter
 

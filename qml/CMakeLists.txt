@@ -5,15 +5,20 @@ add_subdirectory(Modules/Components)
 set(QML_FILES
   Main.qml
   Logger.qml
-  DeltaPanel/NetworkTcp.qml
+  NavigationPanel/NavigationPanel.qml
+  NavigationPanel/NavigationMenuDelegate.qml
   DeltaPanel/DeltaModuleAP.qml
   DeltaPanel/DeltaPanel.qml
   DeltaPanel/LedsPanel.qml
   DeltaPanel/DeltaModuleInput.qml
   DeltaPanel/DeltaModuleOutput.qml
   FTSPanel/FTSPanel.qml
-  FTSPanel/NetworkUdp.qml
   FTSPanel/FTSBars.qml
+  Views/Dashboard/Dashboard.qml
+  Views/Options/Options.qml
+  Views/Options/NetworkTcp.qml
+  Views/Options/NetworkUdp.qml
+  Views/Options/OptionsSection.qml
 )
 
 ## CPP ##
@@ -41,6 +46,9 @@ qt_add_qml_module(qdeltaplc
       ${QML_FILES}
     SOURCES
       ${CPP_FILES}
+    RESOURCES
+      NavigationPanel/dashboard.svg
+      NavigationPanel/settings.svg
 )
 
 target_link_libraries(qdeltaplc

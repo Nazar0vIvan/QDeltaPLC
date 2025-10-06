@@ -11,10 +11,11 @@ QxGroupBox {
 
   required property var xTags
   required property var yTags
+  required property var xPlugged
+  required property var yPlugged
+  property var yDisplayOnly: []
   property string xLabel: "Undefined"
   property string yLabel: "Undefined"
-  required property var xEnabled
-  required property var yEnabled
   property int moduleIndex: 1
 
   readonly property int rowHeight: 22
@@ -42,6 +43,8 @@ QxGroupBox {
       boundsBehavior: Flickable.StopAtBounds
       clip: true
 
+      opacity: root.enabled ? 1.0 : 0.5
+
       header: Text {
         height: 26
         textFormat: Text.RichText
@@ -58,7 +61,7 @@ QxGroupBox {
 
         required property int index
 
-        enabled: xEnabled[index]
+        enabled: root.xPlugged[index]
         ledSize: root.rowHeight
         labelText: "X" + root.moduleIndex + "." + index
         tag: root.xTags[index]
@@ -76,6 +79,8 @@ QxGroupBox {
       boundsBehavior: Flickable.StopAtBounds
       clip: true
 
+      opacity: root.enabled ? 1.0 : 0.5
+
       header: Text {
         height: 26
         textFormat: Text.RichText
@@ -92,9 +97,10 @@ QxGroupBox {
 
         required property int index
 
-        enabled: yEnabled[index]
         switchHeight: root.rowHeight
         switchWidth: root.switchWidth
+        plugged: root.yPlugged[index]
+        displayonly: yDisplayOnly.includes(index)
         labelText: "Y" + root.moduleIndex + "." + index
         tag: root.yTags[index]
 
@@ -102,8 +108,8 @@ QxGroupBox {
           if(checked) {
             plcRunner.writeMessage({
               id: 0,
-              moduleNumber: root.moduleIndex,
-              outputNumber: index,
+              module: root.moduleIndex,
+              output: index,
               state: checked
             })
           }

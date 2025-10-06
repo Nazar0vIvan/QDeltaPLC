@@ -9,16 +9,19 @@ import Components 1.0
 Item {
   id: root
 
-  property alias labelText: label.text
-  property alias tag: tag.text
   property int switchWidth: 20
   property int switchHeight: 10
+  property bool plugged: false
+  property bool displayonly: false
+  property alias labelText: label.text
+  property alias tag: tag.text
   property alias checked: sw.checked
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
 
-  opacity: enabled ? 1.0 : 0.5
+  enabled: plugged && !displayonly
+  opacity: plugged ? 1.0 : 0.5
 
   RowLayout {
     id: rl
@@ -35,6 +38,7 @@ Item {
       Layout.preferredWidth: root.switchWidth
       Layout.preferredHeight: root.switchHeight
       enabled: root.enabled
+      displayonly: root.displayonly
     }
     Text {
       id: tag
