@@ -20,17 +20,7 @@ ColumnLayout {
     id: rl
 
     Layout.fillWidth: true
-    Layout.preferredHeight: childrenRect.height
     spacing: 20
-
-    DeltaControls {
-      id: deltaControls
-
-      title: qsTr("Controls")
-
-      Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: implicitHeight
-    }
 
     DeltaModuleAP {
       id: moduleAP_P
@@ -69,12 +59,24 @@ ColumnLayout {
       moduleIndex: 2
     }
 
-    LedsPanel {
-      id: ledPanel
+    ColumnLayout {
+      id: cl
 
-      Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: implicitHeight
-      Layout.alignment: Qt.AlignTop
+      Layout.preferredHeight: moduleAP_T.height
+
+      LedsPanel {
+        id: ledPanel
+
+        Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
+      }
+
+      DeltaControls {
+        id: deltaControls
+
+        title: qsTr("Controls")
+
+        Layout.alignment: Qt.AlignBottom
+      }
     }
 
     Item { Layout.fillWidth: true }

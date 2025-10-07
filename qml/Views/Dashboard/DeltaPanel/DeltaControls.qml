@@ -16,12 +16,11 @@ QxGroupBox {
   ColumnLayout {
     id: cl
 
-    spacing: 14
+    spacing: 20
 
     QxField { // message
       id: msgField
 
-      Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: root.fieldHeight
       labelText: "Message:"
 

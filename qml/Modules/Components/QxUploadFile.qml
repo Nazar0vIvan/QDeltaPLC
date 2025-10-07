@@ -8,7 +8,9 @@ import Styles 1.0
 Item {
   id: root
 
-  property int fieldWidth: 50
+  property int fieldWidth: 0
+
+  implicitWidth: fieldWidth + rl.spacing + height
 
   RowLayout {
     id: rl
@@ -18,8 +20,8 @@ Item {
     TextField {
       id: textField
 
-      Layout.fillWidth: true
-      Layout.fillHeight: true
+      Layout.preferredWidth: root.fieldWidth
+      Layout.preferredHeight: root.height
 
       leftPadding: 5
       color: Styles.foreground.high
@@ -40,7 +42,7 @@ Item {
     Button {
       id: btnBrowse
 
-      Layout.fillHeight: true
+      Layout.preferredHeight: root.height
       Layout.preferredWidth: root.height
       padding: 3
 

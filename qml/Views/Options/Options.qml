@@ -7,9 +7,9 @@ import Components 1.0
 ListView {
   id: root
 
-  property int fieldHeight: 24
+  property int fieldHeight: 28
   property int fieldWidth: 120
-  property int labelWidth: 110
+  property int labelWidth: 126
 
   topMargin: 14
   bottomMargin: 14
@@ -28,7 +28,7 @@ ListView {
   model: ObjectModel {
 
     Rectangle { // separator
-      width: 300
+      width: 400
       height: 1
       gradient: Gradient {
         GradientStop { position: 0.0; color: Styles.secondary.dark }
@@ -56,7 +56,7 @@ ListView {
     }
 
     Rectangle { // separator
-      width: 300
+      width: 400
       height: 1
       gradient: Gradient {
         GradientStop { position: 0.0; color: Styles.secondary.dark }
@@ -71,7 +71,8 @@ ListView {
 
       title: "Robot Sensor Interface"
       Layout.fillWidth: true
-      spacing: 20
+      gap: 20
+      spacing: 12
 
       QxField { // config file
 
@@ -85,7 +86,7 @@ ListView {
           id: uploadFile
 
           height: parent.height
-          width: 200
+          fieldWidth: 200
         }
       }
 
@@ -159,7 +160,7 @@ ListView {
     }
 
     Rectangle { // separator
-      width: 300
+      width: 400
       height: 1
       gradient: Gradient {
         GradientStop { position: 0.0; color: Styles.secondary.dark }
@@ -173,7 +174,8 @@ ListView {
 
       title: "PLC AS332T-A"
       Layout.fillWidth: true
-      spacing: 20
+      gap: 20
+      spacing: 12
 
       QxField { // plc local port
         id: plcLpField
@@ -233,7 +235,7 @@ ListView {
     }
 
     Rectangle { // separator
-      width: 300
+      width: 400
       height: 1
       gradient: Gradient {
         GradientStop { position: 0.0; color: Styles.secondary.dark }
@@ -247,7 +249,8 @@ ListView {
 
       title: "Schunk FTS Delta-SI-660-60"
       Layout.fillWidth: true
-      spacing: 20
+      gap: 20
+      spacing: 12
 
       QxField { // local port
         id: rdtLpField

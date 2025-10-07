@@ -12,7 +12,7 @@ Item {
   ColumnLayout {
     id: cl
 
-    anchors.fill: parent
+    anchors{fill: parent; topMargin: 20}
     spacing: 20
 
     DeltaPanel {
