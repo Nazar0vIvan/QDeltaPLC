@@ -29,19 +29,11 @@ Item {
       Layout.fillWidth: true
       spacing: 20
 
-      NetworkUdp {
-        id: networkUdp
-
-        title: qsTr("Network")
-        Layout.preferredHeight: implicitHeight
-        Layout.preferredWidth: implicitWidth
-      }
-
       FTSBars {
         id: bars
 
         title: qsTr("Monitoring")
-        Layout.preferredHeight: networkUdp.implicitHeight
+        Layout.preferredHeight: implicitHeight
         Layout.preferredWidth: implicitWidth
       }
 

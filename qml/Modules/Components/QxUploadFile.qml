@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import Styles 1.0
@@ -37,7 +38,7 @@ Item {
     }
 
     Button {
-      id: browseButton
+      id: btnBrowse
 
       Layout.fillHeight: true
       Layout.preferredWidth: root.height
@@ -48,12 +49,13 @@ Item {
         source: "open.svg"
         mipmap: true
         smooth: true
+        opacity: btnBrowse.pressed ? 0.8 : 1.0
       }
       background: Rectangle {
         color: "transparent"
         radius: 4
         border {
-          width: browseButton.hovered ? 1 : 0
+          width: btnBrowse.hovered ? 1 : 0
           color: Styles.background.dp04
         }
       }

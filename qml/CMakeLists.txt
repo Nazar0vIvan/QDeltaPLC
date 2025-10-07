@@ -7,13 +7,14 @@ set(QML_FILES
   Logger.qml
   NavigationPanel/NavigationPanel.qml
   NavigationPanel/NavigationMenuDelegate.qml
-  DeltaPanel/DeltaModuleAP.qml
-  DeltaPanel/DeltaPanel.qml
-  DeltaPanel/LedsPanel.qml
-  DeltaPanel/DeltaModuleInput.qml
-  DeltaPanel/DeltaModuleOutput.qml
-  FTSPanel/FTSPanel.qml
-  FTSPanel/FTSBars.qml
+  Views/Dashboard/DeltaPanel/DeltaModuleAP.qml
+  Views/Dashboard/DeltaPanel/DeltaPanel.qml
+  Views/Dashboard/DeltaPanel/LedsPanel.qml
+  Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
+  Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
+  Views/Dashboard/DeltaPanel/DeltaControls.qml
+  Views/Dashboard/FTSPanel/FTSPanel.qml
+  Views/Dashboard/FTSPanel/FTSBars.qml
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
   Views/Options/NetworkTcp.qml

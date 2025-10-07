@@ -23,13 +23,13 @@ ColumnLayout {
     Layout.preferredHeight: childrenRect.height
     spacing: 20
 
-    NetworkTcp {
-      id: networkTcp
+    DeltaControls {
+      id: deltaControls
 
-      title: qsTr("Network")
+      title: qsTr("Controls")
+
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
-      Layout.alignment: Qt.AlignTop
     }
 
     DeltaModuleAP {
@@ -37,7 +37,7 @@ ColumnLayout {
 
       title: 'AS16AP11<font color="red">P</font>-A'
       Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: networkTcp.implicitHeight
+      Layout.preferredHeight: implicitHeight
 
       // enabled: plcRunner.socketState === 3
 
@@ -56,7 +56,7 @@ ColumnLayout {
 
       title: 'AS16AP11<font color="#509dfd">T</font>-A'
       Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: networkTcp.implicitHeight
+      Layout.preferredHeight: implicitHeight
 
       // enabled: plcRunner.socketState === 3
 
@@ -75,8 +75,6 @@ ColumnLayout {
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
       Layout.alignment: Qt.AlignTop
-
-
     }
 
     Item { Layout.fillWidth: true }

@@ -9,13 +9,11 @@ Item {
 
     property int labelWidth: 50
     property alias labelText: label.text
-    property int slotWidth: 100
     property alias color: label.color
     property alias spacing: rl.spacing
     default property alias content: slot.data
 
-    implicitWidth: Math.max(root.labelWidth,
-                            label.implicitWidth) + rl.spacing + slotWidth
+    implicitWidth: Math.max(root.labelWidth, label.implicitWidth) + rl.spacing + slot.data.width
 
     RowLayout {
         id: rl

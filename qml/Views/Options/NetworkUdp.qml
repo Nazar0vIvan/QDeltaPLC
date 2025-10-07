@@ -79,22 +79,22 @@ QxGroupBox {
     }
 
     QxField { // peer port
-    id: ppField
+      id: ppField
 
-    Layout.preferredWidth: implicitWidth
-    Layout.preferredHeight: root.fieldHeight
-    labelWidth: root.labelWidth
-    labelText: "FTS Port :"
+      Layout.preferredWidth: implicitWidth
+      Layout.preferredHeight: root.fieldHeight
+      labelWidth: root.labelWidth
+      labelText: "FTS Port :"
 
-    QxTextInput {
-      id: pp
+      QxTextInput {
+        id: pp
 
-      height: root.fieldHeight
-      width: root.fieldWidth
-      text: "49152"
-      readOnly: true
+        height: root.fieldHeight
+        width: root.fieldWidth
+        text: "49152"
+        readOnly: true
+      }
     }
-  }
 
     QxField { // streaming status
       id: statusField

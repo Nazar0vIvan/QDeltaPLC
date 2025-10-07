@@ -3,8 +3,6 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
 
-import "DeltaPanel"
-import "FTSPanel"
 import "NavigationPanel"
 import "Views/Options"
 import "Views/Dashboard"
@@ -60,7 +58,7 @@ Window {
 
         Dashboard { id: dashboard }
 
-        Options { id: settingsView }
+        Options { id: options }
       }
 
       Logger {

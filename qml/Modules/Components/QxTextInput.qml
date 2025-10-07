@@ -14,6 +14,7 @@ TextField {
   selectionColor: Styles.primary.highlight
   selectByMouse: true
   readOnly: false
+  verticalAlignment: TextInput.AlignVCenter
 
   background: Rectangle {
     color: control.readOnly ? "transparent" : Styles.background.dp04
