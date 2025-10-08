@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 import Styles 1.0
 
-Item {
+  Item {
   id: root
 
   property int labelWidth: 0

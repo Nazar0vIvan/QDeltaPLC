@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-QxGroupBox {
+Control {
   id: root
 
   required property var xTags
@@ -21,13 +21,19 @@ QxGroupBox {
   readonly property int rowHeight: 22
   readonly property int labelWidth: 28
   readonly property int switchWidth: 36
-  readonly property int viewWidth: 110
-  readonly property int viewHeight: 8*root.rowHeight + 7*spacing
 
-  implicitWidth: leftPadding + rl.implicitWidth + rightPadding
-  implicitHeight: topPadding + rl.implicitHeight + bottomPadding
+  property string title: ""
 
-  RowLayout {
+  topPadding: 40; bottomPadding: 10
+  leftPadding: 10; rightPadding: 10
+
+
+  background: Rectangle {
+    color: "transparent"
+    border{width: 1; color: Styles.background.dp12}
+  }
+
+  contentItem: RowLayout {
     id: rl
 
     spacing: 30
@@ -115,6 +121,25 @@ QxGroupBox {
           }
         }
       }
+    }
+  }
+
+  Control {
+    id: header
+
+    anchors.right: parent.right
+    anchors.top: parent.top
+    leftPadding: 10; rightPadding: 10
+    topPadding: 6; bottomPadding: 6
+
+    background: Rectangle {
+      color: "transparent"
+      border{width: 1; color: Styles.background.dp12}
+    }
+
+    contentItem: Text {
+      text: root.title
+      color: Styles.foreground.medium
     }
   }
 }

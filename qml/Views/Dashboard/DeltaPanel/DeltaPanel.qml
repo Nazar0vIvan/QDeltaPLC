@@ -5,21 +5,15 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-ColumnLayout {
-  id: rool
+QxGroupBox {
+  id: root
 
-  spacing: 30
-
-  Text {
-    text: qsTr("PLC AS332T-A")
-    color: Styles.foreground.high
-    font{pixelSize: 20; bold: true}
-  }
+  implicitWidth: leftPadding + rl.implicitWidth + rightPadding
+  implicitHeight: topPadding + rl.implicitHeight + bottomPadding
 
   RowLayout {
     id: rl
 
-    Layout.fillWidth: true
     spacing: 20
 
     DeltaModuleAP {
@@ -60,7 +54,7 @@ ColumnLayout {
     }
 
     ColumnLayout {
-      id: cl
+      id: cl1
 
       Layout.preferredHeight: moduleAP_T.height
 
@@ -73,13 +67,12 @@ ColumnLayout {
       DeltaControls {
         id: deltaControls
 
-        title: qsTr("Controls")
-
         Layout.alignment: Qt.AlignBottom
+        isHeaderVisible: false
       }
     }
-
-    Item { Layout.fillWidth: true }
   }
 }
+
+
 

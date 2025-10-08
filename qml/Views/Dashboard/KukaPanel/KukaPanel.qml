@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import Styles 1.0
 
 import "DeltaPanel"
-import "FtsPanel"
+import "FTSPanel"
 
 Item {
   id: root
@@ -21,16 +21,18 @@ Item {
       Layout.fillWidth: true
       spacing: 20
 
-      DeltaPanel {
-        id: deltaPanel
+      DeltaPanel { id: deltaPanel }
 
-        title: 'PLC AS332T-A'
+      Rectangle {
+        id: separator1
+
+        Layout.preferredWidth: 2
+        Layout.preferredHeight: deltaPanel.height
+        color: Styles.background.dp04
       }
 
-      FtsPanel {
+      FTSPanel {
         id: ftsPanel
-
-        title: qsTr("FTS Delta-IP68-SI-660-60")
       }
 
       Item { Layout.fillWidth: true }

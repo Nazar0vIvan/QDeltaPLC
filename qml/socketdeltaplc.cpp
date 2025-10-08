@@ -2,127 +2,140 @@
 
 SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocket(parent)
 {
-    this->setObjectName(name);
+  this->setObjectName(name);
 
-    connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::onErrorOccurred);
-    connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::onStateChanged);
-    connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
-    connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
+  connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::onErrorOccurred);
+  connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::onStateChanged);
+  connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
+  connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
-    connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
+  connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
 }
 SocketDeltaPLC::~SocketDeltaPLC() {}
 
 // PUBLIC SLOTS
-void SocketDeltaPLC::connectToHost(const QVariantMap &data)
+void SocketDeltaPLC::connectToHost()
 {
-    // QHostAddress la = QHostAddress(data.value("localAddress").toString());
-    // qint16 lp = data.value("localPort").toUInt();
-    QHostAddress pa = QHostAddress(data.value("peerAddress").toString());
-    qint16 pp = data.value("peerPort").toUInt();
-
-    QTcpSocket::connectToHost(pa, pp, QAbstractSocket::ReadWrite);
+  QTcpSocket::connectToHost(peerAddress(), peerPort(), QAbstractSocket::ReadWrite);
 }
 
 void SocketDeltaPLC::disconnectFromHost()
 {
-     QTcpSocket::disconnectFromHost();
+  QTcpSocket::disconnectFromHost();
 }
 
 void SocketDeltaPLC::onErrorOccurred(QAbstractSocket::SocketError socketError) {
-    emit logMessage({this->errorString(), 0, objectName()});
+  emit logMessage({this->errorString(), 0, objectName()});
 }
 
 void SocketDeltaPLC::onStateChanged(QAbstractSocket::SocketState state) {
-    emit logMessage({stateToString(state), 2, objectName()});
+  emit logMessage({stateToString(state), 2, objectName()});
 }
 
 void SocketDeltaPLC::onConnected()
 {
-    emit logMessage({"Connection has been successfully established", 1, objectName()});
+  emit logMessage({"Connection has been successfully established", 1, objectName()});
 }
 
 void SocketDeltaPLC::onReadyRead()
 {
-    QByteArray chunk = readAll();
-    const qint64 n = chunk.size();
+  QByteArray chunk = readAll();
+  const qint64 n = chunk.size();
 
-    QVector<bool> bits(8);
-    quint8 firstByte = static_cast<quint8>(chunk[0]);
-    for (int i = 0; i < 8; i++) {
-        bits[i] = (firstByte >> i) & 1;
-    }
+  QVector<bool> bits(8);
+  quint8 firstByte = static_cast<quint8>(chunk[0]);
+  for (int i = 0; i < 8; i++) {
+    bits[i] = (firstByte >> i) & 1;
+  }
 
-    qDebug() << chunk[0];
-    qDebug() << firstByte;
-    qDebug() << bits;
+  qDebug() << chunk[0];
+  qDebug() << firstByte;
+  qDebug() << bits;
 
-    emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
+  emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
 
 void SocketDeltaPLC::writeMessage(const QVariantMap& cmd)
 {
-    QByteArray tosend;
-    switch (cmd.value("id").toInt()) {
-        case 0: { // set outputs
-            const quint8 id     = 8;
-            const quint8 module = static_cast<quint8>(cmd.value("module").toInt());
-            const quint8 output = static_cast<quint8>(cmd.value("output").toInt());
-            const quint8 state  = cmd.value("state").toBool() ? 1 : 0;
+  QByteArray tosend;
+  switch (cmd.value("id").toInt()) {
+    case 0: { // set outputs
+      const quint8 id     = 8;
+      const quint8 module = static_cast<quint8>(cmd.value("module").toInt());
+      const quint8 output = static_cast<quint8>(cmd.value("output").toInt());
+      const quint8 state  = cmd.value("state").toBool() ? 1 : 0;
 
-            tosend.reserve(4);
-            tosend.append(char(id));
-            tosend.append(char(module));
-            tosend.append(char(output));
-            tosend.append(char(state));
+      tosend.reserve(4);
+      tosend.append(char(id));
+      tosend.append(char(module));
+      tosend.append(char(output));
+      tosend.append(char(state));
 
-            qDebug() << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
-            break;
-        }
-        case 1: { // send raw string
-            QByteArray msg = cmd.value("message").toByteArray();
-            tosend.append(char(1));
-            tosend.append(msg);
-            break;
-        }
+      qDebug() << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
+      break;
     }
-    const qint64 bytesCount = write(tosend);
-    if (bytesCount == -1) {
-        emit logMessage({"No bytes were written", 0, objectName()});
+    case 1: { // send raw string
+      QByteArray msg = cmd.value("message").toByteArray();
+      tosend.append(char(1));
+      tosend.append(msg);
+      break;
     }
-    emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, objectName()});
+  }
+  const qint64 bytesCount = write(tosend);
+  if (bytesCount == -1) {
+    emit logMessage({"No bytes were written", 0, objectName()});
+  }
+  emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, objectName()});
+}
+
+void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
+{
+  QHostAddress la = QHostAddress(config.value("localAddress").toString());
+  qint16 lp = config.value("localPort").toUInt();
+  QHostAddress pa = QHostAddress(config.value("peerAddress").toString());
+  qint16 pp = config.value("peerPort").toUInt();
+
+  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
+  setSocketState(SocketState::BoundState);
+  emit logMessage({stateToString(state()) + "<br/>" +
+                   "[local address]: " + la.toString() + "<br/>" +
+                   "[local port]: " + QString::number(lp) + "<br/>" +
+                   "[peer address]: " + pa.toString() + "<br/>" +
+                   "[peer port]: " + QString::number(pp) + "<br/>" +
+                   "----------",
+                   1, objectName()});
 }
 
 // PRIVATE
 bool SocketDeltaPLC::tearDownToUnconnected(int ms)
 {
-    if (state() == QAbstractSocket::UnconnectedState)
-        return true;
+  if (state() == QAbstractSocket::UnconnectedState)
+    return true;
 
-    disconnectFromHost();
-    if (state() == QAbstractSocket::UnconnectedState)
-        return true;
+  disconnectFromHost();
+  if (state() == QAbstractSocket::UnconnectedState)
+    return true;
 
-    if (state() == QAbstractSocket::ClosingState) {
-        if (waitForDisconnected(ms))
-            return true;
-    }
-    abort(); close();
-    return state() == QAbstractSocket::UnconnectedState;
+  if (state() == QAbstractSocket::ClosingState) {
+    if (waitForDisconnected(ms))
+      return true;
+  }
+  abort(); close();
+  return state() == QAbstractSocket::UnconnectedState;
 }
 
 QString SocketDeltaPLC::stateToString(SocketState state)
 {
-    switch (state) {
-        case QAbstractSocket::UnconnectedState: return "UnconnectedState";
-        case QAbstractSocket::HostLookupState:  return "HostLookupState";
-        case QAbstractSocket::ConnectingState:  return "ConnectingState";
-        case QAbstractSocket::ConnectedState:   return "ConnectedState";
-        case QAbstractSocket::BoundState:       return "BoundState";
-        case QAbstractSocket::ClosingState:     return "ClosingState";
-        case QAbstractSocket::ListeningState:   return "ListeningState";
-        default: return "UnconnectedState";
-    }
+  switch (state) {
+    case QAbstractSocket::UnconnectedState: return "UnconnectedState";
+    case QAbstractSocket::HostLookupState:  return "HostLookupState";
+    case QAbstractSocket::ConnectingState:  return "ConnectingState";
+    case QAbstractSocket::ConnectedState:   return "ConnectedState";
+    case QAbstractSocket::BoundState:       return "BoundState";
+    case QAbstractSocket::ClosingState:     return "ClosingState";
+    case QAbstractSocket::ListeningState:   return "ListeningState";
+    default: return "UnconnectedState";
+  }
 }
 
 /*

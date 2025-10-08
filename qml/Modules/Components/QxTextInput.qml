@@ -25,11 +25,7 @@ TextField {
     }
   }
 
-  onAccepted: {
-    editingFinished()
-    focus = false
-  }
-  onFocusChanged: if (focus & !readOnly) selectAll()
+  onFocusChanged: if (focus) selectAll()
 
   Text {
     id: defaultTxt

@@ -13,8 +13,9 @@ set(QML_FILES
   Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
   Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
   Views/Dashboard/DeltaPanel/DeltaControls.qml
-  Views/Dashboard/FTSPanel/FTSPanel.qml
-  Views/Dashboard/FTSPanel/FTSBars.qml
+  Views/Dashboard/FtsPanel/FtsPanel.qml
+  Views/Dashboard/FtsPanel/FtsBars.qml
+  Views/Dashboard/KukaPanel/KukaPanel.qml
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
   Views/Options/NetworkTcp.qml

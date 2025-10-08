@@ -6,41 +6,21 @@ import QtCharts
 import Styles 1.0
 import Components 1.0
 
-Item {
+QxGroupBox {
   id: root
+
+  implicitWidth: leftPadding + cl.implicitWidth + rightPadding
+  implicitHeight: topPadding + cl.implicitHeight + bottomPadding
 
   ColumnLayout {
     id: cl
 
-    anchors.fill: parent
-    spacing: 40
-
-    Text {
-      id: title
-
-      text: qsTr("Schunk FTS Delta-IP68-SI-660-60")
-      color: Styles.foreground.high
-      font{pixelSize: 20; bold: true}
-    }
-
-    RowLayout {
-      id: rl
-
-      Layout.fillWidth: true
-      spacing: 20
-
-      FTSBars {
-        id: bars
-
-        title: qsTr("Monitoring")
-        Layout.preferredHeight: implicitHeight
-        Layout.preferredWidth: implicitWidth
-      }
-
-      Item { Layout.fillWidth: true }
-    }
+    FtsBars { id: bars }
   }
 }
+
+
+
 
 
 

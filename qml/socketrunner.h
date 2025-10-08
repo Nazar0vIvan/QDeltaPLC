@@ -19,6 +19,7 @@ public:
     ~AbstractSocketRunner() override;
 
     Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
+    Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
 
     int socketState() const { return m_socketState; }
 
@@ -55,7 +56,7 @@ public:
     explicit TcpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
     ~TcpSocketRunner() override;
 
-    Q_INVOKABLE void connectToHost(const QVariantMap& data);
+    Q_INVOKABLE void connectToHost();
     Q_INVOKABLE void disconnectFromHost();
     Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
 };
@@ -71,7 +72,7 @@ public:
     Q_PROPERTY(QVariantList lastReading READ lastReading NOTIFY lastReadingChanged)
     Q_PROPERTY(bool isStreaming READ isStreaming NOTIFY isStreamingChanged)
 
-    Q_INVOKABLE void startStreaming(const QVariantMap& data);
+    Q_INVOKABLE void startStreaming();
     Q_INVOKABLE void stopStreaming();
 
     QVariantList lastReading() const { return m_lastReading; }

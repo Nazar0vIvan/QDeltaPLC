@@ -15,7 +15,7 @@ Window {
 
   property int navPanelWidth: 60
 
-  width: 1000
+  width: 1200
   height: 900
   visible: true
   title: qsTr("QDeltaPLC")

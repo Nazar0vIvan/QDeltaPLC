@@ -30,10 +30,10 @@ ScrollView {
       target: logger
       function onLogAdded(message){
         const colors = {
-            0: "red",
-            1: "green",
+            0: "#ff3a31",
+            1: "#4ed964",
             2: "white",
-            3: "orange",
+            3: "#fdb050",
             4: "pink",
         }
         const col = colors[Number(message.type)] || Styles.foreground.high

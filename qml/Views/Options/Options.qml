@@ -11,10 +11,11 @@ ListView {
   property int fieldWidth: 120
   property int labelWidth: 126
 
-  topMargin: 14
-  bottomMargin: 14
-  leftMargin: 14
-  rightMargin:14
+  topMargin: 14; bottomMargin: 14
+  leftMargin: 14; rightMargin: 14
+
+  spacing: 16
+  interactive: false
 
   header: Text {
     height: 30
@@ -22,8 +23,6 @@ ListView {
     font: Styles.fonts.title
     color: Styles.foreground.high
   }
-
-  spacing: 16
 
   model: ObjectModel {
 
@@ -39,19 +38,18 @@ ListView {
 
     QxField { // pc address
 
-      id: plcLaField
+      id: pcAddrField
 
       labelText: "PC Address:"
       height: root.fieldHeight
       labelWidth: root.labelWidth
 
       QxTextInput {
-        id: plcLa
+        id: pcAddr
 
         height: root.fieldHeight
         width: root.fieldWidth
-        text: "192.168.1.1"
-        readOnly: true
+        text: "192.168.1.100"
       }
     }
 
@@ -192,7 +190,9 @@ ListView {
           height: root.fieldHeight
           text: "3333"
           validator: IntValidator{ bottom: 0; top: 65535; }
+          onTextEdited: btnApply.enabled = true
         }
+
       }
 
       QxField { // plc peer address
@@ -212,10 +212,11 @@ ListView {
           validator: RegularExpressionValidator {
               regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
+          onTextEdited: btnApply.enabled = true
         }
       }
 
-      QxField { // peer port
+      QxField { // plc peer port
         id: plcPpField
 
         Layout.preferredWidth: implicitWidth
@@ -230,6 +231,7 @@ ListView {
           height: root.fieldHeight
           text: "5051"
           validator: IntValidator{ bottom: 0; top: 65535; }
+          onTextEdited: btnApply.enabled = true
         }
       }
     }
@@ -244,8 +246,8 @@ ListView {
       }
     }
 
-    OptionsSection {
-      id: rdtOptions
+    OptionsSection { // rdt config
+      id: ftsOptions
 
       title: "Schunk FTS Delta-SI-660-60"
       Layout.fillWidth: true
@@ -253,7 +255,7 @@ ListView {
       spacing: 12
 
       QxField { // local port
-        id: rdtLpField
+        id: ftsLpField
 
         Layout.preferredWidth: implicitWidth
         Layout.preferredHeight: root.fieldHeight
@@ -261,25 +263,26 @@ ListView {
         labelText: "PC Port :"
 
         QxTextInput {
-          id: rdLp
+          id: ftsLp
 
           height: root.fieldHeight
           width: root.fieldWidth
           text: "59152"
           validator: IntValidator { bottom: 0; top: 65535 }
+          onTextEdited: btnApply.enabled = true
         }
       }
 
       QxField { // peer address
-        id: rdtPaField
+        id: ftsPaField
 
         Layout.preferredWidth: implicitWidth
         Layout.preferredHeight: root.fieldHeight
         labelWidth: root.labelWidth
-        labelText: "FTS IP :"
+        labelText: "FTS Address :"
 
         QxTextInput {
-          id: rdtPa
+          id: ftsPa
 
           height: root.fieldHeight
           width: root.fieldWidth
@@ -287,11 +290,12 @@ ListView {
           validator: RegularExpressionValidator {
               regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
+          onTextEdited: btnApply.enabled = true
         }
       }
 
       QxField { // peer port
-        id: rdtPpField
+        id: ftsPpField
 
         Layout.preferredWidth: implicitWidth
         Layout.preferredHeight: root.fieldHeight
@@ -299,17 +303,19 @@ ListView {
         labelText: "FTS Port :"
 
         QxTextInput {
-          id: rdtPp
+          id: ftsPp
 
           height: root.fieldHeight
           width: root.fieldWidth
           text: "49152"
           readOnly: true
+
+          onTextEdited: btnApply.enabled = true
         }
       }
 
       Rectangle { // separator
-        width: 300
+        width: 400
         height: 1
         gradient: Gradient {
           GradientStop { position: 0.0; color: Styles.secondary.dark }
@@ -323,6 +329,22 @@ ListView {
       id: btnApply
 
       text: "Apply"
+
+      onClicked: {
+        plcRunner.setSocketConfig({
+          localAddress: pcAddr.text,
+          localPort:    Number(plcLp.text),
+          peerAddress:  plcPa.text,
+          peerPort:     Number(plcPp.text)
+        })
+        ftsRunner.setSocketConfig({
+          localAddress: pcAddr.text,
+          localPort:    Number(ftsLp.text),
+          peerAddress:  ftsPa.text,
+          peerPort:     Number(ftsPp.text)
+        })
+        enabled = false
+      }
     }
   }
   Item {

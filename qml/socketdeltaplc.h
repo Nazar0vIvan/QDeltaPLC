@@ -25,9 +25,10 @@ public:
     SocketDeltaPLC(const QString& name, QObject *parent = nullptr);
     ~SocketDeltaPLC();
 
-    Q_INVOKABLE void connectToHost(const QVariantMap& data);
+    Q_INVOKABLE void connectToHost();
     Q_INVOKABLE virtual void disconnectFromHost() override;
     Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
+    Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
 
 signals:
     void logMessage(const LoggerMessage& msg);
