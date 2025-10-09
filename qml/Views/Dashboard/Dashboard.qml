@@ -12,7 +12,11 @@ Item {
   ColumnLayout {
     id: cl
 
-    anchors{ fill: parent; margins: 20 }
+    anchors {
+      fill: parent
+      topMargin: 40; bottomMargin: 20
+      leftMargin: 20; rightMargin: 20
+    }
     spacing: 20
 
     RowLayout {
@@ -31,6 +35,7 @@ Item {
         id: ftsPanel
 
         title: qsTr("FTS Delta-IP68-SI-660-60")
+        Layout.alignment: Qt.AlignTop
       }
 
       Item { Layout.fillWidth: true }

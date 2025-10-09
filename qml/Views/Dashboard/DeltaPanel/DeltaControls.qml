@@ -48,11 +48,10 @@ Control {
       QxButton {
         id: connectBnt
 
-        Layout.preferredHeight: root.fieldHeight
         checked: plcRunner && plcRunner.socketState === 3
         enabled: plcRunner && (
-            plcRunner.socketState === 0 ||
-            plcRunner.socketState === 3
+          plcRunner.socketState === 0 ||
+          plcRunner.socketState === 3
         )
         text: checked ? "Disconnect" : "Connect"
         onClicked: {
@@ -60,12 +59,12 @@ Control {
           if (checked) {
               plcRunner.disconnectFromHost()
           } else {
-              plcRunner.connectToHost({
-                  localAddress: la.text,
-                  localPort:    Number(lp.text),
-                  peerAddress:  pa.text,
-                  peerPort:     Number(pp.text)
-              })
+            plcRunner.connectToHost({
+              localAddress: la.text,
+              localPort:    Number(lp.text),
+              peerAddress:  pa.text,
+              peerPort:     Number(pp.text)
+            })
           }
         }
       }
@@ -73,7 +72,6 @@ Control {
       QxButton {
         id: sendBtn
 
-        Layout.preferredHeight: root.fieldHeight
         checkable: false
         text: "Send"
         enabled: plcRunner && plcRunner.socketState === 3

@@ -48,8 +48,8 @@ Item {
         to: model.to
         labelText: model.tag
 
-        value: ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ?
-                 Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
+        value: 300 // ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ?
+                   // Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
       }
     }
 

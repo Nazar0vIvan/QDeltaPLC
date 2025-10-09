@@ -38,36 +38,36 @@ set(CPP_FILES
 )
 
 qt_add_executable(qdeltaplc
-    main.cpp
+  main.cpp
 )
 
 qt_add_qml_module(qdeltaplc
-    URI qdeltaplc_qml_module
-    VERSION 1.0
-    QML_FILES
-      ${QML_FILES}
-    SOURCES
-      ${CPP_FILES}
-    RESOURCES
-      NavigationPanel/dashboard.svg
-      NavigationPanel/settings.svg
+  URI qdeltaplc_qml_module
+  VERSION 1.0
+  QML_FILES
+    ${QML_FILES}
+  SOURCES
+    ${CPP_FILES}
+  RESOURCES
+    NavigationPanel/dashboard.svg
+    NavigationPanel/settings.svg
 )
 
 target_link_libraries(qdeltaplc
-    PRIVATE Qt6::Quick
-    PRIVATE Qt6::Gui
-    PRIVATE Qt6::Network
-    PRIVATE Qt6::Charts
-    PRIVATE Stylesplugin
-    PRIVATE Componentsplugin
+  PRIVATE Qt6::Quick
+  PRIVATE Qt6::Gui
+  PRIVATE Qt6::Network
+  PRIVATE Qt6::Charts
+  PRIVATE Stylesplugin
+  PRIVATE Componentsplugin
 )
 
 include(GNUInstallDirs)
 
 install(TARGETS qdeltaplc
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  BUNDLE DESTINATION .
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 qt_import_qml_plugins(qdeltaplc)
