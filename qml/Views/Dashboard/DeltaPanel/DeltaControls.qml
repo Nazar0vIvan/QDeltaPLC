@@ -46,7 +46,7 @@ Control {
       id: rl
 
       QxButton {
-        id: connectBnt
+        id: btnConnect
 
         checked: plcRunner && plcRunner.socketState === 3
         enabled: plcRunner && (
@@ -70,7 +70,7 @@ Control {
       }
 
       QxButton {
-        id: sendBtn
+        id: btnSend
 
         checkable: false
         text: "Send"

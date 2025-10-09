@@ -5,6 +5,7 @@ import Styles 1.0
 
 import "DeltaPanel"
 import "FtsPanel"
+import "KukaPanel"
 
 Item {
   id: root
@@ -51,6 +52,12 @@ Item {
         GradientStop { position: 1.0; color: Styles.background.dp00 }
         orientation: Gradient.Horizontal
       }
+    }
+
+    KukaPanel {
+      id: kukaPanel
+
+      title: 'KUKA KRC4'
     }
 
     Item { Layout.fillHeight: true }

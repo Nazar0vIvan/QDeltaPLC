@@ -27,14 +27,12 @@ Control {
   topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
 
-
   background: Rectangle {
     color: "transparent"
     border{width: 1; color: Styles.background.dp12}
   }
 
   contentItem: RowLayout {
-    id: rl
 
     spacing: 30
 

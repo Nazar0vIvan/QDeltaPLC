@@ -16,6 +16,8 @@ set(QML_FILES
   Views/Dashboard/FtsPanel/FtsPanel.qml
   Views/Dashboard/FtsPanel/FtsBars.qml
   Views/Dashboard/KukaPanel/KukaPanel.qml
+  Views/Dashboard/KukaPanel/RsiControls.qml
+  Views/Dashboard/KukaPanel/RsiCoordinate.qml
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
   Views/Options/NetworkTcp.qml

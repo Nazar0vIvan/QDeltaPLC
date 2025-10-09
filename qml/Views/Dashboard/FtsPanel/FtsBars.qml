@@ -47,25 +47,10 @@ Item {
         from: model.from
         to: model.to
         labelText: model.tag
+        color: Styles.secondary.base
 
-        value: 300 // ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ?
-                   // Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
-      }
-    }
-
-    QxButton {
-      id: btnStart
-
-      checked: ftsRunner && ftsRunner.isStreaming
-      enabled: ftsRunner && ftsRunner.socketState === 4 // BoundState
-      text: checked ? "Stop" : "Start"
-      onClicked: {
-        if (!ftsRunner) return
-        if (checked) {
-            ftsRunner.stopStreaming()
-        } else {
-            ftsRunner.startStreaming()
-        }
+        value: ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ?
+               Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
       }
     }
   }
