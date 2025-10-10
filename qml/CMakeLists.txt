@@ -16,7 +16,7 @@ set(QML_FILES
   Views/Dashboard/FtsPanel/FtsPanel.qml
   Views/Dashboard/FtsPanel/FtsBars.qml
   Views/Dashboard/KukaPanel/KukaPanel.qml
-  Views/Dashboard/KukaPanel/RsiControls.qml
+  Views/Dashboard/KukaPanel/RsiPosition.qml
   Views/Dashboard/KukaPanel/RsiCoordinate.qml
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
@@ -53,6 +53,9 @@ qt_add_qml_module(qdeltaplc
   RESOURCES
     NavigationPanel/dashboard.svg
     NavigationPanel/settings.svg
+    Views/Dashboard/KukaPanel/plus.svg
+    Views/Dashboard/KukaPanel/minus.svg
+
 )
 
 target_link_libraries(qdeltaplc

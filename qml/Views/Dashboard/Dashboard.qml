@@ -58,6 +58,8 @@ Item {
       id: kukaPanel
 
       title: 'KUKA KRC4'
+
+      Layout.topMargin: 14
     }
 
     Item { Layout.fillHeight: true }
