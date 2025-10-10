@@ -10,12 +10,11 @@ Control {
   id: root
 
   property int fieldHeight: 24
-  property int fieldWidth: 120
+  property int fieldWidth: 112
 
-  property string title: ""
-  property alias isHeaderVisible: header.visible
+  property alias title: header.text
 
-  topPadding: isHeaderVisible ? 40 : 10; bottomPadding: 10
+  topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
 
   background: Rectangle {
@@ -84,23 +83,24 @@ Control {
     }
   }
 
-  Control {
+  Label {
     id: header
 
+    anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
     leftPadding: 10; rightPadding: 10
     topPadding: 6; bottomPadding: 6
 
     background: Rectangle {
-      color: "transparent"
+      color: Styles.background.dp01
       border{width: 1; color: Styles.background.dp12}
     }
 
-    contentItem: Text {
-      text: root.title
-      color: Styles.foreground.medium
-    }
+    textFormat: Text.RichText
+
+    color: Styles.foreground.medium
+    font{pixelSize: 12}
   }
 
 }

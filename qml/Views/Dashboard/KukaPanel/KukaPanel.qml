@@ -37,23 +37,25 @@ QxGroupBox {
         border{width: 1; color: Styles.background.dp12}
       }
 
-      Control {
+      Label {
         id: header
 
+        anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
         leftPadding: 10; rightPadding: 10
         topPadding: 6; bottomPadding: 6
 
         background: Rectangle {
-          color: "transparent"
+          color: Styles.background.dp01
           border{width: 1; color: Styles.background.dp12}
         }
 
-        contentItem: Text {
-          text: "Robot Sensor Interface"
-          color: Styles.foreground.medium
-        }
+        textFormat: Text.RichText
+        text: "Robot Sensor Interface"
+
+        color: Styles.foreground.medium
+        font{pixelSize: 12}
       }
     }
   }

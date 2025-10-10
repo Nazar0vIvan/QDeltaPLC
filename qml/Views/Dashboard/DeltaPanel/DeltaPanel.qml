@@ -54,21 +54,22 @@ QxGroupBox {
     }
 
     ColumnLayout {
-      id: cl1
+      id: cl
 
-      Layout.preferredHeight: moduleAP_T.height
+      spacing: 20
 
       LedsPanel {
         id: ledPanel
 
         Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
+        title: "Door Panel"
       }
 
-      DeltaControls {
-        id: deltaControls
+      DeltaNetwork {
+        id: deltaNetwork
 
         Layout.alignment: Qt.AlignBottom
-        isHeaderVisible: false
+        title: "Network"
       }
     }
   }

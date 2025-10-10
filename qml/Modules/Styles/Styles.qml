@@ -4,7 +4,7 @@ import QtQuick 2.12
 QtObject {
   readonly property QtObject background: QtObject {
     readonly property color dp00: "#121212"
-    readonly property color dp01: "#6C6C6C"
+    readonly property color dp01: "#1E1E1E"
     readonly property color dp02: "#232323"
     readonly property color dp03: "#252525"
     readonly property color dp04: "#272727"

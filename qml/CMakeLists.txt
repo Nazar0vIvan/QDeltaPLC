@@ -12,12 +12,13 @@ set(QML_FILES
   Views/Dashboard/DeltaPanel/LedsPanel.qml
   Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
   Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
-  Views/Dashboard/DeltaPanel/DeltaControls.qml
+  Views/Dashboard/DeltaPanel/DeltaNetwork.qml
   Views/Dashboard/FtsPanel/FtsPanel.qml
   Views/Dashboard/FtsPanel/FtsBars.qml
   Views/Dashboard/KukaPanel/KukaPanel.qml
   Views/Dashboard/KukaPanel/RsiPosition.qml
   Views/Dashboard/KukaPanel/RsiCoordinate.qml
+  Views/Dashboard/KukaPanel/Counter.qml
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
   Views/Options/NetworkTcp.qml
@@ -54,8 +55,10 @@ qt_add_qml_module(qdeltaplc
     NavigationPanel/dashboard.svg
     NavigationPanel/settings.svg
     Views/Dashboard/KukaPanel/plus.svg
+    Views/Dashboard/KukaPanel/step.svg
     Views/Dashboard/KukaPanel/minus.svg
-
+    Views/Dashboard/KukaPanel/arrow_right.svg
+    Views/Dashboard/KukaPanel/arrow_left.svg
 )
 
 target_link_libraries(qdeltaplc

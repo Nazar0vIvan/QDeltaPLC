@@ -11,7 +11,8 @@ Control {
 
   required property var tags
   property string title: ""
-  property alias dimension: dimension.text
+  property string dimension: ""
+  property int imageSize: 10
 
   topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
@@ -37,28 +38,12 @@ Control {
       }
     }
 
-    RowLayout {
-      id: rl2
+    Counter {
+      id: step
 
-      QxField {
-        id: stepField
-
-        labelText: "Step:"
-        height: 22
-        labelWidth: 30
-
-        QxTextInput {
-          id: step
-
-          width: 50; height: 22
-        }
-      }
-      Text {
-        id: dimension
-
-        text: "mm"
-        color: Styles.foreground.high
-      }
+      imageSource: "step.svg"
+      dimension: root.dimension
+      value: "0.001"
     }
   }
 }
