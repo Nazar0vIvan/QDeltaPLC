@@ -38,7 +38,7 @@ Rectangle {
       radius: 4
       color: Styles.primary.base
       opacity: 0.5
-      Behavior on y { NumberAnimation { duration: 300 } }
+      Behavior on y { NumberAnimation { duration: 100 } }
     }
   }
 }

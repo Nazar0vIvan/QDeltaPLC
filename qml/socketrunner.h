@@ -7,6 +7,7 @@
 #include <QVector>
 #include <QPointF>
 #include <QTimer>
+#include <QMetaMethod>
 
 #include "logger.h"
 
@@ -19,7 +20,7 @@ public:
     ~AbstractSocketRunner() override;
 
     Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
-    Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
+    Q_INVOKABLE bool invoke(const QString& method, const QVariantMap& args = {});
 
     int socketState() const { return m_socketState; }
 
@@ -30,7 +31,7 @@ signals:
 
 public slots:
     void start();
-    void stop(); // connects to aboutToQuit app signal
+    void stop();
 
     void onSocketStateChanged(QAbstractSocket::SocketState state);
 
@@ -40,9 +41,12 @@ public slots:
 protected:
     QAbstractSocket* m_socket = nullptr;
     QThread* m_thread = nullptr;
+    QStringList m_api = {};
 
 private:
     void attachSocket(QAbstractSocket* sock);
+    QStringList invokableMethodNames() const;
+    bool allowed(const QString& methodName) const;
 
     int m_socketState = QAbstractSocket::UnconnectedState;
     QVariant m_buffer;

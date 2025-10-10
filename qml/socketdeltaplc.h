@@ -11,13 +11,6 @@
 #define PEER_ADDRESS "192.168.2.5"
 #define PEER_PORT 3333
 
-/*
-  COMMAND:
-    cmd_id - payload
-    [byte]   var]
-*/
-
-
 class SocketDeltaPLC : public QTcpSocket
 {
     Q_OBJECT

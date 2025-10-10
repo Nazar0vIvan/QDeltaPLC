@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import Styles 1.0
@@ -16,76 +17,81 @@ Item {
   signal increment()
   signal decrement()
 
-  implicitWidth: rl.implicitWidth
-  implicitHeight: rl.implicitHeight
+  implicitWidth: cl.implicitWidth
+  implicitHeight: cl.implicitHeight
 
-  RowLayout {
-    id: rl
+  ColumnLayout {
+    id: cl
 
-    spacing: 0
+    RowLayout {
+      id: rl
 
-    Text {
-      id: tag
+      spacing: 0
 
-      color: Styles.foreground.high
-      Layout.preferredWidth: 26
-    }
+      Text {
+        id: tag
 
-    Button {
-      id: btnDecrement
-
-      leftPadding: 8; rightPadding: 8
-      topPadding: 14; bottomPadding: 14
-
-      contentItem: Image {
-        fillMode: Image.PreserveAspectFit
-        width: root.imageSize
-        mipmap: true
-        smooth: true
-        source: "minus.svg"
+        color: Styles.foreground.high
+        Layout.preferredWidth: 26
       }
 
-      background: Rectangle {
-        topLeftRadius: 4; bottomLeftRadius: 4
-        color: Styles.background.dp04
-        border{width: 1; color: Styles.background.dp04}
-        opacity: btnDecrement.hovered ? 1.0 : 0.8
+      Button {
+        id: btnDecrement
+
+        leftPadding: 8; rightPadding: 8
+        topPadding: 14; bottomPadding: 14
+
+        contentItem: Image {
+          fillMode: Image.PreserveAspectFit
+          width: root.imageSize
+          mipmap: true
+          smooth: true
+          source: "minus.svg"
+        }
+
+        background: Rectangle {
+          topLeftRadius: 4; bottomLeftRadius: 4
+          color: Styles.background.dp04
+          border{width: 1; color: Styles.background.dp04}
+          opacity: btnDecrement.hovered ? 1.0 : 0.7
+        }
       }
-    }
 
-    TextField {
-      id: valueField
+      TextField {
+        id: valueField
 
-      Layout.preferredWidth: root.fieldWidth
-      Layout.preferredHeight: btnDecrement.implicitHeight
-      text: root.value.toFixed(2)
-      verticalAlignment: TextInput.AlignVCenter
-      horizontalAlignment: TextInput.AlignHCenter
+        Layout.preferredWidth: root.fieldWidth
+        Layout.preferredHeight: btnDecrement.implicitHeight
+        text: root.value.toFixed(2)
+        verticalAlignment: TextInput.AlignVCenter
+        horizontalAlignment: TextInput.AlignHCenter
+        color: Styles.foreground.high
 
-      background: Rectangle {
-        border{width: 1; color: Styles.background.dp04}
-        color: "transparent"
+        background: Rectangle {
+          border{width: 1; color: Styles.background.dp04}
+          color: "transparent"
+        }
       }
-    }
 
-    Button {
-      id: btnIncrement
+      Button {
+        id: btnIncrement
 
-      leftPadding: 8; rightPadding: 8
-      topPadding: 10; bottomPadding: 10
+        leftPadding: 8; rightPadding: 8
+        topPadding: 10; bottomPadding: 10
 
-      contentItem: Image {
-        fillMode: Image.PreserveAspectFit
-        width: root.imageSize
-        mipmap: true
-        smooth: true
-        source: "plus.svg"
-      }
-      background: Rectangle {
-        topRightRadius: 4; bottomRightRadius: 4
-        color: Styles.background.dp04
-        border{width: 1; color: Styles.background.dp04}
-        opacity: btnIncrement.hovered ? 1.0 : 0.8
+        contentItem: Image {
+          fillMode: Image.PreserveAspectFit
+          width: root.imageSize
+          mipmap: true
+          smooth: true
+          source: "plus.svg"
+        }
+        background: Rectangle {
+          topRightRadius: 4; bottomRightRadius: 4
+          color: Styles.background.dp04
+          border{width: 1; color: Styles.background.dp04}
+          opacity: btnIncrement.hovered ? 1.0 : 0.7
+        }
       }
     }
   }

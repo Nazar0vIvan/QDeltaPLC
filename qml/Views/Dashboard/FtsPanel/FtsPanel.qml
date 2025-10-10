@@ -15,6 +15,8 @@ QxGroupBox {
   ColumnLayout {
     id: cl
 
+    spacing: 14
+
     FtsBars { id: bars }
 
     QxButton {

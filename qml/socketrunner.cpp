@@ -8,6 +8,7 @@ AbstractSocketRunner::AbstractSocketRunner(QAbstractSocket* socket, QObject* par
   m_thread->setObjectName(QStringLiteral("SocketRunnerThread"));
 
   attachSocket(socket);
+  m_api = invokableMethodNames();
 
   connect(this, &AbstractSocketRunner::logMessage,  Logger::instance(), &Logger::push);
 }
@@ -19,9 +20,22 @@ AbstractSocketRunner::~AbstractSocketRunner()
   stop(); // this is a fallback in case if runner is destroyed manually (not by app closing)
 }
 
-void AbstractSocketRunner::setSocketConfig(const QVariantMap &config)
+bool AbstractSocketRunner::invoke(const QString &methodName, const QVariantMap &args)
 {
-  QMetaObject::invokeMethod(m_socket, "setSocketConfig", Qt::QueuedConnection, Q_ARG(QVariantMap, config));
+  if (!allowed(methodName)) {
+    emit logMessage({QString("Method '%1' is not in the invokable API").arg(methodName), 0, m_socket->objectName()});
+    return false;
+  }
+
+  const char* name = methodName.toLatin1().constData();
+
+  if (args.isEmpty()) {
+    return QMetaObject::invokeMethod(m_socket, name, Qt::QueuedConnection);
+  } else {
+    return QMetaObject::invokeMethod(m_socket, name, Qt::QueuedConnection, Q_ARG(QVariantMap, args));
+  }
+
+  return false;
 }
 
 void AbstractSocketRunner::start()
@@ -66,6 +80,26 @@ void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
   connect(m_socket, &QAbstractSocket::stateChanged, this, &AbstractSocketRunner::onSocketStateChanged, Qt::QueuedConnection);
 }
 
+QStringList AbstractSocketRunner::invokableMethodNames() const
+{
+  QStringList out;
+  if (!m_socket) return out;
+  const QMetaObject* mo = m_socket->metaObject();
+  for (int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
+    QMetaMethod mm = mo->method(i);
+    if (mm.methodType() == QMetaMethod::Method && mm.access() == QMetaMethod::Public)
+      out << QString::fromLatin1(mm.name());
+  }
+  out.removeDuplicates();
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+bool AbstractSocketRunner::allowed(const QString &methodName) const
+{
+  return m_api.contains(methodName);
+}
+
 void AbstractSocketRunner::onSocketStateChanged(QAbstractSocket::SocketState state)
 {
   if (m_socketState == static_cast<int>(state)) return;
@@ -92,22 +126,6 @@ TcpSocketRunner::TcpSocketRunner(QAbstractSocket* socket, QObject *parent) : Abs
 
 TcpSocketRunner::~TcpSocketRunner() = default;
 
-void TcpSocketRunner::connectToHost()
-{
-  if (!m_socket) return;
-  QMetaObject::invokeMethod(m_socket, "connectToHost", Qt::QueuedConnection);
-}
-
-void TcpSocketRunner::disconnectFromHost()
-{
-  QMetaObject::invokeMethod(m_socket, "disconnectFromHost", Qt::QueuedConnection);
-}
-
-void TcpSocketRunner::writeMessage(const QVariantMap& cmd)
-{
-  QMetaObject::invokeMethod(m_socket, "writeMessage", Qt::QueuedConnection, Q_ARG(QVariantMap, cmd));
-}
-
 // ----- UdpSocketRunner -----
 
 UdpSocketRunner::UdpSocketRunner(QAbstractSocket *socket, QObject *parent) : AbstractSocketRunner(socket, parent)
@@ -131,16 +149,6 @@ void UdpSocketRunner::onPulse()
         emit isStreamingChanged();
     }
     m_timer.start(); // restart idle countdown on every pulse
-}
-
-void UdpSocketRunner::startStreaming()
-{
-    QMetaObject::invokeMethod(m_socket, "startStreaming", Qt::QueuedConnection);
-}
-
-void UdpSocketRunner::stopStreaming()
-{
-    QMetaObject::invokeMethod(m_socket, "stopStreaming", Qt::QueuedConnection);
 }
 
 void UdpSocketRunner::onBufferReady(const QVector<QVariantList>& readings)

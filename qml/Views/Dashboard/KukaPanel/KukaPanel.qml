@@ -22,11 +22,13 @@ QxGroupBox {
           id: cartesianPosition
 
           tags: ["X","Y","Z","A","B","C"]
+          dimension: "mm"
         }
         RsiPosition {
           id: jointPosition
 
           tags: ["A1","A2","A3","A4","A5","A6"]
+          dimension: "deg"
         }
       }
 

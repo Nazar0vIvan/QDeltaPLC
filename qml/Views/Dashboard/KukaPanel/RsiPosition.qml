@@ -11,25 +11,54 @@ Control {
 
   required property var tags
   property string title: ""
+  property alias dimension: dimension.text
 
   topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
 
-  contentItem: ListView {
-    id: lv
+  contentItem: ColumnLayout {
+    spacing: 14
 
-    implicitWidth: contentItem.childrenRect.width
-    implicitHeight: contentItem.childrenRect.height
-    spacing: 10
+    ListView {
+      id: lv
 
-    interactive: false
-    boundsBehavior: Flickable.StopAtBounds
-    clip: true
+      implicitWidth: contentItem.childrenRect.width
+      implicitHeight: contentItem.childrenRect.height
+      spacing: 10
 
-    model: 6
+      interactive: false
+      boundsBehavior: Flickable.StopAtBounds
+      clip: true
 
-    delegate: RsiCoordinate {
-      tag: root.tags[index]
+      model: 6
+
+      delegate: RsiCoordinate {
+        tag: root.tags[index]
+      }
+    }
+
+    RowLayout {
+      id: rl2
+
+      QxField {
+        id: stepField
+
+        labelText: "Step:"
+        height: 22
+        labelWidth: 30
+
+        QxTextInput {
+          id: step
+
+          width: 50; height: 22
+        }
+      }
+      Text {
+        id: dimension
+
+        text: "mm"
+        color: Styles.foreground.high
+      }
     }
   }
 }
