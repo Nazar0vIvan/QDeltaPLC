@@ -10,8 +10,8 @@ Control {
   id: root
 
   required property var tags
-  property string title: ""
   property string dimension: ""
+  property alias title: header.text
   property int imageSize: 10
 
   topPadding: 40; bottomPadding: 10
@@ -41,9 +41,31 @@ Control {
     Counter {
       id: step
 
-      imageSource: "step.svg"
       dimension: root.dimension
-      value: "0.001"
     }
+  }
+
+  background: Rectangle {
+    color: "transparent"
+    border{width: 1; color: Styles.background.dp12}
+  }
+
+  Label {
+    id: header
+
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+    leftPadding: 10; rightPadding: 10
+    topPadding: 6; bottomPadding: 6
+
+    background: Rectangle {
+      color: Styles.background.dp01
+      border{width: 1; color: Styles.background.dp12}
+    }
+
+    textFormat: Text.RichText
+    color: Styles.foreground.medium
+    font{pixelSize: 12}
   }
 }

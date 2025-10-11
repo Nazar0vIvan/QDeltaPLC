@@ -54,7 +54,7 @@ Control {
         textFormat: Text.RichText
         text: root.xLabel
         font.weight: 600
-        font.pixelSize: 12
+        font.pixelSize: 11
         color: Styles.foreground.high
       }
 

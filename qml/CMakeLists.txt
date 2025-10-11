@@ -52,13 +52,8 @@ qt_add_qml_module(qdeltaplc
   SOURCES
     ${CPP_FILES}
   RESOURCES
-    NavigationPanel/dashboard.svg
-    NavigationPanel/settings.svg
-    Views/Dashboard/KukaPanel/plus.svg
-    Views/Dashboard/KukaPanel/step.svg
-    Views/Dashboard/KukaPanel/minus.svg
-    Views/Dashboard/KukaPanel/arrow_right.svg
-    Views/Dashboard/KukaPanel/arrow_left.svg
+    pics.qrc
+    SOURCES socketrsi.h socketrsi.cpp
 )
 
 target_link_libraries(qdeltaplc
@@ -66,6 +61,7 @@ target_link_libraries(qdeltaplc
   PRIVATE Qt6::Gui
   PRIVATE Qt6::Network
   PRIVATE Qt6::Charts
+  PRIVATE Qt6::Xml
   PRIVATE Stylesplugin
   PRIVATE Componentsplugin
 )

@@ -6,9 +6,10 @@ import QtQuick.Controls.Basic
 import Styles 1.0
 
 Switch {
-  id: control
+  id: root
 
   property bool displayonly: false
+  property alias imageSource: image.source
 
   signal turnedOn()
   signal turnedOff()
@@ -20,37 +21,37 @@ Switch {
     anchors.verticalCenter: indicator.verticalCenter
     anchors.leftMargin: 6
     verticalAlignment: Text.AlignVCenter
-    text: control.text
+    text: root.text
     color: Styles.foreground.high
   }
 
   indicator: Rectangle {
-      width: control.width
-      height: control.height
-      radius: control.height/2
-      color: control.checked ? Styles.secondary.base : Styles.background.dp06
+    width: root.width
+    height: root.height
+    radius: root.height/2
+    color: root.checked ? Styles.secondary.base : Styles.background.dp06
 
-      Rectangle {
-          width: control.height - 6;
-          height: control.height - 6
-          radius: width/2
-          anchors.verticalCenter: parent.verticalCenter
-          x: control.checked ? parent.width - width - 2 : 2
-          color: Styles.foreground.high
-          Behavior on x { NumberAnimation { duration: 150 } }
+    Rectangle {
+      width: root.height - 6;
+      height: root.height - 6
+      radius: width/2
+      anchors.verticalCenter: parent.verticalCenter
+      x: root.checked ? parent.width - width - 2 : 2
+      color: Styles.foreground.high
+      Behavior on x { NumberAnimation { duration: 150 } }
 
-          Image {
-            anchors.centerIn: parent
+      Image {
+        id: image
 
-            source: "lock.svg"
-            width: parent.width - 8
-            fillMode: Image.PreserveAspectFit
-            visible: control.displayonly
-          }
+        anchors.centerIn: parent
+        width: parent.width - 8
+        fillMode: Image.PreserveAspectFit
+        visible: root.displayonly
       }
+    }
   }
   onCheckedChanged: {
-      if (checked) turnedOn();
-      else turnedOff();
+    if (checked) turnedOn();
+    else turnedOff();
   }
 }

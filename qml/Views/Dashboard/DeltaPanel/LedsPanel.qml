@@ -40,11 +40,17 @@ Control {
       ListElement { label: "LEDR3";  color: "red";    isOn: false }
     }
 
-    delegate: QxLed {
-      ledColor: model.color
-      tag: model.label
-      size: gv.ledSize
-      isOn: (index < 2) ? (plcRunner.socketState === 3) : model.isOn
+    delegate: Item {
+      width: gv.cellWidth
+      height: gv.cellHeight
+
+      QxLed {
+        anchors.centerIn: parent
+        ledColor: model.color
+        tag: model.label
+        size: gv.ledSize
+        isOn: (index < 2) ? (plcRunner.socketState === 3) : model.isOn
+      }
     }
   }
 

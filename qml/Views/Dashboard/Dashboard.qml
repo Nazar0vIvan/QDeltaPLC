@@ -57,7 +57,7 @@ Item {
     KukaPanel {
       id: kukaPanel
 
-      title: 'KUKA KRC4'
+      title: qsTr("Robot Sensor Interface")
 
       Layout.topMargin: 14
     }

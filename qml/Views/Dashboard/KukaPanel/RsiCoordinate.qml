@@ -12,6 +12,7 @@ Item {
   property alias tag: tag.text
   property int imageSize: 10
   property int fieldWidth: 80
+  property int fieldHeight: 24
   property real value: 0.00
 
   signal increment()
@@ -38,22 +39,22 @@ Item {
       Button {
         id: btnDecrement
 
-        leftPadding: 8; rightPadding: 8
-        topPadding: 14; bottomPadding: 14
+        Layout.preferredWidth: 20
+        Layout.preferredHeight: root.fieldHeight
+        padding: 4
 
         contentItem: Image {
           fillMode: Image.PreserveAspectFit
-          width: root.imageSize
+          source: "qrc:/assets/pics/minus.svg"
           mipmap: true
           smooth: true
-          source: "minus.svg"
         }
 
         background: Rectangle {
           topLeftRadius: 4; bottomLeftRadius: 4
           color: Styles.background.dp04
-          border{width: 1; color: Styles.background.dp04}
-          opacity: btnDecrement.hovered ? 1.0 : 0.7
+          border{width: 1; color: Styles.background.dp24}
+          opacity:  btnDecrement.pressed ? 0.7 : btnDecrement.hovered ? 1.0 : 0.7
         }
       }
 
@@ -61,7 +62,7 @@ Item {
         id: valueField
 
         Layout.preferredWidth: root.fieldWidth
-        Layout.preferredHeight: btnDecrement.implicitHeight
+        Layout.preferredHeight: root.fieldHeight
         text: root.value.toFixed(2)
         verticalAlignment: TextInput.AlignVCenter
         horizontalAlignment: TextInput.AlignHCenter
@@ -76,21 +77,21 @@ Item {
       Button {
         id: btnIncrement
 
-        leftPadding: 8; rightPadding: 8
-        topPadding: 10; bottomPadding: 10
+        Layout.preferredWidth: 20
+        Layout.preferredHeight: root.fieldHeight
+        padding: 4
 
         contentItem: Image {
           fillMode: Image.PreserveAspectFit
-          width: root.imageSize
+          source: "qrc:/assets/pics/plus.svg"
           mipmap: true
           smooth: true
-          source: "plus.svg"
         }
         background: Rectangle {
           topRightRadius: 4; bottomRightRadius: 4
           color: Styles.background.dp04
-          border{width: 1; color: Styles.background.dp04}
-          opacity: btnIncrement.hovered ? 1.0 : 0.7
+          border{width: 1; color: Styles.background.dp24}
+          opacity:  btnIncrement.pressed ? 0.7 : btnIncrement.hovered ? 1.0 : 0.7
         }
       }
     }

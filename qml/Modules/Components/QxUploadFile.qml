@@ -9,6 +9,7 @@ Item {
   id: root
 
   property int fieldWidth: 0
+  property string imageSource: ""
 
   implicitWidth: fieldWidth + rl.spacing + height
 
@@ -48,7 +49,7 @@ Item {
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
-        source: "open.svg"
+        source: root.imageSource
         mipmap: true
         smooth: true
         opacity: btnBrowse.pressed ? 0.8 : 1.0

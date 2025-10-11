@@ -85,6 +85,7 @@ ListView {
 
           height: parent.height
           fieldWidth: 200
+          imageSource: "qrc:/assets/pics/open.svg"
         }
       }
 
@@ -325,7 +326,7 @@ ListView {
       }
     }
 
-    QxButton {
+    QxButton { // apply button
       id: btnApply
 
       text: "Apply"
@@ -347,7 +348,5 @@ ListView {
       }
     }
   }
-  Item {
-    Layout.fillHeight: true
-  }
+  Item { Layout.fillHeight: true }
 }

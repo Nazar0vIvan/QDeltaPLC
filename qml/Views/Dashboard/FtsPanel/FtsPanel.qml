@@ -17,7 +17,11 @@ QxGroupBox {
 
     spacing: 14
 
-    FtsBars { id: bars }
+    FtsBars {
+      id: bars
+
+      title: qsTr("Monitoring")
+    }
 
     QxButton {
       id: btnStart

@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/pics/arrow_left.svg</file>
+        <file>assets/pics/arrow_right.svg</file>
+        <file>assets/pics/dashboard.svg</file>
+        <file>assets/pics/lock.svg</file>
+        <file>assets/pics/minus.svg</file>
+        <file>assets/pics/open.svg</file>
+        <file>assets/pics/plus.svg</file>
+        <file>assets/pics/settings.svg</file>
+        <file>assets/pics/step.svg</file>
+    </qresource>
+</RCC>

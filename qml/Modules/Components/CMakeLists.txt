@@ -14,9 +14,6 @@ qt_add_qml_module(Components
     QxTextInput.qml
     QxProgressBar.qml
     QxUploadFile.qml
-  RESOURCES
-    lock.svg
-    open.svg
 )
 
 target_link_libraries(Components PRIVATE Qt6::Qml)

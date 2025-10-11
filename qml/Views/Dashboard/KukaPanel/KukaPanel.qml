@@ -8,54 +8,48 @@ import Components 1.0
 QxGroupBox {
   id: root
 
-  implicitWidth: leftPadding + rl.implicitWidth + rightPadding
-  implicitHeight: topPadding + rl.implicitHeight + bottomPadding
+  implicitWidth: leftPadding + cl.implicitWidth + rightPadding
+  implicitHeight: topPadding + cl.implicitHeight + bottomPadding
 
-  RowLayout {
-    id: rl
+  ColumnLayout {
+    id: cl
 
-    Control {
-      id: rsiPanel
+    spacing: 14
 
-      contentItem: RowLayout {
-        RsiPosition {
-          id: cartesianPosition
+    RowLayout {
+      id: rl
 
-          tags: ["X","Y","Z","A","B","C"]
-          dimension: "mm"
-        }
-        RsiPosition {
-          id: jointPosition
+      spacing: 20
 
-          tags: ["A1","A2","A3","A4","A5","A6"]
-          dimension: "deg"
-        }
+      RsiPosition {
+        id: cartesianPosition
+
+        tags: ["X","Y","Z","A","B","C"]
+        dimension: "mm"
+        title: "Cartesian Space"
       }
+      RsiPosition {
+        id: jointPosition
 
-      background: Rectangle {
-        color: "transparent"
-        border{width: 1; color: Styles.background.dp12}
+        tags: ["A1","A2","A3","A4","A5","A6"]
+        dimension: "deg"
+        title: "Joint Space"
       }
+    }
 
-      Label {
-        id: header
+    QxButton {
+      id: btnStart
 
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        leftPadding: 10; rightPadding: 10
-        topPadding: 6; bottomPadding: 6
-
-        background: Rectangle {
-          color: Styles.background.dp01
-          border{width: 1; color: Styles.background.dp12}
+      checked: ftsRunner && ftsRunner.isStreaming
+      enabled: ftsRunner && ftsRunner.socketState === 4 // BoundState
+      text: checked ? "Stop" : "Start"
+      onClicked: {
+        if (!ftsRunner) return
+        if (checked) {
+            ftsRunner.stopStreaming()
+        } else {
+            ftsRunner.startStreaming()
         }
-
-        textFormat: Text.RichText
-        text: "Robot Sensor Interface"
-
-        color: Styles.foreground.medium
-        font{pixelSize: 12}
       }
     }
   }
