@@ -84,7 +84,7 @@ ListView {
           id: uploadFile
 
           height: parent.height
-          fieldWidth: 200
+          fieldWidth: 400
           imageSource: "qrc:/assets/pics/open.svg"
         }
       }
@@ -106,40 +106,6 @@ ListView {
         }
       }
 
-      QxField { // rsi peer address
-
-        id: rsiPaField
-
-        labelText: "Peer Address :"
-        height: root.fieldHeight
-        labelWidth: root.labelWidth
-
-        QxTextInput {
-          id: rsiPa
-
-          height: root.fieldHeight
-          placeholder: "defined by Configuration File"
-          readOnly: true
-        }
-      }
-
-      QxField { // rsi peer port
-
-        id: rsippField
-
-        labelText: "Peer Port :"
-        height: root.fieldHeight
-        labelWidth: root.labelWidth
-
-        QxTextInput {
-          id: rsiPp
-
-          height: root.fieldHeight
-          placeholder: "defined by Configuration File"
-          readOnly: true
-        }
-      }
-
       QxField { // rsi onlysend
 
         id: rsiOnlysendField
@@ -154,6 +120,43 @@ ListView {
           height: root.fieldHeight
           placeholder: "defined by Configuration File"
           readOnly: true
+        }
+      }
+
+      QxField { // rsi peer address
+
+        id: rsiPaField
+
+        labelText: "Peer Address :"
+        height: root.fieldHeight
+        labelWidth: root.labelWidth
+
+        QxTextInput {
+          id: rsiPa
+
+          height: root.fieldHeight
+          width: root.fieldWidth
+          text: "192.168.1.4"
+          validator: RegularExpressionValidator {
+              regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
+          }
+        }
+      }
+
+      QxField { // rsi peer port
+        id: rsippField
+
+        labelText: "Peer Port :"
+        height: root.fieldHeight
+        labelWidth: root.labelWidth
+
+        QxTextInput {
+          id: rsiPp
+
+          height: root.fieldHeight
+          width: root.fieldWidth
+          text: "1111"
+          validator: IntValidator{ bottom: 0; top: 65535; }
         }
       }
     }

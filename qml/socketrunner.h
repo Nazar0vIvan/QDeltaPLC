@@ -47,6 +47,7 @@ private:
     void attachSocket(QAbstractSocket* sock);
     QStringList invokableMethodNames() const;
     bool allowed(const QString& methodName) const;
+    int  indexOfSignature(const QByteArray& sig) const;
 
     int m_socketState = QAbstractSocket::UnconnectedState;
     QVariant m_buffer;

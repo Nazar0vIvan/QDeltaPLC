@@ -105,25 +105,19 @@ void SocketRDT::setSocketConfig(const QVariantMap &config)
   QHostAddress pa = QHostAddress(config.value("peerAddress").toString());
   uint pp = config.value("peerPort").toUInt();
 
-  qDebug() << "----------";
-  qDebug() << la;
-  qDebug() << lp;
-  qDebug() << pa;
-  qDebug() << pp;
+  if (!bind(la,lp)) {
+    emit logMessage({"binding failed", 0, objectName()});
+    return;
+  }
 
-  if (bind(la,lp)) {
-    setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
-    emit logMessage({stateToString(state()) + "<br/>" +
+  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
+  emit logMessage({stateToString(state()) + "<br/>" +
                     "[local address]: " + la.toString() + "<br/>" +
                     "[local port]: " + QString::number(lp) + "<br/>" +
                     "[peer address]: " + pa.toString() + "<br/>" +
                     "[peer port]: " + QString::number(pp) + "<br/>" +
                     "----------",
                     1, objectName()});
-  }
-  else {
-    emit logMessage({"binding've failed", 0, objectName()});
-  }
 }
 
 void SocketRDT::onReadyRead()

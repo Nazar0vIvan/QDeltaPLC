@@ -20,22 +20,49 @@ AbstractSocketRunner::~AbstractSocketRunner()
   stop(); // this is a fallback in case if runner is destroyed manually (not by app closing)
 }
 
-bool AbstractSocketRunner::invoke(const QString &methodName, const QVariantMap &args)
+bool AbstractSocketRunner::allowed(const QString &methodName) const
 {
-  if (!allowed(methodName)) {
-    emit logMessage({QString("Method '%1' is not in the invokable API").arg(methodName), 0, m_socket->objectName()});
-    return false;
+  return m_api.contains(methodName);
+}
+
+int AbstractSocketRunner::indexOfSignature(const QByteArray& sig) const {
+    if (!m_socket) return -1;
+    const QByteArray norm = QMetaObject::normalizedSignature(sig.constData());
+    for (auto m = m_socket->metaObject(); m; m = m->superClass()) {
+        const int idx = m->indexOfMethod(norm.constData());
+        if (idx >= 0) return idx;
+    }
+    return -1;
+}
+
+void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args) {
+
+  // invoke(const QString& method, const QVariantMap& args)
+  // QVariantMap invoke(const QString& method, const QVariantMap& args)
+  // invoke(const QString& method)
+
+  if (!m_socket) { emit logMessage({method + ": Socket is null", 0, ""}); return; }
+
+  const QByteArray name = method.toLatin1();
+  const bool haveArgs = !args.isEmpty();
+
+  int idx = -1;
+  bool haveReturn = false;
+
+  if (haveArgs) {
+    idx = indexOfSignature(name + "(QVariantMap)");
+    haveReturn = m_socket->metaObject()->method(idx).returnMetaType().id() == QMetaType::QVariantMap;
   }
 
-  const char* name = methodName.toLatin1().constData();
+  bool ok = false;
+  QVariantMap out;
 
-  if (args.isEmpty()) {
-    return QMetaObject::invokeMethod(m_socket, name, Qt::QueuedConnection);
-  } else {
-    return QMetaObject::invokeMethod(m_socket, name, Qt::QueuedConnection, Q_ARG(QVariantMap, args));
-  }
-
-  return false;
+  if (haveReturn)
+    QMetaObject::invokeMethod(m_socket, name.constData(), Qt::BlockingQueuedConnection, Q_RETURN_ARG(QVariantMap, out), Q_ARG(QVariantMap, args));
+  else if (haveArgs)
+    QMetaObject::invokeMethod(m_socket, name.constData(), Qt::QueuedConnection, Q_ARG(QVariantMap, args));
+  else
+    QMetaObject::invokeMethod(m_socket, name.constData(), Qt::QueuedConnection);
 }
 
 void AbstractSocketRunner::start()
@@ -95,10 +122,7 @@ QStringList AbstractSocketRunner::invokableMethodNames() const
   return out;
 }
 
-bool AbstractSocketRunner::allowed(const QString &methodName) const
-{
-  return m_api.contains(methodName);
-}
+// SLOTS
 
 void AbstractSocketRunner::onSocketStateChanged(QAbstractSocket::SocketState state)
 {

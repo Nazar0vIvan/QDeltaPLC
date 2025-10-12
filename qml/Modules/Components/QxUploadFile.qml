@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import QtQuick.Dialogs
+import QtCore
 
 import Styles 1.0
 
@@ -12,6 +14,16 @@ Item {
   property string imageSource: ""
 
   implicitWidth: fieldWidth + rl.spacing + height
+
+  FileDialog {
+    id: openFile
+    title: qsTr("Choose a file")
+    nameFilters: ["All files (*)", "XML (*.xml)"]
+
+    onAccepted: {
+      textField.text = selectedFile
+    }
+  }
 
   RowLayout {
     id: rl
@@ -62,6 +74,7 @@ Item {
           color: Styles.background.dp04
         }
       }
+      onClicked: openFile.open()
     }
   }
 }
