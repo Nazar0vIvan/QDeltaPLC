@@ -45,7 +45,7 @@ void SocketRSI::parseConfigFile(const QUrl &url)
     return;
   }
 
-  setLocalAddress(la); setLocalPort(lp); setOpenMode(om);
+ setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp); setOpenMode(om);
 }
 
 QString SocketRSI::stateToString(SocketState state)

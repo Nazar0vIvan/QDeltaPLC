@@ -20,7 +20,7 @@ public:
     ~AbstractSocketRunner() override;
 
     Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
-    Q_INVOKABLE bool invoke(const QString& method, const QVariantMap& args = {});
+    Q_INVOKABLE void invoke(const QString& method, const QVariantMap& args = {});
 
     int socketState() const { return m_socketState; }
 
