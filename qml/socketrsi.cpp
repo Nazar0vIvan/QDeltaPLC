@@ -25,7 +25,6 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
   const QString path = data.value("path").toUrl().toLocalFile();
 
   QFile f(path);
-
   if (!f.open(QIODevice::ReadOnly)) {
     emit logMessage({f.errorString(), 0, objectName()});
     return {};
@@ -49,12 +48,6 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
   const QString portStr = txt("PORT");
   const QString onlyStr = txt("ONLYSEND");
 
-  return {
-      {"ip", ipStr},
-      {"port", portStr},
-      {"onlysend", onlyStr},
-  };
-
   QHostAddress ip; bool ipOk = ip.setAddress(ipStr);
   bool portOk = false; int port = portStr.toInt(&portOk);
   if (!ipOk || !portOk || port < 1 || port > 65535) {
@@ -62,10 +55,7 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
     return {};
   }
 
-  return {
-          {"localport", portStr},
-          {"onlysend", onlyStr},
-         };
+  return { {"path", path}, {"localport", portStr}, {"onlysend", onlyStr} };
 }
 
 QString SocketRSI::stateToString(SocketState state)

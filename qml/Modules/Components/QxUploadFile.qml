@@ -12,6 +12,7 @@ Item {
 
   property int fieldWidth: 0
   property string imageSource: ""
+  property alias text: textField.text
 
   signal uploaded(string path)
 
@@ -23,8 +24,7 @@ Item {
     nameFilters: ["All files (*)", "XML (*.xml)"]
 
     onAccepted: {
-      textField.text = currentFile
-      uploaded(currentFile)
+      uploaded(openFile.currentFile)
     }
   }
 

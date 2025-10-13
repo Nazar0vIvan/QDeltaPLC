@@ -73,7 +73,6 @@ ListView {
       spacing: 12
 
       QxField { // config file
-
         id: uploadFileField
 
         labelText: "Configuration File :"
@@ -94,8 +93,10 @@ ListView {
           Connections {
             target: rsiRunner
             function onResultReady(method, out) {
-              rsiLp.text = out.port
-              rsiOnlysend.text = out.onlysend
+              if (!out) return;
+              uploadFile.text = out.path
+              rsiLp.text = out.localport;
+              rsiOnlysend.text = out.onlysend;
             }
           }
         }
