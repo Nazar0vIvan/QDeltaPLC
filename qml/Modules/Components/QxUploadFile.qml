@@ -13,6 +13,8 @@ Item {
   property int fieldWidth: 0
   property string imageSource: ""
 
+  signal uploaded(string path)
+
   implicitWidth: fieldWidth + rl.spacing + height
 
   FileDialog {
@@ -21,7 +23,8 @@ Item {
     nameFilters: ["All files (*)", "XML (*.xml)"]
 
     onAccepted: {
-      textField.text = selectedFile
+      textField.text = currentFile
+      uploaded(currentFile)
     }
   }
 

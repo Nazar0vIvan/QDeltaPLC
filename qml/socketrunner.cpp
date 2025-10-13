@@ -26,13 +26,21 @@ bool AbstractSocketRunner::allowed(const QString &methodName) const
 }
 
 int AbstractSocketRunner::indexOfSignature(const QByteArray& sig) const {
-    if (!m_socket) return -1;
-    const QByteArray norm = QMetaObject::normalizedSignature(sig.constData());
-    for (auto m = m_socket->metaObject(); m; m = m->superClass()) {
-        const int idx = m->indexOfMethod(norm.constData());
-        if (idx >= 0) return idx;
-    }
-    return -1;
+  if (!m_socket) return -1;
+  const QByteArray norm = QMetaObject::normalizedSignature(sig.constData());
+  for (auto m = m_socket->metaObject(); m; m = m->superClass()) {
+    const int idx = m->indexOfMethod(norm.constData());
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+bool AbstractSocketRunner::returnsVariantMap(int idx) const {
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+  return m_socket->metaObject()->method(idx).returnMetaType().id() == QMetaType::QVariantMap;
+#else
+  return m_socket->metaObject()->method(idx).returnType() == QMetaType::QVariantMap;
+#endif
 }
 
 void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args) {
@@ -46,23 +54,67 @@ void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args
   const QByteArray name = method.toLatin1();
   const bool haveArgs = !args.isEmpty();
 
-  int idx = -1;
-  bool haveReturn = false;
-
-  if (haveArgs) {
-    idx = indexOfSignature(name + "(QVariantMap)");
-    haveReturn = m_socket->metaObject()->method(idx).returnMetaType().id() == QMetaType::QVariantMap;
-  }
+  // Resolve candidate signatures
+  const int idxMap = indexOfSignature(name + "(QVariantMap)");
+  const int idxNo  = indexOfSignature(name + "()");
 
   bool ok = false;
   QVariantMap out;
 
-  if (haveReturn)
-    QMetaObject::invokeMethod(m_socket, name.constData(), Qt::BlockingQueuedConnection, Q_RETURN_ARG(QVariantMap, out), Q_ARG(QVariantMap, args));
-  else if (haveArgs)
-    QMetaObject::invokeMethod(m_socket, name.constData(), Qt::QueuedConnection, Q_ARG(QVariantMap, args));
-  else
-    QMetaObject::invokeMethod(m_socket, name.constData(), Qt::QueuedConnection);
+  ok = QMetaObject::invokeMethod(m_socket,
+                                 name.constData(),
+                                 Qt::BlockingQueuedConnection,
+                                 Q_RETURN_ARG(QVariantMap, out),
+                                 Q_ARG(QVariantMap, args));
+
+  if (ok) emit resultReady(method, out);
+
+  /*
+  // Choose signature
+  int  idx = -1;       // chosen meta-method index
+  bool useMapSig = false;
+  if (haveArgs) {
+    if (idxMap < 0) {
+      emit logMessage({method + ": No invokable with signature (QVariantMap)", 0, m_socket->objectName()});
+      return;
+    }
+    idx = idxMap; useMapSig = true;
+  } else {
+    if      (idxNo  >= 0) { idx = idxNo;  useMapSig = false; }
+    else if (idxMap >= 0) { idx = idxMap; useMapSig = true; } // call map-sig with {}
+    else {
+      emit logMessage({method + ": No matching invokable found", 0, m_socket->objectName()});
+      return;
+    }
+  }
+
+  const bool retMap = returnsVariantMap(idx);
+  const Qt::ConnectionType ct = retMap ? Qt::BlockingQueuedConnection
+                                       : Qt::QueuedConnection;
+
+  bool ok = false;
+  QVariantMap out;
+
+  if (useMapSig) {
+    // #1 with return + args  OR  #2 with args only
+    if (retMap)
+      ok = QMetaObject::invokeMethod(m_socket, name.constData(), ct,
+                                     Q_RETURN_ARG(QVariantMap, out),
+                                     Q_ARG(QVariantMap, args));
+    else
+      ok = QMetaObject::invokeMethod(m_socket, name.constData(), ct,
+                                     Q_ARG(QVariantMap, args));
+  } else {
+    // #3 no args (void-return expected)
+    ok = QMetaObject::invokeMethod(m_socket, name.constData(), ct);
+  }
+
+  if (!ok) {
+    emit logMessage({method + ": Invoke failed", 0, m_socket->objectName()});
+    return;
+  }
+  */
+
 }
 
 void AbstractSocketRunner::start()

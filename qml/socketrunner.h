@@ -28,6 +28,7 @@ signals:
     void logMessage(const LoggerMessage& msg);
     void bufferChanged();
     void socketStateChanged();
+    void resultReady(const QString& method, const QVariantMap& result);
 
 public slots:
     void start();
@@ -48,6 +49,7 @@ private:
     QStringList invokableMethodNames() const;
     bool allowed(const QString& methodName) const;
     int  indexOfSignature(const QByteArray& sig) const;
+    bool returnsVariantMap(int idx) const;
 
     int m_socketState = QAbstractSocket::UnconnectedState;
     QVariant m_buffer;

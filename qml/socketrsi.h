@@ -27,7 +27,9 @@ class SocketRSI : public QUdpSocket
 public:
   explicit SocketRSI(const QString& name, QObject *parent = nullptr);
 
-  Q_INVOKABLE void parseConfigFile(const QUrl& url);
+  Q_INVOKABLE void startStreaming();
+  Q_INVOKABLE void stopStreaming();
+  Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
 
 signals:
   void logMessage(const LoggerMessage& msg);
@@ -40,9 +42,9 @@ private slots:
 private:
   QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
   QByteArray defaultCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.0\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
+  bool m_onlysend = false;
 
   QString stateToString(SocketState state);
-
 };
 
 #endif // SOCKETRSI_H

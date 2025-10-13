@@ -86,11 +86,22 @@ ListView {
           height: parent.height
           fieldWidth: 400
           imageSource: "qrc:/assets/pics/open.svg"
+
+          onUploaded: path => {
+            rsiRunner.invoke("parseConfigFile", {"path": path})
+          }
+
+          Connections {
+            target: rsiRunner
+            function onResultReady(method, out) {
+              rsiLp.text = out.port
+              rsiOnlysend.text = out.onlysend
+            }
+          }
         }
       }
 
-      QxField { // rsi local address
-
+      QxField { // rsi local port
         id: rsiLpField
 
         labelText: "Local Port :"
