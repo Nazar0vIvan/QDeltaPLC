@@ -58,6 +58,29 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
   return { {"path", path}, {"localport", portStr}, {"onlysend", onlyStr} };
 }
 
+void SocketRSI::setSocketConfig(const QVariantMap &config)
+{
+  QHostAddress la = QHostAddress(config.value("localAddress").toString());
+  qint16 lp = config.value("localPort").toUInt();
+  QHostAddress pa = QHostAddress(config.value("peerAddress").toString());
+  qint16 pp = config.value("peerPort").toUInt();
+
+
+  if (!bind(la,lp,QAbstractSocket::ReuseAddressHint)) {
+    emit logMessage({"binding failed", 0, objectName()});
+    return;
+  }
+
+  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
+  emit logMessage({stateToString(state()) + "<br/>" +
+                  "[local address]: " + la.toString() + "<br/>" +
+                  "[local port]: " + QString::number(lp) + "<br/>" +
+                  "[peer address]: " + pa.toString() + "<br/>" +
+                  "[peer port]: " + QString::number(pp) + "<br/>" +
+                  "----------",
+                  1, objectName()});
+}
+
 QString SocketRSI::stateToString(SocketState state)
 {
   switch (state) {

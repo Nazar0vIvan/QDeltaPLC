@@ -95,17 +95,20 @@ void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
   QHostAddress pa = QHostAddress(config.value("peerAddress").toString());
   qint16 pp = config.value("peerPort").toUInt();
 
-  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
-  setSocketState(SocketState::BoundState);
-  emit logMessage({stateToString(state()) + "<br/>" +
-                   "[local address]: " + la.toString() + "<br/>" +
-                   "[local port]: " + QString::number(lp) + "<br/>" +
-                   "[peer address]: " + pa.toString() + "<br/>" +
-                   "[peer port]: " + QString::number(pp) + "<br/>" +
-                   "----------",
-                   1, objectName()});
-}
+  if (!bind(la,lp,QAbstractSocket::ReuseAddressHint)) {
+    emit logMessage({"binding failed", 0, objectName()});
+    return;
+  }
 
+  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
+  emit logMessage({stateToString(state()) + "<br/>" +
+                  "[local address]: " + la.toString() + "<br/>" +
+                  "[local port]: " + QString::number(lp) + "<br/>" +
+                  "[peer address]: " + pa.toString() + "<br/>" +
+                  "[peer port]: " + QString::number(pp) + "<br/>" +
+                  "----------",
+                  1, objectName()});
+}
 // PRIVATE
 bool SocketDeltaPLC::tearDownToUnconnected(int ms)
 {

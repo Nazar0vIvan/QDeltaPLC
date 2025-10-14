@@ -175,32 +175,32 @@ TcpSocketRunner::~TcpSocketRunner() = default;
 
 UdpSocketRunner::UdpSocketRunner(QAbstractSocket *socket, QObject *parent) : AbstractSocketRunner(socket, parent)
 {
-    m_timer.setSingleShot(true);
-    m_timer.setInterval(300);
-    connect(&m_timer, &QTimer::timeout, this, [this]{
-        if (m_isStreaming) { m_isStreaming = false; emit isStreamingChanged(); }
-    });
+  m_timer.setSingleShot(true);
+  m_timer.setInterval(300);
+  connect(&m_timer, &QTimer::timeout, this, [this]{
+    if (m_isStreaming) { m_isStreaming = false; emit isStreamingChanged(); }
+  });
 
-    connect(m_socket, &QIODevice::readyRead, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
-    connect(m_socket, &QIODevice::bytesWritten, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
+  connect(m_socket, &QIODevice::readyRead, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
+  connect(m_socket, &QIODevice::bytesWritten, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
 }
 
 UdpSocketRunner::~UdpSocketRunner() = default;
 
 void UdpSocketRunner::onPulse()
 {
-    if (!m_isStreaming) {
-        m_isStreaming = true;
-        emit isStreamingChanged();
-    }
-    m_timer.start(); // restart idle countdown on every pulse
+  if (!m_isStreaming) {
+    m_isStreaming = true;
+    emit isStreamingChanged();
+  }
+  m_timer.start(); // restart idle countdown on every pulse
 }
 
 void UdpSocketRunner::onBufferReady(const QVector<QVariantList>& readings)
 {
-    if(readings.isEmpty()) return;
-    m_lastReading = readings.back();
-    emit lastReadingChanged();
+  if(readings.isEmpty()) return;
+  m_lastReading = readings.back();
+  emit lastReadingChanged();
 }
 
 

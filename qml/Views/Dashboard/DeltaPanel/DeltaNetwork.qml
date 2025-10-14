@@ -47,10 +47,12 @@ Control {
       QxButton {
         id: btnConnect
 
-        checked: plcRunner && plcRunner.socketState === 3
+        checkable: true
+        checked: plcRunner && (plcRunner.socketState === 3) // ConnectedState
         enabled: plcRunner && (
-          plcRunner.socketState === 0 ||
-          plcRunner.socketState === 3
+          // plcRunner.socketState === 0 || // UnconnectedState
+          plcRunner.socketState === 4 || // BoundState
+          plcRunner.socketState === 3    // ConnectedState
         )
         text: checked ? "Disconnect" : "Connect"
         onClicked: {

@@ -71,6 +71,7 @@ ListView {
       Layout.fillWidth: true
       gap: 20
       spacing: 12
+      enabled: !rsiRunner.isStreaming
 
       QxField { // config file
         id: uploadFileField
@@ -88,6 +89,7 @@ ListView {
 
           onUploaded: path => {
             rsiRunner.invoke("parseConfigFile", {"path": path})
+            rsiBtnApply.enabled = true
           }
 
           Connections {
@@ -139,7 +141,7 @@ ListView {
 
         id: rsiPaField
 
-        labelText: "Peer Address :"
+        labelText: "RSI Address :"
         height: root.fieldHeight
         labelWidth: root.labelWidth
 
@@ -152,13 +154,14 @@ ListView {
           validator: RegularExpressionValidator {
               regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
+          onTextEdited: rsiBtnApply.enabled = true
         }
       }
 
       QxField { // rsi peer port
         id: rsippField
 
-        labelText: "Peer Port :"
+        labelText: "RSI Port :"
         height: root.fieldHeight
         labelWidth: root.labelWidth
 
@@ -169,6 +172,28 @@ ListView {
           width: root.fieldWidth
           text: "1111"
           validator: IntValidator{ bottom: 0; top: 65535; }
+          onTextEdited: rsiBtnApply.enabled = true
+        }
+      }
+
+      QxButton { // rsi apply button
+        id: rsiBtnApply
+
+        text: rsiRunner.socketState === 4 ? "Unbind" : "Bind"
+
+        enabled: pcAddr.text && uploadFile.text && rsiLp.text && rsiPa.text && rsiPp.text
+
+        onClicked: {
+          rsiRunner.invoke(
+            "setSocketConfig",
+            {
+              localAddress: pcAddr.text,
+              localPort:    Number(rsiLp.text),
+              peerAddress:  rsiPa.text,
+              peerPort:     Number(rsiPp.text)
+            }
+          )
+          enabled = false
         }
       }
     }
@@ -206,7 +231,7 @@ ListView {
           height: root.fieldHeight
           text: "3333"
           validator: IntValidator{ bottom: 0; top: 65535; }
-          onTextEdited: btnApply.enabled = true
+          onTextEdited: plcBtnApply.enabled = true
         }
 
       }
@@ -228,7 +253,7 @@ ListView {
           validator: RegularExpressionValidator {
               regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
-          onTextEdited: btnApply.enabled = true
+          onTextEdited: plcBtnApply.enabled = true
         }
       }
 
@@ -247,7 +272,26 @@ ListView {
           height: root.fieldHeight
           text: "5051"
           validator: IntValidator{ bottom: 0; top: 65535; }
-          onTextEdited: btnApply.enabled = true
+          onTextEdited: plcBtnApply.enabled = true
+        }
+      }
+
+      QxButton { // plc apply button
+        id: plcBtnApply
+
+        text: "Apply"
+
+        onClicked: {
+          plcRunner.invoke(
+            "setSocketConfig",
+            {
+              localAddress: pcAddr.text,
+              localPort:    Number(plcLp.text),
+              peerAddress:  plcPa.text,
+              peerPort:     Number(plcPp.text)
+            }
+          )
+          enabled = false
         }
       }
     }
@@ -262,15 +306,16 @@ ListView {
       }
     }
 
-    OptionsSection { // rdt config
+    OptionsSection { // fts config
       id: ftsOptions
 
       title: "Schunk FTS Delta-SI-660-60"
       Layout.fillWidth: true
       gap: 20
       spacing: 12
+      enabled: !ftsRunner.isStreaming
 
-      QxField { // local port
+      QxField { // fts local port
         id: ftsLpField
 
         Layout.preferredWidth: implicitWidth
@@ -285,11 +330,11 @@ ListView {
           width: root.fieldWidth
           text: "59152"
           validator: IntValidator { bottom: 0; top: 65535 }
-          onTextEdited: btnApply.enabled = true
+          onTextEdited: ftsBtnApply.enabled = true
         }
       }
 
-      QxField { // peer address
+      QxField { // fts peer address
         id: ftsPaField
 
         Layout.preferredWidth: implicitWidth
@@ -306,11 +351,11 @@ ListView {
           validator: RegularExpressionValidator {
               regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
-          onTextEdited: btnApply.enabled = true
+          onTextEdited: ftsBtnApply.enabled = true
         }
       }
 
-      QxField { // peer port
+      QxField { // fts peer port
         id: ftsPpField
 
         Layout.preferredWidth: implicitWidth
@@ -325,43 +370,27 @@ ListView {
           width: root.fieldWidth
           text: "49152"
           readOnly: true
-
-          onTextEdited: btnApply.enabled = true
         }
       }
 
-      Rectangle { // separator
-        width: 400
-        height: 1
-        gradient: Gradient {
-          GradientStop { position: 0.0; color: Styles.secondary.dark }
-          GradientStop { position: 1.0; color: Styles.background.dp00 }
-          orientation: Gradient.Horizontal
+      QxButton { // fts apply button
+        id: ftsBtnApply
+
+        text: ftsRunner.socketState === 4 ? "Unbind" : "Bind"
+        enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.tex
+
+        onClicked: {
+          ftsRunner.invoke("setSocketConfig",
+            {
+              localAddress: pcAddr.text,
+              localPort:    Number(ftsLp.text),
+              peerAddress:  ftsPa.text,
+              peerPort:     Number(ftsPp.text)
+            }
+          )
+          enabled = false
         }
-      }
-    }
-
-    QxButton { // apply button
-      id: btnApply
-
-      text: "Apply"
-
-      onClicked: {
-        plcRunner.setSocketConfig({
-          localAddress: pcAddr.text,
-          localPort:    Number(plcLp.text),
-          peerAddress:  plcPa.text,
-          peerPort:     Number(plcPp.text)
-        })
-        ftsRunner.setSocketConfig({
-          localAddress: pcAddr.text,
-          localPort:    Number(ftsLp.text),
-          peerAddress:  ftsPa.text,
-          peerPort:     Number(ftsPp.text)
-        })
-        enabled = false
       }
     }
   }
-  Item { Layout.fillHeight: true }
 }
