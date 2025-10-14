@@ -7,12 +7,29 @@ import Components 1.0
 ListView {
   id: root
 
+  function onBindUnbind(runner, btn, la, lp, pa, pp) {
+    if (!runner)
+      return
+    if (btn.checked) {
+      runner.invoke("unbind")
+    } else {
+      runner.invoke("setSocketConfig", {
+                      "localAddress": la.text,
+                      "localPort": Number(lp.text),
+                      "peerAddress": pa.text,
+                      "peerPort": Number(pp.text)
+                    })
+    }
+  }
+
   property int fieldHeight: 28
   property int fieldWidth: 120
   property int labelWidth: 126
 
-  topMargin: 14; bottomMargin: 14
-  leftMargin: 14; rightMargin: 14
+  topMargin: 14
+  bottomMargin: 14
+  leftMargin: 14
+  rightMargin: 14
 
   spacing: 16
   interactive: false
@@ -26,18 +43,26 @@ ListView {
 
   model: ObjectModel {
 
-    Rectangle { // separator
+    Rectangle {
+      // separator
       width: 400
       height: 1
       gradient: Gradient {
-        GradientStop { position: 0.0; color: Styles.secondary.dark }
-        GradientStop { position: 1.0; color: Styles.background.dp00 }
+        GradientStop {
+          position: 0.0
+          color: Styles.secondary.dark
+        }
+        GradientStop {
+          position: 1.0
+          color: Styles.background.dp00
+        }
         orientation: Gradient.Horizontal
       }
     }
 
-    QxField { // pc address
+    QxField {
 
+      // pc address
       id: pcAddrField
 
       labelText: "PC Address:"
@@ -53,18 +78,26 @@ ListView {
       }
     }
 
-    Rectangle { // separator
+    Rectangle {
+      // separator
       width: 400
       height: 1
       gradient: Gradient {
-        GradientStop { position: 0.0; color: Styles.secondary.dark }
-        GradientStop { position: 1.0; color: Styles.background.dp00 }
+        GradientStop {
+          position: 0.0
+          color: Styles.secondary.dark
+        }
+        GradientStop {
+          position: 1.0
+          color: Styles.background.dp00
+        }
         orientation: Gradient.Horizontal
       }
     }
 
-    OptionsSection { // rsi config
+    OptionsSection {
 
+      // rsi config
       id: rsiOptions
 
       title: "Robot Sensor Interface"
@@ -73,7 +106,8 @@ ListView {
       spacing: 12
       enabled: !rsiRunner.isStreaming
 
-      QxField { // config file
+      QxField {
+        // config file
         id: uploadFileField
 
         labelText: "Configuration File :"
@@ -88,23 +122,27 @@ ListView {
           imageSource: "qrc:/assets/pics/open.svg"
 
           onUploaded: path => {
-            rsiRunner.invoke("parseConfigFile", {"path": path})
-            rsiBtnApply.enabled = true
-          }
+                        rsiRunner.invoke("parseConfigFile", {
+                                           "path": path
+                                         })
+                        rsiBtnApply.enabled = true
+                      }
 
           Connections {
             target: rsiRunner
             function onResultReady(method, out) {
-              if (!out) return;
+              if (!out)
+                return
               uploadFile.text = out.path
-              rsiLp.text = out.localport;
-              rsiOnlysend.text = out.onlysend;
+              rsiLp.text = out.localport
+              rsiOnlysend.text = out.onlysend
             }
           }
         }
       }
 
-      QxField { // rsi local port
+      QxField {
+        // rsi local port
         id: rsiLpField
 
         labelText: "Local Port :"
@@ -120,8 +158,9 @@ ListView {
         }
       }
 
-      QxField { // rsi onlysend
+      QxField {
 
+        // rsi onlysend
         id: rsiOnlysendField
 
         labelText: "ONLYSEND :"
@@ -137,8 +176,9 @@ ListView {
         }
       }
 
-      QxField { // rsi peer address
+      QxField {
 
+        // rsi peer address
         id: rsiPaField
 
         labelText: "RSI Address :"
@@ -152,13 +192,14 @@ ListView {
           width: root.fieldWidth
           text: "192.168.1.4"
           validator: RegularExpressionValidator {
-              regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
+            regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
           onTextEdited: rsiBtnApply.enabled = true
         }
       }
 
-      QxField { // rsi peer port
+      QxField {
+        // rsi peer port
         id: rsippField
 
         labelText: "RSI Port :"
@@ -171,44 +212,46 @@ ListView {
           height: root.fieldHeight
           width: root.fieldWidth
           text: "1111"
-          validator: IntValidator{ bottom: 0; top: 65535; }
+          validator: IntValidator {
+            bottom: 0
+            top: 65535
+          }
           onTextEdited: rsiBtnApply.enabled = true
         }
       }
 
-      QxButton { // rsi apply button
+      QxButton {
+        // rsi apply button
         id: rsiBtnApply
 
         text: rsiRunner.socketState === 4 ? "Unbind" : "Bind"
-
-        enabled: pcAddr.text && uploadFile.text && rsiLp.text && rsiPa.text && rsiPp.text
+        enabled: pcAddr.text && rsiLp.text && rsiPa.text && rsiPp.text
 
         onClicked: {
-          rsiRunner.invoke(
-            "setSocketConfig",
-            {
-              localAddress: pcAddr.text,
-              localPort:    Number(rsiLp.text),
-              peerAddress:  rsiPa.text,
-              peerPort:     Number(rsiPp.text)
-            }
-          )
-          enabled = false
+          onBindUnbind(rsiRunner, rsiBtnApply, pcAddr, rsiLp, rsiPa, rsiPp)
         }
       }
     }
 
-    Rectangle { // separator
+    Rectangle {
+      // separator
       width: 400
       height: 1
       gradient: Gradient {
-        GradientStop { position: 0.0; color: Styles.secondary.dark }
-        GradientStop { position: 1.0; color: Styles.background.dp00 }
+        GradientStop {
+          position: 0.0
+          color: Styles.secondary.dark
+        }
+        GradientStop {
+          position: 1.0
+          color: Styles.background.dp00
+        }
         orientation: Gradient.Horizontal
       }
     }
 
-    OptionsSection { // plc config
+    OptionsSection {
+      // plc config
       id: plcOptions
 
       title: "PLC AS332T-A"
@@ -216,7 +259,8 @@ ListView {
       gap: 20
       spacing: 12
 
-      QxField { // plc local port
+      QxField {
+        // plc local port
         id: plcLpField
 
         Layout.preferredWidth: implicitWidth
@@ -230,14 +274,17 @@ ListView {
           width: root.fieldWidth
           height: root.fieldHeight
           text: "3333"
-          validator: IntValidator{ bottom: 0; top: 65535; }
+          validator: IntValidator {
+            bottom: 0
+            top: 65535
+          }
           onTextEdited: plcBtnApply.enabled = true
         }
-
       }
 
-      QxField { // plc peer address
-        id:  plcPaField
+      QxField {
+        // plc peer address
+        id: plcPaField
 
         Layout.preferredWidth: implicitWidth
         Layout.preferredHeight: root.fieldHeight
@@ -251,13 +298,14 @@ ListView {
           height: root.fieldHeight
           text: "192.168.1.2"
           validator: RegularExpressionValidator {
-              regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
+            regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
           onTextEdited: plcBtnApply.enabled = true
         }
       }
 
-      QxField { // plc peer port
+      QxField {
+        // plc peer port
         id: plcPpField
 
         Layout.preferredWidth: implicitWidth
@@ -271,42 +319,46 @@ ListView {
           width: root.fieldWidth
           height: root.fieldHeight
           text: "5051"
-          validator: IntValidator{ bottom: 0; top: 65535; }
+          validator: IntValidator {
+            bottom: 0
+            top: 65535
+          }
           onTextEdited: plcBtnApply.enabled = true
         }
       }
 
-      QxButton { // plc apply button
+      QxButton {
+        // plc apply button
         id: plcBtnApply
 
-        text: "Apply"
+        text: plcRunner.socketState === 4 ? "Unbind" : "Bind"
+        enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text
 
         onClicked: {
-          plcRunner.invoke(
-            "setSocketConfig",
-            {
-              localAddress: pcAddr.text,
-              localPort:    Number(plcLp.text),
-              peerAddress:  plcPa.text,
-              peerPort:     Number(plcPp.text)
-            }
-          )
-          enabled = false
+          onBindUnbind(plcRunner, plcBtnApply, pcAddr, plcLp, plcPa, plcPp)
         }
       }
     }
 
-    Rectangle { // separator
+    Rectangle {
+      // separator
       width: 400
       height: 1
       gradient: Gradient {
-        GradientStop { position: 0.0; color: Styles.secondary.dark }
-        GradientStop { position: 1.0; color: Styles.background.dp00 }
+        GradientStop {
+          position: 0.0
+          color: Styles.secondary.dark
+        }
+        GradientStop {
+          position: 1.0
+          color: Styles.background.dp00
+        }
         orientation: Gradient.Horizontal
       }
     }
 
-    OptionsSection { // fts config
+    OptionsSection {
+      // fts config
       id: ftsOptions
 
       title: "Schunk FTS Delta-SI-660-60"
@@ -315,7 +367,8 @@ ListView {
       spacing: 12
       enabled: !ftsRunner.isStreaming
 
-      QxField { // fts local port
+      QxField {
+        // fts local port
         id: ftsLpField
 
         Layout.preferredWidth: implicitWidth
@@ -329,12 +382,16 @@ ListView {
           height: root.fieldHeight
           width: root.fieldWidth
           text: "59152"
-          validator: IntValidator { bottom: 0; top: 65535 }
+          validator: IntValidator {
+            bottom: 0
+            top: 65535
+          }
           onTextEdited: ftsBtnApply.enabled = true
         }
       }
 
-      QxField { // fts peer address
+      QxField {
+        // fts peer address
         id: ftsPaField
 
         Layout.preferredWidth: implicitWidth
@@ -349,13 +406,14 @@ ListView {
           width: root.fieldWidth
           text: "192.168.1.3"
           validator: RegularExpressionValidator {
-              regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
+            regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
           onTextEdited: ftsBtnApply.enabled = true
         }
       }
 
-      QxField { // fts peer port
+      QxField {
+        // fts peer port
         id: ftsPpField
 
         Layout.preferredWidth: implicitWidth
@@ -373,22 +431,15 @@ ListView {
         }
       }
 
-      QxButton { // fts apply button
+      QxButton {
+        // fts apply button
         id: ftsBtnApply
 
         text: ftsRunner.socketState === 4 ? "Unbind" : "Bind"
-        enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.tex
+        enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.text
 
         onClicked: {
-          ftsRunner.invoke("setSocketConfig",
-            {
-              localAddress: pcAddr.text,
-              localPort:    Number(ftsLp.text),
-              peerAddress:  ftsPa.text,
-              peerPort:     Number(ftsPp.text)
-            }
-          )
-          enabled = false
+          onBindUnbind(ftsRunner, ftsBtnApply, pcAddr, ftsLp, ftsPa, ftsPp)
         }
       }
     }
