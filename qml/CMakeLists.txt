@@ -21,8 +21,6 @@ set(QML_FILES
   Views/Dashboard/KukaPanel/Counter.qml
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
-  Views/Options/NetworkTcp.qml
-  Views/Options/NetworkUdp.qml
   Views/Options/OptionsSection.qml
 )
 

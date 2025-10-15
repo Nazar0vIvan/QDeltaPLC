@@ -55,7 +55,7 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
     return {};
   }
 
-  return { {"path", path}, {"localport", portStr}, {"onlysend", onlyStr} };
+  return { {"path", path}, {"port", portStr}, {"onlysend", onlyStr} };
 }
 
 void SocketRSI::setSocketConfig(const QVariantMap &config)
@@ -79,6 +79,11 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
                   "[peer port]: " + QString::number(pp) + "<br/>" +
                   "----------",
                   1, objectName()});
+}
+
+void SocketRSI::unbind()
+{
+  close();
 }
 
 QString SocketRSI::stateToString(SocketState state)

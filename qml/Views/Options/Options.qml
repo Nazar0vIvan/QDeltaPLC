@@ -7,10 +7,14 @@ import Components 1.0
 ListView {
   id: root
 
-  function onBindUnbind(runner, btn, la, lp, pa, pp) {
+  function logObject(obj) {
+      Object.keys(obj).forEach(key => console.log(`${key}: ${obj[key]}`));
+  }
+
+  function onBindUnbind(runner, la, lp, pa, pp) {
     if (!runner)
       return
-    if (btn.checked) {
+    if (runner.socketState === 4) {
       runner.invoke("unbind")
     } else {
       runner.invoke("setSocketConfig", {
@@ -104,7 +108,6 @@ ListView {
       Layout.fillWidth: true
       gap: 20
       spacing: 12
-      enabled: !rsiRunner.isStreaming
 
       QxField {
         // config file
@@ -116,6 +119,7 @@ ListView {
 
         QxUploadFile {
           id: uploadFile
+
 
           height: parent.height
           fieldWidth: 400
@@ -131,11 +135,11 @@ ListView {
           Connections {
             target: rsiRunner
             function onResultReady(method, out) {
-              if (!out)
-                return
-              uploadFile.text = out.path
-              rsiLp.text = out.localport
-              rsiOnlysend.text = out.onlysend
+              if (method === "parseConfigFile" && !out) {
+                uploadFile.text = out.path
+                rsiLp.text = out.port
+                rsiOnlysend.text = out.onlysend
+              }
             }
           }
         }
@@ -225,10 +229,10 @@ ListView {
         id: rsiBtnApply
 
         text: rsiRunner.socketState === 4 ? "Unbind" : "Bind"
-        enabled: pcAddr.text && rsiLp.text && rsiPa.text && rsiPp.text
+        enabled: pcAddr.text && rsiLp.text && rsiPa.text && rsiPp.text && !rsiRunner.isStreaming
 
         onClicked: {
-          onBindUnbind(rsiRunner, rsiBtnApply, pcAddr, rsiLp, rsiPa, rsiPp)
+          onBindUnbind(rsiRunner, pcAddr, rsiLp, rsiPa, rsiPp)
         }
       }
     }
@@ -331,11 +335,11 @@ ListView {
         // plc apply button
         id: plcBtnApply
 
-        text: plcRunner.socketState === 4 ? "Unbind" : "Bind"
-        enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text
+        text: plcRunner.socketState === 4 ? "Unbind" : "Bind" // 4 - bound
+        enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text && plcRunner.socketState !== 3 // 3 - connected
 
         onClicked: {
-          onBindUnbind(plcRunner, plcBtnApply, pcAddr, plcLp, plcPa, plcPp)
+          onBindUnbind(plcRunner, pcAddr, plcLp, plcPa, plcPp)
         }
       }
     }
@@ -436,10 +440,10 @@ ListView {
         id: ftsBtnApply
 
         text: ftsRunner.socketState === 4 ? "Unbind" : "Bind"
-        enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.text
+        enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.text && !ftsRunner.isStreaming
 
         onClicked: {
-          onBindUnbind(ftsRunner, ftsBtnApply, pcAddr, ftsLp, ftsPa, ftsPp)
+          onBindUnbind(ftsRunner, pcAddr, ftsLp, ftsPa, ftsPp)
         }
       }
     }

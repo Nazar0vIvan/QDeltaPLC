@@ -22,6 +22,7 @@ public:
     Q_INVOKABLE virtual void disconnectFromHost() override;
     Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
     Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
+    Q_INVOKABLE void unbind();
 
 signals:
     void logMessage(const LoggerMessage& msg);

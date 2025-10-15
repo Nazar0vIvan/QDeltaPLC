@@ -31,6 +31,7 @@ public:
   Q_INVOKABLE void stopStreaming();
   Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
+  Q_INVOKABLE void unbind();
 
 signals:
   void logMessage(const LoggerMessage& msg);

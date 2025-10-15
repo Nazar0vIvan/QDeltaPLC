@@ -109,6 +109,11 @@ void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
                   "----------",
                   1, objectName()});
 }
+
+void SocketDeltaPLC::unbind()
+{
+  close();
+}
 // PRIVATE
 bool SocketDeltaPLC::tearDownToUnconnected(int ms)
 {
