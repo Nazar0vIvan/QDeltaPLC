@@ -9,6 +9,7 @@ SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocke
   connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
   connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
+
   connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
 }
 SocketDeltaPLC::~SocketDeltaPLC() {}
@@ -48,9 +49,9 @@ void SocketDeltaPLC::onReadyRead()
     bits[i] = (firstByte >> i) & 1;
   }
 
-  qDebug() << chunk[0];
-  qDebug() << firstByte;
-  qDebug() << bits;
+  // qDebug() << chunk[0];
+  // qDebug() << firstByte;
+  // qDebug() << bits;
 
   emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
@@ -58,9 +59,9 @@ void SocketDeltaPLC::onReadyRead()
 void SocketDeltaPLC::writeMessage(const QVariantMap& cmd)
 {
   QByteArray tosend;
-  switch (cmd.value("id").toInt()) {
-    case 0: { // set outputs
-      const quint8 id     = 8;
+  const quint8 id = static_cast<quint8>(cmd.value("id").toString().at(0).toLatin1());
+  switch (id) {
+    case 89: { // Y
       const quint8 module = static_cast<quint8>(cmd.value("module").toInt());
       const quint8 output = static_cast<quint8>(cmd.value("output").toInt());
       const quint8 state  = cmd.value("state").toBool() ? 1 : 0;

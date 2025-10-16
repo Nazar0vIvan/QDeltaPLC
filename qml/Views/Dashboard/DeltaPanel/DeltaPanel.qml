@@ -23,7 +23,7 @@ QxGroupBox {
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
 
-      // enabled: plcRunner.socketState === 3
+      enabled: plcRunner.socketState === 3
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDG2", "RUN", "N/D"]
@@ -33,6 +33,10 @@ QxGroupBox {
       yPlugged: [0,0,0,0,0,1,1,0]
       yDisplayOnly: [6] // !!! RUN
       moduleIndex: 1
+
+      onOutputChanged: outputState => {
+        plcRunner.invoke("writeMessage", outputState)
+      }
     }
 
     DeltaModuleAP {
@@ -42,7 +46,7 @@ QxGroupBox {
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
 
-      // enabled: plcRunner.socketState === 3
+      enabled: plcRunner.socketState === 3
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDR1", "LEDR2", "LEDR3"]
@@ -51,6 +55,11 @@ QxGroupBox {
       xPlugged: [0,0,0,0,0,0,0,0]
       yPlugged: [0,0,0,0,0,1,1,1]
       moduleIndex: 2
+
+      onOutputChanged: outputState => {
+        plcRunner.invoke("writeMessage", outputState)
+      }
+
     }
 
     ColumnLayout {

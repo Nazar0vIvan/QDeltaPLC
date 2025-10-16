@@ -24,6 +24,8 @@ Control {
 
   property string title: ""
 
+  signal outputChanged(var outputState)
+
   topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
 
@@ -109,14 +111,12 @@ Control {
         tag: root.yTags[index]
 
         onCheckedChanged: {
-          if(checked) {
-            plcRunner.writeMessage({
-              id: 0,
-              module: root.moduleIndex,
-              output: index,
-              state: checked
-            })
-          }
+          root.outputChanged({
+            id: "Y",
+            module: root.moduleIndex,
+            output: index,
+            state: checked
+          })
         }
       }
     }

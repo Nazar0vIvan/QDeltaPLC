@@ -58,14 +58,9 @@ Control {
         onClicked: {
           if (!plcRunner) return
           if (checked) {
-              plcRunner.disconnectFromHost()
+            plcRunner.invoke("connectToHost")
           } else {
-            plcRunner.connectToHost({
-              localAddress: la.text,
-              localPort:    Number(lp.text),
-              peerAddress:  pa.text,
-              peerPort:     Number(pp.text)
-            })
+            plcRunner.invoke("disconnectFromHost")
           }
         }
       }

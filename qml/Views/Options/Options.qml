@@ -135,7 +135,7 @@ ListView {
           Connections {
             target: rsiRunner
             function onResultReady(method, out) {
-              if (method === "parseConfigFile" && !out) {
+              if (method === "parseConfigFile" && out) {
                 uploadFile.text = out.path
                 rsiLp.text = out.port
                 rsiOnlysend.text = out.onlysend
