@@ -120,11 +120,6 @@ void SocketRDT::setSocketConfig(const QVariantMap &config)
                   1, objectName()});
 }
 
-void SocketRDT::unbind()
-{
-  close();
-}
-
 void SocketRDT::onReadyRead()
 {
   do {

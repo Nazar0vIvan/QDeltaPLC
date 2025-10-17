@@ -14,13 +14,12 @@ Button {
     radius: 6
     color: control.checked ? Styles.background.dp04 : Styles.secondary.base
     border.color: control.checked ? Styles.foreground.high : Styles.secondary.dark
-    opacity: control.pressed ? 0.9 : control.hovered ? 1.0 : 0.95
+    opacity: control.pressed ? 0.9 : control.hovered ? 1.0 : 0.9
   }
   contentItem: Text {
     text: control.text
     color: control.checked ? Styles.foreground.high : Styles.background.dp00
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
-    visible: !control.imageSource
   }
 }

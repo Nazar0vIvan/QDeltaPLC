@@ -22,7 +22,6 @@ public:
     Q_INVOKABLE virtual void disconnectFromHost() override;
     Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
     Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
-    Q_INVOKABLE void unbind();
 
 signals:
     void logMessage(const LoggerMessage& msg);
@@ -40,6 +39,11 @@ public slots:
 private:
     bool tearDownToUnconnected(int ms = 300);
     QString stateToString(SocketState state);
+
+    QHostAddress m_la;
+    qint16 m_lp = 0;
+    QHostAddress m_pa;
+    qint16 m_pp = 0;
 };
 
 #endif // SOCKETDELTAPLC_H

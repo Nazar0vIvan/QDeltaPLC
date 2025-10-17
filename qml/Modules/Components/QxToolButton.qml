@@ -9,7 +9,7 @@ ToolButton {
 
   required property string imageSource
 
-  padding: 6
+  padding: 5
   opacity: enabled ? (pressed ? 0.9 : hovered ? 1.0 : 0.9) : 0.4
 
   contentItem: Image {
@@ -23,7 +23,7 @@ ToolButton {
     radius: 4
     border {
       width: 1
-      color: Styles.foreground.high
+      color: Styles.background.dp12
     }
   }
 }

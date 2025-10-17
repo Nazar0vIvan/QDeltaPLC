@@ -11,20 +11,15 @@ ListView {
       Object.keys(obj).forEach(key => console.log(`${key}: ${obj[key]}`));
   }
 
-  function onBindUnbind(runner, la, lp, pa, pp) {
-    if (!runner)
-      return
-    if (runner.socketState === 4) {
-      runner.invoke("unbind")
-    } else {
-      runner.invoke("setSocketConfig", {
-                      "localAddress": la.text,
-                      "localPort": Number(lp.text),
-                      "peerAddress": pa.text,
-                      "peerPort": Number(pp.text)
-                    })
+  function onApply(runner, la, lp, pa, pp) {
+    if (!runner) return
+    runner.invoke("setSocketConfig", {
+                    "localAddress": la.text,
+                    "localPort": Number(lp.text),
+                    "peerAddress": pa.text,
+                    "peerPort": Number(pp.text)
+                  })
     }
-  }
 
   property int fieldHeight: 28
   property int fieldWidth: 120
@@ -228,11 +223,11 @@ ListView {
         // rsi apply button
         id: rsiBtnApply
 
-        text: rsiRunner.socketState === 4 ? "Unbind" : "Bind"
+        text: "Apply"
         enabled: pcAddr.text && rsiLp.text && rsiPa.text && rsiPp.text && !rsiRunner.isStreaming
 
         onClicked: {
-          onBindUnbind(rsiRunner, pcAddr, rsiLp, rsiPa, rsiPp)
+          onApply(rsiRunner, pcAddr, rsiLp, rsiPa, rsiPp)
         }
       }
     }
@@ -277,7 +272,7 @@ ListView {
 
           width: root.fieldWidth
           height: root.fieldHeight
-          text: "3333"
+          text: "1234"
           validator: IntValidator {
             bottom: 0
             top: 65535
@@ -335,11 +330,11 @@ ListView {
         // plc apply button
         id: plcBtnApply
 
-        text: plcRunner.socketState === 4 ? "Unbind" : "Bind" // 4 - bound
+        text: "Apply"
         enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text && plcRunner.socketState !== 3 // 3 - connected
 
         onClicked: {
-          onBindUnbind(plcRunner, pcAddr, plcLp, plcPa, plcPp)
+          onApply(plcRunner, pcAddr, plcLp, plcPa, plcPp)
         }
       }
     }
@@ -439,7 +434,7 @@ ListView {
         // fts apply button
         id: ftsBtnApply
 
-        text: ftsRunner.socketState === 4 ? "Unbind" : "Bind"
+        text: "Apply"
         enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.text && !ftsRunner.isStreaming
 
         onClicked: {

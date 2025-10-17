@@ -81,11 +81,6 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
                   1, objectName()});
 }
 
-void SocketRSI::unbind()
-{
-  close();
-}
-
 QString SocketRSI::stateToString(SocketState state)
 {
   switch (state) {

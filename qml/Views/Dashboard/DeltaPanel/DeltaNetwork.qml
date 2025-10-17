@@ -54,8 +54,8 @@ Control {
 
         // enabled: plcRunner && plcRunner.socketState === 3
         imageSource: "qrc:/assets/pics/send.svg"
-        Layout.preferredWidth: 24
-        Layout.preferredHeight: 24
+        Layout.preferredWidth: 22
+        Layout.preferredHeight: 22
 
         // onClicked: {
         //   if (!msg.text)
@@ -71,12 +71,10 @@ Control {
       QxButton {
         id: btnConnect
 
+        enabled: plcRunner
         checkable: true
-        checked: plcRunner && (plcRunner.socketState === 3) // connectedS
-        enabled: plcRunner && (plcRunner.socketState === 4 || // bound
-                               plcRunner.socketState === 3 // connectedState
-                               )
-        text: checked ? "Disconnect" : "Connect"
+        checked: plcRunner.socketState === 3
+        text: plcRunner && checked ? "Disconnect" : "Connect"
         onClicked: {
           if (!plcRunner)
             return
