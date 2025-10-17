@@ -9,5 +9,8 @@
         <file>assets/pics/plus.svg</file>
         <file>assets/pics/settings.svg</file>
         <file>assets/pics/step.svg</file>
+        <file>assets/pics/send.svg</file>
+        <file>assets/pics/disconnect.svg</file>
+        <file>assets/pics/connect.svg</file>
     </qresource>
 </RCC>

@@ -14,67 +14,77 @@ Control {
 
   property alias title: header.text
 
-  topPadding: 40; bottomPadding: 10
-  leftPadding: 10; rightPadding: 10
+  topPadding: 40
+  bottomPadding: 10
+  leftPadding: 10
+  rightPadding: 10
 
   background: Rectangle {
     color: "transparent"
-    border{width: 1; color: Styles.background.dp12}
+    border {
+      width: 1
+      color: Styles.background.dp12
+    }
   }
 
   contentItem: ColumnLayout {
-    id: cl
 
     spacing: 20
 
-    QxField { // message
-      id: msgField
+    RowLayout {
+      id: rl1
 
-      Layout.preferredHeight: root.fieldHeight
-      labelText: "Message:"
+      QxField {
+        // message
+        id: msgField
 
-      QxTextInput {
-        id: msg
+        Layout.preferredHeight: root.fieldHeight
+        labelText: "Message:"
 
-        width: root.fieldWidth
-        height: root.fieldHeight
+        QxTextInput {
+          id: msg
+
+          width: root.fieldWidth
+          height: root.fieldHeight
+        }
+      }
+
+      QxToolButton {
+        id: btnSend
+
+        // enabled: plcRunner && plcRunner.socketState === 3
+        imageSource: "qrc:/assets/pics/send.svg"
+        Layout.preferredWidth: 24
+        Layout.preferredHeight: 24
+
+        // onClicked: {
+        //   if (!msg.text)
+        //     return
+        //   plcRunner.writeMessage(msg.text)
+        // }
       }
     }
 
     RowLayout {
-      id: rl
+      id: rl2
 
       QxButton {
         id: btnConnect
 
         checkable: true
-        checked: plcRunner && (plcRunner.socketState === 3) // ConnectedState
-        enabled: plcRunner && (
-          // plcRunner.socketState === 0 || // UnconnectedState
-          plcRunner.socketState === 4 || // BoundState
-          plcRunner.socketState === 3    // ConnectedState
-        )
+        checked: plcRunner && (plcRunner.socketState === 3) // connectedS
+        enabled: plcRunner && (plcRunner.socketState === 4 || // bound
+                               plcRunner.socketState === 3 // connectedState
+                               )
         text: checked ? "Disconnect" : "Connect"
         onClicked: {
-          if (!plcRunner) return
+          if (!plcRunner)
+            return
           if (checked) {
             plcRunner.invoke("connectToHost")
           } else {
             plcRunner.invoke("disconnectFromHost")
           }
-        }
-      }
-
-      QxButton {
-        id: btnSend
-
-        checkable: false
-        text: "Send"
-        enabled: plcRunner && plcRunner.socketState === 3
-
-        onClicked: {
-          if (!msg.text) return
-          plcRunner.writeMessage(msg.text)
         }
       }
     }
@@ -86,18 +96,24 @@ Control {
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
-    leftPadding: 10; rightPadding: 10
-    topPadding: 6; bottomPadding: 6
+    leftPadding: 10
+    rightPadding: 10
+    topPadding: 6
+    bottomPadding: 6
 
     background: Rectangle {
       color: Styles.background.dp01
-      border{width: 1; color: Styles.background.dp12}
+      border {
+        width: 1
+        color: Styles.background.dp12
+      }
     }
 
     textFormat: Text.RichText
 
     color: Styles.foreground.medium
-    font{pixelSize: 12}
+    font {
+      pixelSize: 12
+    }
   }
-
 }

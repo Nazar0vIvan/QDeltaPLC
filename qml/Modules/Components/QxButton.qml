@@ -17,10 +17,10 @@ Button {
     opacity: control.pressed ? 0.9 : control.hovered ? 1.0 : 0.95
   }
   contentItem: Text {
-    anchors.fill: parent
     text: control.text
     color: control.checked ? Styles.foreground.high : Styles.background.dp00
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
+    visible: !control.imageSource
   }
 }

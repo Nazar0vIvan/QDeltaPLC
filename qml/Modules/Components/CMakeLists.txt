@@ -14,6 +14,7 @@ qt_add_qml_module(Components
     QxTextInput.qml
     QxProgressBar.qml
     QxUploadFile.qml
+    QxToolButton.qml
 )
 
 target_link_libraries(Components PRIVATE Qt6::Qml)
