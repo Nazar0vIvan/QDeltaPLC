@@ -32,13 +32,16 @@ Item {
       source: "qrc:/assets/pics/step.svg"
     }
 
-    Button { // left arrow
+    Button {
+      // left arrow
       id: btnDecrement
 
       Layout.preferredWidth: 14
       Layout.preferredHeight: root.fieldHeight
-      topPadding: 6; bottomPadding: 6
-      rightPadding: 4; leftPadding: 4
+      topPadding: 6
+      bottomPadding: 6
+      rightPadding: 4
+      leftPadding: 4
 
       contentItem: Image {
         source: "qrc:/assets/pics/arrow_left.svg"
@@ -46,13 +49,19 @@ Item {
         smooth: true
       }
       background: Rectangle {
-        topLeftRadius: 4; bottomLeftRadius: 4
+        topLeftRadius: 4
+        bottomLeftRadius: 4
         color: Styles.background.dp04
-        border{ width: 1; color: Styles.background.dp24 }
-        opacity:  btnDecrement.pressed ? 0.7 : btnDecrement.hovered ? 1.0 : 0.7
+        border {
+          width: 1
+          color: Styles.background.dp24
+        }
+        opacity: btnDecrement.pressed ? 0.7 : btnDecrement.hovered ? 1.0 : 0.7
       }
 
-      onClicked: { root.value = root.value - 0.001 }
+      onClicked: {
+        root.value = root.value - 0.001
+      }
     }
 
     TextField {
@@ -60,22 +69,29 @@ Item {
 
       Layout.preferredHeight: root.fieldHeight
       Layout.preferredWidth: root.fieldWidth
-      color: Styles.foreground.high
       text: root.value.toFixed(3)
+      color: Styles.foreground.high
+      font: Styles.fonts.body
 
       background: Rectangle {
         color: "transparent"
-        border{width: 1; color: Styles.background.dp04}
+        border {
+          width: 1
+          color: Styles.background.dp04
+        }
       }
     }
 
-    Button { // right arrow
+    Button {
+      // right arrow
       id: btnIncrement
 
       Layout.preferredWidth: 14
       Layout.preferredHeight: root.fieldHeight
-      topPadding: 6; bottomPadding: 6
-      rightPadding: 4; leftPadding: 4
+      topPadding: 6
+      bottomPadding: 6
+      rightPadding: 4
+      leftPadding: 4
 
       contentItem: Image {
         source: "qrc:/assets/pics/arrow_right.svg"
@@ -83,13 +99,19 @@ Item {
         smooth: true
       }
       background: Rectangle {
-        topRightRadius: 4; bottomRightRadius: 4
+        topRightRadius: 4
+        bottomRightRadius: 4
         color: Styles.background.dp04
-        border{ width: 1; color: Styles.background.dp24 }
-        opacity:  btnIncrement.pressed ? 0.7 : btnIncrement.hovered ? 1.0 : 0.7
+        border {
+          width: 1
+          color: Styles.background.dp24
+        }
+        opacity: btnIncrement.pressed ? 0.7 : btnIncrement.hovered ? 1.0 : 0.7
       }
 
-      onClicked: { root.value = root.value + 0.001 }
+      onClicked: {
+        root.value = root.value + 0.001
+      }
     }
 
     Text {

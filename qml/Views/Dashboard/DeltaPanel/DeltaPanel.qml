@@ -29,13 +29,18 @@ QxGroupBox {
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDG2", "RUN", "N/D"]
       xLabel: 'IN / <font color="red">SOURCE</font>'
       yLabel: 'OUT / <font color="red">SOURCE</font>'
-      xPlugged: [0,0,0,0,0,0,0,0]
-      yPlugged: [0,0,0,0,0,1,1,0]
+      xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
+      yPlugged: [0, 0, 0, 0, 0, 1, 1, 0]
       yDisplayOnly: [6] // !!! RUN
       moduleIndex: 1
 
       onOutputChanged: outputState => {
-        plcRunner.invoke("writeMessage", outputState)
+                         plcRunner.invoke("writeMessage", outputState)
+                       }
+
+      Connections {
+        target: plcRunner
+        function onSegmentChanged(segment) {}
       }
     }
 
@@ -52,14 +57,13 @@ QxGroupBox {
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDR1", "LEDR2", "LEDR3"]
       xLabel: 'IN / <font color="#509dfd">SINK</font>'
       yLabel: 'OUT / <font color="#509dfd">SINK</font>'
-      xPlugged: [0,0,0,0,0,0,0,0]
-      yPlugged: [0,0,0,0,0,1,1,1]
+      xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
+      yPlugged: [0, 0, 0, 0, 0, 1, 1, 1]
       moduleIndex: 2
 
       onOutputChanged: outputState => {
-        plcRunner.invoke("writeMessage", outputState)
-      }
-
+                         plcRunner.invoke("writeMessage", outputState)
+                       }
     }
 
     ColumnLayout {
@@ -83,6 +87,3 @@ QxGroupBox {
     }
   }
 }
-
-
-

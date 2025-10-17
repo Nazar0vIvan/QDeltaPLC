@@ -15,8 +15,8 @@ Item {
   property int fieldHeight: 24
   property real value: 0.00
 
-  signal increment()
-  signal decrement()
+  signal increment
+  signal decrement
 
   implicitWidth: cl.implicitWidth
   implicitHeight: cl.implicitHeight
@@ -51,10 +51,14 @@ Item {
         }
 
         background: Rectangle {
-          topLeftRadius: 4; bottomLeftRadius: 4
+          topLeftRadius: 4
+          bottomLeftRadius: 4
           color: Styles.background.dp04
-          border{width: 1; color: Styles.background.dp24}
-          opacity:  btnDecrement.pressed ? 0.7 : btnDecrement.hovered ? 1.0 : 0.7
+          border {
+            width: 1
+            color: Styles.background.dp24
+          }
+          opacity: btnDecrement.pressed ? 0.7 : btnDecrement.hovered ? 1.0 : 0.7
         }
       }
 
@@ -67,9 +71,13 @@ Item {
         verticalAlignment: TextInput.AlignVCenter
         horizontalAlignment: TextInput.AlignHCenter
         color: Styles.foreground.high
+        font: Styles.fonts.body
 
         background: Rectangle {
-          border{width: 1; color: Styles.background.dp04}
+          border {
+            width: 1
+            color: Styles.background.dp04
+          }
           color: "transparent"
         }
       }
@@ -88,10 +96,14 @@ Item {
           smooth: true
         }
         background: Rectangle {
-          topRightRadius: 4; bottomRightRadius: 4
+          topRightRadius: 4
+          bottomRightRadius: 4
           color: Styles.background.dp04
-          border{width: 1; color: Styles.background.dp24}
-          opacity:  btnIncrement.pressed ? 0.7 : btnIncrement.hovered ? 1.0 : 0.7
+          border {
+            width: 1
+            color: Styles.background.dp24
+          }
+          opacity: btnIncrement.pressed ? 0.7 : btnIncrement.hovered ? 1.0 : 0.7
         }
       }
     }

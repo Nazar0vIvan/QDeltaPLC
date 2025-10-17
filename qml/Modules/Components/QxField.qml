@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 import Styles 1.0
 
-  Item {
+Item {
   id: root
 
   property int labelWidth: 0
@@ -27,6 +27,7 @@ import Styles 1.0
       Layout.alignment: Qt.AlignVCenter
       verticalAlignment: Text.AlignVCenter
       color: Styles.foreground.high
+      font: Styles.fonts.body
     }
 
     Item {

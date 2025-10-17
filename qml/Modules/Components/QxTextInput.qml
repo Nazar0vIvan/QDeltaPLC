@@ -25,7 +25,8 @@ TextField {
     }
   }
 
-  onFocusChanged: if (focus) selectAll()
+  onFocusChanged: if (focus)
+                    selectAll()
 
   Text {
     id: defaultTxt
@@ -34,7 +35,7 @@ TextField {
     verticalAlignment: Text.AlignVCenter
     leftPadding: 5
     color: Styles.foreground.medium
+    font: Styles.fonts.body
     visible: !(control.activeFocus || control.text)
-    font.italic: true
   }
 }

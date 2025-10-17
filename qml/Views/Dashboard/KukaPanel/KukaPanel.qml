@@ -24,14 +24,14 @@ QxGroupBox {
       RsiPosition {
         id: cartesianPosition
 
-        tags: ["X","Y","Z","A","B","C"]
+        tags: ["X", "Y", "Z", "A", "B", "C"]
         dimension: "mm"
         title: "Cartesian Space"
       }
       RsiPosition {
         id: jointPosition
 
-        tags: ["A1","A2","A3","A4","A5","A6"]
+        tags: ["A1", "A2", "A3", "A4", "A5", "A6"]
         dimension: "deg"
         title: "Joint Space"
       }
@@ -40,15 +40,16 @@ QxGroupBox {
     QxButton {
       id: btnStart
 
-      checked: ftsRunner && ftsRunner.isStreaming
-      enabled: ftsRunner && ftsRunner.socketState === 4 // BoundState
+      checked: rsiRunner && rsiRunner.isStreaming
+      enabled: rsiRunner && rsiRunner.socketState === 4 // BoundState
       text: checked ? "Stop" : "Start"
       onClicked: {
-        if (!ftsRunner) return
+        if (!rsiRunner)
+          return
         if (checked) {
-            ftsRunner.stopStreaming()
+          rsiRunner.stopStreaming()
         } else {
-            ftsRunner.startStreaming()
+          rsiRunner.startStreaming()
         }
       }
     }

@@ -12,19 +12,29 @@ GroupBox {
   bottomPadding: 20
 
   label: Label {
-      x: 20; y: -height/2
-      leftPadding: 10; rightPadding: 10
-      topPadding: 6; bottomPadding: 6
-      textFormat: Text.RichText
-      text: control.title
-      color: Styles.foreground.high
-      background: Rectangle {
-        color: Styles.background.dp04
-        border{ width: 1; color: Styles.foreground.high }
+    x: 20
+    y: -height / 2
+    leftPadding: 10
+    rightPadding: 10
+    topPadding: 6
+    bottomPadding: 6
+    textFormat: Text.RichText
+    text: control.title
+    color: Styles.foreground.high
+    font: Styles.fonts.body
+    background: Rectangle {
+      color: Styles.background.dp04
+      border {
+        width: 1
+        color: Styles.foreground.high
       }
+    }
   }
   background: Rectangle {
-    border{ width: 1; color: Styles.foreground.high }
+    border {
+      width: 1
+      color: Styles.foreground.high
+    }
     color: Styles.background.dp00
   }
 }

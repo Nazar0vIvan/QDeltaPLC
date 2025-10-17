@@ -27,6 +27,7 @@ Item {
       verticalAlignment: Text.AlignVCenter
       Layout.alignment: Qt.AlignVCenter
       color: Styles.foreground.high
+      font: Styles.fonts.body
     }
 
     ProgressBar {
@@ -36,7 +37,10 @@ Item {
       Layout.alignment: Qt.AlignVCenter
       background: Rectangle {
         color: Styles.background.dp04
-        border{width: 1; color: Styles.background.dp12}
+        border {
+          width: 1
+          color: Styles.background.dp12
+        }
       }
 
       contentItem: Item {
@@ -57,10 +61,13 @@ Item {
       }
     }
 
-    Text { id: valueText
+    Text {
+      id: valueText
+
+      Layout.alignment: Qt.AlignVCenter
       text: pb.value.toFixed(3)
       color: Styles.foreground.high
-      Layout.alignment: Qt.AlignVCenter
+      font: Styles.fonts.body
     }
   }
 }

@@ -24,6 +24,7 @@ Item {
 
       Layout.alignment: Qt.AlignHCenter
       color: Styles.foreground.high
+      font: Styles.fonts.body
     }
 
     Rectangle {
@@ -31,13 +32,19 @@ Item {
 
       Layout.preferredWidth: root.size
       Layout.preferredHeight: root.size
-      radius: parent.width/2
+      radius: parent.width / 2
       color: root.isOn ? Qt.lighter(root.ledColor, 1.4) : Qt.darker(root.ledColor, 1.4)
 
-      border{ color: Qt.darker(root.ledColor, 1.8); width: 3 }
+      border {
+        color: Qt.darker(root.ledColor, 1.8)
+        width: 3
+      }
 
-      Behavior on color { ColorAnimation { duration: 150 } }
+      Behavior on color {
+        ColorAnimation {
+          duration: 150
+        }
+      }
     }
-
   }
 }

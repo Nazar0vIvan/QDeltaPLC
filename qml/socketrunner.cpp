@@ -169,6 +169,11 @@ TcpSocketRunner::TcpSocketRunner(QAbstractSocket* socket, QObject *parent) : Abs
 
 }
 
+void TcpSocketRunner::onSegmentChanged(const QVariantMap &segment)
+{
+  m_segment = segment;
+}
+
 TcpSocketRunner::~TcpSocketRunner() = default;
 
 // ----- UdpSocketRunner -----

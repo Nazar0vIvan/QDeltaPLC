@@ -84,18 +84,11 @@ void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
   m_pa = QHostAddress(config.value("peerAddress").toString());
   m_pp = config.value("peerPort").toUInt();
 
-  if (!bind(m_la,m_lp,QAbstractSocket::ReuseAddressHint)) {
-    emit logMessage({"binding failed", 0, objectName()});
-    return;
-  }
-
-  emit logMessage({stateToString(state()) + "<br/>" +
-                  "[local address]: " + m_la.toString() + "<br/>" +
-                  "[local port]: " + QString::number(m_lp) + "<br/>" +
-                  "[peer address]: " + m_pa.toString() + "<br/>" +
-                  "[peer port]: " + QString::number(m_pp) + "<br/>" +
-                  "----------",
-                  1, objectName()});
+  emit logMessage({QString("Socket configured:<br/>"
+                   "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
+                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4<br/>").
+                   arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()).arg(m_pp),
+                   1, objectName()});
 }
 
 // PUBLIC SLOTS
@@ -112,10 +105,8 @@ void SocketDeltaPLC::onConnected()
 {
   emit logMessage({"Connection has been successfully established", 1, objectName()});
 
-  QByteArray tosend;
-  tosend.append("SYNC");
-
-  const qint64 bytesCount = write(networkByteOrder(tosend));
+  const qint64 n = write(networkByteOrder(QByteArray("SYNC")));
+  emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
 
 void SocketDeltaPLC::onReadyRead()
@@ -123,21 +114,20 @@ void SocketDeltaPLC::onReadyRead()
   QByteArray chunk = readAll();
   const qint64 n = chunk.size();
 
-  QVector<bool> bits(8);
-  quint8 firstByte = static_cast<quint8>(chunk[0]);
-  for (int i = 0; i < 8; i++) {
-    bits[i] = (firstByte >> i) & 1;
+  QVariantMap msg;
+
+  char id = chunk.at(0);
+  if (id == 'Y') {
+    quint8 module = static_cast<quint8>(chunk[1]);
+    quint8 states = static_cast<quint8>(chunk[2]);
+    QVariantList bits(8);
+    for (int i = 0; i < 8; i++) {
+        bits[i] = (states >> i) & 1;
+    }
+    msg = { {"id", "Y"}, {"module", module}, {"state", bits} };
   }
 
-  // qDebug() << bits;
-
-  quint8 secondByte = static_cast<quint8>(chunk[1]);
-  for (int i = 0; i < 8; i++) {
-    bits[i] = (secondByte >> i) & 1;
-  }
-
-  // qDebug() << bits;
-
+  emit segmentChanged(msg);
   emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
 

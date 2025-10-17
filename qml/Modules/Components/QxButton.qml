@@ -21,5 +21,6 @@ Button {
     color: control.checked ? Styles.foreground.high : Styles.background.dp00
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
+    font: Styles.fonts.body
   }
 }

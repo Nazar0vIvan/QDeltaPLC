@@ -96,6 +96,11 @@ private:
     quint32          m_baseSeq = 0;
     bool             m_haveBase = false;
     int              m_emitIntervalMs = 16; // ~60 Hz GUI updates
+
+    QHostAddress m_la;
+    qint16 m_lp = 0;
+    QHostAddress m_pa;
+    qint16 m_pp = 0;
 };
 
 #endif // SOCKETRDT_H

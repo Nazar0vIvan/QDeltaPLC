@@ -7,19 +7,16 @@ import Components 1.0
 ListView {
   id: root
 
-  function logObject(obj) {
-      Object.keys(obj).forEach(key => console.log(`${key}: ${obj[key]}`));
-  }
-
   function onApply(runner, la, lp, pa, pp) {
-    if (!runner) return
+    if (!runner)
+      return
     runner.invoke("setSocketConfig", {
                     "localAddress": la.text,
                     "localPort": Number(lp.text),
                     "peerAddress": pa.text,
                     "peerPort": Number(pp.text)
                   })
-    }
+  }
 
   property int fieldHeight: 28
   property int fieldWidth: 120
@@ -114,7 +111,6 @@ ListView {
 
         QxUploadFile {
           id: uploadFile
-
 
           height: parent.height
           fieldWidth: 400
@@ -331,7 +327,8 @@ ListView {
         id: plcBtnApply
 
         text: "Apply"
-        enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text && plcRunner.socketState !== 3 // 3 - connected
+        enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text
+                 && plcRunner.socketState !== 3 // 3 - connected
 
         onClicked: {
           onApply(plcRunner, pcAddr, plcLp, plcPa, plcPp)

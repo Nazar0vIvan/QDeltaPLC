@@ -30,6 +30,8 @@ set(CPP_FILES
   socketdeltaplc.cpp
   socketrdt.h
   socketrdt.cpp
+  socketrsi.h
+  socketrsi.cpp
   logger.h
   logger.cpp
   socketrunner.h
@@ -51,7 +53,7 @@ qt_add_qml_module(qdeltaplc
     ${CPP_FILES}
   RESOURCES
     pics.qrc
-    SOURCES socketrsi.h socketrsi.cpp
+    fonts.qrc
 )
 
 target_link_libraries(qdeltaplc

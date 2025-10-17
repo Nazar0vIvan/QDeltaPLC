@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QFontDatabase>
 
 #include "socketrunner.h"
 #include "socketdeltaplc.h"
@@ -13,7 +14,16 @@ int main(int argc, char *argv[])
 {
   QApplication app(argc, argv);
 
-  TcpSocketRunner plcRunner(new SocketDeltaPLC(QStringLiteral("PLC_AS332T")));
+  QFontDatabase::addApplicationFont("://assets/fonts/roboto/Roboto-Regular.ttf");
+  QFontDatabase::addApplicationFont("://assets/fonts/roboto/Roboto-Medium.ttf");
+  auto idfont = QFontDatabase::addApplicationFont("://assets/fonts/roboto/Roboto-Bold.ttf");
+  if (idfont == -1) {
+    qWarning() << "Failed to load font from resources!";
+  }
+
+  SocketDeltaPLC* socketDeltaPLC = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
+  TcpSocketRunner plcRunner(socketDeltaPLC);
+  QObject::connect(socketDeltaPLC, &SocketDeltaPLC::segmentChanged, &plcRunner, &TcpSocketRunner::segmentChanged, Qt::QueuedConnection);
   plcRunner.start();
 
   SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));

@@ -14,8 +14,10 @@ Control {
   property alias title: header.text
   property int imageSize: 10
 
-  topPadding: 40; bottomPadding: 10
-  leftPadding: 10; rightPadding: 10
+  topPadding: 40
+  bottomPadding: 10
+  leftPadding: 10
+  rightPadding: 10
 
   contentItem: ColumnLayout {
     spacing: 14
@@ -47,7 +49,10 @@ Control {
 
   background: Rectangle {
     color: "transparent"
-    border{width: 1; color: Styles.background.dp12}
+    border {
+      width: 1
+      color: Styles.background.dp12
+    }
   }
 
   Label {
@@ -56,16 +61,22 @@ Control {
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
-    leftPadding: 10; rightPadding: 10
-    topPadding: 6; bottomPadding: 6
+
+    leftPadding: 10
+    rightPadding: 10
+    topPadding: 6
+    bottomPadding: 6
+
+    font: Styles.fonts.body
+    textFormat: Text.RichText
+    color: Styles.foreground.medium
 
     background: Rectangle {
       color: Styles.background.dp01
-      border{width: 1; color: Styles.background.dp12}
+      border {
+        width: 1
+        color: Styles.background.dp12
+      }
     }
-
-    textFormat: Text.RichText
-    color: Styles.foreground.medium
-    font{pixelSize: 12}
   }
 }

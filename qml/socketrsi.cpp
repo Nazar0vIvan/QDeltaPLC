@@ -10,6 +10,8 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
   connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
 }
 
+// Q_INVOKABLE
+
 void SocketRSI::startStreaming()
 {
 
@@ -60,26 +62,34 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
 
 void SocketRSI::setSocketConfig(const QVariantMap &config)
 {
-  QHostAddress la = QHostAddress(config.value("localAddress").toString());
-  qint16 lp = config.value("localPort").toUInt();
-  QHostAddress pa = QHostAddress(config.value("peerAddress").toString());
-  qint16 pp = config.value("peerPort").toUInt();
+  m_la = QHostAddress(config.value("localAddress").toString());
+  m_lp = config.value("localPort").toUInt();
+  m_pa = QHostAddress(config.value("peerAddress").toString());
+  m_pp = config.value("peerPort").toUInt();
 
-
-  if (!bind(la,lp,QAbstractSocket::ReuseAddressHint)) {
-    emit logMessage({"binding failed", 0, objectName()});
-    return;
-  }
-
-  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
-  emit logMessage({stateToString(state()) + "<br/>" +
-                  "[local address]: " + la.toString() + "<br/>" +
-                  "[local port]: " + QString::number(lp) + "<br/>" +
-                  "[peer address]: " + pa.toString() + "<br/>" +
-                  "[peer port]: " + QString::number(pp) + "<br/>" +
-                  "----------",
-                  1, objectName()});
+  emit logMessage({QString("Socket configured:<br/>"
+                   "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
+                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4<br/>").
+                   arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()).arg(m_pp),
+                   1, objectName()});
 }
+
+// PUBLIC SLOTS
+
+void SocketRSI::onReadyRead()
+{
+
+}
+
+void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError) {
+  emit logMessage({this->errorString(), 0, objectName()});
+}
+
+void SocketRSI::onStateChanged(QAbstractSocket::SocketState state) {
+  emit logMessage({stateToString(state), 2, objectName()});
+}
+
+// PRIVATE
 
 QString SocketRSI::stateToString(SocketState state)
 {
@@ -93,19 +103,6 @@ QString SocketRSI::stateToString(SocketState state)
     case QAbstractSocket::ListeningState:   return "ListeningState";
     default: return "UnconnectedState";
   }
-}
-
-void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError) {
-  emit logMessage({this->errorString(), 0, objectName()});
-}
-
-void SocketRSI::onStateChanged(QAbstractSocket::SocketState state) {
-  emit logMessage({stateToString(state), 2, objectName()});
-}
-
-void SocketRSI::onReadyRead()
-{
-
 }
 
 

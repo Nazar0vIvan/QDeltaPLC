@@ -63,9 +63,13 @@ public:
     explicit TcpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
     ~TcpSocketRunner() override;
 
-    // Q_INVOKABLE void connectToHost();
-    // Q_INVOKABLE void disconnectFromHost();
-    // Q_INVOKABLE void writeMessage(const QVariantMap& cmd);
+    Q_PROPERTY(QVariantMap segment READ segment NOTIFY segmentChanged);
+
+signals:
+    void segmentChanged();
+
+public slots:
+    void onSegmentChanged(const QVariantMap& segment);
 };
 
 class UdpSocketRunner : public AbstractSocketRunner
@@ -73,27 +77,24 @@ class UdpSocketRunner : public AbstractSocketRunner
     Q_OBJECT
 
 public:
-    explicit UdpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
-    ~UdpSocketRunner() override;
+  explicit UdpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  ~UdpSocketRunner() override;
 
-    Q_PROPERTY(QVariantList lastReading READ lastReading NOTIFY lastReadingChanged)
-    Q_PROPERTY(bool isStreaming READ isStreaming NOTIFY isStreamingChanged)
+  Q_PROPERTY(QVariantList lastReading READ lastReading NOTIFY lastReadingChanged)
+  Q_PROPERTY(bool isStreaming READ isStreaming NOTIFY isStreamingChanged)
 
-    // Q_INVOKABLE void startStreaming();
-    // Q_INVOKABLE void stopStreaming();
-
-    QVariantList lastReading() const { return m_lastReading; }
-    bool isStreaming() const { return m_isStreaming; }
+  QVariantList lastReading() const { return m_lastReading; }
+  bool isStreaming() const { return m_isStreaming; }
 
 signals:
-    void lastReadingChanged();
-    void isStreamingChanged();
+  void lastReadingChanged();
+  void isStreamingChanged();
 
 public slots:
-    void onBufferReady(const QVector<QVariantList>& readings);
+  void onBufferReady(const QVector<QVariantList>& readings);
 
 private slots:
-    void onPulse();
+  void onPulse();
 
 private:
     QVariantList m_lastReading = {};

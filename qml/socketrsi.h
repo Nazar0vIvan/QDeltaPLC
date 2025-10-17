@@ -44,8 +44,14 @@ private:
   QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
   QByteArray defaultCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.0\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
   bool m_onlysend = false;
+  QHostAddress m_la;
+  qint16 m_lp = 0;
+  QHostAddress m_pa;
+  qint16 m_pp = 0;
 
   QString stateToString(SocketState state);
+
+
 };
 
 #endif // SOCKETRSI_H

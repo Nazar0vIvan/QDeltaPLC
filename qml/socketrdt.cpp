@@ -18,6 +18,76 @@ SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
   connect(this, &SocketRDT::logMessage,  Logger::instance(), &Logger::push);
 }
 
+// Q_INVOKABLE
+
+void SocketRDT::startStreaming()
+{
+
+  qDebug() << "----------";
+  qDebug() << peerAddress();
+  qDebug() << peerPort();
+  qDebug() << state();
+  // reset batching/timeline
+  m_haveBase = false;
+  m_baseSeq = 0;
+  m_readings.clear();
+  m_emitTimer.restart();
+  emit streamReset(); // tell GUI to clear immediately
+
+  const QByteArray startReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
+  writeDatagram(startReq, peerAddress(), peerPort());
+}
+
+void SocketRDT::stopStreaming()
+{
+  const QByteArray stopReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
+  writeDatagram(stopReq, peerAddress(), peerPort());
+  emit streamReset();
+}
+
+void SocketRDT::setSocketConfig(const QVariantMap &config)
+{
+  m_la = QHostAddress(config.value("localAddress").toString());
+  m_lp = config.value("localPort").toUInt();
+  m_pa = QHostAddress(config.value("peerAddress").toString());
+  m_pp = config.value("peerPort").toUInt();
+
+  emit logMessage({QString("Socket configured:<br/>"
+                   "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
+                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4<br/>").
+                   arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()).arg(m_pp),
+                   1, objectName()});
+}
+
+// PUBLIC SLOTS
+
+void SocketRDT::onReadyRead()
+{
+  do {
+    QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
+    QVariantList r = QNetworkDatagram2RDTResponse(dg);
+
+    uint32_t rdt_sequence = r[0].toUInt();
+
+    if (!m_haveBase) { // if the first read
+      m_baseSeq = rdt_sequence;
+      m_haveBase = true;
+      m_emitTimer.restart();
+      m_readings.clear();
+    }
+
+    const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;
+    r.push_back(t);
+
+    m_readings.push_back(r);
+    if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
+      emit bufferReady(std::exchange(m_readings, {}));
+      m_emitTimer.restart();
+    }
+
+  } while(hasPendingDatagrams());
+}
+
 void SocketRDT::onErrorOccurred(QAbstractSocket::SocketError socketError) {
   emit logMessage({this->errorString(), 0, objectName()});
 }
@@ -25,6 +95,8 @@ void SocketRDT::onErrorOccurred(QAbstractSocket::SocketError socketError) {
 void SocketRDT::onStateChanged(QAbstractSocket::SocketState state) {
   emit logMessage({stateToString(state), 2, objectName()});
 }
+
+// PRIVATE
 
 QString SocketRDT::stateToString(SocketState state)
 {
@@ -73,76 +145,4 @@ QVariantList SocketRDT::QNetworkDatagram2RDTResponse(const QNetworkDatagram& net
   };
 }
 
-void SocketRDT::startStreaming()
-{
 
-  qDebug() << "----------";
-  qDebug() << peerAddress();
-  qDebug() << peerPort();
-  qDebug() << state();
-  // reset batching/timeline
-  m_haveBase = false;
-  m_baseSeq = 0;
-  m_readings.clear();
-  m_emitTimer.restart();
-  emit streamReset(); // tell GUI to clear immediately
-
-  const QByteArray startReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
-  writeDatagram(startReq, peerAddress(), peerPort());
-}
-
-void SocketRDT::stopStreaming()
-{
-  const QByteArray stopReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
-  writeDatagram(stopReq, peerAddress(), peerPort());
-  emit streamReset();
-}
-
-void SocketRDT::setSocketConfig(const QVariantMap &config)
-{
-  QHostAddress la = QHostAddress(config.value("localAddress").toString());
-  uint lp = config.value("localPort").toUInt();
-  QHostAddress pa = QHostAddress(config.value("peerAddress").toString());
-  uint pp = config.value("peerPort").toUInt();
-
-  if (!bind(la,lp,QAbstractSocket::ReuseAddressHint)) {
-    emit logMessage({"binding failed", 0, objectName()});
-    return;
-  }
-
-  setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
-  emit logMessage({stateToString(state()) + "<br/>" +
-                  "[local address]: " + la.toString() + "<br/>" +
-                  "[local port]: " + QString::number(lp) + "<br/>" +
-                  "[peer address]: " + pa.toString() + "<br/>" +
-                  "[peer port]: " + QString::number(pp) + "<br/>" +
-                  "----------",
-                  1, objectName()});
-}
-
-void SocketRDT::onReadyRead()
-{
-  do {
-    QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
-    QVariantList r = QNetworkDatagram2RDTResponse(dg);
-
-    uint32_t rdt_sequence = r[0].toUInt();
-
-    if (!m_haveBase) { // if the first read
-      m_baseSeq = rdt_sequence;
-      m_haveBase = true;
-      m_emitTimer.restart();
-      m_readings.clear();
-    }
-
-    const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;
-    r.push_back(t);
-
-    m_readings.push_back(r);
-    if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
-      emit bufferReady(std::exchange(m_readings, {}));
-      m_emitTimer.restart();
-    }
-
-  } while(hasPendingDatagrams());
-}

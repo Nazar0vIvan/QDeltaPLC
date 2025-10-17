@@ -44,6 +44,7 @@ Item {
       selectionColor: Styles.primary.highlight
       selectByMouse: true
       readOnly: false
+      font: Styles.fonts.body
 
       background: Rectangle {
         color: textField.readOnly ? "transparent" : Styles.background.dp04

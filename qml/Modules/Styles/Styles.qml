@@ -1,4 +1,5 @@
 pragma Singleton
+
 import QtQuick 2.12
 
 QtObject {
@@ -25,31 +26,39 @@ QtObject {
   readonly property color midColor: "#ffff00"
   readonly property color maxColor: "#ff3a31"
 
-  readonly property QtObject primary: QtObject{
-    readonly property color base:        "#509dfd"
-    readonly property color light:       "#b5d5fe"
-    readonly property color dark:        "#0367e4"
+  readonly property QtObject primary: QtObject {
+    readonly property color base: "#509dfd"
+    readonly property color light: "#b5d5fe"
+    readonly property color dark: "#0367e4"
     readonly property color transparent: "#50509dfd"
-    readonly property color highlight:   "#80509dfd"
+    readonly property color highlight: "#80509dfd"
   }
 
-  readonly property QtObject secondary: QtObject{
-    readonly property color base:  "#fdb050"
+  readonly property QtObject secondary: QtObject {
+    readonly property color base: "#fdb050"
     readonly property color light: "#ffc174"
-    readonly property color dark:  "#ff920b"
+    readonly property color dark: "#ff920b"
   }
 
-  readonly property QtObject overlays: QtObject{
-    readonly property real hovered:   0.08
-    readonly property real pressed:   0.32
-    readonly property real disabled:  0.38
+  readonly property QtObject overlays: QtObject {
+    readonly property real hovered: 0.08
+    readonly property real pressed: 0.32
+    readonly property real disabled: 0.38
   }
 
-  readonly property QtObject fonts: QtObject{
-    readonly property font title:   Qt.font({ family: "Roboto", pixelSize: 16, bold: true })
-    readonly property font body:    Qt.font({ family: "Roboto", pixelSize: 14 })
-    readonly property font caption: Qt.font({ family: "Roboto", pixelSize: 12 })
+  readonly property QtObject fonts: QtObject {
+    readonly property font title: Qt.font({
+                                            "family": "Roboto",
+                                            "pixelSize": 16,
+                                            "bold": true
+                                          })
+    readonly property font body: Qt.font({
+                                           "family": "Roboto",
+                                           "pixelSize": 13
+                                         })
+    readonly property font caption: Qt.font({
+                                              "family": "Roboto",
+                                              "pixelSize": 12
+                                            })
   }
 }
-
-

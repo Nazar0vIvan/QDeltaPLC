@@ -27,8 +27,7 @@ signals:
     void logMessage(const LoggerMessage& msg);
     void errorOccurredMessage(const LoggerMessage& msg);
     void stateChangedMessage(const LoggerMessage& msg);
-    void destroyedMessage(const LoggerMessage& msg);
-    void plcRunning(bool isRunning);
+    void segmentChanged(const QVariantMap& segment);
 
 public slots:
     void onErrorOccurred(QAbstractSocket::SocketError socketError);

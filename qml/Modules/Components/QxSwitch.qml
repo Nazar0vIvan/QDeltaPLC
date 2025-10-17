@@ -11,8 +11,8 @@ Switch {
   property bool displayonly: false
   property alias imageSource: image.source
 
-  signal turnedOn()
-  signal turnedOff()
+  signal turnedOn
+  signal turnedOff
 
   checkable: true
 
@@ -23,22 +23,27 @@ Switch {
     verticalAlignment: Text.AlignVCenter
     text: root.text
     color: Styles.foreground.high
+    font: Styles.fonts.body
   }
 
   indicator: Rectangle {
     width: root.width
     height: root.height
-    radius: root.height/2
+    radius: root.height / 2
     color: root.checked ? Styles.secondary.base : Styles.background.dp06
 
     Rectangle {
-      width: root.height - 6;
+      width: root.height - 6
       height: root.height - 6
-      radius: width/2
+      radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
       x: root.checked ? parent.width - width - 2 : 2
       color: Styles.foreground.high
-      Behavior on x { NumberAnimation { duration: 150 } }
+      Behavior on x {
+        NumberAnimation {
+          duration: 150
+        }
+      }
 
       Image {
         id: image
@@ -51,7 +56,9 @@ Switch {
     }
   }
   onCheckedChanged: {
-    if (checked) turnedOn();
-    else turnedOff();
+    if (checked)
+      turnedOn()
+    else
+      turnedOff()
   }
 }
