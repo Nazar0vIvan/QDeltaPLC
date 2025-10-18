@@ -33,15 +33,6 @@ QxGroupBox {
       yPlugged: [0, 0, 0, 0, 0, 1, 1, 0]
       yDisplayOnly: [6] // !!! RUN
       moduleIndex: 1
-
-      onOutputChanged: outputState => {
-                         plcRunner.invoke("writeMessage", outputState)
-                       }
-
-      Connections {
-        target: plcRunner
-        function onSegmentChanged(segment) {}
-      }
     }
 
     DeltaModuleAP {

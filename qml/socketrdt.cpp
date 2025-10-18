@@ -22,11 +22,14 @@ SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
 
 void SocketRDT::startStreaming()
 {
-
-  qDebug() << "----------";
-  qDebug() << peerAddress();
-  qDebug() << peerPort();
-  qDebug() << state();
+  if (m_pa.isNull()) {
+    emit logMessage({"Peer address is not set", 0, objectName()});
+    return;
+  }
+  if (!m_pp) {
+    emit logMessage({"Peer port is not set", 0, objectName()});
+    return;
+  }
   // reset batching/timeline
   m_haveBase = false;
   m_baseSeq = 0;
@@ -35,13 +38,13 @@ void SocketRDT::startStreaming()
   emit streamReset(); // tell GUI to clear immediately
 
   const QByteArray startReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
-  writeDatagram(startReq, peerAddress(), peerPort());
+  writeDatagram(startReq, m_pa, m_pp);
 }
 
 void SocketRDT::stopStreaming()
 {
   const QByteArray stopReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
-  writeDatagram(stopReq, peerAddress(), peerPort());
+  writeDatagram(stopReq, m_pa, m_pp);
   emit streamReset();
 }
 

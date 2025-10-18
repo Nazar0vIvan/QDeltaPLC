@@ -435,7 +435,7 @@ ListView {
         enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.text && !ftsRunner.isStreaming
 
         onClicked: {
-          onBindUnbind(ftsRunner, pcAddr, ftsLp, ftsPa, ftsPp)
+          onApply(ftsRunner, pcAddr, ftsLp, ftsPa, ftsPp)
         }
       }
     }

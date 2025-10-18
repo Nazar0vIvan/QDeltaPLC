@@ -1,3 +1,4 @@
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic
@@ -72,16 +73,15 @@ Control {
         id: btnConnect
 
         enabled: plcRunner
-        checkable: true
-        checked: plcRunner.socketState === 3
-        text: plcRunner && checked ? "Disconnect" : "Connect"
+        checked: plcRunner && plcRunner.socketState === 3
+        text: checked ? "Disconnect" : "Connect"
         onClicked: {
           if (!plcRunner)
             return
           if (checked) {
-            plcRunner.invoke("connectToHost")
-          } else {
             plcRunner.invoke("disconnectFromHost")
+          } else {
+            plcRunner.invoke("connectToHost")
           }
         }
       }

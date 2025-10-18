@@ -26,15 +26,15 @@ QxGroupBox {
     QxButton {
       id: btnStart
 
+      enabled: ftsRunner
       checked: ftsRunner && ftsRunner.isStreaming
-      enabled: ftsRunner && ftsRunner.socketState === 4 // BoundState
       text: checked ? "Stop" : "Start"
       onClicked: {
         if (!ftsRunner) return
         if (checked) {
-            ftsRunner.stopStreaming()
+          ftsRunner.invoke("stopStreaming");
         } else {
-            ftsRunner.startStreaming()
+          ftsRunner.invoke("startStreaming");
         }
       }
     }

@@ -13,68 +13,62 @@
 
 class AbstractSocketRunner : public QObject
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit AbstractSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
-    ~AbstractSocketRunner() override;
+  explicit AbstractSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  ~AbstractSocketRunner() override;
 
-    Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
-    Q_INVOKABLE void invoke(const QString& method, const QVariantMap& args = {});
+  Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)
+  Q_INVOKABLE void invoke(const QString& method, const QVariantMap& args = {});
 
-    int socketState() const { return m_socketState; }
+  int socketState() const { return m_socketState; }
 
 signals:
-    void logMessage(const LoggerMessage& msg);
-    void bufferChanged();
-    void socketStateChanged();
-    void resultReady(const QString& method, const QVariantMap& result);
+  void logMessage(const LoggerMessage& msg);
+  void bufferChanged();
+  void socketStateChanged();
+  void resultReady(const QString& method, const QVariantMap& result);
 
 public slots:
-    void start();
-    void stop();
+  void start();
+  void stop();
 
-    void onSocketStateChanged(QAbstractSocket::SocketState state);
-
-    void onThreadStarted();
-    void onThreadFinished();
+  void onSocketStateChanged(QAbstractSocket::SocketState state);
+  void onThreadStarted();
+  void onThreadFinished();
 
 protected:
-    QAbstractSocket* m_socket = nullptr;
-    QThread* m_thread = nullptr;
-    QStringList m_api = {};
+  QAbstractSocket* m_socket = nullptr;
+  QThread* m_thread = nullptr;
+  QStringList m_api = {};
 
 private:
-    void attachSocket(QAbstractSocket* sock);
-    QStringList invokableMethodNames() const;
-    bool allowed(const QString& methodName) const;
-    int  indexOfSignature(const QByteArray& sig) const;
-    bool returnsVariantMap(int idx) const;
+  void attachSocket(QAbstractSocket* sock);
+  QStringList invokableMethodNames() const;
+  bool allowed(const QString& methodName) const;
+  int  indexOfSignature(const QByteArray& sig) const;
+  bool returnsVariantMap(int idx) const;
 
-    int m_socketState = QAbstractSocket::UnconnectedState;
-    QVariant m_buffer;
+  int m_socketState = QAbstractSocket::UnconnectedState;
+  QVariant m_buffer;
 };
 
 class TcpSocketRunner : public AbstractSocketRunner
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit TcpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
-    ~TcpSocketRunner() override;
-
-    Q_PROPERTY(QVariantMap segment READ segment NOTIFY segmentChanged);
+  explicit TcpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  ~TcpSocketRunner() override;
 
 signals:
-    void segmentChanged();
-
-public slots:
-    void onSegmentChanged(const QVariantMap& segment);
+  void segmentChanged(const QVariantMap& segment);
 };
 
 class UdpSocketRunner : public AbstractSocketRunner
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
   explicit UdpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
@@ -97,9 +91,9 @@ private slots:
   void onPulse();
 
 private:
-    QVariantList m_lastReading = {};
-    bool m_isStreaming = false;
-    QTimer m_timer;
+  QVariantList m_lastReading = {};
+  bool m_isStreaming = false;
+  QTimer m_timer;
 };
 
 #endif // SOCKETRUNNER_H

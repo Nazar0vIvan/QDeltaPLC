@@ -1,6 +1,6 @@
 #include "socketdeltaplc.h"
 
-QByteArray networkByteOrder(const QByteArray& data) {
+QByteArray swapBytePairs(const QByteArray& data) {
   QByteArray result = data;
   for (int i = 0; i + 1 < result.size(); i += 2) {
     std::swap(result[i], result[i + 1]);
@@ -48,28 +48,28 @@ void SocketDeltaPLC::writeMessage(const QVariantMap& cmd)
   const quint8 id = static_cast<quint8>(cmd.value("id").toString().at(0).toLatin1());
   switch (id) {
     case 89: { // Y
-        const quint8 module = static_cast<quint8>(cmd.value("module").toInt());
-        const quint8 output = static_cast<quint8>(cmd.value("output").toInt());
-        const quint8 state  = cmd.value("state").toBool() ? 1 : 0;
+      const quint8 module = static_cast<quint8>(cmd.value("module").toInt());
+      const quint8 output = static_cast<quint8>(cmd.value("output").toInt());
+      const quint8 state  = cmd.value("state").toBool() ? 1 : 0;
 
-        tosend.reserve(4);
-        tosend.append(char(id));
-        tosend.append(char(module));
-        tosend.append(char(output));
-        tosend.append(char(state));
+      tosend.reserve(4);
+      tosend.append(char(id));
+      tosend.append(char(module));
+      tosend.append(char(output));
+      tosend.append(char(state));
 
-        qDebug() << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
-        break;
-      }
+      qDebug() << "WRITE: " << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
+      break;
+    }
     case 1: { // send raw string
-        QByteArray msg = cmd.value("message").toByteArray();
-        tosend.append(char(1));
-        tosend.append(msg);
-        break;
-      }
+      QByteArray msg = cmd.value("message").toByteArray( );
+      tosend.append(char(1));
+      tosend.append(msg);
+      break;
+    }
   }
 
-  const qint64 bytesCount = write(tosend);
+  const qint64 bytesCount = write(swapBytePairs(tosend));
 
   if (bytesCount == -1) {
     emit logMessage({"No bytes were written", 0, objectName()});
@@ -105,26 +105,33 @@ void SocketDeltaPLC::onConnected()
 {
   emit logMessage({"Connection has been successfully established", 1, objectName()});
 
-  const qint64 n = write(networkByteOrder(QByteArray("SYNC")));
+  const qint64 n = write(swapBytePairs(QByteArray("SYNC")));
   emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
 }
 
 void SocketDeltaPLC::onReadyRead()
 {
-  QByteArray chunk = readAll();
-  const qint64 n = chunk.size();
+  QByteArray toread = swapBytePairs(readAll());
+  const qint64 n = toread.size();
 
   QVariantMap msg;
 
-  char id = chunk.at(0);
+  char id = toread.at(0);
+
+  qDebug() << "READ" << "bytes hex =" << toread.toHex(' ') << ", size =" << toread.size();
+
   if (id == 'Y') {
-    quint8 module = static_cast<quint8>(chunk[1]);
-    quint8 states = static_cast<quint8>(chunk[2]);
+    quint8 moduleIndex = static_cast<quint8>(toread[1]);
+    quint8 outputs = static_cast<quint8>(toread[3]);
     QVariantList bits(8);
     for (int i = 0; i < 8; i++) {
-        bits[i] = (states >> i) & 1;
+        bits[i] = (outputs >> i) & 1;
     }
-    msg = { {"id", "Y"}, {"module", module}, {"state", bits} };
+    msg = { {"id", "Y"}, {"moduleIndex", moduleIndex}, {"outputs", bits} };
+
+    // qDebug() << id;
+    // qDebug() << moduleIndex;
+    // qDebug() << bits;
   }
 
   emit segmentChanged(msg);

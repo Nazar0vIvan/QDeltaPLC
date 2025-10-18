@@ -98,9 +98,11 @@ private:
     int              m_emitIntervalMs = 16; // ~60 Hz GUI updates
 
     QHostAddress m_la;
-    qint16 m_lp = 0;
+    quint16 m_lp = 0;
     QHostAddress m_pa;
-    qint16 m_pp = 0;
+    quint16 m_pp = 0;
+
+    int i = 0;
 };
 
 #endif // SOCKETRDT_H

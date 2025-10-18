@@ -18,6 +18,8 @@ Control {
   property string yLabel: "Undefined"
   property int moduleIndex: 1
 
+  property bool updatingFromSegment: false
+
   readonly property int rowHeight: 22
   readonly property int labelWidth: 28
   readonly property int switchWidth: 36
@@ -111,12 +113,15 @@ Control {
         tag: root.yTags[index]
 
         onCheckedChanged: {
-          root.outputChanged({
-            id: "Y",
-            module: root.moduleIndex,
-            output: index,
-            state: checked
-          })
+          if (root.updatingFromSegment) return
+          plcRunner.invoke("writeMessage",
+                          {
+                            id: "Y",
+                            module: root.moduleIndex,
+                            output: index,
+                            state: checked
+                          }
+          )
         }
       }
     }
@@ -141,5 +146,23 @@ Control {
 
     color: Styles.foreground.medium
     font{pixelSize: 12}
+  }
+
+  onOutputChanged: outputState => {
+    plcRunner.invoke("writeMessage", outputState)
+   }
+
+  Connections {
+    target: plcRunner
+    function onSegmentChanged(segment) {
+      if (!segment || !segment.outputs || segment.id !== "Y" || segment.moduleIndex !== root.moduleIndex ) return
+      root.updatingFromSegment = true
+      const n = Math.min(8, segment.outputs.length)
+      for (let i = 0; i < n; ++i) {
+        const it = y_lv.itemAtIndex(i)
+        if (it) it.checked = segment.outputs[i] === 1
+      }
+      root.updatingFromSegment = false
+    }
   }
 }
