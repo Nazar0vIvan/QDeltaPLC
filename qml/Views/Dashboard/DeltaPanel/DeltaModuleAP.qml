@@ -26,14 +26,27 @@ Control {
 
   property string title: ""
 
-  signal outputChanged(var outputState)
+  function refresh(xstates, ystates) {
+    for (var i = 0; i < 8; ++i) {
+      const y = y_lv.itemAtIndex(i)
+      y.checked = ystates[i] === 1
 
-  topPadding: 40; bottomPadding: 10
-  leftPadding: 10; rightPadding: 10
+      const x = x_lv.itemAtIndex(i)
+      x.checked = xstates[i] === 1
+    }
+  }
+
+  topPadding: 40
+  bottomPadding: 10
+  leftPadding: 10
+  rightPadding: 10
 
   background: Rectangle {
     color: "transparent"
-    border{width: 1; color: Styles.background.dp12}
+    border {
+      width: 1
+      color: Styles.background.dp12
+    }
   }
 
   contentItem: RowLayout {
@@ -113,15 +126,13 @@ Control {
         tag: root.yTags[index]
 
         onCheckedChanged: {
-          if (root.updatingFromSegment) return
-          plcRunner.invoke("writeMessage",
-                          {
-                            id: "Y",
-                            module: root.moduleIndex,
-                            output: index,
-                            state: checked
-                          }
-          )
+          plcRunner.invoke("writeMessage", {
+                             "cmd": "SET",
+                             "dest": "Y",
+                             "module": root.moduleIndex,
+                             "output": index,
+                             "state": checked
+                           })
         }
       }
     }
@@ -133,36 +144,25 @@ Control {
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
-    leftPadding: 10; rightPadding: 10
-    topPadding: 6; bottomPadding: 6
+    leftPadding: 10
+    rightPadding: 10
+    topPadding: 6
+    bottomPadding: 6
 
     background: Rectangle {
       color: Styles.background.dp01
-      border{width: 1; color: Styles.background.dp12}
+      border {
+        width: 1
+        color: Styles.background.dp12
+      }
     }
 
     textFormat: Text.RichText
     text: root.title
 
     color: Styles.foreground.medium
-    font{pixelSize: 12}
-  }
-
-  onOutputChanged: outputState => {
-    plcRunner.invoke("writeMessage", outputState)
-   }
-
-  Connections {
-    target: plcRunner
-    function onSegmentChanged(segment) {
-      if (!segment || !segment.outputs || segment.id !== "Y" || segment.moduleIndex !== root.moduleIndex ) return
-      root.updatingFromSegment = true
-      const n = Math.min(8, segment.outputs.length)
-      for (let i = 0; i < n; ++i) {
-        const it = y_lv.itemAtIndex(i)
-        if (it) it.checked = segment.outputs[i] === 1
-      }
-      root.updatingFromSegment = false
+    font {
+      pixelSize: 12
     }
   }
 }

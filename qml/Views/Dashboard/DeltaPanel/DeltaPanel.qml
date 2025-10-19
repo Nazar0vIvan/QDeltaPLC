@@ -11,6 +11,17 @@ QxGroupBox {
   implicitWidth: leftPadding + rl.implicitWidth + rightPadding
   implicitHeight: topPadding + rl.implicitHeight + bottomPadding
 
+  Connections {
+    target: plcRunner
+
+    function onPlcDataReady(data) {
+      if (!data.cmd || data.cmd !== "RFSH")
+        return
+      moduleAP_P.refresh(cmd.x1, cmd.y1)
+      moduleAP_T.refresh(cmd.x2, cmd.y2)
+    }
+  }
+
   RowLayout {
     id: rl
 
@@ -51,10 +62,6 @@ QxGroupBox {
       xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
       yPlugged: [0, 0, 0, 0, 0, 1, 1, 1]
       moduleIndex: 2
-
-      onOutputChanged: outputState => {
-                         plcRunner.invoke("writeMessage", outputState)
-                       }
     }
 
     ColumnLayout {

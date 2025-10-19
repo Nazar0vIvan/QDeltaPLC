@@ -18,6 +18,31 @@ SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocke
   connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
   connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
+
+  QVariantMap msg = {
+    {"cmd", "SET"},
+    {"dest", 'Y'},
+    {"module", 1},
+    {"output", 6},
+    {"state", true}
+  };
+
+  QByteArray tosend;
+
+  QByteArray cmd = msg.value("cmd").toByteArray();
+
+
+
+  cmd.resize(4, '\0');
+  const quint8 dest = static_cast<quint8>(msg.value("dest").toUInt());
+  const quint8 module = static_cast<quint8>(msg.value("module").toUInt());
+  const quint8 output = static_cast<quint8>(msg.value("output").toUInt());
+  const quint8 state  = msg.value("state").toBool() ? 1 : 0;
+
+  tosend = cmd.append(dest).append(module).append(output).append(state);
+
+  qDebug() << "WRITE: " << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
+
 }
 
 SocketDeltaPLC::~SocketDeltaPLC() {}
@@ -42,39 +67,32 @@ void SocketDeltaPLC::disconnectFromHost()
   QTcpSocket::disconnectFromHost();
 }
 
-void SocketDeltaPLC::writeMessage(const QVariantMap& cmd)
+void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
   QByteArray tosend;
-  const quint8 id = static_cast<quint8>(cmd.value("id").toString().at(0).toLatin1());
-  switch (id) {
-    case 89: { // Y
-      const quint8 module = static_cast<quint8>(cmd.value("module").toInt());
-      const quint8 output = static_cast<quint8>(cmd.value("output").toInt());
-      const quint8 state  = cmd.value("state").toBool() ? 1 : 0;
+  QByteArray cmdId = msg.value("cmdId").toByteArray();
+  if (cmdId == "SET") {
+    const quint8 dest = static_cast<quint8>(msg.value("dest").toUInt());
+    const quint8 module = static_cast<quint8>(msg.value("module").toUInt());
+    const quint8 output = static_cast<quint8>(msg.value("output").toUInt());
+    const quint8 state  = msg.value("state").toBool() ? 1 : 0;
 
-      tosend.reserve(4);
-      tosend.append(char(id));
-      tosend.append(char(module));
-      tosend.append(char(output));
-      tosend.append(char(state));
-
-      qDebug() << "WRITE: " << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
-      break;
-    }
-    case 1: { // send raw string
-      QByteArray msg = cmd.value("message").toByteArray( );
-      tosend.append(char(1));
-      tosend.append(msg);
-      break;
-    }
+    cmdId.resize(4, '\0');
+    tosend = cmdId.append(dest).append(module).append(output).append(state);
+  }
+  else if (cmdId == "SYNC") {
+    tosend = cmdId;
+  }
+  else {
+    tosend = msg.value("message").toByteArray();
   }
 
-  const qint64 bytesCount = write(swapBytePairs(tosend));
+  const qint64 n = write(swapBytePairs(tosend));
 
-  if (bytesCount == -1) {
+  if (n == -1)
     emit logMessage({"No bytes were written", 0, objectName()});
-  }
-  emit logMessage({QString::number(bytesCount) + " bytes were written to PLC", 4, objectName()});
+  else
+    emit logMessage({"Message has been wriiten to PLC: " + tosend.toHex(' ') + ", size =" + QString::number(n), 4, objectName()});
 }
 
 void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
@@ -105,16 +123,15 @@ void SocketDeltaPLC::onConnected()
 {
   emit logMessage({"Connection has been successfully established", 1, objectName()});
 
+  QByteArray tosend;
   const qint64 n = write(swapBytePairs(QByteArray("SYNC")));
-  emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
+  emit logMessage({"Message has been wriiten to PLC: " + tosend.toHex(' ') + ", size =" + QString::number(n), 3, objectName()});
 }
 
 void SocketDeltaPLC::onReadyRead()
 {
   QByteArray toread = swapBytePairs(readAll());
-  const qint64 n = toread.size();
-
-  QVariantMap msg;
+  QVariantMap plcData;
 
   char id = toread.at(0);
 
@@ -127,15 +144,11 @@ void SocketDeltaPLC::onReadyRead()
     for (int i = 0; i < 8; i++) {
         bits[i] = (outputs >> i) & 1;
     }
-    msg = { {"id", "Y"}, {"moduleIndex", moduleIndex}, {"outputs", bits} };
-
-    // qDebug() << id;
-    // qDebug() << moduleIndex;
-    // qDebug() << bits;
+    plcData = { {"id", "Y"}, {"moduleIndex", moduleIndex}, {"outputs", bits} };
   }
 
-  emit segmentChanged(msg);
-  emit logMessage({QString::number(n) + " bytes were read from PLC", 3, objectName()});
+  emit plcDataReady(plcData);
+  emit logMessage({QString::number(toread.size()) + " bytes were read from PLC", 3, objectName()});
 }
 
 // PRIVATE
