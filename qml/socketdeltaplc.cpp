@@ -1,5 +1,26 @@
 #include "socketdeltaplc.h"
 
+namespace {
+  constexpr quint16 MAGIC = 0x5AA5;
+  constexpr quint8  VER   = 0x01;
+
+  enum : quint8 {
+    TYPE_REQ      =0x10,
+    TYPE_RESP_OK  =0x11,
+    TYPE_RESP_ERR =0x12
+  };
+
+  enum : quint8 {
+    CMD_READ_IO   = 0x0F,
+    CMD_READ_REG  = 0xF0,
+    CMD_WRITE_IO  = 0x3C,
+    CMD_WRITE_REG = 0xC3,
+    CMD_SNAPSHOT  = 0x5A,
+    CMD_EXEC      = 0xA5
+  };
+}
+
+
 QByteArray swapBytePairs(const QByteArray& data) {
   QByteArray result = data;
   for (int i = 0; i + 1 < result.size(); i += 2) {

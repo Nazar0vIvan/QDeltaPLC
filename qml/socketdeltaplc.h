@@ -44,6 +44,8 @@ private:
   qint16 m_lp = 0;
   QHostAddress m_pa;
   qint16 m_pp = 0;
+
+  QByteArray m_rx;
 };
 
 #endif // SOCKETDELTAPLC_H
