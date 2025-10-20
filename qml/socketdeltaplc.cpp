@@ -18,31 +18,6 @@ SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocke
   connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
   connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
-
-  QVariantMap msg = {
-    {"cmd", "SET"},
-    {"dest", 'Y'},
-    {"module", 1},
-    {"output", 6},
-    {"state", true}
-  };
-
-  QByteArray tosend;
-
-  QByteArray cmd = msg.value("cmd").toByteArray();
-
-
-
-  cmd.resize(4, '\0');
-  const quint8 dest = static_cast<quint8>(msg.value("dest").toUInt());
-  const quint8 module = static_cast<quint8>(msg.value("module").toUInt());
-  const quint8 output = static_cast<quint8>(msg.value("output").toUInt());
-  const quint8 state  = msg.value("state").toBool() ? 1 : 0;
-
-  tosend = cmd.append(dest).append(module).append(output).append(state);
-
-  qDebug() << "WRITE: " << "bytes hex =" << tosend.toHex(' ') << ", size =" << tosend.size();
-
 }
 
 SocketDeltaPLC::~SocketDeltaPLC() {}
@@ -183,26 +158,6 @@ QString SocketDeltaPLC::stateToString(SocketState state)
     default: return "UnconnectedState";
   }
 }
-
-/*
-QString text;
-int type = 0;
-
-if(!tearDownToUnconnected()) {
-    text = tr("Failed to return to UnconnectedState: %1").arg(errorString());
-    emit socketBindMessage({text, type, hostName});
-    return;
-}
-if(!bind(la, lp, QAbstractSocket::DontShareAddress | QAbstractSocket::ReuseAddressHint)) {
-    text = tr("bind(%1:%2) failed").arg(la.toString()).arg(lp);
-} else {
-    text = tr("bind %1:%2").arg(la.toString()).arg(lp);
-    type = 1;
-    setLocalAddress(la); setLocalPort(lp); setPeerAddress(pa); setPeerPort(pp);
-    QTcpSocket::connectToHost(pa, pp, QAbstractSocket::ReadWrite);
-}
-emit socketBindMessage({text, type, hostName});
-*/
 
 
 
