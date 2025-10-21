@@ -11,6 +11,9 @@
 #define PEER_ADDRESS "192.168.2.5"
 #define PEER_PORT 3333
 
+#include "plcmessagemanager.h"
+
+
 class SocketDeltaPLC : public QTcpSocket
 {
     Q_OBJECT
@@ -45,7 +48,7 @@ private:
   QHostAddress m_pa;
   qint16 m_pp = 0;
 
-  QByteArray m_rx;
+  PlcMessageParser m_parser;
 };
 
 #endif // SOCKETDELTAPLC_H

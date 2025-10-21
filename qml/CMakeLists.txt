@@ -26,18 +26,20 @@ set(QML_FILES
 
 ## CPP ##
 set(CPP_FILES
+  logger.h
+  logger.cpp
+  plcmessagemanager.h
+  plcmessagemanager.cpp
+  qmlchartbridge.h
+  qmlchartbridge.cpp
   socketdeltaplc.h
   socketdeltaplc.cpp
   socketrdt.h
   socketrdt.cpp
   socketrsi.h
   socketrsi.cpp
-  logger.h
-  logger.cpp
   socketrunner.h
   socketrunner.cpp
-  qmlchartbridge.h
-  qmlchartbridge.cpp
 )
 
 qt_add_executable(qdeltaplc
