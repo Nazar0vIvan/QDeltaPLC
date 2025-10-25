@@ -63,7 +63,7 @@ public:
   ~TcpSocketRunner() override;
 
 signals:
-  void segmentChanged(const QVariantMap& segment);
+  void plcDataReady(const QVariantMap& data);
 };
 
 class UdpSocketRunner : public AbstractSocketRunner

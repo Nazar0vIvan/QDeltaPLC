@@ -2,16 +2,11 @@
 
 PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {}
 
-QByteArray PlcMessageManager::buildRequestFrame(const QVariantMap& req, quint16 tid) const {
-  quint8 cmd = 0;
-  const QByteArray payload = buildReqPayload(req, cmd);
-  if (!cmd) return {}; // unknown/missing cmd
-
-  QByteArray frame = writeHeader(Type::REQ, tid, quint16(payload.size()));
-  frame.append(payload);
-  return frame;
+QByteArray PlcMessageManager::buildReq(const QVariantMap& req, quint16 tid) const {
+  const QByteArray payload = buildReqPayload(req);
+  QByteArray header = makeHeader(Type::REQ, tid, quint16(payload.size()));
+  return header.append(payload);
 }
-
 
 QVariantMap PlcMessageManager::parseMessage(const QByteArray& message) const {
   if (message.size() < 8)
@@ -67,10 +62,11 @@ QVariantMap PlcMessageManager::parseMessage(const QByteArray& message) const {
 
 // PRIVATE
 
-QByteArray PlcMessageManager::buildReqPayload(const QVariantMap& req, quint8& outCmd) const {
+QByteArray PlcMessageManager::buildReqPayload(const QVariantMap& req) const {
   QByteArray body;
   QDataStream ds(&body, QIODevice::WriteOnly);
-  ds.setByteOrder(QDataStream::LittleEndian);
+  ds.setByteOrder(QDataStream::BigEndian);
+  CMD outCmd;
 
   const QString cmd = req.value("cmd").toString().toUpper();
   const quint8  FLAGS = 0x00; // reserved = 0
@@ -79,7 +75,7 @@ QByteArray PlcMessageManager::buildReqPayload(const QVariantMap& req, quint8& ou
     outCmd = CMD::READ_IO;
     const quint8 dev = (req.value("dev").toString().toUpper()=="Y") ? DEV::Y : DEV::X;
     const quint8 mod = quint8(req.value("mod",0).toUInt());
-    ds << dev << mod << quint32(0);
+    ds << dev << mod;
   }
   else if (cmd == "READ_REG") {
     outCmd = CMD::READ_REG;
@@ -89,51 +85,65 @@ QByteArray PlcMessageManager::buildReqPayload(const QVariantMap& req, quint8& ou
   }
   else if (cmd == "WRITE_IO") {
     outCmd = CMD::WRITE_IO;
-    const quint8 mod  = quint8(req.value("mod",0).toUInt());
-    const quint8 andm = quint8(req.value("and",0xFF).toUInt());
-    const quint8 orm  = quint8(req.value("or", 0x00).toUInt());
-    ds << quint8(DEV::Y) << mod << andm << orm << quint16(0);
+    const quint8 mod  = quint8(req.value("mod", 0).toUInt());
+    const quint8 andm = quint8(req.value("and", 0xFF).toUInt());
+    const quint8 orm  = quint8(req.value("or",  0x00).toUInt());
+    ds << quint8(DEV::Y) << mod << andm << orm;
   }
   else if (cmd == "WRITE_REG") {
     outCmd = CMD::WRITE_REG;
     const quint16 addr = quint16(req.value("addr").toUInt());
     QVector<quint16> words;
     const QVariant dv = req.value("data");
-    if (dv.canConvert<QVariantList>())
+    if (dv.canConvert<QVariantList>()) {
       for (const QVariant& v : dv.toList())
         words.push_back(quint16(v.toUInt()));
-    else
+    } else {
       words.push_back(quint16(dv.toUInt()));
+    }
     ds << quint8(DEV::D) << quint8(0) << addr << quint16(words.size());
-    for (quint16 w : words) ds << w;
+    for (quint16 w : words)
+      ds << w;
+  }
+  else if (cmd == "WRITE_RAW") {
+    outCmd = CMD::WRITE_RAW;
+    const QByteArray raw = req.value("raw").toByteArray();
+    // qDebug() << "PAYLOAD: " << raw.toHex(' ') << ", size = " << raw.size();
+    for (const char &byte : raw) {
+      ds << static_cast<quint8>(byte);
+    }
   }
   else if (cmd == "SNAPSHOT") {
     outCmd = CMD::SNAPSHOT;
   }
   else {
-    outCmd = 0;
+    outCmd = CMD::NONE;
   }
 
-  QByteArray payload; payload.reserve(2 + body.size());
+  QByteArray payload;
+  payload.reserve(2 + body.size());
   payload.append(char(outCmd));
   payload.append(char(FLAGS));
   payload.append(body);
+  // qDebug() << "PAYLOAD: " << payload.toHex(' ') << ", size = " << payload.size();
   return payload;
 }
 
 bool PlcMessageManager::parseHeader(const QByteArray& first8, Header& h) const {
   if (first8.size() < 8) return false;
   QDataStream ds(const_cast<QByteArray&>(first8)); // safe: operating on a local copy/slice
-  ds.setByteOrder(QDataStream::LittleEndian);
+  ds.setByteOrder(QDataStream::BigEndian);
   ds >> h.magic >> h.ver >> h.type >> h.tid >> h.len;
   return true;
 }
 
-QByteArray PlcMessageManager::writeHeader(Type type, quint16 tid, quint16 len) const {
-  QByteArray out; out.reserve(8);
+QByteArray PlcMessageManager::makeHeader(Type type, quint16 tid, quint16 len) const {
+  QByteArray out;
+  out.reserve(8);
   QDataStream ds(&out, QIODevice::WriteOnly);
-  ds.setByteOrder(QDataStream::LittleEndian);
+  ds.setByteOrder(QDataStream::BigEndian);
   ds << quint16(MAGIC) << quint8(VER) << quint8(type) << quint16(tid) << quint16(len);
+  // qDebug() << "HEADER: " << out.toHex(' ') << ", size = " << out.size();
   return out;
 }
 
@@ -156,7 +166,7 @@ QVariantMap PlcMessageManager::parseRespOk(quint8 cmd, const QByteArray& body) c
         if (dev != DEV::X && dev != DEV::Y)
           return {{"type","PARSE_ERR"},{"error","READ_IO_BAD_DEV"}};
         m["cmd"]  = "READ_IO";
-        m["dev"]  = (dev==DEV::Y) ? "Y" : "X";
+        m["dev"]  = (dev == DEV::Y) ? "Y" : "X";
         m["mod"]  = int(mod);
         m["data"] = int(data);
         return m;

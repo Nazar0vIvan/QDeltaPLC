@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
   SocketDeltaPLC* socketDeltaPLC = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
   TcpSocketRunner plcRunner(socketDeltaPLC);
-  QObject::connect(socketDeltaPLC, &SocketDeltaPLC::segmentChanged, &plcRunner, &TcpSocketRunner::segmentChanged, Qt::QueuedConnection);
+  QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::plcDataReady, Qt::QueuedConnection);
   plcRunner.start();
 
   SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));

@@ -5,14 +5,7 @@
 #include <QThread>
 
 #include "logger.h"
-
-#define LOCAL_ADDRESS "192.168.2.1"
-#define LOCAL_PORT 2222
-#define PEER_ADDRESS "192.168.2.5"
-#define PEER_PORT 3333
-
 #include "plcmessagemanager.h"
-
 
 class SocketDeltaPLC : public QTcpSocket
 {
@@ -42,13 +35,16 @@ public slots:
 private:
   bool tearDownToUnconnected(int ms = 300);
   QString stateToString(SocketState state);
+  QByteArray swapBytes(const QByteArray& data);
 
   QHostAddress m_la;
   qint16 m_lp = 0;
   QHostAddress m_pa;
   qint16 m_pp = 0;
 
-  PlcMessageParser m_parser;
+  PlcMessageManager m_mgr;
+  quint16 m_nextTid = 1;
+
 };
 
 #endif // SOCKETDELTAPLC_H

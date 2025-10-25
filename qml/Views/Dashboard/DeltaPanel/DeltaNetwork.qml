@@ -53,16 +53,19 @@ Control {
       QxToolButton {
         id: btnSend
 
-        // enabled: plcRunner && plcRunner.socketState === 3
+        enabled: plcRunner && plcRunner.socketState === 3
         imageSource: "qrc:/assets/pics/send.svg"
         Layout.preferredWidth: 22
         Layout.preferredHeight: 22
 
-        // onClicked: {
-        //   if (!msg.text)
-        //     return
-        //   plcRunner.writeMessage(msg.text)
-        // }
+        onClicked: {
+        if (!msg.text) return;
+          plcRunner.invoke("writeMessage",
+                           {
+                            "cmd": "WRITE_RAW",
+                            "raw": msg.text,
+                           });
+        }
       }
     }
 
@@ -83,6 +86,21 @@ Control {
           } else {
             plcRunner.invoke("connectToHost")
           }
+        }
+      }
+      QxButton {
+        id: btnReadY2
+
+        enabled: plcRunner && plcRunner.socketState === 3
+        text: "read Y2"
+        onClicked: {
+          if (!plcRunner) return;
+          plcRunner.invoke("writeMessage",
+                           {
+                             "cmd": "READ_IO",
+                             "dev": 'Y',
+                             "mod": 2,
+                           })
         }
       }
     }

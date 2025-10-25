@@ -1,25 +1,5 @@
 #include "socketdeltaplc.h"
 
-namespace {
-  constexpr quint16 MAGIC = 0x5AA5;
-  constexpr quint8  VER   = 0x01;
-
-  enum Type : quint8 {
-    REQ      = 0x10,
-    RESP_OK  = 0x11,
-    RESP_ERR = 0x12
-  };
-
-  enum : quint8 {
-    CMD_READ_IO   = 0x0F,
-    CMD_READ_REG  = 0xF0,
-    CMD_WRITE_IO  = 0x3C,
-    CMD_WRITE_REG = 0xC3,
-    CMD_SNAPSHOT  = 0x5A,
-    CMD_EXEC      = 0xA5
-  };
-}
-
 SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocket(parent)
 {
   this->setObjectName(name);
@@ -56,7 +36,19 @@ void SocketDeltaPLC::disconnectFromHost()
 
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
+  const QByteArray tosend = m_mgr.buildReq(msg, m_nextTid++);
 
+  if (tosend.isEmpty()) {
+    emit logMessage({"writeMessage: bad cmd", 0, objectName()});
+    return;
+  }
+
+  const qint64 n = write(swapBytes(tosend));
+  // qDebug() << tosend.toHex(' ');
+  // qDebug() << swapBytes(tosend).toHex(' ');
+  emit logMessage({ (n == -1 ? "No bytes were written" :
+                    "TX: " + tosend.toHex(' ') + " (" + QString::number(n) + " bytes)"),
+                    (n == -1 ? 0 : 4), objectName()});
 }
 
 void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
@@ -92,66 +84,10 @@ void SocketDeltaPLC::onConnected()
 
 void SocketDeltaPLC::onReadyRead()
 {
-  m_rx.append(readAll());
-  QVariantMap out; // to qml
-
-  while (true) {
-    const ParseResult r = parseNext(m_rx);
-
-    if (r.kind == ParseKind::NeedMore) break;
-
-    if (r.kind == ParseKind::Drop) {
-      emit logMessage({"MAGIC/HEADER mismatch: dropping 1 byte to resync", 0, objectName()});
-      m_rx.remove(0, 1);
-      continue;
-    }
-
-    // Good message → consume and dispatch
-    const Message& msg = r.msg;
-    m_rx.remove(0, msg.consumed);
-
-    out["tid"] = int(msg.header.tid);
-
-    // TID correlation:
-    // If there was a request with matching tid ➝ add req to out
-    const bool known = m_pending.contains(msg.header.tid);
-    out["correlated"] = known;
-    if (known) {
-      out["req"] = m_pending.value(msg.header.tid).req;
-      m_pending.remove(msg.header.tid);
-    }
-
-    // Dispatch by TYPE
-    if (msg.header.type == Type::RESP_OK) {
-      if (msg.payload.size() < 2) {
-        emit logMessage({"RESP_OK too short", 0, objectName()});
-        continue;
-      }
-      const quint8 cmd   = quint8(msg.payload[0]);
-      const quint8 status  = quint8(msg.payload[1]);
-      const QByteArray body = msg.payload.mid(2);
-
-      out["type"]   = "RESP_OK";
-      out["cmd"]    = cmd;
-      out["status"] = status;
-
-      QVariantMap parsed = parseRespOk(cmd, body);
-      for (auto it = parsed.begin(); it != parsed.end(); ++it)
-        out[it.key()] = it.value();
-
-      emit plcDataReady(out);
-    }
-    else if (msg.header.type == Type::RESP_ERR) {
-      out["type"] = "RESP_ERR";
-      QVariantMap parsed = parseRespErr(msg.payload);
-      for (auto it = parsed.begin(); it != parsed.end(); ++it) out[it.key()] = it.value();
-
-      emit plcDataReady(out);
-    }
-    else {
-      emit logMessage({"Unexpected TYPE " + QString::number(msg.header.type), 0, objectName()});
-    }
-  }
+  const QByteArray msg = readAll(); // one full message by your contract
+  qDebug() << "READ: " << swapBytes(msg).toHex(' ');
+  const QVariantMap parsed = m_mgr.parseMessage(msg);
+  emit plcDataReady(parsed);
 }
 
 // PRIVATE
@@ -187,9 +123,12 @@ QString SocketDeltaPLC::stateToString(SocketState state)
   }
 }
 
-ParseResult SocketDeltaPLC::parseNext(const QByteArray &buffer)
+QByteArray SocketDeltaPLC::swapBytes(const QByteArray &data)
 {
-
+  QByteArray out{data};
+  for (int i = 0; i + 1 < out.size(); i += 2)
+    qSwap(out[i], out[i + 1]);
+  return out;
 }
 
 
