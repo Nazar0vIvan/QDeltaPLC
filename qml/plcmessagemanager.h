@@ -12,8 +12,12 @@ struct Header {
   quint16 magic = 0xAA55; // 0xAA55
   quint8  ver = 0x01;     // 0x01
   quint8  type;           // 0x10 REQ, 0x11 RESP_OK, 0x12 RESP_ERR
-  quint16 tid;            // transaction id
-  quint16 len;            // payload length
+  quint8  tid;            // transaction id
+  quint8  len;            // payload length
+
+  QByteArray toByteArray() {
+    return
+  }
 };
 
 enum Type : quint8 {
@@ -38,16 +42,11 @@ enum DEV : quint8 {
   D = 0x44,
 };
 
-inline constexpr quint16 MAGIC = 0xAA55;
-inline constexpr quint8  VER   = 0x01;
-
 struct Message {
   Header     header;       // decoded header
   QByteArray payload;      // exactly header.len bytes
   int        consumed = 0; // total bytes consumed (header + payload)
 };
-
-enum class ParseKind { NeedMore, Good, Drop };
 
 /*
 struct ParseResult {
@@ -58,14 +57,14 @@ struct ParseResult {
 };
 */
 
-struct PendingReq {
-  QVariantMap req; // original QML map
-  QDateTime   ts;  // send time
+struct ParseResult {
+
 };
 
-struct BuiltFrame {
-  quint16    tid;   // assigned TID
-  QByteArray bytes; // full frame (header + payload), CRC omitted by design
+struct BuildResult {
+  bool status;
+  QByteArray data;
+  QString note;
 };
 
 // ----------------------------------------------------------------
@@ -78,16 +77,42 @@ class PlcMessageManager : public QObject
 public:
   explicit PlcMessageManager(QObject* parent=nullptr);
 
-  QByteArray buildReq(const QVariantMap& req, quint16 tid) const;
+  BuildResult buildReq(const QVariantMap& req, quint16 tid) const;
   QVariantMap parseMessage(const QByteArray& message) const;
 
 private:
-  QByteArray buildReqPayload(const QVariantMap& req) const;
-  bool parseHeader(const QByteArray& first8, Header& h) const;
-  QByteArray makeHeader(Type type, quint16 tid, quint16 len) const;
+  BuildResult buildReqPayload(const QVariantMap& req) const;
+  QByteArray buildHeader(Type type, quint16 tid, quint16 len) const;
 
+  BuildResult parseHeader(const QByteArray& header) const;
   QVariantMap parseRespOk(quint8 cmd, const QByteArray& body) const;
   QVariantMap parseRespErr(const QByteArray& payload) const;
+
+  const quint16 MAGIC = 0xAA55;
+  const quint8 VER = 0x01;
+
+
+  DEV str2dev(const QString& strDev) const {
+    const QHash<QString, DEV> hash = {
+      {"X", DEV::X},
+      {"Y", DEV::Y},
+      {"D", DEV::D}
+    };
+    return hash.value(strDev);
+  }
+
+  CMD str2cmd(const QString& strCmd) const {
+    const QHash<QString, CMD> hash = {
+      {"READ_IO",   READ_IO},
+      {"READ_REG",  READ_REG},
+      {"WRITE_IO",  WRITE_IO},
+      {"WRITE_REG", WRITE_REG},
+      {"WRITE_RAW", WRITE_RAW},
+      {"SNAPSHOT",  SNAPSHOT},
+      {"NONE",      NONE}
+    };
+    return hash.value(strCmd);
+  }
 };
 
 #endif // PLCMESSAGEMANAGER_H

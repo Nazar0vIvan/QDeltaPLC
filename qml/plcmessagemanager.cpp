@@ -1,19 +1,39 @@
 #include "plcmessagemanager.h"
 
-PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {}
+PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {
+  QVariantMap req = {
+    {"raw", "yUix"},
+    {"module", 2}
+  };
 
-QByteArray PlcMessageManager::buildReq(const QVariantMap& req, quint16 tid) const {
-  const QByteArray payload = buildReqPayload(req);
-  QByteArray header = makeHeader(Type::REQ, tid, quint16(payload.size()));
-  return header.append(payload);
+  QByteArray body;
+  QDataStream ds(&body, QIODevice::WriteOnly);
+  const QByteArray raw = req.value("raw").toByteArray();
+  ds.writeRawData(raw.constData(), raw.size());
+
+  const CMD cmd = str2cmd("boo");
+  // qDebug() << body.toHex(' ');
+}
+
+BuildResult PlcMessageManager::buildReq(const QVariantMap& req, quint16 tid) const {
+  BuildResult brPayload = buildReqPayload(req);
+  if (!brPayload.status) {
+    return {false, 0, brPayload.note};
+  }
+
+  BuildResult brHeader = buildHeader(Type::REQ, tid, brPayload.data.size());
+  if (!brHeader.status) {
+    return {false, 0, brHeader.note}
+  }
+
+  return {true, brHeader.data + brPayload.data, ""};
 }
 
 QVariantMap PlcMessageManager::parseMessage(const QByteArray& message) const {
   if (message.size() < 8)
     return {{"type", "PARSE_ERR"}, {"error", "SHORT_HEADER"}, {"detail", QString::number(message.size())}};
 
-  Header h{};
-  if (!parseHeader(message.left(8), h))
+  if (!parseHeader(message.left(8)))
     return {{"type", "PARSE_ERR"}, {"error", "HEADER_READ_FAILED"}};
 
   if (h.magic != MAGIC)
@@ -62,87 +82,70 @@ QVariantMap PlcMessageManager::parseMessage(const QByteArray& message) const {
 
 // PRIVATE
 
-QByteArray PlcMessageManager::buildReqPayload(const QVariantMap& req) const {
-  QByteArray body;
-  QDataStream ds(&body, QIODevice::WriteOnly);
-  ds.setByteOrder(QDataStream::BigEndian);
-  CMD outCmd;
-
-  const QString cmd = req.value("cmd").toString().toUpper();
-  const quint8  FLAGS = 0x00; // reserved = 0
-
-  if (cmd == "READ_IO") {
-    outCmd = CMD::READ_IO;
-    const quint8 dev = (req.value("dev").toString().toUpper()=="Y") ? DEV::Y : DEV::X;
-    const quint8 mod = quint8(req.value("mod",0).toUInt());
-    ds << dev << mod;
-  }
-  else if (cmd == "READ_REG") {
-    outCmd = CMD::READ_REG;
-    ds << quint8(DEV::D) << quint8(0);
-    ds << quint16(req.value("addr").toUInt());
-    ds << quint16(req.value("count").toUInt());
-  }
-  else if (cmd == "WRITE_IO") {
-    outCmd = CMD::WRITE_IO;
-    const quint8 mod  = quint8(req.value("mod", 0).toUInt());
-    const quint8 andm = quint8(req.value("and", 0xFF).toUInt());
-    const quint8 orm  = quint8(req.value("or",  0x00).toUInt());
-    ds << quint8(DEV::Y) << mod << andm << orm;
-  }
-  else if (cmd == "WRITE_REG") {
-    outCmd = CMD::WRITE_REG;
-    const quint16 addr = quint16(req.value("addr").toUInt());
-    QVector<quint16> words;
-    const QVariant dv = req.value("data");
-    if (dv.canConvert<QVariantList>()) {
-      for (const QVariant& v : dv.toList())
-        words.push_back(quint16(v.toUInt()));
-    } else {
-      words.push_back(quint16(dv.toUInt()));
-    }
-    ds << quint8(DEV::D) << quint8(0) << addr << quint16(words.size());
-    for (quint16 w : words)
-      ds << w;
-  }
-  else if (cmd == "WRITE_RAW") {
-    outCmd = CMD::WRITE_RAW;
-    const QByteArray raw = req.value("raw").toByteArray();
-    // qDebug() << "PAYLOAD: " << raw.toHex(' ') << ", size = " << raw.size();
-    for (const char &byte : raw) {
-      ds << static_cast<quint8>(byte);
-    }
-  }
-  else if (cmd == "SNAPSHOT") {
-    outCmd = CMD::SNAPSHOT;
-  }
-  else {
-    outCmd = CMD::NONE;
-  }
+BuildResult PlcMessageManager::buildReqPayload(const QVariantMap& req) const {
 
   QByteArray payload;
-  payload.reserve(2 + body.size());
-  payload.append(char(outCmd));
-  payload.append(char(FLAGS));
-  payload.append(body);
-  // qDebug() << "PAYLOAD: " << payload.toHex(' ') << ", size = " << payload.size();
-  return payload;
+  QDataStream ds(&payload, QIODevice::WriteOnly);
+  ds.setByteOrder(QDataStream::BigEndian);
+
+  CMD cmd = str2cmd(req.value("cmd").toString());
+  const quint8 FLAGS = 0x00; // reserved = 0
+  ds << quint8(cmd) << quint8(FLAGS);
+
+  switch (cmd) {
+    case CMD::READ_IO: {
+      ds << req.value("dev").toString().toLatin1();
+      ds << quint8(req.value("module").toUInt());
+      break;
+    }
+    case CMD::READ_REG: {
+      ds << quint8(DEV::D);
+      ds << quint16(req.value("addr").toUInt());
+      ds << quint16(req.value("count").toUInt());
+      break;
+    }
+    case CMD::WRITE_IO: {
+      ds << quint8(DEV::Y);
+      ds << quint8(req.value("mod").toUInt());
+      ds << quint8(req.value("and").toUInt());
+      ds << quint8(req.value("or").toUInt());
+      break;
+    }
+    case CMD::WRITE_REG: {
+      ds << quint16(req.value("addr").toUInt());
+      ds << quint16(req.value("data").toUInt());
+      break;
+    }
+    case CMD::WRITE_RAW: {
+      const QByteArray raw = req.value("raw").toByteArray();
+      ds.writeRawData(raw.constData(), raw.size());
+      break;
+    }
+    case CMD::SNAPSHOT: {
+      break;
+    }
+    default:
+      break;
+  }
+  return {true, payload, ""};
 }
 
-bool PlcMessageManager::parseHeader(const QByteArray& first8, Header& h) const {
-  if (first8.size() < 8) return false;
+BuildResult PlcMessageManager::parseHeader(const QByteArray& first8) const {
+  QByteArray header;
   QDataStream ds(const_cast<QByteArray&>(first8)); // safe: operating on a local copy/slice
   ds.setByteOrder(QDataStream::BigEndian);
+
+
   ds >> h.magic >> h.ver >> h.type >> h.tid >> h.len;
-  return true;
+  return {true, header, ""};
 }
 
-QByteArray PlcMessageManager::makeHeader(Type type, quint16 tid, quint16 len) const {
+QByteArray PlcMessageManager::buildHeader(Type type, quint16 tid, quint16 len) const {
   QByteArray out;
   out.reserve(8);
   QDataStream ds(&out, QIODevice::WriteOnly);
   ds.setByteOrder(QDataStream::BigEndian);
-  ds << quint16(MAGIC) << quint8(VER) << quint8(type) << quint16(tid) << quint16(len);
+  ds << MAGIC << quint8(VER) << quint8(type) << quint16(tid) << quint16(len);
   // qDebug() << "HEADER: " << out.toHex(' ') << ", size = " << out.size();
   return out;
 }
