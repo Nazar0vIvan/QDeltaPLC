@@ -43,7 +43,7 @@ private:
   qint16 m_pp = 0;
 
   PlcMessageManager m_mgr;
-  quint16 m_nextTid = 1;
+  quint8 m_nextTid = 1;
 
 };
 

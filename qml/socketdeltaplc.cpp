@@ -36,13 +36,14 @@ void SocketDeltaPLC::disconnectFromHost()
 
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
-  const QByteArray tosend = m_mgr.buildReq(msg, m_nextTid++);
-
-  if (tosend.isEmpty()) {
-    emit logMessage({"writeMessage: bad cmd", 0, objectName()});
+  const PlcMessageManager::Result buildReqResult = m_mgr.buildReq(msg, m_nextTid++);
+\
+  if (buildReqResult.error) {
+    emit logMessage({"writeMessage:", 0, objectName()});
     return;
   }
 
+  QByteArray tosend = buildReqResult.data;
   const qint64 n = write(swapBytes(tosend));
   // qDebug() << tosend.toHex(' ');
   // qDebug() << swapBytes(tosend).toHex(' ');
@@ -86,8 +87,8 @@ void SocketDeltaPLC::onReadyRead()
 {
   const QByteArray msg = readAll(); // one full message by your contract
   qDebug() << "READ: " << swapBytes(msg).toHex(' ');
-  const QVariantMap parsed = m_mgr.parseMessage(msg);
-  emit plcDataReady(parsed);
+  // const QVariantMap parsed = m_mgr.parseMessage(msg);
+  // emit plcDataReady(parsed);
 }
 
 // PRIVATE
