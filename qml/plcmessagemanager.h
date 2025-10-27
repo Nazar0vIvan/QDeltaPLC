@@ -5,9 +5,9 @@
 #include <QDataStream>
 #include <QString>
 #include <QDateTime>
-#include <QDataStream>
 #include <QIODevice>
 #include <QVariant>
+#include <QVariantMap>
 
 class PlcMessageManager : public QObject
 {
@@ -22,16 +22,18 @@ public:
     BAD_VER   = 0xE1,
     BAD_TYPE  = 0xE2,
     BAD_TID   = 0xE3,
-    BAD_LEN   = 0xE4,
-    BAD_CMD   = 0xE5,
-    BAD_DEV   = 0xE6,
-    BAD_MOD   = 0xE7,
-    BAD_ADDR  = 0xE8,
-    BAD_COUNT = 0xE9,
-    BAD_AND   = 0xEA,
-    BAD_OR    = 0xEB,
-    BAD_DATA  = 0xEC,
-    BAD_RAW   = 0xED,
+    BAD_MLEN  = 0xE4,
+    BAD_PLEN  = 0xE5,
+    BAD_CMD   = 0xE6,
+    BAD_DEV   = 0xE7,
+    BAD_MOD   = 0xE8,
+    BAD_ADDR  = 0xE9,
+    BAD_COUNT = 0xEA,
+    BAD_AND   = 0xEB,
+    BAD_OR    = 0xEC,
+    BAD_DATA  = 0xED,
+    BAD_RAW   = 0xEE,
+    BAD_RESP  = 0xEF,
     NOERR     = 0x00
   };
   Q_ENUM(MessageError)
@@ -62,11 +64,11 @@ public:
   Q_ENUM(DEV)
 
   struct Header {
-    quint16 magic = 0xAA55; // 0xAA55
-    quint8  ver = 0x01;     // 0x01
-    quint8  type;           // 0x10 REQ, 0x11 RESP_OK, 0x12 RESP_ERR
-    quint8  tid;            // transaction id
-    quint8  len;            // payload length
+    quint16 magic = 0xAA55;
+    quint8  ver = 0x01;
+    quint8  type;
+    quint8  tid;
+    quint8  len;
   };
 
   struct ParseBytes {
@@ -87,15 +89,7 @@ public:
     QVariant note = 0;
   };
 
-  /*
-  struct Message {
-    Header     header;       // decoded header
-    QByteArray payload;      // exactly header.len bytes
-    int        consumed = 0; // total bytes consumed (header + payload)
-  };
-  */
-
-  ParseBytes buildReq(const QVariantMap& req, quint16 tid) const;
+  ParseBytes buildReq(const QVariantMap& req, quint8 tid) const;
   ParseResp parseMessage(const QByteArray& message, quint8 exp_tid) const;
 
 private:
@@ -103,7 +97,7 @@ private:
   QByteArray buildHeader(Type type, quint8 tid, quint8 len) const;
 
   ParseHeader parseHeader(const QByteArray& header, quint8 exp_tid) const;
-  ParseResp parseRespOk(quint8 cmd, const QByteArray& body) const;
+  ParseResp parseRespOk(const QByteArray& payload) const;
   ParseResp parseRespErr(const QByteArray& payload) const;
 
   bool isValidType(quint8 type) const;
@@ -135,8 +129,6 @@ private:
     };
     return hash.value(strCmd);
   }
-
-
 };
 
 #endif // PLCMESSAGEMANAGER_H

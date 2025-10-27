@@ -1,15 +1,12 @@
 #include "plcmessagemanager.h"
 
 PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {
-  QVariantMap req = {
-    {"raw", "yUix"},
-    {"module", 2}
-  };
+
 }
 
-PlcMessageManager::ParseBytes PlcMessageManager::buildReq(const QVariantMap& req, quint16 tid) const {
+PlcMessageManager::ParseBytes PlcMessageManager::buildReq(const QVariantMap& req, quint8 tid) const {
   ParseBytes buildResult = buildReqPayload(req);
-  if (!buildResult.error) {
+  if (buildResult.error) {
     return {0, buildResult.error, buildResult.note};
   }
   QByteArray payload = buildResult.data;
@@ -19,55 +16,51 @@ PlcMessageManager::ParseBytes PlcMessageManager::buildReq(const QVariantMap& req
 
 PlcMessageManager::ParseResp PlcMessageManager::parseMessage(const QByteArray& message, quint8 exp_tid) const
 {
-  ParseHeader prHeader = parseHeader(message.left(8), exp_tid);
+  if (message.size() < 6) {
+    return { QVariantMap(),  MessageError::BAD_MLEN, message.size() };
+  }
+
+  ParseHeader prHeader = parseHeader(message.left(6), exp_tid);
   if (prHeader.error)
     return { QVariantMap(),  prHeader.error, prHeader.note };
 
   Header header = prHeader.header;
-
   const int total = 8 + header.len;
   if (message.size() != total) {
-    return { QVariantMap(),  MessageError::BAD_LEN, QByteArray(1, message.size())};
+    return { QVariantMap(),  MessageError::BAD_PLEN, message.size()};
   }
 
   QByteArray payload = message.mid(8, header.len);
   QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
+  quint8 cmd;
+  ds >> cmd;
 
+  QVariantMap resp;
   switch (header.type) {
     case Type::RESP_OK: {
-      quint8 cmd; quint8 status; QByteArray body;
-      ds >> cmd >> status >> body;
-      ParseResp resp = parseRespOk(cmd, body);
-      resp["type"]   = "RESP_OK";
+      // ParseResp resp = parseRespOk(payload);
+      quint8 status;
+      ds >> status;
+      resp["type"]   = Type::RESP_OK;
+      resp["tid"]    = header.tid;
       resp["cmd"]    = cmd;
       resp["status"] = status;
-      resp["tid"]    = int(h.tid);
-      return resp;
-      break;
+      return { resp };
+    }
+    case Type::RESP_ERR: {
+      // ParseResp resp = parseRespErr(payload);
+      quint8 err; quint16 code;
+      ds >> err >> code;
+      resp["type"] = Type::RESP_ERR;
+      resp["tid"]  = header.tid;
+      resp["err"]  = err;
+      resp["code"] = code;
+      return { resp };
     }
     default:
-      break;
+      return {QVariantMap(), MessageError::BAD_RESP, 0};
   }
-
-
-
-  }
-
-  if (h.type == Type::RESP_ERR) {
-    ParseResp resp = parseRespErr(payload);
-    resp["type"] = "RESP_ERR";
-    resp["tid"]  = int(h.tid);
-    return resp;
-  }
-
-  if (h.type == Type::REQ) {
-    // Optional: parse incoming REQ if you ever need to (sniffer/loopback).
-    // For now, treat as unsupported for this path.
-    return {{"type", "PARSE_ERR"}, {"error", "UNEXPECTED_TYPE_REQ"}};
-  }
-
-  return {{"type", "PARSE_ERR"}, {"error", "UNKNOWN_TYPE"}, {"detail", QString::number(h.type)}};
 }
 
 // PRIVATE
@@ -107,12 +100,12 @@ PlcMessageManager::ParseBytes PlcMessageManager::buildReqPayload(const QVariantM
     case CMD::READ_REG: {
       if(!req.value("addr").isNull() && !req.value("addr").canConvert<quint16>())
         return {0, MessageError::BAD_ADDR, 0};
-      quint16 addr = quint16(req.value("dev").toUInt());
+      quint16 addr = quint16(req.value("addr").toUInt());
 
       if(!req.value("count").isNull() && !req.value("count").canConvert<quint16>())
         return {0, MessageError::BAD_COUNT, 0};
       quint16 count = quint16(req.value("count").toUInt());
-      ds << quint8(DEV::D) << addr << count;
+      ds << quint16(DEV::D) << addr << count;
       break;
     }
     case CMD::WRITE_IO: {
@@ -130,7 +123,7 @@ PlcMessageManager::ParseBytes PlcMessageManager::buildReqPayload(const QVariantM
         return {0, MessageError::BAD_OR, 0};
       quint8 orMask = quint8(req.value("orMask").toUInt());
 
-      ds << quint8(DEV::Y) << module << andMask << orMask;
+      ds << quint16(DEV::Y) << module << andMask << orMask;
       break;
     }
     case CMD::WRITE_REG: {
@@ -164,7 +157,8 @@ PlcMessageManager::ParseBytes PlcMessageManager::buildReqPayload(const QVariantM
 
 PlcMessageManager::ParseHeader PlcMessageManager::parseHeader(const QByteArray& first8, quint8 exp_tid) const
 {
-  QDataStream in(const_cast<QByteArray&>(first8));
+  QByteArray headerBytes{first8};
+  QDataStream in(&headerBytes, QIODevice::ReadOnly);
   in.setByteOrder(QDataStream::BigEndian);
   Header h;
   in >> h.magic >> h.ver >> h.type >> h.tid >> h.len;
@@ -192,30 +186,29 @@ QByteArray PlcMessageManager::buildHeader(Type type, quint8 tid, quint8 len) con
   return out;
 }
 
-PlcMessageManager::ParseResp PlcMessageManager::parseRespOk(quint8 cmd, const QByteArray& body) const
+/*
+PlcMessageManager::ParseResp PlcMessageManager::parseRespOk(const QByteArray& payload) const
 {
-  QDataStream ds(body);
+  QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
-  QVariantMap m;
+  quint8 cmd, status;
+  ds >> cmd >> status;
 
+  QVariantMap out;
   switch (cmd) {
     case CMD::READ_IO: {
-        if (body.size() != 3)
-          return {{"type","PARSE_ERR"},{"error","READ_IO_BODY_SIZE"}};
-        quint8 dev, mod, data;
-        ds >> dev >> mod >> data;
-        if (dev != DEV::X && dev != DEV::Y)
-          return {{"type","PARSE_ERR"},{"error","READ_IO_BAD_DEV"}};
-        m["cmd"]  = "READ_IO";
-        m["dev"]  = (dev == DEV::Y) ? "Y" : "X";
-        m["mod"]  = int(mod);
-        m["data"] = int(data);
-        return m;
+        quint16 dev; quint8 module, data;
+        ds >> dev >> module >> data;
+        if (!isValidDev(dev))
+          return {QVariantMap(), MessageError::BAD_DEV, dev};
+        out["cmd"]  = cmd;
+        out["dev"]  = (dev == DEV::Y) ? "Y" : "X";
+        out["module"]  = module;
+        out["data"] = data;
+        return { out };
       }
     case CMD::READ_REG: {
-        if (body.size() < 4)
-          return {{"type","PARSE_ERR"},{"error","READ_REG_BODY_SHORT"}};
-        quint8 dev, rsv;
+        quint8 dev,
         quint16 count;
         ds >> dev >> rsv >> count;
         const int expect = 4 + count*2;
@@ -272,6 +265,7 @@ PlcMessageManager::ParseResp PlcMessageManager::parseRespOk(quint8 cmd, const QB
       return {{"type","PARSE_ERR"},{"error","UNKNOWN_CMD"},{"detail",QString::number(cmd)}};
   }
 }
+*/
 
 /*
 QVariantMap PlcMessageManager::parseRespErr(const QByteArray& payload) const {
