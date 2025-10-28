@@ -38,6 +38,7 @@ ScrollView {
         }
         const col = colors[Number(message.type)] || Styles.foreground.high
         textArea.insert(textArea.length, `<span style="color:${col}">${message.text}</span><br/>`)
+        root.ScrollBar.vertical.position = 1.0 - root.ScrollBar.vertical.size
       }
     }
   }

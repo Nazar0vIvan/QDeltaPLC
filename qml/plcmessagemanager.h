@@ -8,6 +8,7 @@
 #include <QIODevice>
 #include <QVariant>
 #include <QVariantMap>
+#include <QMetaType>
 
 class PlcMessageManager : public QObject
 {
@@ -18,22 +19,22 @@ public:
   explicit PlcMessageManager(QObject* parent=nullptr);
 
   enum MessageError : quint8 {
-    BAD_MAGIC = 0xE0,
-    BAD_VER   = 0xE1,
-    BAD_TYPE  = 0xE2,
-    BAD_TID   = 0xE3,
-    BAD_MLEN  = 0xE4,
-    BAD_PLEN  = 0xE5,
-    BAD_CMD   = 0xE6,
-    BAD_DEV   = 0xE7,
-    BAD_MOD   = 0xE8,
-    BAD_ADDR  = 0xE9,
-    BAD_COUNT = 0xEA,
-    BAD_AND   = 0xEB,
-    BAD_OR    = 0xEC,
-    BAD_DATA  = 0xED,
-    BAD_RAW   = 0xEE,
-    BAD_RESP  = 0xEF,
+    BAD_MAGIC = 0xE0, // 224
+    BAD_VER   = 0xE1, // 225
+    BAD_TYPE  = 0xE2, // 226
+    BAD_TID   = 0xE3, // 227
+    BAD_MLEN  = 0xE4, // 228
+    BAD_PLEN  = 0xE5, // 229
+    BAD_CMD   = 0xE6, // 230
+    BAD_DEV   = 0xE7, // 231
+    BAD_MOD   = 0xE8, // 232
+    BAD_ADDR  = 0xE9, // 233
+    BAD_COUNT = 0xEA, // 234
+    BAD_AND   = 0xEB, // 235
+    BAD_OR    = 0xEC, // 236
+    BAD_DATA  = 0xED, // 237
+    BAD_RAW   = 0xEE, // 238
+    BAD_RESP  = 0xEF, // 239
     NOERR     = 0x00
   };
   Q_ENUM(MessageError)
@@ -71,42 +72,33 @@ public:
     quint8  len;
   };
 
-  struct ParseBytes {
-    QByteArray data;
+  struct ParseResult {
+    QVariant data; // QByteArray, Header, QVariantMap
     MessageError error = MessageError::NOERR;
     QVariant note = 0;
+
+    bool ok() const { return error == NOERR; }
   };
 
-  struct ParseHeader {
-    Header header;
-    MessageError error = MessageError::NOERR;
-    QVariant note = 0;
-  };
-
-  struct ParseResp {
-    QVariantMap data;
-    MessageError error = MessageError::NOERR;
-    QVariant note = 0;
-  };
-
-  ParseBytes buildReq(const QVariantMap& req, quint8 tid) const;
-  ParseResp parseMessage(const QByteArray& message, quint8 exp_tid) const;
+  ParseResult buildReq(const QVariantMap& req, quint8 tid) const;
+  ParseResult parseResp(const QByteArray& message, quint8 exp_tid) const;
 
 private:
-  ParseBytes buildReqPayload(const QVariantMap& req) const;
+  ParseResult buildReqPayload(const QVariantMap& req) const;
   QByteArray buildHeader(Type type, quint8 tid, quint8 len) const;
 
-  ParseHeader parseHeader(const QByteArray& header, quint8 exp_tid) const;
-  ParseResp parseRespOk(const QByteArray& payload) const;
-  ParseResp parseRespErr(const QByteArray& payload) const;
+  ParseResult parseHeader(const QByteArray& headerBytesIn, quint8 exp_tid) const;
+  ParseResult parseRespOk(const QByteArray& payload, quint8 tid) const;
+  ParseResult parseRespErr(const QByteArray& payload) const;
 
   bool isValidType(quint8 type) const;
   bool isValidCmd(quint8 cmd) const;
   bool isValidDev(quint16 dev) const;
   bool isValidMod(quint8 module) const;
 
-  const quint16 MAGIC = 0xAA55;
-  const quint8 VER = 0x01;
+  static constexpr quint16 MAGIC = 0xAA55;
+  static constexpr quint8  VER   = 0x01;
+  static constexpr int HEADER_SIZE = 6; // bytes actually written
 
   DEV str2dev(const QString& strDev) const {
     const QHash<QString, DEV> hash = {
@@ -130,5 +122,7 @@ private:
     return hash.value(strCmd);
   }
 };
+
+Q_DECLARE_METATYPE(PlcMessageManager::Header)
 
 #endif // PLCMESSAGEMANAGER_H

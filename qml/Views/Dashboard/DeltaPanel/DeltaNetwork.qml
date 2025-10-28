@@ -62,7 +62,7 @@ Control {
         if (!msg.text) return;
           plcRunner.invoke("writeMessage",
                            {
-                            "cmd": "WRITE_RAW",
+                            "cmd": 0xA5,
                             "raw": msg.text,
                            });
         }
@@ -97,9 +97,9 @@ Control {
           if (!plcRunner) return;
           plcRunner.invoke("writeMessage",
                            {
-                             "cmd": "READ_IO",
-                             "dev": 'Y',
-                             "mod": 2,
+                             "cmd": 0x0F,
+                             "dev": 0x0059,
+                             "module": 2,
                            })
         }
       }

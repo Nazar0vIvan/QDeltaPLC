@@ -36,17 +36,16 @@ void SocketDeltaPLC::disconnectFromHost()
 
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
-  const PlcMessageManager::Result buildReqResult = m_mgr.buildReq(msg, m_nextTid++);
-\
-  if (buildReqResult.error) {
-    emit logMessage({"writeMessage:", 0, objectName()});
+  const PlcMessageManager::ParseResult buildReqResult = m_mgr.buildReq(msg, m_nextTid++);
+
+  if (!buildReqResult.ok()) {
+    emit logMessage({ "WRITE ERROR: " + QString::number(buildReqResult.error), 0, objectName() });
     return;
   }
 
-  QByteArray tosend = buildReqResult.data;
+  QByteArray tosend = buildReqResult.data.toByteArray();
   const qint64 n = write(swapBytes(tosend));
-  // qDebug() << tosend.toHex(' ');
-  // qDebug() << swapBytes(tosend).toHex(' ');
+  qDebug() << tosend.toHex(' ');
   emit logMessage({ (n == -1 ? "No bytes were written" :
                     "TX: " + tosend.toHex(' ') + " (" + QString::number(n) + " bytes)"),
                     (n == -1 ? 0 : 4), objectName()});
@@ -60,8 +59,8 @@ void SocketDeltaPLC::setSocketConfig(const QVariantMap &config)
   m_pp = config.value("peerPort").toUInt();
 
   emit logMessage({QString("Socket configured:<br/>"
-                   "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
-                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4<br/>").
+                   "&nbsp;&nbsp;Local: &nbsp;[%1] : [%2]<br/>"
+                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;[%3] : [%4]").
                    arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()).arg(m_pp),
                    1, objectName()});
 }
@@ -88,6 +87,7 @@ void SocketDeltaPLC::onReadyRead()
   const QByteArray msg = readAll(); // one full message by your contract
   qDebug() << "READ: " << swapBytes(msg).toHex(' ');
   // const QVariantMap parsed = m_mgr.parseMessage(msg);
+
   // emit plcDataReady(parsed);
 }
 
