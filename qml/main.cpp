@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlEngine>
 #include <QQmlContext>
 #include <QFontDatabase>
 
@@ -7,7 +8,6 @@
 #include "socketdeltaplc.h"
 #include "socketrdt.h"
 #include "socketrsi.h"
-// #include "qmlchartbridge.h"
 #include "logger.h"
 
 int main(int argc, char *argv[])
@@ -53,6 +53,13 @@ int main(int argc, char *argv[])
   ctx->setContextProperty("ftsRunner", &ftsRunner);
   ctx->setContextProperty("rsiRunner", &rsiRunner);
   // ctx->setContextProperty("chartBridge", &chartBridge);
+
+  qmlRegisterUncreatableType<PlcMessageManager>(
+    "qdeltaplc_qml_module", // import URI
+    1, 0,                   // version
+    "PlcMessage",           // QML name
+    "PlcMessage is not creatable from QML"
+  );
 
   engine.loadFromModule("qdeltaplc_qml_module", "Main");
 

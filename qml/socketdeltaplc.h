@@ -3,6 +3,7 @@
 
 #include <QTcpSocket>
 #include <QThread>
+#include <QVariant>
 
 #include "logger.h"
 #include "plcmessagemanager.h"

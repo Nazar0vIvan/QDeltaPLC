@@ -5,6 +5,8 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
+import qdeltaplc_qml_module 1.0 // // FOR NOW
+
 QxGroupBox {
   id: root
 
@@ -15,10 +17,10 @@ QxGroupBox {
     target: plcRunner
 
     function onPlcDataReady(data) {
-      if (!data.cmd || data.cmd !== "RFSH")
+      if (!data.cmd || data.cmd !== PlcMessage.SNAPSHOT)
         return
-      moduleAP_P.refresh(cmd.x1, cmd.y1)
-      moduleAP_T.refresh(cmd.x2, cmd.y2)
+      moduleAP_P.refresh(data.x1, data.y1)
+      moduleAP_T.refresh(data.x2, data.y2)
     }
   }
 

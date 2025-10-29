@@ -26,8 +26,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseResp(const QByteArray& re
     return hdrRes;
   Header header = hdrRes.data.value<Header>();
 
-  const int total = HEADER_SIZE  + header.len;
-  if (resp.size() != total)
+  if (resp.size() != RESP_SIZE)
     return { QVariantMap(), BAD_PLEN, resp.size()};
 
   QByteArray payload = resp.mid(HEADER_SIZE, header.len);
@@ -180,7 +179,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
     return { QVariant(), BAD_CMD, cmd };
 
   QVariantMap out;
-  out["type"] = Type::RESP_ERR;
+  out["type"] = Type::RESP_OK;
   out["tid"]  = tid;
   out["cmd"]    = cmd;
   out["status"] = status;
@@ -230,10 +229,10 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
     case CMD::SNAPSHOT: {
         quint8 x1, y1, x2, y2;
         ds >> x1 >> y1 >> x2 >> y2;
-        out["x1"] = x1;
-        out["y1"] = y1;
-        out["x2"] = x2;
-        out["y2"] = y2;
+        out["x1"] = byteToBitVariantList(x1);
+        out["y1"] = byteToBitVariantList(y1);
+        out["x2"] = byteToBitVariantList(x2);
+        out["y2"] = byteToBitVariantList(y2);
       return { out };
     }
     default:
@@ -256,13 +255,11 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray&
   return { out };
 }
 
-bool PlcMessageManager::isValidType(quint8 type) const
-{
+bool PlcMessageManager::isValidType(quint8 type) const {
   return type == Type::REQ || type == Type::RESP_OK || type == Type::RESP_ERR;
 }
 
-bool PlcMessageManager::isValidCmd(quint8 cmd) const
-{
+bool PlcMessageManager::isValidCmd(quint8 cmd) const {
   return cmd == CMD::READ_IO ||
          cmd == CMD::READ_REG ||
          cmd == CMD::WRITE_IO ||
@@ -271,16 +268,23 @@ bool PlcMessageManager::isValidCmd(quint8 cmd) const
          cmd == CMD::SNAPSHOT;
 }
 
-bool PlcMessageManager::isValidMod(quint8 module) const
-{
+bool PlcMessageManager::isValidMod(quint8 module) const {
   return module == 1 || module == 2;
 }
 
-bool PlcMessageManager::isValidDev(quint16 dev) const
-{
+bool PlcMessageManager::isValidDev(quint16 dev) const {
   return dev == DEV::X ||
          dev == DEV::Y ||
          dev == DEV::D;
+}
+
+QVariantList PlcMessageManager::byteToBitVariantList(quint8 value) const {
+  QVariantList bits;
+  bits.reserve(8);
+  for (int i = 0; i < 8; ++i) {
+    bits.append( ((value >> i) & 0x01) != 0 );
+  }
+  return bits;
 }
 
 

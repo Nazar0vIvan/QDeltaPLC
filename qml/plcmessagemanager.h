@@ -1,6 +1,7 @@
 #ifndef PLCMESSAGEMANAGER_H
 #define PLCMESSAGEMANAGER_H
 
+#include <QQmlEngine>
 #include <QByteArray>
 #include <QDataStream>
 #include <QString>
@@ -9,6 +10,9 @@
 #include <QVariant>
 #include <QVariantMap>
 #include <QMetaType>
+#include <QList>
+
+
 
 class PlcMessageManager : public QObject
 {
@@ -96,9 +100,12 @@ private:
   bool isValidDev(quint16 dev) const;
   bool isValidMod(quint8 module) const;
 
+  QVariantList byteToBitVariantList(quint8 value) const;
+
   static constexpr quint16 MAGIC = 0xAA55;
   static constexpr quint8  VER   = 0x01;
   static constexpr int HEADER_SIZE = 6; // bytes actually written
+  static constexpr int RESP_SIZE = 32;  // resp size in bytes
 
   DEV str2dev(const QString& strDev) const {
     const QHash<QString, DEV> hash = {

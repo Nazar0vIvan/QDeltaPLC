@@ -1,4 +1,3 @@
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic
@@ -7,6 +6,8 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
+import qdeltaplc_qml_module 1.0 // FOR NOW
+
 Control {
   id: root
 
@@ -14,6 +15,27 @@ Control {
   property int fieldWidth: 112
 
   property alias title: header.text
+
+
+  function buildMasks(index, newState) {
+    const bit = (1 << index) & 0xFF;
+    let andMask; let orMask;
+
+    if (newState) {
+      andMask = 0xFF;
+      orMask  = bit;
+    } else {
+        andMask = (~bit) & 0xFF;
+        orMask  = 0x00;
+    }
+    return { andMask, orMask };
+  }
+
+  function byteToBitString(value) {
+    const v = value & 0xFF;
+    const bits = v.toString(2).padStart(8, "0");
+    return bits.slice(0, 4) + " " + bits.slice(4);
+  }
 
   topPadding: 40
   bottomPadding: 10
@@ -62,7 +84,7 @@ Control {
         if (!msg.text) return;
           plcRunner.invoke("writeMessage",
                            {
-                            "cmd": 0xA5,
+                            "cmd": PlcMessage.WRITE_RAW,
                             "raw": msg.text,
                            });
         }
@@ -89,18 +111,18 @@ Control {
         }
       }
       QxButton {
-        id: btnReadY2
+        id: test
 
-        enabled: plcRunner && plcRunner.socketState === 3
+        // enabled: plcRunner && plcRunner.socketState === 3
         text: "read Y2"
         onClicked: {
           if (!plcRunner) return;
-          plcRunner.invoke("writeMessage",
-                           {
-                             "cmd": 0x0F,
-                             "dev": 0x0059,
-                             "module": 2,
-                           })
+          // plcRunner.invoke("writeMessage",
+          //                  {
+          //                    "cmd": 0x0F,
+          //                    "dev": 0x0059,
+          //                    "module": 2,
+          //                  })
         }
       }
     }
