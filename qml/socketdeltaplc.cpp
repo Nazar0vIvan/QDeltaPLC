@@ -33,7 +33,6 @@ void SocketDeltaPLC::disconnectFromHost()
 {
   QTcpSocket::disconnectFromHost();
 }
-
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
   const PlcMessageManager::ParseResult buildReqResult = m_mgr.buildReq(msg, ++m_nextTid);
@@ -45,9 +44,11 @@ void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 
   QByteArray tosend = buildReqResult.data.toByteArray();
   const qint64 n = write(swapBytes(tosend));
-  qDebug() << "WRITE: " << tosend.toHex(' ');
+
+  qDebug() << "WRITE: " << tosend.toHex(' ').toUpper();
+
   emit logMessage({ (n == -1 ? "No bytes were written" :
-                    "TX: " + tosend.toHex(' ') + " (" + QString::number(n) + " bytes)"),
+                    "TX: " + tosend.toHex(' ').toUpper() + " (" + QString::number(n) + " bytes)"),
                     (n == -1 ? 0 : 4), objectName()});
 }
 
@@ -78,23 +79,21 @@ void SocketDeltaPLC::onStateChanged(QAbstractSocket::SocketState state) {
 void SocketDeltaPLC::onConnected()
 {
   emit logMessage({"Connection has been successfully established", 1, objectName()});
-
-  QVariantMap tosend;
-  tosend["cmd"] = QVariant::fromValue(0x5A);
-  writeMessage(tosend);
+  writeMessage({ {"cmd", PlcMessageManager::SNAPSHOT} });
 }
 
 void SocketDeltaPLC::onReadyRead()
 {
-  const QByteArray toread = readAll(); // one full message by your contract
+  const QByteArray toread = swapBytes(readAll());
+  qDebug() << "READ: " << toread.toHex(' ').toUpper();
 
-  qDebug() << "READ: " << swapBytes(toread).toHex(' ');
-  PlcMessageManager::ParseResult parsedRespResult = m_mgr.parseResp(swapBytes(toread), m_nextTid);
+  PlcMessageManager::ParseResult parsedRespResult = m_mgr.parseResp(toread, m_nextTid);
 
   if (!parsedRespResult.ok()) {
     emit logMessage({ "READ ERROR: " + QString::number(parsedRespResult.error), 0, objectName() });
     return;
   }
+
   emit plcDataReady(parsedRespResult.data.toMap());
 }
 

@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import qdeltaplc_qml_module 1.0 // // FOR NOW
+import qdeltaplc_qml_module 1.0 // FOR NOW
 
 Control {
   id: root
@@ -29,29 +29,18 @@ Control {
   property string title: ""
 
   function refresh(xstates, ystates) {
-    console.log(xstates);
-    console.log(ystates);
-    for (var i = 0; i < 8; ++i) {
-      const y = y_lv.itemAtIndex(i)
-      y.checked = ystates[i]
-
-      const x = x_lv.itemAtIndex(i)
-      x.checked = xstates[i]
+    for (let i = 0; i < 8; i++) {
+      y_lv.itemAtIndex(i).checked = ystates[i];
+      x_lv.itemAtIndex(i).checked = xstates[i];
     }
   }
 
   function buildMasks(index, state) {
     const bit = (1 << index) & 0xFF;
-    let andMask; let orMask;
-
-    if (state) {
-      andMask = 0xFF;
-      orMask  = bit;
-    } else {
-        andMask = (~bit) & 0xFF;
-        orMask  = 0x00;
-    }
-    return { andMask, orMask };
+    return {
+      andMask: state ? 0xFF : (~bit & 0xFF),
+      orMask:  state ? bit  : 0x00,
+    };
   }
 
   topPadding: 40
@@ -146,12 +135,13 @@ Control {
         onCheckedChanged: {
           if(!plcRunner) return;
           const { andMask, orMask} = root.buildMasks(index, checked);
-          plcRunner.invoke("writeMessage", {
-                             "cmd": PlcMessage.WRITE_IO,
-                             "module": root.moduleIndex,
-                             "andMask": andMask,
-                             "orMask": orMask
-                           })
+          const args = {
+            "cmd": PlcMessage.WRITE_IO,
+            "module": root.moduleIndex,
+            "andMask": andMask,
+            "orMask": orMask
+          };
+          plcRunner.invoke("writeMessage", args);
         }
       }
     }

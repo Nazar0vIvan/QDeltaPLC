@@ -12,11 +12,8 @@
 #include <QMetaType>
 #include <QList>
 
-
-
 class PlcMessageManager : public QObject
 {
-
   Q_OBJECT
 
 public:
@@ -100,7 +97,7 @@ private:
   bool isValidDev(quint16 dev) const;
   bool isValidMod(quint8 module) const;
 
-  QVariantList byteToBitVariantList(quint8 value) const;
+  QVariantList byteToBits(quint8 value) const;
 
   static constexpr quint16 MAGIC = 0xAA55;
   static constexpr quint8  VER   = 0x01;

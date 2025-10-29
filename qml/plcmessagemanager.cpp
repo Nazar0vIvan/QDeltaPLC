@@ -31,12 +31,10 @@ PlcMessageManager::ParseResult PlcMessageManager::parseResp(const QByteArray& re
 
   QByteArray payload = resp.mid(HEADER_SIZE, header.len);
   switch (header.type) {
-    case Type::RESP_OK: {
+    case Type::RESP_OK:
       return parseRespOk(payload, exp_tid);
-    }
-    case Type::RESP_ERR: {
+    case Type::RESP_ERR:
       return parseRespErr(payload);
-    }
     default:
       return { QVariantMap(), BAD_RESP, header.type };
   }
@@ -132,6 +130,14 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReqPayload(const QVariant
   return { payload };
 }
 
+QByteArray PlcMessageManager::buildHeader(Type type, quint8 tid, quint8 len) const {
+  QByteArray out;
+  QDataStream ds(&out, QIODevice::WriteOnly);
+  ds.setByteOrder(QDataStream::BigEndian);
+  ds << MAGIC << quint8(VER) << quint8(type) << quint8(tid) << quint8(len);
+  return out;
+}
+
 PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& headerBytesIn, quint8 exp_tid) const
 {
   if (headerBytesIn.size() < HEADER_SIZE) {
@@ -144,28 +150,20 @@ PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& 
 
   Header h;
   in >> h.magic >> h.ver >> h.type >> h.tid >> h.len;
-  
+
   if (h.magic != MAGIC)
     return {QVariant::fromValue(h), BAD_MAGIC, h.magic};
-  
+
   if (h.ver != VER)
     return {QVariant::fromValue(h), BAD_VER, h.ver};
 
   if (!isValidType(h.type))
     return {QVariant::fromValue(h), BAD_TYPE, h.type};
-  
+
   if (h.tid != exp_tid)
     return {QVariant::fromValue(h), BAD_TID, h.tid};
 
   return { QVariant::fromValue(h) };
-}
-
-QByteArray PlcMessageManager::buildHeader(Type type, quint8 tid, quint8 len) const {
-  QByteArray out;
-  QDataStream ds(&out, QIODevice::WriteOnly);
-  ds.setByteOrder(QDataStream::BigEndian);
-  ds << MAGIC << quint8(VER) << quint8(type) << quint8(tid) << quint8(len);
-  return out;
 }
 
 PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& payload, quint8 tid) const
@@ -229,10 +227,10 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
     case CMD::SNAPSHOT: {
         quint8 x1, y1, x2, y2;
         ds >> x1 >> y1 >> x2 >> y2;
-        out["x1"] = byteToBitVariantList(x1);
-        out["y1"] = byteToBitVariantList(y1);
-        out["x2"] = byteToBitVariantList(x2);
-        out["y2"] = byteToBitVariantList(y2);
+        out["x1"] = byteToBits(x1);
+        out["y1"] = byteToBits(y1);
+        out["x2"] = byteToBits(x2);
+        out["y2"] = byteToBits(y2);
       return { out };
     }
     default:
@@ -278,12 +276,10 @@ bool PlcMessageManager::isValidDev(quint16 dev) const {
          dev == DEV::D;
 }
 
-QVariantList PlcMessageManager::byteToBitVariantList(quint8 value) const {
-  QVariantList bits;
-  bits.reserve(8);
-  for (int i = 0; i < 8; ++i) {
+QVariantList PlcMessageManager::byteToBits(quint8 value) const {
+  QVariantList bits; bits.reserve(8);
+  for (int i = 0; i < 8; ++i)
     bits.append( ((value >> i) & 0x01) != 0 );
-  }
   return bits;
 }
 
