@@ -20,7 +20,8 @@ Control {
   property string yLabel: "Undefined"
   property int moduleIndex: 1
 
-  property bool updatingFromSegment: false
+  property var xStates: new Array(8).fill(false)
+  property var yStates: new Array(8).fill(false)
 
   readonly property int rowHeight: 22
   readonly property int labelWidth: 28
@@ -28,19 +29,32 @@ Control {
 
   property string title: ""
 
-  function refresh(xstates, ystates) {
-    for (let i = 0; i < 8; i++) {
-      y_lv.itemAtIndex(i).checked = ystates[i];
-      x_lv.itemAtIndex(i).checked = xstates[i];
-    }
+  function refreshAll(xstates, ystates) {
+    refreshX(xstates);
+    refreshY(ystates);
   }
 
-  function buildMasks(index, state) {
-    const bit = (1 << index) & 0xFF;
+  function refreshX(xstates) {
+    xStates = xstates.slice()
+  }
+
+  function refreshY(ystates) {
+    yStates = ystates.slice()
+  }
+
+  function buildMasks(index, desiredOn, width = 8) {
+    const full = (1 << width) - 1;
+    const bit  = (1 << index) & full;
+
     return {
-      andMask: state ? 0xFF : (~bit & 0xFF),
-      orMask:  state ? bit  : 0x00,
+      andMask: full ^ bit,
+      orMask:  desiredOn ? bit : 0x00
     };
+  }
+
+  function byteToBitString(n) {
+    n = n & 0xFF;                // keep only 8 bits
+    return n.toString(2).padStart(8, '0');
   }
 
   topPadding: 40
@@ -93,6 +107,8 @@ Control {
         ledSize: root.rowHeight
         labelText: "X" + root.moduleIndex + "." + index
         tag: root.xTags[index]
+
+        isOn: root.xStates[index]
       }
     }
 
@@ -132,15 +148,20 @@ Control {
         labelText: "Y" + root.moduleIndex + "." + index
         tag: root.yTags[index]
 
-        onCheckedChanged: {
-          if(!plcRunner) return;
-          const { andMask, orMask} = root.buildMasks(index, checked);
+        isOn: root.yStates[index]
+
+        onClicked: {
+          if (!plcRunner) return;
+          const desired = !isOn
+          const { andMask, orMask} = root.buildMasks(index, desired);
+          console.log(byteToBitString(andMask));
+          console.log(byteToBitString(orMask));
           const args = {
-            "cmd": PlcMessage.WRITE_IO,
-            "module": root.moduleIndex,
-            "andMask": andMask,
-            "orMask": orMask
-          };
+             "cmd": PlcMessage.WRITE_IO,
+             "module": root.moduleIndex,
+             "andMask": andMask,
+             "orMask": orMask
+           };
           plcRunner.invoke("writeMessage", args);
         }
       }
@@ -173,5 +194,15 @@ Control {
     font {
       pixelSize: 12
     }
+  }
+
+  Component.onCompleted: {
+    let a = 0x40;
+    let b = 0x60;
+    const { andMask, orMask} = root.buildMasks(5, true);
+    console.log(byteToBitString(andMask));
+    console.log(byteToBitString(orMask));
+    let c = (a & andMask) | orMask;
+    console.log(c === b);
   }
 }

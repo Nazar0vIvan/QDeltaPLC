@@ -110,21 +110,6 @@ Control {
           }
         }
       }
-      QxButton {
-        id: test
-
-        // enabled: plcRunner && plcRunner.socketState === 3
-        text: "read Y2"
-        onClicked: {
-          if (!plcRunner) return;
-          // plcRunner.invoke("writeMessage",
-          //                  {
-          //                    "cmd": 0x0F,
-          //                    "dev": 0x0059,
-          //                    "module": 2,
-          //                  })
-        }
-      }
     }
   }
 

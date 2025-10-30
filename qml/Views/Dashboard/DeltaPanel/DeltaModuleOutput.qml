@@ -15,7 +15,9 @@ Item {
   property bool displayonly: false
   property alias labelText: label.text
   property alias tag: tag.text
-  property alias checked: sw.checked
+  property alias isOn: sw.isOn
+
+  signal clicked();
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
@@ -40,6 +42,8 @@ Item {
       imageSource: "qrc:/assets/pics/lock.svg"
       enabled: root.enabled
       displayonly: root.displayonly
+
+      onClicked: root.clicked()
     }
     Text {
       id: tag

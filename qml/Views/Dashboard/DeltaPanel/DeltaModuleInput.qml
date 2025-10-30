@@ -12,7 +12,7 @@ Item {
   property alias labelText: label.text
   property alias tag: tag.text
   property int ledSize: 10
-  property bool checked: false
+  property bool isOn: false
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight

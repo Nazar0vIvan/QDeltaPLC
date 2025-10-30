@@ -16,7 +16,7 @@ Window {
   property int navPanelWidth: 60
 
   width: 1200
-  height: 1100
+  height: 1000
   visible: true
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
@@ -53,7 +53,8 @@ Window {
       StackLayout {
         id: sl
 
-        SplitView.fillHeight: true; SplitView.fillWidth: true
+
+        SplitView.fillWidth: true; SplitView.fillHeight: true
         currentIndex: navPanel.currentIndex
 
         Dashboard { id: dashboard }
@@ -70,53 +71,3 @@ Window {
     }
   }
 }
-
-/*
-  SplitView {
-    id: sv
-
-    orientation: Qt.Vertical
-    anchors.fill: parent
-    anchors.topMargin: 10
-
-    ColumnLayout {
-      id: cl
-
-      SplitView.fillWidth: true
-      SplitView.fillHeight: true
-      spacing: 20
-
-      DeltaPanel {
-        id: deltaPanel
-
-        Layout.fillWidth: true
-        Layout.leftMargin: 20
-      }
-
-      Rectangle {
-        id: separator
-
-        Layout.fillWidth: true
-        Layout.preferredHeight: 2
-        color: Styles.background.dp04
-      }
-
-      FTSPanel {
-        id: ftsPanel
-
-        Layout.fillWidth: true
-        Layout.leftMargin: 20
-      }
-
-      Item { Layout.fillHeight: true }
-    }
-
-    Logger {
-      id: loggerPanel
-
-      SplitView.fillWidth: true
-      SplitView.preferredHeight: 100
-    }
-  }
-}
-*/

@@ -177,8 +177,8 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
     return { QVariant(), BAD_CMD, cmd };
 
   QVariantMap out;
-  out["type"] = Type::RESP_OK;
-  out["tid"]  = tid;
+  out["type"]   = Type::RESP_OK;
+  out["tid"]    = tid;
   out["cmd"]    = cmd;
   out["status"] = status;
 
@@ -192,7 +192,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
         return { QVariant(), BAD_MOD, module };
       out["dev"]    = DEV::Y;
       out["module"] = module;
-      out["state"]  = state;
+      out["state"]  = byteToBits(state);
       return { out };
     }
     case CMD::READ_REG: {
@@ -200,9 +200,9 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       ds >> dev >> addr >> value;
       if (!isValidDev(dev))
         return {QVariantMap(), BAD_DEV, dev};
-      out["dev"]    = DEV::Y;
-      out["addr"] = addr;
-      out["value"]  = value;
+      out["dev"]   = DEV::Y;
+      out["addr"]  = addr;
+      out["value"] = value;
       return { out };
     }
     case CMD::WRITE_IO: {
@@ -211,7 +211,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       if (!isValidDev(dev))
         return {QVariantMap(), BAD_DEV, dev};
       out["module"] = module;
-      out["state"]  = state;
+      out["state"]  = byteToBits(state);
       return { out };
     }
     case CMD::WRITE_REG: {
@@ -219,9 +219,9 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       ds >> dev >> addr >> value;
       if (!isValidDev(dev))
         return {QVariantMap(), BAD_DEV, dev};
-      out["dev"]    = DEV::Y;
-      out["addr"] = addr;
-      out["value"]  = value;
+      out["dev"]   = DEV::Y;
+      out["addr"]  = addr;
+      out["value"] = value;
       return { out };
     }
     case CMD::SNAPSHOT: {

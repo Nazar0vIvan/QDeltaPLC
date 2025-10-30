@@ -10,11 +10,9 @@ Switch {
 
   property bool displayonly: false
   property alias imageSource: image.source
+  property bool isOn: false
 
-  signal turnedOn
-  signal turnedOff
-
-  checkable: true
+  checkable: false
 
   contentItem: Text {
     anchors.left: indicator.right
@@ -30,14 +28,14 @@ Switch {
     width: root.width
     height: root.height
     radius: root.height / 2
-    color: root.checked ? Styles.secondary.base : Styles.background.dp06
+    color: root.isOn ? Styles.secondary.base : Styles.background.dp06
 
     Rectangle {
       width: root.height - 6
       height: root.height - 6
       radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
-      x: root.checked ? parent.width - width - 2 : 2
+      x: root.isOn ? parent.width - width - 2 : 2
       color: Styles.foreground.high
       Behavior on x {
         NumberAnimation {
@@ -54,11 +52,5 @@ Switch {
         visible: root.displayonly
       }
     }
-  }
-  onCheckedChanged: {
-    if (checked)
-      turnedOn()
-    else
-      turnedOff()
   }
 }

@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import qdeltaplc_qml_module 1.0 // // FOR NOW
+import qdeltaplc_qml_module 1.0 // FOR NOW
 
 QxGroupBox {
   id: root
@@ -17,10 +17,24 @@ QxGroupBox {
     target: plcRunner
 
     function onPlcDataReady(data) {
-      if (!data.cmd || data.cmd !== PlcMessage.SNAPSHOT)
-        return
-      moduleAP_P.refresh(data.x1, data.y1)
-      moduleAP_T.refresh(data.x2, data.y2)
+      if (!data.cmd) return;
+      switch(data.cmd) {
+        case PlcMessage.SNAPSHOT: {
+          moduleAP_P.refreshAll(data.x1, data.y1);
+          moduleAP_T.refreshAll(data.x2, data.y2);
+          break;
+        }
+        case PlcMessage.WRITE_IO: {
+          console.log("data module: ", data.module)
+          console.log("data state: ", data.state)
+          if (data.module === 1)
+            moduleAP_P.refreshY(data.state)
+          else
+            moduleAP_T.refreshY(data.state)
+          break;
+        }
+        default: break;
+      }
     }
   }
 
