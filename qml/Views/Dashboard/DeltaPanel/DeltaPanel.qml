@@ -25,8 +25,6 @@ QxGroupBox {
           break;
         }
         case PlcMessage.WRITE_IO: {
-          console.log("data module: ", data.module)
-          console.log("data state: ", data.state)
           if (data.module === 1)
             moduleAP_P.refreshY(data.state)
           else
@@ -36,12 +34,35 @@ QxGroupBox {
         default: break;
       }
     }
+
+    function onSocketStateChanged() {
+      if (plcRunner.socketState === 0) {
+        moduleAP_P.refreshAll(Array(8).fill(false), Array(8).fill(false));
+        moduleAP_T.refreshAll(Array(8).fill(false), Array(8).fill(false));
+      }
+    }
   }
 
   RowLayout {
     id: rl
 
     spacing: 20
+
+    LedsPanel {
+      id: ledPanel
+
+      Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
+      title: "Door Panel"
+
+      states: [
+        plcRunner.socketState === 3,
+        moduleAP_P.yStates[6],
+        moduleAP_P.yStates[5],
+        moduleAP_T.yStates[5],
+        moduleAP_T.yStates[6],
+        moduleAP_T.yStates[7]
+      ]
+    }
 
     DeltaModuleAP {
       id: moduleAP_P
@@ -57,7 +78,7 @@ QxGroupBox {
       xLabel: 'IN / <font color="red">SOURCE</font>'
       yLabel: 'OUT / <font color="red">SOURCE</font>'
       xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
-      yPlugged: [0, 0, 0, 0, 0, 1, 1, 0]
+      yPlugged: [1, 0, 0, 0, 0, 1, 1, 0]
       yDisplayOnly: [6] // !!! RUN
       moduleIndex: 1
     }
@@ -80,24 +101,11 @@ QxGroupBox {
       moduleIndex: 2
     }
 
-    ColumnLayout {
-      id: cl
+    DeltaNetwork {
+      id: deltaNetwork
 
-      spacing: 20
-
-      LedsPanel {
-        id: ledPanel
-
-        Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
-        title: "Door Panel"
-      }
-
-      DeltaNetwork {
-        id: deltaNetwork
-
-        Layout.alignment: Qt.AlignBottom
-        title: "Network"
-      }
+      Layout.alignment: Qt.AlignTop
+      title: "Network"
     }
   }
 }

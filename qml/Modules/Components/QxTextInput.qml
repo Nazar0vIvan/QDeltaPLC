@@ -7,7 +7,9 @@ import Styles 1.0
 TextField {
   id: control
 
+  property bool confirmed: false
   property alias placeholder: defaultTxt.text
+  property int radius: 4
 
   leftPadding: 5
   color: Styles.foreground.high
@@ -18,15 +20,17 @@ TextField {
 
   background: Rectangle {
     color: control.readOnly ? "transparent" : Styles.background.dp04
-    radius: 4
+    radius: control.radius
     border {
       width: control.readOnly ? 0 : control.activeFocus ? 2 : control.hovered ? 0 : 1
-      color: control.activeFocus ? Styles.primary.base : Styles.background.dp12
+      color: control.activeFocus ? Styles.primary.base : control.confirmed ? "green" : Styles.background.dp12
     }
   }
 
-  onFocusChanged: if (focus)
-                    selectAll()
+  onFocusChanged: {
+    if (focus) selectAll()
+    control.confirmed = false
+  }
 
   Text {
     id: defaultTxt

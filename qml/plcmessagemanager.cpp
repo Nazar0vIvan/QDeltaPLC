@@ -32,7 +32,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseResp(const QByteArray& re
   QByteArray payload = resp.mid(HEADER_SIZE, header.len);
   switch (header.type) {
     case Type::RESP_OK:
-      return parseRespOk(payload, exp_tid);
+      return parseRespOk(payload, exp_tid, header.len);
     case Type::RESP_ERR:
       return parseRespErr(payload);
     default:
@@ -117,7 +117,7 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReqPayload(const QVariant
     case CMD::WRITE_RAW: {
       if(!req.value("raw").isNull() && !req.value("raw").canConvert<QByteArray>())
         return { QVariant(), BAD_RAW, {} };
-      const QByteArray raw = req.value("raw").toByteArray();
+      QByteArray raw = req.value("raw").toByteArray();
       ds.writeRawData(raw.constData(), raw.size());
       break;
     }
@@ -166,7 +166,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& 
   return { QVariant::fromValue(h) };
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& payload, quint8 tid) const
+PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const
 {
   QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
@@ -224,13 +224,17 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       out["value"] = value;
       return { out };
     }
+    case CMD::WRITE_RAW: {
+      out["value"] = payload.mid(2, paylen-2);
+      return { out };
+    }
     case CMD::SNAPSHOT: {
-        quint8 x1, y1, x2, y2;
-        ds >> x1 >> y1 >> x2 >> y2;
-        out["x1"] = byteToBits(x1);
-        out["y1"] = byteToBits(y1);
-        out["x2"] = byteToBits(x2);
-        out["y2"] = byteToBits(y2);
+      quint8 x1, y1, x2, y2;
+      ds >> x1 >> y1 >> x2 >> y2;
+      out["x1"] = byteToBits(x1);
+      out["y1"] = byteToBits(y1);
+      out["x2"] = byteToBits(x2);
+      out["y2"] = byteToBits(y2);
       return { out };
     }
     default:
@@ -249,7 +253,6 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray&
   out["cmd"]  = cmd;
   out["err"]  = err;
   out["code"] = code;
-
   return { out };
 }
 

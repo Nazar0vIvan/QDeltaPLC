@@ -8,6 +8,7 @@ ToolButton {
   id: root
 
   required property string imageSource
+  property int radius: 4
 
   padding: 5
   opacity: enabled ? (pressed ? 0.9 : hovered ? 1.0 : 0.9) : 0.4
@@ -20,7 +21,7 @@ ToolButton {
   }
   background: Rectangle {
     color: Styles.background.dp04
-    radius: 4
+    radius: root.radius
     border {
       width: 1
       color: Styles.background.dp12

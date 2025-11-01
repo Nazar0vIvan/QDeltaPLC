@@ -10,6 +10,7 @@ Control {
   id: root
 
   property alias title: header.text
+  property var states;
 
   topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
@@ -32,24 +33,28 @@ Control {
     implicitHeight: 2*cellHeight
 
     model: ListModel {
-      ListElement { label: "Mains"; color: "yellow"; isOn: false }
-      ListElement { label: "RUN";   color: "green";  isOn: false }
-      ListElement { label: "LEDG2";  color: "green";  isOn: false }
-      ListElement { label: "LEDR1";  color: "red";    isOn: false }
-      ListElement { label: "LEDR2";  color: "red";    isOn: false }
-      ListElement { label: "LEDR3";  color: "red";    isOn: false }
+      ListElement { label: "Mains";  color: "yellow"; }
+      ListElement { label: "RUN";    color: "green";  }
+      ListElement { label: "LEDG2";  color: "green";  }
+      ListElement { label: "LEDR1";  color: "red";    }
+      ListElement { label: "LEDR2";  color: "red";    }
+      ListElement { label: "LEDR3";  color: "red";    }
     }
 
     delegate: Item {
       width: gv.cellWidth
       height: gv.cellHeight
 
+      property bool isOn: !!root.states[index]
+
       QxLed {
+        id: led
+
         anchors.centerIn: parent
         ledColor: model.color
         tag: model.label
         size: gv.ledSize
-        isOn: (index < 2) ? (plcRunner.socketState === 3) : model.isOn
+        isOn: parent.isOn
       }
     }
   }

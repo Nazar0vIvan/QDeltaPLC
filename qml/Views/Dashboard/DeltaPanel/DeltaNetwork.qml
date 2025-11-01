@@ -11,30 +11,36 @@ import qdeltaplc_qml_module 1.0 // FOR NOW
 Control {
   id: root
 
-  property int fieldHeight: 24
-  property int fieldWidth: 112
-
+  property int fieldHeight: 23
+  property int fieldWidth: 40
+  property int labelWidth: 50
   property alias title: header.text
 
+  Connections {
+    target: plcRunner
 
-  function buildMasks(index, newState) {
-    const bit = (1 << index) & 0xFF;
-    let andMask; let orMask;
-
-    if (newState) {
-      andMask = 0xFF;
-      orMask  = bit;
-    } else {
-        andMask = (~bit) & 0xFF;
-        orMask  = 0x00;
+    function onPlcDataReady(data) {
+      if (!data.cmd) return;
+      switch(data.cmd) {
+        case PlcMessage.READ_REG: {
+          rRegValueInput.text = data.value;
+          break;
+        }
+        case PlcMessage.WRITE_REG: {
+          if (Number(wRegValueInput.text) === data.value) {
+            wRegValueInput.confirmed = true;
+          }
+          break;
+        }
+        case PlcMessage.WRITE_RAW: {
+          if (wRawValueInput.text === String(data.value)) {
+            wRawValueInput.confirmed = true;
+          }
+          break;
+        }
+        default: break;
+      }
     }
-    return { andMask, orMask };
-  }
-
-  function byteToBitString(value) {
-    const v = value & 0xFF;
-    const bits = v.toString(2).padStart(8, "0");
-    return bits.slice(0, 4) + " " + bits.slice(4);
   }
 
   topPadding: 40
@@ -52,62 +58,242 @@ Control {
 
   contentItem: ColumnLayout {
 
-    spacing: 20
+    spacing: 14
 
+    // WRITE_RAW
     RowLayout {
       id: rl1
 
-      QxField {
-        // message
-        id: msgField
+      spacing: 10
 
-        Layout.preferredHeight: root.fieldHeight
-        labelText: "Message:"
+      Text {
+        Layout.preferredWidth: root.labelWidth
 
-        QxTextInput {
-          id: msg
-
-          width: root.fieldWidth
-          height: root.fieldHeight
-        }
+        text: "W_RAW:"
+        color: Styles.foreground.high
+        font: Styles.fonts.body
       }
 
-      QxToolButton {
-        id: btnSend
+      RowLayout {
+        id: rl11
 
-        enabled: plcRunner && plcRunner.socketState === 3
-        imageSource: "qrc:/assets/pics/send.svg"
-        Layout.preferredWidth: 22
-        Layout.preferredHeight: 22
+        spacing: 0
 
-        onClicked: {
-        if (!msg.text) return;
-          plcRunner.invoke("writeMessage",
-                           {
-                            "cmd": PlcMessage.WRITE_RAW,
-                            "raw": msg.text,
-                           });
+        Label {
+          Layout.preferredHeight: root.fieldHeight
+          leftPadding: 4; rightPadding: 4;
+          font: Styles.fonts.body
+          text: "D"
+          color: Styles.foreground.high
+          verticalAlignment: Text.AlignVCenter
+          background: Rectangle {
+            color: Styles.background.dp04
+            border {
+              width: 1
+              color: Styles.background.dp12
+            }
+          }
+        }
+
+        QxTextInput {
+          id: wRawValueInput
+
+          Layout.preferredWidth: 2*root.fieldWidth
+          Layout.preferredHeight: root.fieldHeight
+          radius: 0;
+        }
+
+        QxToolButton {
+          id: btnWriteRaw
+
+          Layout.preferredWidth: root.fieldHeight
+          Layout.preferredHeight: root.fieldHeight
+
+          radius: 0
+          padding: 6
+          enabled: plcRunner && plcRunner.socketState === 3
+          imageSource: "qrc:/assets/pics/arrow_right.svg"
+          onClicked: {
+            if (!wRawValueInput.text) return;
+            const args = {
+              "cmd": PlcMessage.WRITE_RAW,
+              "raw": wRawValueInput.text,
+            }
+            plcRunner.invoke("writeMessage", args);
+          }
+        }
+
+      }
+    }
+
+    // WRITE_REG
+    RowLayout {
+      id: rl2
+
+      spacing: 10
+
+      Text {
+        Layout.preferredWidth: root.labelWidth
+        text: "W_REG:"
+        color: Styles.foreground.high
+        font: Styles.fonts.body
+      }
+
+      RowLayout {
+        id: rl21
+
+        spacing: 0
+
+        Label {
+          Layout.preferredHeight: root.fieldHeight
+          leftPadding: 4; rightPadding: 4;
+          font: Styles.fonts.body
+          text: "D"
+          color: Styles.foreground.high
+          verticalAlignment: Text.AlignVCenter
+          background: Rectangle {
+            color: Styles.background.dp04
+            border {
+              width: 1
+              color: Styles.background.dp12
+            }
+          }
+        }
+
+        QxTextInput {
+          id: wRegAddrInput
+
+          Layout.preferredWidth: root.fieldWidth
+          Layout.preferredHeight: root.fieldHeight
+          radius: 0;
+        }
+
+        QxTextInput {
+          id: wRegValueInput
+
+          Layout.preferredWidth: root.fieldWidth
+          Layout.preferredHeight: root.fieldHeight
+          radius: 0;
+        }
+
+        QxToolButton {
+          id: btnWriteReg
+
+          Layout.preferredWidth: root.fieldHeight
+          Layout.preferredHeight: root.fieldHeight
+
+          radius: 0
+          padding: 6
+          enabled: plcRunner && plcRunner.socketState === 3
+          imageSource: "qrc:/assets/pics/arrow_right.svg"
+          onClicked: {
+            if (!wRegAddrInput.text || !wRegValueInput.text) return;
+            const args = {
+              "cmd": PlcMessage.WRITE_REG,
+              "addr": Number(wRegAddrInput.text),
+              "value": Number(wRegValueInput.text),
+
+            }
+            plcRunner.invoke("writeMessage", args);
+          }
         }
       }
     }
 
+    // READ_REG
     RowLayout {
-      id: rl2
+      id: rl3
 
-      QxButton {
-        id: btnConnect
+      spacing: 10
 
-        enabled: plcRunner
-        checked: plcRunner && plcRunner.socketState === 3
-        text: checked ? "Disconnect" : "Connect"
-        onClicked: {
-          if (!plcRunner)
-            return
-          if (checked) {
-            plcRunner.invoke("disconnectFromHost")
-          } else {
-            plcRunner.invoke("connectToHost")
+      Text {
+        Layout.preferredWidth: root.labelWidth
+        text: "R_REG:"
+        color: Styles.foreground.high
+        font: Styles.fonts.body
+      }
+
+      RowLayout {
+        id: rl31
+
+        spacing: 0
+
+        Label {
+          Layout.preferredHeight: root.fieldHeight
+          leftPadding: 4; rightPadding: 4;
+          font: Styles.fonts.body
+          text: "D"
+          color: Styles.foreground.high
+          verticalAlignment: Text.AlignVCenter
+          background: Rectangle {
+            color: Styles.background.dp04
+            border {
+              width: 1
+              color: Styles.background.dp12
+            }
           }
+        }
+
+        QxTextInput {
+          id: rRegInput
+
+          Layout.preferredWidth: root.fieldWidth
+          Layout.preferredHeight: root.fieldHeight
+          radius: 0;
+        }
+
+        QxTextInput {
+          id: rRegValueInput
+
+          Layout.preferredWidth: root.fieldWidth
+          Layout.preferredHeight: root.fieldHeight
+
+          background: Rectangle {
+            color: "transparent"
+            radius: 0;
+            border {
+              width: 1
+              color: Styles.background.dp12
+            }
+          }
+        }
+
+        QxToolButton {
+          id: btnReadReg
+
+          Layout.preferredWidth: root.fieldHeight
+          Layout.preferredHeight: root.fieldHeight
+
+          radius: 0
+          padding: 6
+          enabled: plcRunner && plcRunner.socketState === 3
+          imageSource: "qrc:/assets/pics/arrow_right.svg"
+          onClicked: {
+            if (!rRegInput.text) return;
+            const args = {
+              "cmd": PlcMessage.READ_REG,
+              "addr": Number(rRegInput.text),
+            }
+            plcRunner.invoke("writeMessage", args);
+          }
+        }
+
+      }
+    }
+
+    QxButton {
+      id: btnConnect
+
+      enabled: plcRunner
+      checked: plcRunner && plcRunner.socketState === 3
+      text: checked ? "Disconnect" : "Connect"
+      onClicked: {
+        if (!plcRunner)
+          return
+        if (checked) {
+          plcRunner.invoke("disconnectFromHost")
+        } else {
+          plcRunner.invoke("connectToHost")
         }
       }
     }

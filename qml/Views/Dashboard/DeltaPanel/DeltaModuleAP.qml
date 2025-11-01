@@ -154,8 +154,6 @@ Control {
           if (!plcRunner) return;
           const desired = !isOn
           const { andMask, orMask} = root.buildMasks(index, desired);
-          console.log(byteToBitString(andMask));
-          console.log(byteToBitString(orMask));
           const args = {
              "cmd": PlcMessage.WRITE_IO,
              "module": root.moduleIndex,
@@ -194,15 +192,5 @@ Control {
     font {
       pixelSize: 12
     }
-  }
-
-  Component.onCompleted: {
-    let a = 0x40;
-    let b = 0x60;
-    const { andMask, orMask} = root.buildMasks(5, true);
-    console.log(byteToBitString(andMask));
-    console.log(byteToBitString(orMask));
-    let c = (a & andMask) | orMask;
-    console.log(c === b);
   }
 }

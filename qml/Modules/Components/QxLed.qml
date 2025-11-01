@@ -6,7 +6,7 @@ import Styles 1.0
 Item {
   id: root
 
-  property alias ledColor: led.color
+  property color ledColor: "green"
   property alias tag: tag.text
   property int size: 20
   property bool isOn: false
@@ -32,8 +32,8 @@ Item {
 
       Layout.preferredWidth: root.size
       Layout.preferredHeight: root.size
-      radius: parent.width / 2
-      color: root.isOn ? Qt.lighter(root.ledColor, 1.4) : Qt.darker(root.ledColor, 1.4)
+      radius: width / 2
+      color: root.isOn ? Qt.lighter(root.ledColor, 1.6) : Qt.darker(root.ledColor, 2.0)
 
       border {
         color: Qt.darker(root.ledColor, 1.8)
