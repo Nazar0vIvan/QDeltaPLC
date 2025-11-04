@@ -22,6 +22,7 @@ set(QML_FILES
   Views/Dashboard/Dashboard.qml
   Views/Options/Options.qml
   Views/Options/OptionsSection.qml
+  Views/Test/Test.qml
 )
 
 ## CPP ##
@@ -56,6 +57,7 @@ qt_add_qml_module(qdeltaplc
   RESOURCES
     pics.qrc
     fonts.qrc
+    files.qrc
 )
 
 target_link_libraries(qdeltaplc

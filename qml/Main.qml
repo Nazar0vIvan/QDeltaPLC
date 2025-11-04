@@ -6,6 +6,7 @@ import QtQuick.Controls.Basic
 import "NavigationPanel"
 import "Views/Options"
 import "Views/Dashboard"
+import "Views/Test"
 
 import Styles 1.0
 import Components 1.0
@@ -15,7 +16,7 @@ Window {
 
   property int navPanelWidth: 60
 
-  width: 1200
+  width: 1300
   height: 1000
   visible: true
   title: qsTr("QDeltaPLC")
@@ -60,6 +61,8 @@ Window {
         Dashboard { id: dashboard }
 
         Options { id: options }
+
+        Test { id: test }
       }
 
       Logger {

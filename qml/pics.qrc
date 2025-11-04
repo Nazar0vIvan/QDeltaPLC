@@ -12,5 +12,6 @@
         <file>assets/pics/send.svg</file>
         <file>assets/pics/disconnect.svg</file>
         <file>assets/pics/connect.svg</file>
+        <file>assets/pics/test.svg</file>
     </qresource>
 </RCC>

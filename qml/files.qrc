@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/files/RSI_EthernetConfig.xml</file>
+        <file>assets/files/toKRC.xml</file>
+        <file>assets/files/fromKRC.xml</file>
+    </qresource>
+</RCC>

@@ -1,5 +1,14 @@
 #include "socketrsi.h"
 
+RandomData generateRandomData() {
+  RandomData data;
+  QRandomGenerator* generator = QRandomGenerator::global();
+  for (int i=0; i<6; i++)
+    data.values.append(0.001 + generator->generateDouble() * 0.009);
+  data.ipoc = generator->generate64();
+  return data;
+}
+
 SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
 {
   setObjectName(name);
@@ -74,6 +83,24 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
                    1, objectName()});
 }
 
+void SocketRSI::xmlTest()
+{
+  QFile f(":/assets/files/fromKRC.xml");
+  if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qWarning() << "Failed to open file:";
+    return;
+  }
+
+  const RsiResponce r = parseRsiResponce(f.readAll());
+  // r.qdump();
+
+  RandomData rd = generateRandomData();
+
+  QByteArray moveCmd = subsXml(rd.values, rd.ipoc);
+  qDebug() << defaultCommand;
+  qDebug() << moveCmd;
+}
+
 // PUBLIC SLOTS
 
 void SocketRSI::onReadyRead()
@@ -104,6 +131,66 @@ QString SocketRSI::stateToString(SocketState state)
     default: return "UnconnectedState";
   }
 }
+
+QByteArray SocketRSI::subsXml(const QList<double> &vec, quint64 ipoc, int indent)
+{
+  QDomDocument doc;
+  doc.setContent(defaultCommand);
+
+  QDomElement root = doc.documentElement();
+  QDomElement rk = root.firstChildElement("AKorr");
+  QLocale c = QLocale::c();
+
+  for (int i = 0; i < 6; ++i) {
+    QString attrName = QString("A%1").arg(i + 1);
+    rk.setAttribute(attrName, c.toString(vec.at(i), 'g', 10));
+  }
+
+  QDomElement ipocEl = root.firstChildElement("IPOC");
+  ipocEl.firstChild().setNodeValue(QString::number(ipoc));
+
+  return doc.toByteArray(indent);
+}
+
+// PARSING
+
+SocketRSI::RsiResponce SocketRSI::parseRsiResponce(const QByteArray& xmlBytes)
+{
+  RsiResponce r{};
+  QXmlStreamReader xml(xmlBytes);
+
+  while (xml.readNextStartElement()) {
+    const auto name = xml.name();
+    if (name == QLatin1String("Rob")) {
+      xml.readNext();
+      continue;
+    }
+    if (name == QLatin1String("AIPos")) {
+      r.aiPos = readAxis6(xml.attributes());
+      xml.skipCurrentElement();
+    } else if (name == QLatin1String("MACur")) {
+      r.maCur = readAxis6(xml.attributes());
+      xml.skipCurrentElement();
+    } else if (name == QLatin1String("IPOC")) {
+      r.ipoc = xml.readElementText().toULongLong();
+    } else {
+      xml.skipCurrentElement();
+    }
+  }
+  return r;
+}
+
+std::array<double, 6> SocketRSI::readAxis6(const QXmlStreamAttributes &attrs)
+{
+  std::array<double, 6> out{};
+  static const char* keys[6] = {"A1","A2","A3","A4","A5","A6"};
+  for (size_t i = 0; i < 6; ++i) {
+    out[i] = attrs.value(QLatin1String(keys[i])).toString().toDouble();
+  }
+  return out;
+}
+
+
 
 
 
