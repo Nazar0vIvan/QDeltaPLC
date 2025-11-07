@@ -105,7 +105,21 @@ void SocketRSI::xmlTest()
 
 void SocketRSI::onReadyRead()
 {
+  do {
+    QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
 
+    if (isFirstRead) {
+      m_senderAddress = dg.senderAddress();
+      m_senderPort = dg.senderPort()
+    }
+
+    const RsiResponce resp = parseRsiResponce(dg.data());
+    if (isIdle) {
+      write(subsIPOC(defaultCommand, resp.ipoc));
+    }
+
+
+  } while(hasPendingDatagrams());
 }
 
 void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError) {
@@ -150,6 +164,18 @@ QByteArray SocketRSI::subsXml(const QList<double> &vec, quint64 ipoc, int indent
   ipocEl.firstChild().setNodeValue(QString::number(ipoc));
 
   return doc.toByteArray(indent);
+}
+
+QByteArray SocketRSI::subsIPOC(const QByteArray &xml, quint64 ipoc)
+{
+  QDomDocument doc;
+  doc.setContent(xml);
+
+  QDomElement root = doc.documentElement();
+  QDomElement ipocEl = root.firstChildElement("IPOC");
+  ipocEl.firstChild().setNodeValue(QString::number(ipoc));
+
+  return doc.toByteArray();
 }
 
 // PARSING

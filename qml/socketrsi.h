@@ -72,7 +72,7 @@ private slots:
   void onStateChanged(QAbstractSocket::SocketState state);
 
 private:
-  QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
+  // QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
   QByteArray defaultCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.0\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
   bool m_onlysend = false;
 
@@ -82,11 +82,14 @@ private:
   qint16 m_pp = 0;
 
   QString stateToString(SocketState state);
+
   // parsing
   RsiResponce parseRsiResponce(const QByteArray& xmlBytes);
   std::array<double, 6> readAxis6(const QXmlStreamAttributes& attrs);
 
   QByteArray subsXml(const QList<double> &vec, quint64 ipoc, int indent = 2);
+  QByteArray subsIPOC(const QByteArray& xml, quint64 ipoc);
+  bool isIdle = true;
 
 };
 
