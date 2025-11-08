@@ -26,17 +26,17 @@ int main(int argc, char *argv[])
   QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::plcDataReady, Qt::QueuedConnection);
   plcRunner.start();
 
-  SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
-  UdpSocketRunner ftsRunner(socketRDT);
-  QObject::connect(socketRDT, &SocketRDT::bufferReady, &ftsRunner, &UdpSocketRunner::onBufferReady, Qt::QueuedConnection);
-  ftsRunner.start();
+  // SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
+  // UdpSocketRunner ftsRunner(socketRDT);
+  // QObject::connect(socketRDT, &SocketRDT::bufferReady, &ftsRunner, &UdpSocketRunner::onBufferReady, Qt::QueuedConnection);
+  // ftsRunner.start();
 
   SocketRSI* socketRSI = new SocketRSI(QStringLiteral("KRC4_RSI"));
   UdpSocketRunner rsiRunner(socketRSI);
   rsiRunner.start();
 
   QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
-  QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
+  //QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
 
   // QmlChartBridge chartBridge;
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
   QQmlContext* ctx  = engine.rootContext();
   ctx->setContextProperty("logger", Logger::instance());
   ctx->setContextProperty("plcRunner", &plcRunner);
-  ctx->setContextProperty("ftsRunner", &ftsRunner);
+  // ctx->setContextProperty("ftsRunner", &ftsRunner);
   ctx->setContextProperty("rsiRunner", &rsiRunner);
   // ctx->setContextProperty("chartBridge", &chartBridge);
 

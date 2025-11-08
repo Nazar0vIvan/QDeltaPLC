@@ -21,8 +21,6 @@
 
 #include "logger.h"
 
-#define RSI_PEER_ADDRESS "192.168.1.4"
-
 struct RandomData {
   QVector<double> values;
   quint64 ipoc;
@@ -61,7 +59,7 @@ public:
   Q_INVOKABLE void stopStreaming();
   Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
-  Q_INVOKABLE void xmlTest();
+  Q_INVOKABLE void test();
 
 signals:
   void logMessage(const LoggerMessage& msg);
@@ -89,8 +87,10 @@ private:
 
   QByteArray subsXml(const QList<double> &vec, quint64 ipoc, int indent = 2);
   QByteArray subsIPOC(const QByteArray& xml, quint64 ipoc);
-  bool isIdle = true;
-
+  bool m_isFirstRead = false;
+  bool m_isMoving = false;
+  bool m_RsiOK = false;
+  QVector<QNetworkDatagram> dgs;
 };
 
 #endif // SOCKETRSI_H

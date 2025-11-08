@@ -68,10 +68,10 @@ Rectangle {
         QxButton {
           id: readIPOC
 
-          text: "xmlTest"
+          text: "test"
 
           onClicked: {
-            rsiRunner.invoke("xmlTest")
+            rsiRunner.invoke("test")
           }
         }
         Item { Layout.fillHeight: true }

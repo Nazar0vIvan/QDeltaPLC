@@ -31,7 +31,7 @@ void SocketRDT::startStreaming()
     return;
   }
   // reset batching/timeline
-  m_haveBase = false;
+  m_isFirstRead = false;
   m_baseSeq = 0;
   m_readings.clear();
   m_emitTimer.restart();
@@ -72,11 +72,11 @@ void SocketRDT::onReadyRead()
 
     uint32_t rdt_sequence = r[0].toUInt();
 
-    if (!m_haveBase) { // if the first read
+    if (m_isFirstRead) { // if the first read
       m_baseSeq = rdt_sequence;
-      m_haveBase = true;
       m_emitTimer.restart();
       m_readings.clear();
+      m_isFirstRead = false;
     }
 
     const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;

@@ -17,18 +17,25 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
   connect(this, &SocketRSI::readyRead, this, &SocketRSI::onReadyRead);
   connect(this, &SocketRSI::errorOccurred, this, &SocketRSI::onErrorOccurred);
   connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
+
+  const quint16 port = 59152;
+  if (!bind(QHostAddress("192.168.2.100"), port, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+    emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
+  }
+  m_isFirstRead = true;
+  m_isMoving = false;
 }
 
 // Q_INVOKABLE
 
 void SocketRSI::startStreaming()
 {
-
+  m_RsiOK = true;
 }
 
 void SocketRSI::stopStreaming()
 {
-
+  m_RsiOK = false;
 }
 
 QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
@@ -83,43 +90,39 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
                    1, objectName()});
 }
 
-void SocketRSI::xmlTest()
+void SocketRSI::test()
 {
-  QFile f(":/assets/files/fromKRC.xml");
-  if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qWarning() << "Failed to open file:";
-    return;
+  for(auto& dg : dgs) {
+    qDebug() << dg.data() << "\n\n";
   }
-
-  const RsiResponce r = parseRsiResponce(f.readAll());
-  // r.qdump();
-
-  RandomData rd = generateRandomData();
-
-  QByteArray moveCmd = subsXml(rd.values, rd.ipoc);
-  qDebug() << defaultCommand;
-  qDebug() << moveCmd;
+  qDebug() << m_pa;
+  qDebug() << m_pp;
 }
 
 // PUBLIC SLOTS
 
 void SocketRSI::onReadyRead()
 {
-  do {
-    QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
+  while(hasPendingDatagrams()) {
+    QNetworkDatagram dg = receiveDatagram();
 
-    if (isFirstRead) {
-      m_senderAddress = dg.senderAddress();
-      m_senderPort = dg.senderPort()
+    dgs.append(dg);
+
+    qDebug() << dg.data();
+
+    if (m_isFirstRead) {
+      m_pa = dg.senderAddress();
+      m_pp = dg.senderPort();
+      m_isFirstRead = false;
     }
 
     const RsiResponce resp = parseRsiResponce(dg.data());
-    if (isIdle) {
-      write(subsIPOC(defaultCommand, resp.ipoc));
+
+    if (!m_isMoving) {
+      writeDatagram(subsIPOC(defaultCommand, resp.ipoc), m_pa, m_pp);
     }
 
-
-  } while(hasPendingDatagrams());
+  };
 }
 
 void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError) {
@@ -194,9 +197,9 @@ SocketRSI::RsiResponce SocketRSI::parseRsiResponce(const QByteArray& xmlBytes)
     if (name == QLatin1String("AIPos")) {
       r.aiPos = readAxis6(xml.attributes());
       xml.skipCurrentElement();
-    } else if (name == QLatin1String("MACur")) {
-      r.maCur = readAxis6(xml.attributes());
-      xml.skipCurrentElement();
+    // } else if (name == QLatin1String("MACur")) {
+    //   r.maCur = readAxis6(xml.attributes());
+    //   xml.skipCurrentElement();
     } else if (name == QLatin1String("IPOC")) {
       r.ipoc = xml.readElementText().toULongLong();
     } else {

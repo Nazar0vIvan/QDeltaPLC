@@ -92,17 +92,15 @@ private:
 
     // batching state
     QVector<QVariantList> m_readings;
-    QElapsedTimer    m_emitTimer;
-    quint32          m_baseSeq = 0;
-    bool             m_haveBase = false;
-    int              m_emitIntervalMs = 16; // ~60 Hz GUI updates
+    QElapsedTimer m_emitTimer;
+    quint32       m_baseSeq = 0;
+    bool          m_isFirstRead = false;
+    int           m_emitIntervalMs = 16; // ~60 Hz GUI updates
 
     QHostAddress m_la;
     quint16 m_lp = 0;
     QHostAddress m_pa;
     quint16 m_pp = 0;
-
-    int i = 0;
 };
 
 #endif // SOCKETRDT_H
