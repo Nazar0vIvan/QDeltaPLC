@@ -18,10 +18,11 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
   connect(this, &SocketRSI::errorOccurred, this, &SocketRSI::onErrorOccurred);
   connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
 
-  const quint16 port = 59152;
-  if (!bind(QHostAddress("192.168.2.100"), port, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+  const quint16 port = 58961;
+  if (!bind(QHostAddress("192.168.1.100"), port)) {
     emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
   }
+
   m_isFirstRead = true;
   m_isMoving = false;
 }
@@ -108,8 +109,6 @@ void SocketRSI::onReadyRead()
 
     dgs.append(dg);
 
-    qDebug() << dg.data();
-
     if (m_isFirstRead) {
       m_pa = dg.senderAddress();
       m_pp = dg.senderPort();
@@ -121,8 +120,7 @@ void SocketRSI::onReadyRead()
     if (!m_isMoving) {
       writeDatagram(subsIPOC(defaultCommand, resp.ipoc), m_pa, m_pp);
     }
-
-  };
+  }
 }
 
 void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError) {

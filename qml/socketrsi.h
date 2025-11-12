@@ -21,6 +21,8 @@
 
 #include "logger.h"
 
+#define PC_RSI_PORT 58961;
+
 struct RandomData {
   QVector<double> values;
   quint64 ipoc;
