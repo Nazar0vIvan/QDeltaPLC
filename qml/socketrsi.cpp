@@ -13,15 +13,10 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
 {
   setObjectName(name);
 
-  connect(this, &SocketRSI::logMessage,  Logger::instance(), &Logger::push);
-  connect(this, &SocketRSI::readyRead, this, &SocketRSI::onReadyRead);
+  connect(this, &SocketRSI::readyRead,     this, &SocketRSI::onReadyRead);
   connect(this, &SocketRSI::errorOccurred, this, &SocketRSI::onErrorOccurred);
   connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
-
-  const quint16 port = 58961;
-  if (!bind(QHostAddress("192.168.1.100"), port)) {
-    emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
-  }
+  connect(this, &SocketRSI::logMessage, Logger::instance(), &Logger::push);
 
   m_isFirstRead = true;
   m_isMoving = false;
@@ -29,14 +24,20 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
 
 // Q_INVOKABLE
 
-void SocketRSI::startStreaming()
+void SocketRSI::bind()
 {
-  m_RsiOK = true;
+  const QHostAddress addr = QHostAddress("192.168.1.100");
+  const quint16 port = 5555;
+  if (!QUdpSocket::bind(addr, port)) {
+    emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
+    return;
+  }
+  emit logMessage({QString("Socket is bound: %1:%2").arg(addr.toString()).arg(port), 1, objectName()});
 }
 
-void SocketRSI::stopStreaming()
+void SocketRSI::stop()
 {
-  m_RsiOK = false;
+
 }
 
 QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
@@ -84,7 +85,7 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
   m_pa = QHostAddress(config.value("peerAddress").toString());
   m_pp = config.value("peerPort").toUInt();
 
-  emit logMessage({QString("Socket configured:<br/>"
+  emit logMessage({QString("Socket is configured:<br/>"
                    "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
                    "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4<br/>").
                    arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()).arg(m_pp),
@@ -93,9 +94,21 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
 
 void SocketRSI::test()
 {
-  for(auto& dg : dgs) {
-    qDebug() << dg.data() << "\n\n";
+  // for(auto& dg : dgs) {
+  //   qDebug() << dg.data() << "\n\n";
+  // }
+
+  qDebug() << defaultCommand;
+  if(dgs.empty()) {
+    return;
   }
+  qDebug() << dgs[0].data();
+
+  const RsiResponce resp = parseRsiResponce(dgs[0].data());
+
+  qDebug() << resp.aiPos;
+  qDebug() << resp.ipoc;
+
   qDebug() << m_pa;
   qDebug() << m_pp;
 }
@@ -186,30 +199,38 @@ SocketRSI::RsiResponce SocketRSI::parseRsiResponce(const QByteArray& xmlBytes)
   RsiResponce r{};
   QXmlStreamReader xml(xmlBytes);
 
+  // Go to the root element
+  if (!xml.readNextStartElement())
+    return r;
+
+  if (xml.name() != QLatin1String("Rob")) {
+    // unexpected root
+    return r;
+  }
+
+  // Now we are on <Rob>. Parse its children.
   while (xml.readNextStartElement()) {
     const auto name = xml.name();
-    if (name == QLatin1String("Rob")) {
-      xml.readNext();
-      continue;
-    }
+
     if (name == QLatin1String("AIPos")) {
       r.aiPos = readAxis6(xml.attributes());
+      xml.skipCurrentElement();   // for <AIPos .../>
+    } else if (name == QLatin1String("MACur")) {
+      r.maCur = readAxis6(xml.attributes());
       xml.skipCurrentElement();
-    // } else if (name == QLatin1String("MACur")) {
-    //   r.maCur = readAxis6(xml.attributes());
-    //   xml.skipCurrentElement();
     } else if (name == QLatin1String("IPOC")) {
       r.ipoc = xml.readElementText().toULongLong();
     } else {
-      xml.skipCurrentElement();
+      xml.skipCurrentElement();   // skip unknown children of <Rob>
     }
   }
+
   return r;
 }
 
-std::array<double, 6> SocketRSI::readAxis6(const QXmlStreamAttributes &attrs)
+QVector<double> SocketRSI::readAxis6(const QXmlStreamAttributes &attrs)
 {
-  std::array<double, 6> out{};
+  QVector<double> out = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
   static const char* keys[6] = {"A1","A2","A3","A4","A5","A6"};
   for (size_t i = 0; i < 6; ++i) {
     out[i] = attrs.value(QLatin1String(keys[i])).toString().toDouble();

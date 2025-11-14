@@ -66,7 +66,17 @@ Rectangle {
         }
 
         QxButton {
-          id: readIPOC
+          id: btnBind
+
+          text: "Bind"
+
+          onClicked: {
+            rsiRunner.invoke("bind")
+          }
+        }
+
+        QxButton {
+          id: btnTest
 
           text: "test"
 
@@ -74,6 +84,7 @@ Rectangle {
             rsiRunner.invoke("test")
           }
         }
+
         Item { Layout.fillHeight: true }
       }
     }

@@ -36,8 +36,8 @@ public:
   explicit SocketRSI(const QString& name, QObject *parent = nullptr);
 
   struct RsiResponce {
-    std::array<double, 6> aiPos{{0,0,0,0,0,0}};
-    std::array<double, 6> maCur{{0,0,0,0,0,0}};
+    QVector<double> aiPos{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    QVector<double> maCur{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     quint64 ipoc = 0;
 
     void qdump() const {
@@ -57,8 +57,8 @@ public:
     }
   };
 
-  Q_INVOKABLE void startStreaming();
-  Q_INVOKABLE void stopStreaming();
+  Q_INVOKABLE void bind();
+  Q_INVOKABLE void stop();
   Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
   Q_INVOKABLE void test();
@@ -77,21 +77,21 @@ private:
   bool m_onlysend = false;
 
   QHostAddress m_la;
-  qint16 m_lp = 0;
+  quint16 m_lp = 0;
   QHostAddress m_pa;
-  qint16 m_pp = 0;
+  quint16 m_pp = 0;
 
   QString stateToString(SocketState state);
 
   // parsing
   RsiResponce parseRsiResponce(const QByteArray& xmlBytes);
-  std::array<double, 6> readAxis6(const QXmlStreamAttributes& attrs);
+  QVector<double> readAxis6(const QXmlStreamAttributes& attrs);
 
   QByteArray subsXml(const QList<double> &vec, quint64 ipoc, int indent = 2);
   QByteArray subsIPOC(const QByteArray& xml, quint64 ipoc);
   bool m_isFirstRead = false;
   bool m_isMoving = false;
-  bool m_RsiOK = false;
+
   QVector<QNetworkDatagram> dgs;
 };
 
