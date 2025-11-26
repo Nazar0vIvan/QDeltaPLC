@@ -22,7 +22,7 @@ Item {
     spacing: 20
 
     RowLayout {
-      id: rl
+      id: rl1
 
       Layout.fillWidth: true
       spacing: 20
@@ -31,13 +31,6 @@ Item {
         id: deltaPanel
 
         title: 'PLC AS332T-A'
-      }
-
-      FtsPanel {
-        id: ftsPanel
-
-        title: qsTr("FTS Delta-IP68-SI-660-60")
-        Layout.alignment: Qt.AlignTop
       }
     }
 
@@ -53,12 +46,27 @@ Item {
       }
     }
 
-    KukaPanel {
-      id: kukaPanel
+    RowLayout {
+      id: rl2
 
-      title: qsTr("Robot Sensor Interface")
+      Layout.fillWidth: true
+      spacing: 20
 
-      Layout.topMargin: 14
+      KukaPanel {
+        id: kukaPanel
+
+        title: qsTr("Robot Sensor Interface")
+
+        Layout.topMargin: 14
+      }
+
+      FtsPanel {
+        id: ftsPanel
+
+        title: qsTr("FTS Delta-IP68-SI-660-60")
+        Layout.alignment: Qt.AlignTop
+        Layout.topMargin: 14
+      }
     }
 
     Item { Layout.fillHeight: true }
