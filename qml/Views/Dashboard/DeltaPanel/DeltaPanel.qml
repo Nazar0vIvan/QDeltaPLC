@@ -107,5 +107,13 @@ QxGroupBox {
       Layout.alignment: Qt.AlignTop
       title: "Network"
     }
+
+    KukaAutExt {
+      id: kukaAutExt
+
+      Layout.alignment: Qt.AlignTop
+      title: "KUKA AUT_EXT"
+
+    }
   }
 }

@@ -13,6 +13,7 @@ set(QML_FILES
   Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
   Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
   Views/Dashboard/DeltaPanel/DeltaNetwork.qml
+  Views/Dashboard/DeltaPanel/KukaAutExt.qml
   Views/Dashboard/FtsPanel/FtsPanel.qml
   Views/Dashboard/FtsPanel/FtsBars.qml
   Views/Dashboard/KukaPanel/KukaPanel.qml

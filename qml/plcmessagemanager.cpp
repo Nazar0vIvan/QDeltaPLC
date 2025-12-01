@@ -16,7 +16,7 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReq(const QVariantMap& re
   return { header + payload };
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseResp(const QByteArray& resp, quint8 exp_tid) const
+PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray& resp, quint8 exp_tid) const
 {
   if (resp.size() < HEADER_SIZE)
     return { QVariantMap(), BAD_MLEN, resp.size() };
@@ -24,6 +24,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseResp(const QByteArray& re
   ParseResult hdrRes = parseHeader(resp.left(HEADER_SIZE), exp_tid);
   if (!hdrRes.ok())
     return hdrRes;
+
   Header header = hdrRes.data.value<Header>();
 
   if (resp.size() != RESP_SIZE)
@@ -35,6 +36,8 @@ PlcMessageManager::ParseResult PlcMessageManager::parseResp(const QByteArray& re
       return parseRespOk(payload, exp_tid, header.len);
     case Type::RESP_ERR:
       return parseRespErr(payload);
+    case Type::COS:
+      return parseCos(payload, header.len);
     default:
       return { QVariantMap(), BAD_RESP, header.type };
   }
@@ -160,8 +163,8 @@ PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& 
   if (!isValidType(h.type))
     return {QVariant::fromValue(h), BAD_TYPE, h.type};
 
-  if (h.tid != exp_tid)
-    return {QVariant::fromValue(h), BAD_TID, h.tid};
+  if (h.type != Type::COS && h.tid != exp_tid)
+    return { QVariant::fromValue(h), BAD_TID, h.tid };
 
   return { QVariant::fromValue(h) };
 }
@@ -256,8 +259,32 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray&
   return { out };
 }
 
+PlcMessageManager::ParseResult PlcMessageManager::parseCos(const QByteArray& payload, quint8 paylen) const
+{
+  if (paylen < 2 || payload.size() < 2)
+    return { QVariant(), BAD_PLEN, paylen };
+
+  QDataStream ds(payload);
+  ds.setByteOrder(QDataStream::BigEndian);
+
+  quint8 cosTypeRaw;
+  quint8 valueRaw;
+  ds >> cosTypeRaw >> valueRaw;
+
+  QVariantMap out;
+  out["type"]    = Type::COS;
+  out["cosType"] = cosTypeRaw;       // AUT_EXT, PR_STAT, etc.
+  out["value"]   = (valueRaw != 0);  // COS_TYPEs always BOOL
+
+  return { out };
+}
+
+
 bool PlcMessageManager::isValidType(quint8 type) const {
-  return type == Type::REQ || type == Type::RESP_OK || type == Type::RESP_ERR;
+  return type == Type::REQ      ||
+         type == Type::RESP_OK  ||
+         type == Type::RESP_ERR ||
+         type == Type::COS;
 }
 
 bool PlcMessageManager::isValidCmd(quint8 cmd) const {

@@ -12,7 +12,7 @@ Item {
   id: root
 
   ColumnLayout {
-    id: cl
+    id: cl1
 
     anchors {
       fill: parent

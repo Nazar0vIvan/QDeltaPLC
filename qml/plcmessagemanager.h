@@ -43,7 +43,8 @@ public:
   enum Type : quint8 {
     REQ      = 0xF1,
     RESP_OK  = 0x0D,
-    RESP_ERR = 0xEE
+    RESP_ERR = 0xEE,
+    COS      = 0xCC
   };
   Q_ENUM(Type)
 
@@ -57,6 +58,12 @@ public:
     NOCMD     = 0x00
   };
   Q_ENUM(CMD)
+
+  enum COS_TYPE : quint8 {
+    AUT_EXT = 0xC1,
+    PRO_ACT = 0xC2
+  };
+  Q_ENUM(COS_TYPE)
 
   enum DEV : quint16 {
     X = 0x0058,
@@ -82,7 +89,7 @@ public:
   };
 
   ParseResult buildReq(const QVariantMap& req, quint8 tid) const;
-  ParseResult parseResp(const QByteArray& message, quint8 exp_tid) const;
+  ParseResult parseMessage(const QByteArray& message, quint8 exp_tid) const;
 
 private:
   ParseResult buildReqPayload(const QVariantMap& req) const;
@@ -91,6 +98,7 @@ private:
   ParseResult parseHeader(const QByteArray& headerBytesIn, quint8 exp_tid) const;
   ParseResult parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const;
   ParseResult parseRespErr(const QByteArray& payload) const;
+  ParseResult parseCos(const QByteArray &payload, quint8 paylen) const;
 
   bool isValidType(quint8 type) const;
   bool isValidCmd(quint8 cmd) const;

@@ -33,6 +33,7 @@ void SocketDeltaPLC::disconnectFromHost()
 {
   QTcpSocket::disconnectFromHost();
 }
+
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
   const PlcMessageManager::ParseResult buildReqResult = m_mgr.buildReq(msg, ++m_nextTid);
@@ -87,7 +88,7 @@ void SocketDeltaPLC::onReadyRead()
   const QByteArray toread = swapBytes(readAll());
   qDebug() << "READ: " << toread.toHex(' ').toUpper();
 
-  PlcMessageManager::ParseResult parsedRespResult = m_mgr.parseResp(toread, m_nextTid);
+  PlcMessageManager::ParseResult parsedRespResult = m_mgr.parseMessage(toread, m_nextTid);
 
   if (!parsedRespResult.ok()) {
     emit logMessage({ "READ ERROR: " + QString::number(parsedRespResult.error), 0, objectName() });
