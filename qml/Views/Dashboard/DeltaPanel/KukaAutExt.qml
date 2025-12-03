@@ -6,13 +6,35 @@ import QtQuick.Layouts
 import Components 1.0
 import Styles 1.0
 
+import qdeltaplc_qml_module 1.0 // FOR NOW
 
 Control {
   id: root
 
+  Connections {
+    target: plcRunner
+
+    function onPlcDataReady(data) {
+      if (!data.type) return;
+        switch(data.cosType) {
+          case PlcMessage.AUT_EXT : {
+            autExt.color = data.value === true ? "green" : "red";
+            break;
+          }
+          case PlcMessage.PRO_ACT : {
+            proAct.color = data.value === true ? "green" : "red";
+            break;
+          }
+        }
+    }
+  }
+
   property string title: ""
+  property int labelWidth: 70
   property int fieldHeight: 28
   property int fieldWidth: 50
+  property int ledSize: 12
+
 
   topPadding: 40
   bottomPadding: 10
@@ -26,16 +48,36 @@ Control {
     QxField {
       id: autExtField
 
-      labelText: "Status: "
+      labelWidth: root.labelWidth
       height: root.fieldHeight
+      labelText: "$EXT: "
 
       Rectangle {
-        id: autExtStatus
+        id: autExt
 
-        width: 14; height: 14
-        radius: width / 2
-        color: "red"
         anchors.verticalCenter: parent.verticalCenter
+        width: root.ledSize; height: root.ledSize
+        color: "red"
+        border{width: 1; color: Styles.background.dp12}
+
+      }
+    }
+
+    QxField {
+      id: proActField
+
+      labelWidth: root.labelWidth
+      height: root.fieldHeight
+      labelText: "$PRO_ACT: "
+
+      Rectangle {
+        id: proAct
+
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.ledSize; height: root.ledSize
+        color: "red"
+        border{width: 1; color: Styles.background.dp12}
+
       }
     }
 
