@@ -57,7 +57,7 @@ QxGroupBox {
       states: [
         plcRunner.socketState === 3,
         moduleAP_P.yStates[6],
-        moduleAP_P.yStates[5],
+        moduleAP_P.yStates[7],
         moduleAP_T.yStates[5],
         moduleAP_T.yStates[6],
         moduleAP_T.yStates[7]
@@ -77,8 +77,8 @@ QxGroupBox {
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDG2", "RUN", "N/D"]
       xLabel: 'IN / <font color="red">SOURCE</font>'
       yLabel: 'OUT / <font color="red">SOURCE</font>'
-      xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
-      yPlugged: [1, 0, 0, 0, 0, 1, 1, 0]
+      xPlugged: [1, 1, 1, 1, 1, 1, 0, 0]
+      yPlugged: [1, 1, 1, 1, 1, 1, 1, 1]
       yDisplayOnly: [6] // !!! RUN
       moduleIndex: 1
     }
