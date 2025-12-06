@@ -17,21 +17,16 @@ QxGroupBox {
     target: plcRunner
 
     function onPlcDataReady(data) {
-      if (!data.cmd) return;
-      switch(data.cmd) {
-        case PlcMessage.SNAPSHOT: {
-          moduleAP_P.refreshAll(data.x1, data.y1);
-          moduleAP_T.refreshAll(data.x2, data.y2);
-          break;
-        }
-        case PlcMessage.WRITE_IO: {
-          if (data.module === 1)
-            moduleAP_P.refreshY(data.state)
-          else
-            moduleAP_T.refreshY(data.state)
-          break;
-        }
-        default: break;
+      if ((data.cmd && data.cmd === PlcMessage.SNAPSHOT) ||
+          (data.cos && data.cos === PlcMessage.IOs)) {
+        moduleAP_P.refreshAll(data.x1, data.y1);
+        moduleAP_T.refreshAll(data.x2, data.y2);
+      }
+      if (data.cmd && data.cmd === PlcMessage.WRITE_IO) {
+        if (data.module === 1)
+          moduleAP_P.refreshY(data.state)
+        else
+          moduleAP_T.refreshY(data.state)
       }
     }
 
@@ -73,13 +68,13 @@ QxGroupBox {
 
       enabled: plcRunner.socketState === 3
 
-      xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-      yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDG2", "RUN", "N/D"]
+      xTags: ["RC_RDY1", "PERI_RDY", "STOPMESS", "PRO_ACT", "APPL_RUN", "EXT", "N/D", "N/D"]
+      yTags: ["PGNO_0", "PGNO_1", "EXT_START", "CONF_MESS", "DRIVE_OFF", "DRIVES_ON", "RUN", "LEDG2"]
       xLabel: 'IN / <font color="red">SOURCE</font>'
       yLabel: 'OUT / <font color="red">SOURCE</font>'
       xPlugged: [1, 1, 1, 1, 1, 1, 0, 0]
       yPlugged: [1, 1, 1, 1, 1, 1, 1, 1]
-      yDisplayOnly: [6] // !!! RUN
+      yDisplayOnly: [0, 1, 2, 3, 4, 5, 6] // locked by KRC
       moduleIndex: 1
     }
 

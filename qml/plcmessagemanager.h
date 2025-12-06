@@ -36,6 +36,7 @@ public:
     BAD_DATA  = 0xED, // 237
     BAD_RAW   = 0xEE, // 238
     BAD_RESP  = 0xEF, // 239
+    BAD_CHG   = 0xF1, // 240
     NOERR     = 0x00
   };
   Q_ENUM(MessageError)
@@ -44,7 +45,7 @@ public:
     REQ      = 0xF1,
     RESP_OK  = 0x0D,
     RESP_ERR = 0xEE,
-    COS      = 0xCC
+    CHG      = 0xCC
   };
   Q_ENUM(Type)
 
@@ -59,11 +60,12 @@ public:
   };
   Q_ENUM(CMD)
 
-  enum COS_TYPE : quint8 {
-    AUT_EXT = 0xC1,
-    PRO_ACT = 0xC2
+  enum CHG_TYPE : quint8 {
+    IOs      = 0xC0,
+    AUT_EXT  = 0xC1,
+    APPL_RUN = 0xC2
   };
-  Q_ENUM(COS_TYPE)
+  Q_ENUM(CHG_TYPE)
 
   enum DEV : quint16 {
     X = 0x0058,
@@ -98,7 +100,7 @@ private:
   ParseResult parseHeader(const QByteArray& headerBytesIn, quint8 exp_tid) const;
   ParseResult parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const;
   ParseResult parseRespErr(const QByteArray& payload) const;
-  ParseResult parseCos(const QByteArray &payload, quint8 paylen) const;
+  ParseResult parseStateChange(const QByteArray &payload, quint8 paylen) const;
 
   bool isValidType(quint8 type) const;
   bool isValidCmd(quint8 cmd) const;

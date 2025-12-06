@@ -1,8 +1,6 @@
 #include "plcmessagemanager.h"
 
-PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {
-
-}
+PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {}
 
 // PUBLIC
 
@@ -36,8 +34,8 @@ PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray&
       return parseRespOk(payload, exp_tid, header.len);
     case Type::RESP_ERR:
       return parseRespErr(payload);
-    case Type::COS:
-      return parseCos(payload, header.len);
+    case Type::CHG:
+      return parseStateChange(payload, header.len);
     default:
       return { QVariantMap(), BAD_RESP, header.type };
   }
@@ -163,7 +161,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& 
   if (!isValidType(h.type))
     return {QVariant::fromValue(h), BAD_TYPE, h.type};
 
-  if (h.type != Type::COS && h.tid != exp_tid)
+  if (h.type != Type::CHG && h.tid != exp_tid)
     return { QVariant::fromValue(h), BAD_TID, h.tid };
 
   return { QVariant::fromValue(h) };
@@ -259,24 +257,45 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray&
   return { out };
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseCos(const QByteArray& payload, quint8 paylen) const
+PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteArray& payload, quint8 paylen) const
 {
-  if (paylen < 2 || payload.size() < 2)
+  if (paylen != payload.size())
     return { QVariant(), BAD_PLEN, paylen };
 
   QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
 
-  quint8 cosTypeRaw;
-  quint8 valueRaw;
-  ds >> cosTypeRaw >> valueRaw;
+  quint8 cos;
+  ds >> cos;
 
   QVariantMap out;
-  out["type"]    = Type::COS;
-  out["cosType"] = cosTypeRaw;       // AUT_EXT, PR_STAT, etc.
-  out["value"]   = (valueRaw != 0);  // COS_TYPEs always BOOL
-
-  return { out };
+  out["type"] = Type::CHG;
+  out["cos"] = cos;
+  switch (cos) {
+    case IOs: {
+      quint8 x1, y1, x2, y2;
+      ds >> x1 >> y1 >> x2 >> y2;
+      out["x1"] = byteToBits(x1);
+      out["y1"] = byteToBits(y1);
+      out["x2"] = byteToBits(x2);
+      out["y2"] = byteToBits(y2);
+      return { out };
+    }
+    case AUT_EXT: {
+      quint8 state;
+      ds >> state;
+      out["state"] = byteToBits(state);
+      return { out };
+    }
+    case APPL_RUN: {
+      quint8 state;
+      ds >> state;
+      out["state"] = byteToBits(state);
+      return { out };
+    }
+    default:
+      return { QVariant(), BAD_CHG, cos };
+  }
 }
 
 
@@ -284,7 +303,7 @@ bool PlcMessageManager::isValidType(quint8 type) const {
   return type == Type::REQ      ||
          type == Type::RESP_OK  ||
          type == Type::RESP_ERR ||
-         type == Type::COS;
+         type == Type::CHG;
 }
 
 bool PlcMessageManager::isValidCmd(quint8 cmd) const {
