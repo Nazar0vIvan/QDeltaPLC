@@ -17,20 +17,33 @@ Control {
     target: plcRunner
 
     function onPlcDataReady(data) {
-      if (!data.type) return;
-        switch(data.chg) {
-          case PlcMessage.IOs : {
-            if (data.x1[5]) {
-              autExt.color = "green";
-              root.isAutExt = true;
-            }
-            else {
-              autExt.color = "red";
-              root.isAutExt = false;
-            }
+      if (data.cmd && data.cmd === PlcMessage.SNAPSHOT ||
+          data.chg && data.chg === PlcMessage.IOs) {
+        autExt.color = data.x1[5] ? "green" : "red";
+        root.isAutExt = !!data.x1[5];
+      }
+      if (data.chg && data.chg === PlcMessage.CELL_STATE) {
+        switch (data.state) {
+          case 0: {
+            idle.color = "green";
+            running.color = "red";
+            done.color = "red";
+            break;
+          }
+          case 1: {
+            idle.color = "red";
+            running.color = "green";
+            done.color = "red";
+            break;
+          }
+          case 2: {
+            idle.color = "red";
+            running.color = "red";
+            done.color = "green";
             break;
           }
         }
+      }
     }
   }
 
@@ -39,7 +52,6 @@ Control {
   property int fieldHeight: 28
   property int fieldWidth: 50
   property int ledSize: 12
-
 
   topPadding: 40
   bottomPadding: 10
@@ -64,7 +76,6 @@ Control {
         width: root.ledSize; height: root.ledSize
         color: "red"
         border{width: 1; color: Styles.background.dp12}
-
       }
     }
     QxField {

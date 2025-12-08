@@ -304,6 +304,12 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
       out["state"] = bool(state);
       return { out };
     }
+    case CELL_STATE: {
+      quint8 state;
+      ds >> state;
+      out["state"] = bool(state);
+      return { out };
+    }
     default:
       return { QVariant(), BAD_CHG, chg };
   }
