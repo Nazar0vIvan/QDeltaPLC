@@ -19,7 +19,7 @@ class PlcMessageManager : public QObject
 public:
   explicit PlcMessageManager(QObject* parent=nullptr);
 
-  enum MessageError : quint8 {
+  enum MessageError : quint8 { // E, F
     BAD_MAGIC = 0xE0, // 224
     BAD_VER   = 0xE1, // 225
     BAD_TYPE  = 0xE2, // 226
@@ -37,33 +37,46 @@ public:
     BAD_RAW   = 0xEE, // 238
     BAD_RESP  = 0xEF, // 239
     BAD_CHG   = 0xF1, // 240
+    BAD_VAR   = 0xF2, // 241
     NOERR     = 0x00
   };
   Q_ENUM(MessageError)
 
-  enum Type : quint8 {
-    REQ      = 0xF1,
-    RESP_OK  = 0x0D,
-    RESP_ERR = 0xEE,
-    CHG      = 0xCC
+  enum Type : quint8 { // A
+    REQ      = 0xA0,
+    RESP_OK  = 0xA3,
+    RESP_ERR = 0xAC,
+    CHG      = 0xAF
   };
   Q_ENUM(Type)
 
-  enum CMD : quint8 {
-    READ_IO   = 0x0F,
-    READ_REG  = 0xF0,
-    WRITE_IO  = 0x3C,
-    WRITE_REG = 0xC3,
-    WRITE_RAW = 0xA5,
-    SNAPSHOT  = 0x5A,
-    NOCMD     = 0x00
+  enum CMD : quint8 { // B
+    READ_IO   = 0xB0,
+    READ_REG  = 0xB3,
+    WRITE_IO  = 0xB5,
+    WRITE_REG = 0xB6,
+    WRITE_RAW = 0xB9,
+    SNAPSHOT  = 0xBA,
+    SET_VAR   = 0xBC,
+    NOCMD     = 0xBF
   };
   Q_ENUM(CMD)
 
-  enum CHG_TYPE : quint8 {
+  enum VAR_TYPE : quint8 { // D
+    START_CELL = 0xC0,
+    EXT_START  = 0xC3,
+    PGNO       = 0xC5,
+    PGNO_OK    = 0xC6,
+    CONTINUE   = 0xC9,
+    SFY_OK     = 0xCA,
+    EXIT_CELL  = 0xCC,
+  };
+  Q_ENUM(VAR_TYPE);
+
+  enum CHG_TYPE : quint8 { // C
     IOs      = 0xC0,
-    AUT_EXT  = 0xC1,
-    APPL_RUN = 0xC2
+    AUT_EXT  = 0xC3,
+    APPL_RUN = 0xC5
   };
   Q_ENUM(CHG_TYPE)
 
@@ -106,6 +119,7 @@ private:
   bool isValidCmd(quint8 cmd) const;
   bool isValidDev(quint16 dev) const;
   bool isValidMod(quint8 module) const;
+  bool isValidVar(quint8 var) const;
 
   QVariantList byteToBits(quint8 value) const;
 
@@ -135,6 +149,7 @@ private:
     };
     return hash.value(strCmd);
   }
+
 };
 
 Q_DECLARE_METATYPE(PlcMessageManager::Header)

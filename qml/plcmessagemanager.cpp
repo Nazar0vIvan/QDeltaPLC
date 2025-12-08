@@ -125,6 +125,15 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReqPayload(const QVariant
     case CMD::SNAPSHOT: {
       break;
     }
+    case CMD::SET_VAR: {
+      if(!req.value("var").isNull() && !req.value("var").canConvert<quint8>())
+        return { QVariant(), BAD_VAR, {} };
+      quint8 var = static_cast<quint8>(req.value("var").toUInt());
+      if(!req.value("state").isNull() && req.value("state").canConvert<quint8>()) // bool state is 0 or 1
+        return { QVariant(), BAD_VAR, {} };
+      bool state = static_cast<quint8>(req.value("state").toUInt());
+      ds << var << state;
+    }
     default:
       break;
   }
@@ -238,6 +247,13 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       out["y2"] = byteToBits(y2);
       return { out };
     }
+    case CMD::SET_VAR: {
+      quint8 var, state;
+      if (!isValidVar(var))
+        return {QVariantMap(), BAD_VAR, var};
+      out["var"]  = var;
+      out["state"] = state == 0x01 ? true : false;
+    }
     default:
       return { QVariant(), BAD_CMD, cmd };
   }
@@ -312,7 +328,8 @@ bool PlcMessageManager::isValidCmd(quint8 cmd) const {
          cmd == CMD::WRITE_IO ||
          cmd == CMD::WRITE_REG ||
          cmd == CMD::WRITE_RAW ||
-         cmd == CMD::SNAPSHOT;
+         cmd == CMD::SNAPSHOT ||
+         cmd == CMD::SET_VAR;
 }
 
 bool PlcMessageManager::isValidMod(quint8 module) const {
@@ -323,6 +340,16 @@ bool PlcMessageManager::isValidDev(quint16 dev) const {
   return dev == DEV::X ||
          dev == DEV::Y ||
          dev == DEV::D;
+}
+
+bool PlcMessageManager::isValidVar(quint8 var) const {
+  return var == VAR_TYPE::START_CELL ||
+         var == VAR_TYPE::EXT_START  ||
+         var == VAR_TYPE::PGNO       ||
+         var == VAR_TYPE::PGNO_OK    ||
+         var == VAR_TYPE::CONTINUE   ||
+         var == VAR_TYPE::SFY_OK     ||
+         var == VAR_TYPE::EXIT_CELL;
 }
 
 QVariantList PlcMessageManager::byteToBits(quint8 value) const {
