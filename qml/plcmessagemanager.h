@@ -36,8 +36,8 @@ public:
     BAD_DATA  = 0xED, // 237
     BAD_RAW   = 0xEE, // 238
     BAD_RESP  = 0xEF, // 239
-    BAD_CHG   = 0xF1, // 240
-    BAD_VAR   = 0xF2, // 241
+    BAD_CHG   = 0xF0, // 240
+    BAD_VAR   = 0xF1, // 241
     NOERR     = 0x00
   };
   Q_ENUM(MessageError)
@@ -62,21 +62,16 @@ public:
   };
   Q_ENUM(CMD)
 
-  enum VAR_TYPE : quint8 { // D
+  enum VAR_TYPE : quint8 { // C
     START_CELL = 0xC0,
-    EXT_START  = 0xC3,
-    PGNO       = 0xC5,
-    PGNO_OK    = 0xC6,
-    CONTINUE   = 0xC9,
-    SFY_OK     = 0xCA,
-    EXIT_CELL  = 0xCC,
+    SFY_OK     = 0xC3,
   };
   Q_ENUM(VAR_TYPE);
 
-  enum CHG_TYPE : quint8 { // C
-    IOs      = 0xC0,
-    AUT_EXT  = 0xC3,
-    APPL_RUN = 0xC5
+  enum CHG_TYPE : quint8 { // D
+    IOs        = 0xD0,
+    AUT_EXT    = 0xD3,
+    CELL_STATE = 0xD5
   };
   Q_ENUM(CHG_TYPE)
 

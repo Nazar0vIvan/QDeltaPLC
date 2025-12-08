@@ -11,18 +11,23 @@ import qdeltaplc_qml_module 1.0 // FOR NOW
 Control {
   id: root
 
+  property bool isAutExt: false
+
   Connections {
     target: plcRunner
 
     function onPlcDataReady(data) {
       if (!data.type) return;
-        switch(data.cosType) {
-          case PlcMessage.AUT_EXT : {
-            autExt.color = data.value === true ? "green" : "red";
-            break;
-          }
-          case PlcMessage.PRO_ACT : {
-            proAct.color = data.value === true ? "green" : "red";
+        switch(data.chg) {
+          case PlcMessage.IOs : {
+            if (data.x1[5]) {
+              autExt.color = "green";
+              root.isAutExt = true;
+            }
+            else {
+              autExt.color = "red";
+              root.isAutExt = false;
+            }
             break;
           }
         }
@@ -43,14 +48,14 @@ Control {
 
   contentItem: ColumnLayout {
 
-    spacing: 10
+    spacing: 6
 
     QxField {
       id: autExtField
 
       labelWidth: root.labelWidth
       height: root.fieldHeight
-      labelText: "$EXT: "
+      labelText: "AUT_EXT: "
 
       Rectangle {
         id: autExt
@@ -62,16 +67,49 @@ Control {
 
       }
     }
-
     QxField {
-      id: proActField
+      id: idleField
 
       labelWidth: root.labelWidth
       height: root.fieldHeight
-      labelText: "$PRO_ACT: "
+      labelText: "IDLE: "
 
       Rectangle {
-        id: proAct
+        id: idle
+
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.ledSize; height: root.ledSize
+        color: "red"
+        border{width: 1; color: Styles.background.dp12}
+
+      }
+    }
+    QxField {
+      id: runningField
+
+      labelWidth: root.labelWidth
+      height: root.fieldHeight
+      labelText: "RUN: "
+
+      Rectangle {
+        id: running
+
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.ledSize; height: root.ledSize
+        color: "red"
+        border{width: 1; color: Styles.background.dp12}
+
+      }
+    }
+    QxField {
+      id: doneField
+
+      labelWidth: root.labelWidth
+      height: root.fieldHeight
+      labelText: "DONE: "
+
+      Rectangle {
+        id: done
 
         anchors.verticalCenter: parent.verticalCenter
         width: root.ledSize; height: root.ledSize
@@ -81,25 +119,27 @@ Control {
       }
     }
 
-    QxField {
-      id: pgnoField
+    QxButton {
+      id: btnStartCell
 
-      labelText: "PGNO: "
-      height: root.fieldHeight
+      text: "Start"
+      enabled: root.isAutExt
 
-      QxTextInput {
-        id: pgno
-
-        height: root.fieldHeight
-        width: root.fieldWidth
-        text: "1"
+      onClicked: {
+        const args = {
+          "cmd": PlcMessage.SET_VAR,
+          "var": PlcMessage.START_CELL,
+          "attr": 1
+        }
+        plcRunner.invoke("writeMessage", args);
       }
     }
 
     QxButton {
-      id: btnStartProgram
+      id: btnSftOk
 
-      text: "Execute"
+      text: "SftOk"
+      enabled: root.isAutExt
     }
   }
 

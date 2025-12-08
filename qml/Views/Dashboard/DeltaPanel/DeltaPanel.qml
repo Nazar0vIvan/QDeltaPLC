@@ -18,7 +18,8 @@ QxGroupBox {
 
     function onPlcDataReady(data) {
       if ((data.cmd && data.cmd === PlcMessage.SNAPSHOT) ||
-          (data.cos && data.cos === PlcMessage.IOs)) {
+          (data.chg && data.chg === PlcMessage.IOs)) {
+        console.log("X1: ", data.x1);
         moduleAP_P.refreshAll(data.x1, data.y1);
         moduleAP_T.refreshAll(data.x2, data.y2);
       }

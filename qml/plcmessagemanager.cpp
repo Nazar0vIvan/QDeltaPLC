@@ -129,10 +129,10 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReqPayload(const QVariant
       if(!req.value("var").isNull() && !req.value("var").canConvert<quint8>())
         return { QVariant(), BAD_VAR, {} };
       quint8 var = static_cast<quint8>(req.value("var").toUInt());
-      if(!req.value("state").isNull() && req.value("state").canConvert<quint8>()) // bool state is 0 or 1
+      if(!req.value("attr").isNull() && !req.value("attr").canConvert<quint8>())
         return { QVariant(), BAD_VAR, {} };
-      bool state = static_cast<quint8>(req.value("state").toUInt());
-      ds << var << state;
+      quint8 attr = static_cast<quint8>(req.value("attr").toUInt());
+      ds << var << attr;
     }
     default:
       break;
@@ -248,11 +248,12 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       return { out };
     }
     case CMD::SET_VAR: {
-      quint8 var, state;
+      quint8 var, attr;
+      ds >> var >> attr;
       if (!isValidVar(var))
         return {QVariantMap(), BAD_VAR, var};
       out["var"]  = var;
-      out["state"] = state == 0x01 ? true : false;
+      out["attr"] = attr;
     }
     default:
       return { QVariant(), BAD_CMD, cmd };
@@ -281,13 +282,13 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
   QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
 
-  quint8 cos;
-  ds >> cos;
+  quint8 chg;
+  ds >> chg;
 
   QVariantMap out;
   out["type"] = Type::CHG;
-  out["cos"] = cos;
-  switch (cos) {
+  out["chg"] = chg;
+  switch (chg) {
     case IOs: {
       quint8 x1, y1, x2, y2;
       ds >> x1 >> y1 >> x2 >> y2;
@@ -300,20 +301,13 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
     case AUT_EXT: {
       quint8 state;
       ds >> state;
-      out["state"] = byteToBits(state);
-      return { out };
-    }
-    case APPL_RUN: {
-      quint8 state;
-      ds >> state;
-      out["state"] = byteToBits(state);
+      out["state"] = bool(state);
       return { out };
     }
     default:
-      return { QVariant(), BAD_CHG, cos };
+      return { QVariant(), BAD_CHG, chg };
   }
 }
-
 
 bool PlcMessageManager::isValidType(quint8 type) const {
   return type == Type::REQ      ||
@@ -344,12 +338,7 @@ bool PlcMessageManager::isValidDev(quint16 dev) const {
 
 bool PlcMessageManager::isValidVar(quint8 var) const {
   return var == VAR_TYPE::START_CELL ||
-         var == VAR_TYPE::EXT_START  ||
-         var == VAR_TYPE::PGNO       ||
-         var == VAR_TYPE::PGNO_OK    ||
-         var == VAR_TYPE::CONTINUE   ||
-         var == VAR_TYPE::SFY_OK     ||
-         var == VAR_TYPE::EXIT_CELL;
+         var == VAR_TYPE::SFY_OK;
 }
 
 QVariantList PlcMessageManager::byteToBits(quint8 value) const {
