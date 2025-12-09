@@ -61,7 +61,7 @@ public:
   Q_INVOKABLE void stop();
   Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
-  Q_INVOKABLE void test();
+  // Q_INVOKABLE void test();
 
 signals:
   void logMessage(const LoggerMessage& msg);

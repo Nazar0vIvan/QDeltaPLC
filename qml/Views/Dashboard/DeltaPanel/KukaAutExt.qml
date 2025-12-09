@@ -19,7 +19,7 @@ Control {
     function onPlcDataReady(data) {
       if (data.cmd && data.cmd === PlcMessage.SNAPSHOT ||
           data.chg && data.chg === PlcMessage.IOs) {
-        autExt.color = data.x1[5] ? "green" : "red";
+        autExt.color = data.x1[5] ? "green" : "red"; // data.x1[5] - AutExt
         root.isAutExt = !!data.x1[5];
       }
       if (data.chg && data.chg === PlcMessage.CELL_STATE) {
@@ -43,6 +43,15 @@ Control {
             break;
           }
         }
+      }
+    }
+    function onSocketStateChanged() {
+      if (plcRunner.socketState === 0) {
+        root.isAutExt = false;
+        autExt.color = "red";
+        idle.color = "red";
+        running.color = "red";
+        done.color = "red";
       }
     }
   }
@@ -140,7 +149,7 @@ Control {
         const args = {
           "cmd": PlcMessage.SET_VAR,
           "var": PlcMessage.START_CELL,
-          "attr": 1
+          "attr": 1 // PGNO
         }
         plcRunner.invoke("writeMessage", args);
       }

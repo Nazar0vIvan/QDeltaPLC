@@ -298,12 +298,6 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
       out["y2"] = byteToBits(y2);
       return { out };
     }
-    case AUT_EXT: {
-      quint8 state;
-      ds >> state;
-      out["state"] = bool(state);
-      return { out };
-    }
     case CELL_STATE: {
       quint8 state;
       ds >> state;

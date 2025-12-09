@@ -70,8 +70,7 @@ public:
 
   enum CHG_TYPE : quint8 { // D
     IOs        = 0xD0,
-    AUT_EXT    = 0xD3,
-    CELL_STATE = 0xD5
+    CELL_STATE = 0xD3
   };
   Q_ENUM(CHG_TYPE)
 
