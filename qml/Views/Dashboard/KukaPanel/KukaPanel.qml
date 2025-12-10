@@ -11,6 +11,14 @@ QxGroupBox {
   implicitWidth: leftPadding + cl.implicitWidth + rightPadding
   implicitHeight: topPadding + cl.implicitHeight + bottomPadding
 
+  Connections {
+    target: rsiRunner
+
+    function onRsiReady() {
+      btnStart.enabled = true;
+    }
+  }
+
   ColumnLayout {
     id: cl
 
@@ -38,18 +46,27 @@ QxGroupBox {
     }
 
     QxButton {
+      id: genTraj
+
+      text: "GenTraj"
+      enabled: rsiRunner
+      onClicked: {
+        if (!rsiRunner) return;
+        rsiRunner.invoke("generateTrajectory");
+      }
+    }
+
+    QxButton {
       id: btnStart
 
-      checked: rsiRunner && rsiRunner.isStreaming
-      enabled: rsiRunner && rsiRunner.socketState === 4 // BoundState
+      enabled: false
       text: checked ? "Stop" : "Start"
       onClicked: {
-        if (!rsiRunner)
-          return
+        if (!rsiRunner) return;
         if (checked) {
-          rsiRunner.stopStreaming()
+          rsiRunner.invoke("stopStreaming");
         } else {
-          rsiRunner.startStreaming()
+          rsiRunner.invoke("startStreaming");
         }
       }
     }

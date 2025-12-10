@@ -42,6 +42,8 @@ set(CPP_FILES
   socketrsi.cpp
   socketrunner.h
   socketrunner.cpp
+  pathplanner.h
+  pathplanner.cpp
 )
 
 qt_add_executable(qdeltaplc
@@ -59,6 +61,11 @@ qt_add_qml_module(qdeltaplc
     pics.qrc
     fonts.qrc
     files.qrc
+)
+
+set(EIGEN5_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/libs/eigen-5.0.0)
+target_include_directories(qdeltaplc
+  PRIVATE "${EIGEN5_INCLUDE_DIR}"
 )
 
 target_link_libraries(qdeltaplc

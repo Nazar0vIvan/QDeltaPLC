@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
   QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
+  QObject::connect(socketRDT, &SocketRDT::forceUpdated, socketRSI, &SocketRSI::setForce);
 
   // QmlChartBridge chartBridge;
   // QObject::connect(socketRDT, &SocketRDT::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);

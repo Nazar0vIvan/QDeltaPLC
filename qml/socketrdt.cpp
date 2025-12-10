@@ -72,6 +72,9 @@ void SocketRDT::onReadyRead()
 
     uint32_t rdt_sequence = r[0].toUInt();
 
+    double Fz = r[5].toDouble() / COUNT_FACTOR;
+    emit forceUpdated(Fz);
+
     if (m_isFirstRead) { // if the first read
       m_baseSeq = rdt_sequence;
       m_emitTimer.restart();

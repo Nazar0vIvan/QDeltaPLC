@@ -79,6 +79,8 @@ signals:
     void bufferReady(const QVector<QVariantList>& points);
     void streamReset();
 
+    void forceUpdated(double Fz);
+
 private slots:
     void onReadyRead();
     void onErrorOccurred(QAbstractSocket::SocketError socketError);
