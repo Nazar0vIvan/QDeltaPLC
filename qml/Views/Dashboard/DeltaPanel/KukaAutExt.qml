@@ -16,7 +16,7 @@ Control {
   Connections {
     target: plcRunner
 
-    function onPlcDataReady(data) {
+    function onDataReady(data) {
       if (data.cmd && data.cmd === PlcMessage.SNAPSHOT ||
           data.chg && data.chg === PlcMessage.IOs) {
         autExt.color = data.x1[5] ? "green" : "red"; // data.x1[5] - AutExt
@@ -76,7 +76,7 @@ Control {
 
       labelWidth: root.labelWidth
       height: root.fieldHeight
-      labelText: "AUT_EXT: "
+      labelText: "AUT_EXT : "
 
       Rectangle {
         id: autExt
@@ -92,7 +92,7 @@ Control {
 
       labelWidth: root.labelWidth
       height: root.fieldHeight
-      labelText: "IDLE: "
+      labelText: "IDLE : "
 
       Rectangle {
         id: idle
@@ -109,7 +109,7 @@ Control {
 
       labelWidth: root.labelWidth
       height: root.fieldHeight
-      labelText: "RUN: "
+      labelText: "RUN : "
 
       Rectangle {
         id: running
@@ -126,7 +126,7 @@ Control {
 
       labelWidth: root.labelWidth
       height: root.fieldHeight
-      labelText: "DONE: "
+      labelText: "DONE : "
 
       Rectangle {
         id: done
@@ -139,27 +139,51 @@ Control {
       }
     }
 
-    QxButton {
-      id: btnStartCell
+    RowLayout {
+      id: rl
 
-      text: "Start"
-      enabled: root.isAutExt
 
-      onClicked: {
-        const args = {
-          "cmd": PlcMessage.SET_VAR,
-          "var": PlcMessage.START_CELL,
-          "attr": 1 // PGNO
+      QxButton {
+        id: btnConnect
+
+        enabled: plcRunner
+        checked: plcRunner && plcRunner.socketState === 3
+        text: checked ? "Disconnect" : "Connect"
+        onClicked: {
+          if (!plcRunner)
+            return
+          if (checked) {
+            plcRunner.invoke("disconnectFromHost")
+          } else {
+            plcRunner.invoke("connectToHost")
+          }
         }
-        plcRunner.invoke("writeMessage", args);
       }
-    }
 
-    QxButton {
-      id: btnSftOk
+      QxButton {
+        id: btnStartCell
 
-      text: "SftOk"
-      enabled: root.isAutExt
+        text: "Start Program"
+        enabled: plcRunner && plcRunner.socketState === 3 && root.isAutExt
+
+        onClicked: {
+          const args = {
+            "cmd": PlcMessage.SET_VAR,
+            "var": PlcMessage.START_CELL,
+            "attr": 1 // PGNO
+          }
+          plcRunner.invoke("writeMessage", args);
+        }
+      }
+
+      QxButton {
+        id: btnSftOk
+
+        text: "Safety Ok"
+        enabled: plcRunner && plcRunner.socketState === 3 && root.isAutExt
+      }
+
+
     }
   }
 

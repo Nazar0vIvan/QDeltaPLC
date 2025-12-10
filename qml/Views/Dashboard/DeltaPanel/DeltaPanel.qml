@@ -16,7 +16,7 @@ QxGroupBox {
   Connections {
     target: plcRunner
 
-    function onPlcDataReady(data) {
+    function onDataReady(data) {
       if ((data.cmd && data.cmd === PlcMessage.SNAPSHOT) ||
           (data.chg && data.chg === PlcMessage.IOs)) {
         moduleAP_P.refreshAll(data.x1, data.y1);
@@ -29,7 +29,6 @@ QxGroupBox {
           moduleAP_T.refreshY(data.state)
       }
     }
-
     function onSocketStateChanged() {
       if (plcRunner.socketState === 0) {
         moduleAP_P.refreshAll(Array(8).fill(false), Array(8).fill(false));
@@ -96,12 +95,12 @@ QxGroupBox {
       moduleIndex: 2
     }
 
-    DeltaNetwork {
-      id: deltaNetwork
+    // DeltaNetwork {
+    //   id: deltaNetwork
 
-      Layout.alignment: Qt.AlignTop
-      title: "Network"
-    }
+    //   Layout.alignment: Qt.AlignTop
+    //   title: "Network"
+    // }
 
     KukaAutExt {
       id: kukaAutExt

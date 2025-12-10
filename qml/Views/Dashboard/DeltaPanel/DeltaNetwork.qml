@@ -19,7 +19,7 @@ Control {
   Connections {
     target: plcRunner
 
-    function onPlcDataReady(data) {
+    function onDataReady(data) {
       if (!data.cmd) return;
       switch(data.cmd) {
         case PlcMessage.READ_REG: {

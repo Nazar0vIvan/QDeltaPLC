@@ -63,7 +63,7 @@ public:
   ~TcpSocketRunner() override;
 
 signals:
-  void plcDataReady(const QVariantMap& data);
+  void dataReady(const QVariantMap& data);
 };
 
 class UdpSocketRunner : public AbstractSocketRunner
@@ -83,9 +83,10 @@ public:
 signals:
   void lastReadingChanged();
   void isStreamingChanged();
+  void socketReady();
 
 public slots:
-  void onBufferReady(const QVector<QVariantList>& readings);
+  void onDataBatchReady(const QVector<QVariantList>& readings);
 
 private slots:
   void onPulse();

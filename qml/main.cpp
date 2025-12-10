@@ -23,22 +23,23 @@ int main(int argc, char *argv[])
 
   SocketDeltaPLC* socketDeltaPLC = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
   TcpSocketRunner plcRunner(socketDeltaPLC);
-  QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::plcDataReady, Qt::QueuedConnection);
+  QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::dataReady, Qt::QueuedConnection);
   plcRunner.start();
 
   SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
   UdpSocketRunner ftsRunner(socketRDT);
-  QObject::connect(socketRDT, &SocketRDT::bufferReady, &ftsRunner, &UdpSocketRunner::onBufferReady, Qt::QueuedConnection);
+  QObject::connect(socketRDT, &SocketRDT::dataBatchReady, &ftsRunner, &UdpSocketRunner::onDataBatchReady, Qt::QueuedConnection);
   ftsRunner.start();
 
   SocketRSI* socketRSI = new SocketRSI(QStringLiteral("KRC4_RSI"));
   UdpSocketRunner rsiRunner(socketRSI);
+  QObject::connect(socketRSI, &SocketRSI::rsiReady, &rsiRunner, &UdpSocketRunner::socketReady, Qt::QueuedConnection);
   rsiRunner.start();
 
   QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
-  QObject::connect(socketRDT, &SocketRDT::forceUpdated, socketRSI, &SocketRSI::setForce);
+  QObject::connect(socketRDT, &SocketRDT::dataSampleReady, socketRSI, &SocketRSI::setForce);
 
   // QmlChartBridge chartBridge;
   // QObject::connect(socketRDT, &SocketRDT::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);

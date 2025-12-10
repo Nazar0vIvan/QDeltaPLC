@@ -76,7 +76,7 @@ signals:
   void rsiReady();
 
 public slots:
-  void setForce(double Fz) { m_Fz = Fz; }
+  void setForce(const QVariantList sample) { m_Fz = sample[5].toDouble(); } // FOR NOW
 
 private slots:
   void onReadyRead();

@@ -196,7 +196,7 @@ void UdpSocketRunner::onPulse()
   m_timer.start(); // restart idle countdown on every pulse
 }
 
-void UdpSocketRunner::onBufferReady(const QVector<QVariantList>& readings)
+void UdpSocketRunner::onDataBatchReady(const QVector<QVariantList>& readings)
 {
   if(readings.isEmpty()) return;
   m_lastReading = readings.back();

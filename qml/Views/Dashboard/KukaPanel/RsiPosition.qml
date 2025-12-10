@@ -19,6 +19,8 @@ Control {
   leftPadding: 10
   rightPadding: 10
 
+  opacity: enabled ? 1.0 : 0.5
+
   contentItem: ColumnLayout {
     spacing: 14
 

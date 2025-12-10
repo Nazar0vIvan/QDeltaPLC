@@ -68,12 +68,9 @@ void SocketRDT::onReadyRead()
 {
   do {
     QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
-    QVariantList r = QNetworkDatagram2RDTResponse(dg);
+    QVariantList sample = QNetworkDatagram2Variant(dg);
 
-    uint32_t rdt_sequence = r[0].toUInt();
-
-    double Fz = r[5].toDouble() / COUNT_FACTOR;
-    emit forceUpdated(Fz);
+    uint32_t rdt_sequence = sample[0].toUInt();
 
     if (m_isFirstRead) { // if the first read
       m_baseSeq = rdt_sequence;
@@ -82,12 +79,14 @@ void SocketRDT::onReadyRead()
       m_isFirstRead = false;
     }
 
-    const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;
-    r.push_back(t);
+    emit dataSampleReady(sample);
 
-    m_readings.push_back(r);
+    const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;
+    sample.push_back(t);
+
+    m_readings.push_back(sample);
     if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
-      emit bufferReady(std::exchange(m_readings, {}));
+      emit dataBatchReady(std::exchange(m_readings, {}));
       m_emitTimer.restart();
     }
 
@@ -134,7 +133,7 @@ QNetworkDatagram SocketRDT::RDTRequest2QNetworkDatagram(const RDTRequest& reques
   return QNetworkDatagram(buffer);
 }
 
-QVariantList SocketRDT::QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram)
+QVariantList SocketRDT::QNetworkDatagram2Variant(const QNetworkDatagram& networkDatagram) const
 {
   QByteArray bytes(networkDatagram.data());
 

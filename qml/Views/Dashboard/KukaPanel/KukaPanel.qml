@@ -8,13 +8,16 @@ import Components 1.0
 QxGroupBox {
   id: root
 
+  property int switchWidth: 20
+  property int switchHeight: 10
+
   implicitWidth: leftPadding + cl.implicitWidth + rightPadding
   implicitHeight: topPadding + cl.implicitHeight + bottomPadding
 
   Connections {
     target: rsiRunner
 
-    function onRsiReady() {
+    function onSocketReady() {
       btnStart.enabled = true;
     }
   }
@@ -32,6 +35,7 @@ QxGroupBox {
       RsiPosition {
         id: cartesianPosition
 
+        enabled: false
         tags: ["X", "Y", "Z", "A", "B", "C"]
         dimension: "mm"
         title: "Cartesian Space"
@@ -39,35 +43,57 @@ QxGroupBox {
       RsiPosition {
         id: jointPosition
 
+        enabled: false
         tags: ["A1", "A2", "A3", "A4", "A5", "A6"]
         dimension: "deg"
         title: "Joint Space"
       }
+      // QxSwitch {
+      //   id: swMode // jog / program
+
+      //   Layout.preferredWidth: root.switchWidth
+      //   Layout.preferredHeight: root.switchHeight
+      // }
     }
 
-    QxButton {
-      id: genTraj
+    RowLayout {
+      id: rl2
 
-      text: "GenTraj"
-      enabled: rsiRunner
-      onClicked: {
-        if (!rsiRunner) return;
-        rsiRunner.invoke("generateTrajectory");
-      }
-    }
+      spacing: 10
 
-    QxButton {
-      id: btnStart
+      QxButton {
+        id: genTraj
 
-      enabled: false
-      text: checked ? "Stop" : "Start"
-      onClicked: {
-        if (!rsiRunner) return;
-        if (checked) {
-          rsiRunner.invoke("stopStreaming");
-        } else {
-          rsiRunner.invoke("startStreaming");
+        text: "Generate Trajectory"
+        enabled: rsiRunner
+        onClicked: {
+          if (!rsiRunner) return;
+          rsiRunner.invoke("generateTrajectory");
         }
+      }
+
+      QxButton {
+        id: btnStart
+
+        enabled: false
+        text: checked ? "Stop RSI" : "Run RSI"
+        onClicked: {
+          if (!rsiRunner) return;
+          if (checked) {
+            rsiRunner.invoke("stopStreaming");
+          } else {
+            rsiRunner.invoke("startStreaming");
+          }
+        }
+      }
+      Rectangle {
+        id: ledRsiOn
+
+        Layout.preferredWidth: 20
+        Layout.preferredHeight: 20
+
+        radius: 10
+        color: rsiRunner.isStreaming ? "green" : "red"
       }
     }
   }

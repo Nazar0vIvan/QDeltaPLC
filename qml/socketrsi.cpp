@@ -100,7 +100,6 @@ void SocketRSI::generateTrajectory()
   m_trajectory = rsi::lin(P1, P2, {10, 4});
 
   writeOffsetsToJson(m_trajectory, "offsets");
-
   emit rsiReady();
 }
 
@@ -112,7 +111,7 @@ void SocketRSI::startStreaming()
 
 void SocketRSI::stopStreaming()
 {
-  m_isMoving  = false;
+  m_isMoving = false;
   m_offsets.clear();
   m_offsetIdx = 0;
 }
@@ -240,10 +239,10 @@ SocketRSI::RsiResponce SocketRSI::parseRsiResponce(const QByteArray& xmlBytes)
     if (name == QLatin1String("RIst")) {
       r.aiPos = readAxis6(xml.attributes());
       xml.skipCurrentElement();   // for <AIPos .../>
-    } else if (name == QLatin1String("MACur")) {
+    } /* else if (name == QLatin1String("MACur")) {
       r.maCur = readAxis6(xml.attributes());
       xml.skipCurrentElement();
-    } else if (name == QLatin1String("IPOC")) {
+    } */ else if (name == QLatin1String("IPOC")) {
       r.ipoc = xml.readElementText().toULongLong();
     } else {
       xml.skipCurrentElement(); // skip unknown children of <Rob>
@@ -272,7 +271,6 @@ QVector<double> SocketRSI::readCartesian6(const QXmlStreamAttributes &attrs)
   }
   return out;
 }
-
 
 void SocketRSI::test()
 {
