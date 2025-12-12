@@ -5,12 +5,12 @@ PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {}
 // PUBLIC
 
 PlcMessageManager::ParseResult PlcMessageManager::buildReq(const QVariantMap& req, quint8 tid) const {
-  ParseResult payloadRes = buildReqPayload(req);
+  const ParseResult payloadRes = buildReqPayload(req);
   if (!payloadRes.ok()) {
     return payloadRes;
   }
-  QByteArray payload = payloadRes.data.toByteArray();
-  QByteArray header = buildHeader(Type::REQ, tid, static_cast<quint8>(payload.size()));
+  const QByteArray payload = payloadRes.data.toByteArray();
+  const QByteArray header = buildHeader(Type::REQ, tid, static_cast<quint8>(payload.size()));
   return { header + payload };
 }
 

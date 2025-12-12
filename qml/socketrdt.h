@@ -95,6 +95,8 @@ private:
   quint16 m_lp = 0;
   QHostAddress m_pa;
   quint16 m_pp = 0;
+
+  QList<double> m_FzValues;
 };
 
 #endif // SOCKETRDT_H

@@ -4,7 +4,7 @@ Logger::Logger(QObject *parent) : QObject(parent) {}
 
 void Logger::push(const LoggerMessage& msg)
 {
-    const QMap<int,QString> type2string {
+    static const QMap<int,QString> type2string {
         {0, "[ERROR] "},
         {1, "[OK] "},
         {2, "[INFO] "},

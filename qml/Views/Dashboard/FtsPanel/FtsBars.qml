@@ -10,6 +10,7 @@ Control {
   id: root
 
   property alias title: header.text
+  readonly property real countFactor: 1000000
   readonly property int viewWidth: 240
   readonly property int rowHeight: 20
   readonly property int barWidth: 160
@@ -46,7 +47,7 @@ Control {
       color: Styles.secondary.base
 
       value: ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ?
-             Number((ftsRunner.lastReading[model.idx])/1000000).toFixed(3) : 0.000
+            Number((ftsRunner.lastReading[model.idx])/root.countFactor).toFixed(3) : 0.000
     }
   }
 

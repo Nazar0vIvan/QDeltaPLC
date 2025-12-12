@@ -32,13 +32,13 @@ int main(int argc, char *argv[])
   ftsRunner.start();
 
   SocketRSI* socketRSI = new SocketRSI(QStringLiteral("KRC4_RSI"));
-  UdpSocketRunner rsiRunner(socketRSI);
-  QObject::connect(socketRSI, &SocketRSI::rsiReady, &rsiRunner, &UdpSocketRunner::socketReady, Qt::QueuedConnection);
+  RsiRunner rsiRunner(socketRSI);
   rsiRunner.start();
 
   QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
+
   QObject::connect(socketRDT, &SocketRDT::dataSampleReady, socketRSI, &SocketRSI::setForce);
 
   // QmlChartBridge chartBridge;

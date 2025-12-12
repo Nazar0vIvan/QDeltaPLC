@@ -9,7 +9,7 @@ SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocke
   connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
   connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
-  connect(this, &SocketDeltaPLC::logMessage,  Logger::instance(), &Logger::push);
+  connect(this, &SocketDeltaPLC::logMessage, Logger::instance(), &Logger::push);
 }
 
 SocketDeltaPLC::~SocketDeltaPLC() {}

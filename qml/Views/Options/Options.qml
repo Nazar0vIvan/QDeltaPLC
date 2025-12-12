@@ -8,14 +8,14 @@ ListView {
   id: root
 
   function onApply(runner, la, lp, pa, pp) {
-    if (!runner)
-      return
-    runner.invoke("setSocketConfig", {
-                    "localAddress": la.text,
-                    "localPort": Number(lp.text),
-                    "peerAddress": pa.text,
-                    "peerPort": Number(pp.text)
-                  })
+    if (!runner) return;
+    const args = {
+      "localAddress": la.text,
+      "localPort": Number(lp.text),
+      "peerAddress": pa.text,
+      "peerPort": Number(pp.text)
+    };
+    runner.invoke("setSocketConfig", args);
   }
 
   property int fieldHeight: 28
@@ -56,9 +56,8 @@ ListView {
       }
     }
 
-    QxField {
+    QxField { // pc address
 
-      // pc address
       id: pcAddrField
 
       labelText: "PC Address:"
@@ -91,9 +90,7 @@ ListView {
       }
     }
 
-    OptionsSection {
-
-      // rsi config
+    OptionsSection { // rsi config
       id: rsiOptions
 
       title: "Robot Sensor Interface"
@@ -220,10 +217,10 @@ ListView {
         id: rsiBtnApply
 
         text: "Apply"
-        enabled: pcAddr.text && rsiLp.text && rsiPa.text && rsiPp.text && !rsiRunner.isStreaming
+        enabled: pcAddr.text && rsiLp.text && rsiPa.text && !rsiRunner.isStreaming
 
         onClicked: {
-          onApply(rsiRunner, pcAddr, rsiLp, rsiPa, rsiPp)
+          onApply(rsiRunner, pcAddr, rsiLp, rsiPa, 0)
         }
       }
     }
@@ -245,8 +242,7 @@ ListView {
       }
     }
 
-    OptionsSection {
-      // plc config
+    OptionsSection { // plc config
       id: plcOptions
 
       title: "PLC AS332T-A"
@@ -353,8 +349,7 @@ ListView {
       }
     }
 
-    OptionsSection {
-      // fts config
+    OptionsSection { // fts config
       id: ftsOptions
 
       title: "Schunk FTS Delta-SI-660-60"

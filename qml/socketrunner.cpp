@@ -1,4 +1,5 @@
 #include "socketrunner.h"
+#include "socketrsi.h"
 
 // ----- AbstractSocketRunner -----
 
@@ -199,10 +200,91 @@ void UdpSocketRunner::onPulse()
 void UdpSocketRunner::onDataBatchReady(const QVector<QVariantList>& readings)
 {
   if(readings.isEmpty()) return;
-  m_lastReading = readings.back();
+
+  // Take the last sample from the batch
+  const QVariantList &latest = readings.back();
+
+  // First reading – just store and emit
+  if (m_lastReading.isEmpty() || m_lastReading.size() != latest.size()) {
+    m_lastReading = latest;
+    emit lastReadingChanged();
+    return;
+  }
+
+  if (m_tolerance <= 0.0) {
+    m_lastReading = latest;
+    emit lastReadingChanged();
+    return;
+  }
+
+  static constexpr double COUNT_FACTOR = 1000000.0;
+  const double tolCounts = m_tolerance * COUNT_FACTOR;
+
+  QVariantList newReading = m_lastReading;
+  bool anyChanged = false;
+
+  const int firstIdx = 3;
+  const int lastIdx  = 8;
+
+  for (int i = firstIdx; i <= lastIdx && i < latest.size() && i < newReading.size(); ++i)
+  {
+    const double newVal = latest[i].toDouble();
+    const double oldVal = newReading[i].toDouble();
+
+    if (std::abs(newVal - oldVal) > tolCounts) {
+      newReading[i] = latest[i];   // update only this component
+      anyChanged    = true;
+    }
+  }
+
+  // If all 6 components are within tolerance → do nothing
+  if (!anyChanged) return;
+
+  // Optionally keep meta fields (0..2) in sync with latest sample,
+  // they are not used in QML bars, so this doesn’t affect UI values.
+  const int metaCount = qMin(3, qMin(latest.size(), newReading.size()));
+  for (int i = 0; i < metaCount; ++i)
+    newReading[i] = latest[i];
+
+  m_lastReading = newReading;
   emit lastReadingChanged();
 }
 
 
+// ----- RsiRunner -----
 
+RsiRunner::RsiRunner(QAbstractSocket* socket, QObject* parent) : UdpSocketRunner(socket, parent)
+{
+  auto* rsi = qobject_cast<SocketRSI*>(socket);
+  if (!rsi) {
+    // You can log or assert here, this runner is meant only for SocketRSI
+    emit logMessage({"RsiRunner: socket is not SocketRSI", 0, objectName()});
+    return;
+  }
 
+  connect(rsi, &SocketRSI::motionStarted, this, &RsiRunner::onMotionStarted, Qt::QueuedConnection);
+  connect(rsi, &SocketRSI::motionFinished, this, &RsiRunner::onMotionFinished, Qt::QueuedConnection);
+  connect(rsi, &SocketRSI::motionActiveChanged, this, &RsiRunner::onMotionActiveChanged, Qt::QueuedConnection);
+  connect(rsi, &SocketRSI::trajectoryReady, this, &RsiRunner::trajectoryReady, Qt::QueuedConnection);
+}
+
+void RsiRunner::onMotionStarted()
+{
+  m_motionActive = true;
+  emit motionStarted();
+  emit motionActiveChanged();
+}
+
+void RsiRunner::onMotionFinished()
+{
+  m_motionActive = false;
+  emit motionFinished();
+  emit motionActiveChanged();
+}
+
+void RsiRunner::onMotionActiveChanged(bool active)
+{
+  if (m_motionActive == active) return;
+  m_motionActive = active;
+  emit motionActiveChanged();
+}

@@ -17,8 +17,16 @@ QxGroupBox {
   Connections {
     target: rsiRunner
 
-    function onSocketReady() {
+    function onTrajectoryReady() {
       btnStart.enabled = true;
+    }
+
+    function onMotionFinished() {
+      ledRsi.color = "red";
+    }
+
+    function onMotionStarted() {
+      ledRsi.color = "green";
     }
   }
 
@@ -76,10 +84,10 @@ QxGroupBox {
         id: btnStart
 
         enabled: false
-        text: checked ? "Stop RSI" : "Run RSI"
+        text: rsiRunner && rsiRunner.motionActive ? "Stop RSI" : "Start RSI"
         onClicked: {
           if (!rsiRunner) return;
-          if (checked) {
+          if (rsiRunner.motionActive) {
             rsiRunner.invoke("stopStreaming");
           } else {
             rsiRunner.invoke("startStreaming");
@@ -87,13 +95,12 @@ QxGroupBox {
         }
       }
       Rectangle {
-        id: ledRsiOn
+        id: ledRsi
 
         Layout.preferredWidth: 20
         Layout.preferredHeight: 20
-
         radius: 10
-        color: rsiRunner.isStreaming ? "green" : "red"
+        color: "red"
       }
     }
   }

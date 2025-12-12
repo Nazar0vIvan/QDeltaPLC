@@ -2,7 +2,6 @@
 
 static constexpr double SAMPLE_HZ = 7000.0;
 static constexpr double DT = 1.0 / SAMPLE_HZ;
-static constexpr int COUNT_FACTOR = 1000000;
 
 SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
 {
@@ -31,7 +30,7 @@ void SocketRDT::startStreaming()
     return;
   }
   // reset batching/timeline
-  m_isFirstRead = false;
+  m_isFirstRead = true;
   m_baseSeq = 0;
   m_readings.clear();
   m_emitTimer.restart();
@@ -57,7 +56,7 @@ void SocketRDT::setSocketConfig(const QVariantMap &config)
 
   emit logMessage({QString("Socket configured:<br/>"
                    "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
-                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4<br/>").
+                   "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4").
                    arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()).arg(m_pp),
                    1, objectName()});
 }
@@ -149,5 +148,6 @@ QVariantList SocketRDT::QNetworkDatagram2Variant(const QNetworkDatagram& network
     qFromBigEndian<int32_t>(bytes.right(4).data()),
   };
 }
+
 
 

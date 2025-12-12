@@ -8,6 +8,7 @@
 #include <QPointF>
 #include <QTimer>
 #include <QMetaMethod>
+#include <QtMinMax>
 
 #include "logger.h"
 
@@ -95,6 +96,38 @@ private:
   QVariantList m_lastReading = {};
   bool m_isStreaming = false;
   QTimer m_timer;
+
+  double m_tolerance = 0.5;
+};
+
+class RsiRunner : public UdpSocketRunner
+{
+
+  Q_OBJECT
+
+public:
+  explicit RsiRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  ~RsiRunner() override = default;
+
+  Q_PROPERTY(bool motionActive READ motionActive NOTIFY motionActiveChanged)
+
+  bool motionActive() const { return m_motionActive; }
+
+signals:
+  void trajectoryReady();
+  void motionStarted();
+  void motionFinished();
+  void motionActiveChanged();
+
+private slots:
+  void onMotionStarted();
+  void onMotionFinished();
+  void onMotionActiveChanged(bool active);
+
+private:
+  bool m_motionActive = false;
+
+
 };
 
 #endif // SOCKETRUNNER_H

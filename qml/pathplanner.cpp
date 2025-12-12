@@ -19,8 +19,7 @@ Eigen::Matrix4d rotMatrix4x4(double angleDeg, char axis)
     case 'z': R(0,0)=c; R(0,1)=-s; R(1,0)= s; R(1,1)=c; break;
   }
   constexpr double EPS = 1e-4;
-  R = R.unaryExpr([](double v){ return std::abs(v) <= EPS ? 0.0 : v; });
-  return R;
+  return R.unaryExpr([EPS](double v){ return std::abs(v) <= EPS ? 0.0 : v; });
 }
 
 Plane pointsToPlane(const Eigen::Ref<const Eigen::VectorXd>& x,
