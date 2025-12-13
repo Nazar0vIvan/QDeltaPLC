@@ -107,19 +107,26 @@ public:
   explicit FtsRunner(QAbstractSocket* socket, QObject* parent = nullptr);
   ~FtsRunner() override = default;
 
-  Q_PROPERTY(RDTResponse sample READ sample NOTIFY dataReady)
+  Q_PROPERTY(QVariantMap sample READ sample NOTIFY sampleReady)
 
-  RDTResponse sample() const { return m_sample; }
+  QVariantMap sample() const { return m_sampleMap; }
 
 signals:
    void sampleReady();
 
 public slots:
-  void onDataBatchReady(const QVector<RDTResponse>& batch);
+  void onDataSampleLFReady(const RDTResponse& sample);
 
 private:
-  RDTResponse m_sample;
-  double m_tolerance = 0.5;
+  static void copyMeta(RDTResponse& dst, const RDTResponse& src);
+  static bool applyDeadbandAxes(RDTResponse& dst, const RDTResponse& src, qint64 tolCounts);
+  void publish(const RDTResponse& s);
+
+  RDTResponse m_lastPublished{};
+  bool        m_hasPublished = false;
+
+  QVariantMap m_sampleMap;
+  double      m_tolerance = 0.5; // guaranteed >= 0 by your invariant
 };
 
 // ----- RsiRunner -----

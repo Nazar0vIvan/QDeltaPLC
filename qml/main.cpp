@@ -26,9 +26,8 @@ int main(int argc, char *argv[])
   QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::dataReady, Qt::QueuedConnection);
   plcRunner.start();
 
-  SocketFTS* SocketFTS = new SocketFTS(QStringLiteral("FTS_Delta"));
-  FtsRunner ftsRunner(SocketFTS);
-  QObject::connect(SocketFTS, &SocketFTS::dataBatchReady, &ftsRunner, &FtsRunner::onDataBatchReady, Qt::QueuedConnection);
+  SocketFTS* socketFTS = new SocketFTS(QStringLiteral("FTS_Delta"));
+  FtsRunner ftsRunner(socketFTS);
   ftsRunner.start();
 
   SocketRSI* socketRSI = new SocketRSI(QStringLiteral("KRC4_RSI"));
@@ -39,7 +38,7 @@ int main(int argc, char *argv[])
   QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
 
-  QObject::connect(SocketFTS, &SocketFTS::dataSampleReady, socketRSI, &SocketRSI::setForce);
+  QObject::connect(socketFTS, &SocketFTS::dataSampleHFReady, socketRSI, &SocketRSI::setForce);
 
   // QmlChartBridge chartBridge;
   // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);

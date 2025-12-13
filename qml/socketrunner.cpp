@@ -199,59 +199,75 @@ void UdpSocketRunner::onPulse()
 
 // ----- FtsRunner -----
 
-void FtsRunner::onDataBatchReady(const QVector<RDTResponse> &batch)
+FtsRunner::FtsRunner(QAbstractSocket *socket, QObject *parent) : UdpSocketRunner(socket, parent)
 {
-  if(batch.isEmpty()) return;
-
-  // Take the last sample from the batch
-  const RDTResponse &latest = batch.back();
-
-  // First reading – just store and emit
-  if (m_lastReading.isEmpty() || m_lastReading.size() != latest.size()) {
-    m_lastReading = latest;
-    emit lastReadingChanged();
+  auto* fts = qobject_cast<SocketFTS*>(socket);
+  if (!fts) {
+    emit logMessage({"FtsRunner: socket is not SocketFTS", 0, objectName()});
     return;
   }
 
-  if (m_tolerance <= 0.0) {
-    m_lastReading = latest;
-    emit lastReadingChanged();
+  connect(fts, &SocketFTS::dataSampleLFReady, this, &FtsRunner::onDataSampleLFReady, Qt::QueuedConnection);
+}
+
+void FtsRunner::onDataSampleLFReady(const RDTResponse& s)
+{
+  if (!m_hasPublished) {
+    m_lastPublished = s;
+    m_hasPublished = true;
+    publish(s);
     return;
   }
+
+  RDTResponse out = m_lastPublished;
+  copyMeta(out, s);
 
   static constexpr double COUNT_FACTOR = 1000000.0;
   const double tolCounts = m_tolerance * COUNT_FACTOR;
+  if (!applyDeadbandAxes(out, s, tolCounts)) return;
 
-  QVariantList newReading = m_lastReading;
-  bool anyChanged = false;
-
-  const int firstIdx = 3;
-  const int lastIdx  = 8;
-
-  for (int i = firstIdx; i <= lastIdx && i < latest.size() && i < newReading.size(); ++i)
-  {
-    const double newVal = latest[i].toDouble();
-    const double oldVal = newReading[i].toDouble();
-
-    if (std::abs(newVal - oldVal) > tolCounts) {
-      newReading[i] = latest[i];   // update only this component
-      anyChanged    = true;
-    }
-  }
-
-  // If all 6 components are within tolerance → do nothing
-  if (!anyChanged) return;
-
-  // Optionally keep meta fields (0..2) in sync with latest sample,
-  // they are not used in QML bars, so this doesn’t affect UI values.
-  const int metaCount = qMin(3, qMin(latest.size(), newReading.size()));
-  for (int i = 0; i < metaCount; ++i)
-    newReading[i] = latest[i];
-
-  m_lastReading = newReading;
-  emit lastReadingChanged();
+  m_lastPublished = out;
+  publish(out);
 }
 
+void FtsRunner::copyMeta(RDTResponse &dst, const RDTResponse &src)
+{
+  dst.rdt_sequence = src.rdt_sequence;
+  dst.ft_sequence  = src.ft_sequence;
+  dst.status       = src.status;
+  dst.timestamp    = src.timestamp;
+}
+
+static inline bool acceptAxis(int32_t& dst, int32_t src, qint64 tolCounts)
+{
+  const qint64 d = qint64(src) - qint64(dst);
+  if (std::llabs(d) >= tolCounts) { dst = src; return true; }
+  return false;
+}
+
+bool FtsRunner::applyDeadbandAxes(RDTResponse &dst, const RDTResponse &src, qint64 tolCounts)
+{
+  bool any = false;
+  any |= acceptAxis(dst.Fx, src.Fx, tolCounts);
+  any |= acceptAxis(dst.Fy, src.Fy, tolCounts);
+  any |= acceptAxis(dst.Fz, src.Fz, tolCounts);
+  any |= acceptAxis(dst.Tx, src.Tx, tolCounts);
+  any |= acceptAxis(dst.Ty, src.Ty, tolCounts);
+  any |= acceptAxis(dst.Tz, src.Tz, tolCounts);
+  return any;
+}
+
+void FtsRunner::publish(const RDTResponse &s)
+{
+  m_sampleMap["rdt_sequence"] = s.rdt_sequence;
+  m_sampleMap["ft_sequence"]  = s.ft_sequence;
+  m_sampleMap["status"]       = s.status;
+  m_sampleMap["Fx"] = s.Fx; m_sampleMap["Fy"] = s.Fy; m_sampleMap["Fz"] = s.Fz;
+  m_sampleMap["Tx"] = s.Tx; m_sampleMap["Ty"] = s.Ty; m_sampleMap["Tz"] = s.Tz;
+  m_sampleMap["timestamp"] = s.timestamp;
+
+  emit sampleReady();
+}
 
 // ----- RsiRunner -----
 
@@ -259,7 +275,6 @@ RsiRunner::RsiRunner(QAbstractSocket* socket, QObject* parent) : UdpSocketRunner
 {
   auto* rsi = qobject_cast<SocketRSI*>(socket);
   if (!rsi) {
-    // You can log or assert here, this runner is meant only for SocketRSI
     emit logMessage({"RsiRunner: socket is not SocketRSI", 0, objectName()});
     return;
   }

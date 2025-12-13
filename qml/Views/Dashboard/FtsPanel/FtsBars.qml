@@ -46,8 +46,12 @@ Control {
       labelText: model.tag
       color: Styles.secondary.base
 
-      value: ftsRunner.isStreaming && ftsRunner.lastReading.length !== 0 ?
-            Number((ftsRunner.lastReading[model.idx])/root.countFactor).toFixed(3) : 0.000
+      value: {
+        const raw = (ftsRunner.isStreaming && ftsRunner.sample)
+          ? (ftsRunner.sample[model.tag] ?? 0)
+          : 0;
+        return +(Number(raw) / root.countFactor).toFixed(3);
+      }
     }
   }
 

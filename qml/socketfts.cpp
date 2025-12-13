@@ -54,6 +54,13 @@ void SocketFTS::setSocketConfig(const QVariantMap &config)
   m_pa = QHostAddress(config.value("peerAddress").toString());
   m_pp = config.value("peerPort").toUInt();
 
+  if (state() != QAbstractSocket::BoundState) {
+    if (!bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+      emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
+      return;
+    }
+  }
+
   emit logMessage({QString("Socket configured:<br/>"
                    "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
                    "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4").
@@ -130,21 +137,26 @@ QNetworkDatagram SocketFTS::req2dtg(const RDTRequest& request)
   return QNetworkDatagram(buffer);
 }
 
-RDTResponse SocketFTS::dtg2resp(const QNetworkDatagram& networkDatagram) const
+RDTResponse SocketFTS::dtg2resp(const QNetworkDatagram& dtg) const
 {
-  QByteArray bytes(networkDatagram.data());
+  const QByteArray bytes = dtg.data();
+  if (bytes.size() < RDT_RESPONSE_LENGTH) {
+    return {};
+  }
 
-  return {
-    qFromBigEndian<uint32_t>(bytes.left(4).data()),
-    qFromBigEndian<uint32_t>(bytes.right(32).left(4).data()),
-    qFromBigEndian<uint32_t>(bytes.right(28).left(4).data()),
-    qFromBigEndian<int32_t>(bytes.right(24).left(4).data()),
-    qFromBigEndian<int32_t>(bytes.right(20).left(4).data()),
-    qFromBigEndian<int32_t>(bytes.right(16).left(4).data()),
-    qFromBigEndian<int32_t>(bytes.right(12).left(4).data()),
-    qFromBigEndian<int32_t>(bytes.right(8).left(4).data()),
-    qFromBigEndian<int32_t>(bytes.right(4).data()),
-  };
+  const uchar* p = reinterpret_cast<const uchar*>(bytes.constData());
+
+  RDTResponse r{};
+  r.rdt_sequence = qFromBigEndian<quint32>(p + 0);
+  r.ft_sequence  = qFromBigEndian<quint32>(p + 4);
+  r.status       = qFromBigEndian<quint32>(p + 8);
+  r.Fx           = qFromBigEndian<qint32>(p + 12);
+  r.Fy           = qFromBigEndian<qint32>(p + 16);
+  r.Fz           = qFromBigEndian<qint32>(p + 20);
+  r.Tx           = qFromBigEndian<qint32>(p + 24);
+  r.Ty           = qFromBigEndian<qint32>(p + 28);
+  r.Tz           = qFromBigEndian<qint32>(p + 32);
+  return r;
 }
 
 

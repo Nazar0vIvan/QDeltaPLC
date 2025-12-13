@@ -318,9 +318,9 @@ void SocketRSI::test()
 
 }
 
-void SocketRSI::setForce(const QVariantList sample)
+void SocketRSI::setForce(const RDTResponse& sample)
 {
-  m_Fz = static_cast<int32_t>(sample[5].toInt()) / COUNT_FACTOR;
+  m_Fz = sample.Fz / COUNT_FACTOR;
 }
 
 void SocketRSI::onDelayFinished()
