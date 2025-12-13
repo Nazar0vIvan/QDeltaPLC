@@ -39,8 +39,7 @@ ListView {
 
   model: ObjectModel {
 
-    Rectangle {
-      // separator
+    Rectangle { // separator
       width: 400
       height: 1
       gradient: Gradient {
@@ -73,8 +72,7 @@ ListView {
       }
     }
 
-    Rectangle {
-      // separator
+    Rectangle { // separator
       width: 400
       height: 1
       gradient: Gradient {
@@ -190,28 +188,6 @@ ListView {
         }
       }
 
-      QxField {
-        // rsi peer port
-        id: rsippField
-
-        labelText: "RSI Port :"
-        height: root.fieldHeight
-        labelWidth: root.labelWidth
-
-        QxTextInput {
-          id: rsiPp
-
-          height: root.fieldHeight
-          width: root.fieldWidth
-          text: "1111"
-          validator: IntValidator {
-            bottom: 0
-            top: 65535
-          }
-          onTextEdited: rsiBtnApply.enabled = true
-        }
-      }
-
       QxButton {
         // rsi apply button
         id: rsiBtnApply
@@ -225,8 +201,7 @@ ListView {
       }
     }
 
-    Rectangle {
-      // separator
+    Rectangle { // separator
       width: 400
       height: 1
       gradient: Gradient {
@@ -332,8 +307,7 @@ ListView {
       }
     }
 
-    Rectangle {
-      // separator
+    Rectangle { // separator
       width: 400
       height: 1
       gradient: Gradient {

@@ -1,25 +1,25 @@
-#include "socketrdt.h"
+#include "socketfts.h"
 
 static constexpr double SAMPLE_HZ = 7000.0;
 static constexpr double DT = 1.0 / SAMPLE_HZ;
+static constexpr int RDT_REQUEST_LENGTH = 8;
+static constexpr int RDT_RESPONSE_LENGTH = 36;
 
-SocketRDT::SocketRDT(const QString& name, QObject* parent) : QUdpSocket(parent)
+SocketFTS::SocketFTS(const QString& name, QObject* parent) : QUdpSocket(parent)
 {
   this->setObjectName(name);
 
-  setLocalPort(RDT_LOCAL_PORT);
-  setPeerPort(RDT_PEER_PORT);
   setOpenMode(QIODeviceBase::ReadWrite);
 
-  connect(this, &SocketRDT::readyRead, this, &SocketRDT::onReadyRead);
-  connect(this, &SocketRDT::errorOccurred, this, &SocketRDT::onErrorOccurred);
-  connect(this, &SocketRDT::stateChanged,  this, &SocketRDT::onStateChanged);
-  connect(this, &SocketRDT::logMessage,  Logger::instance(), &Logger::push);
+  connect(this, &SocketFTS::readyRead, this, &SocketFTS::onReadyRead);
+  connect(this, &SocketFTS::errorOccurred, this, &SocketFTS::onErrorOccurred);
+  connect(this, &SocketFTS::stateChanged,  this, &SocketFTS::onStateChanged);
+  connect(this, &SocketFTS::logMessage,  Logger::instance(), &Logger::push);
 }
 
 // Q_INVOKABLE
 
-void SocketRDT::startStreaming()
+void SocketFTS::startStreaming()
 {
   if (m_pa.isNull()) {
     emit logMessage({"Peer address is not set", 0, objectName()});
@@ -32,22 +32,22 @@ void SocketRDT::startStreaming()
   // reset batching/timeline
   m_isFirstRead = true;
   m_baseSeq = 0;
-  m_readings.clear();
+  m_batch.clear();
   m_emitTimer.restart();
   emit streamReset(); // tell GUI to clear immediately
 
-  const QByteArray startReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0002,0}).data();
+  const QByteArray startReq = req2dtg(RDTRequest{0x1234,0x0002,0}).data();
   writeDatagram(startReq, m_pa, m_pp);
 }
 
-void SocketRDT::stopStreaming()
+void SocketFTS::stopStreaming()
 {
-  const QByteArray stopReq = RDTRequest2QNetworkDatagram(RDTRequest{0x1234,0x0000,0}).data();
+  const QByteArray stopReq = req2dtg(RDTRequest{0x1234,0x0000,0}).data();
   writeDatagram(stopReq, m_pa, m_pp);
   emit streamReset();
 }
 
-void SocketRDT::setSocketConfig(const QVariantMap &config)
+void SocketFTS::setSocketConfig(const QVariantMap &config)
 {
   m_la = QHostAddress(config.value("localAddress").toString());
   m_lp = config.value("localPort").toUInt();
@@ -63,46 +63,44 @@ void SocketRDT::setSocketConfig(const QVariantMap &config)
 
 // PUBLIC SLOTS
 
-void SocketRDT::onReadyRead()
+void SocketFTS::onReadyRead()
 {
   do {
     QNetworkDatagram dg = receiveDatagram(pendingDatagramSize());
-    QVariantList sample = QNetworkDatagram2Variant(dg);
-
-    uint32_t rdt_sequence = sample[0].toUInt();
+    RDTResponse sample = dtg2resp(dg);
 
     if (m_isFirstRead) { // if the first read
-      m_baseSeq = rdt_sequence;
+      m_baseSeq = sample.rdt_sequence;
       m_emitTimer.restart();
-      m_readings.clear();
+      m_batch.clear();
       m_isFirstRead = false;
     }
 
-    emit dataSampleReady(sample);
+    emit dataSampleHFReady(sample);
 
-    const double t = double(quint32(rdt_sequence - m_baseSeq)) * DT;
-    sample.push_back(t);
+    const double t = double(quint32(sample.rdt_sequence - m_baseSeq)) * DT;
+    sample.timestamp = t;
 
-    m_readings.push_back(sample);
-    if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_readings.isEmpty()) {
-      emit dataBatchReady(std::exchange(m_readings, {}));
+    m_batch.push_back(sample);
+    if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_batch.isEmpty()) {
+      emit dataSampleLFReady(m_batch.back());
+      emit dataBatchReady(std::exchange(m_batch, {}));
       m_emitTimer.restart();
     }
 
   } while(hasPendingDatagrams());
 }
 
-void SocketRDT::onErrorOccurred(QAbstractSocket::SocketError socketError) {
+void SocketFTS::onErrorOccurred(QAbstractSocket::SocketError socketError) {
   emit logMessage({this->errorString(), 0, objectName()});
 }
 
-void SocketRDT::onStateChanged(QAbstractSocket::SocketState state) {
+void SocketFTS::onStateChanged(QAbstractSocket::SocketState state) {
   emit logMessage({stateToString(state), 2, objectName()});
 }
 
 // PRIVATE
-
-QString SocketRDT::stateToString(SocketState state)
+QString SocketFTS::stateToString(SocketState state)
 {
   switch (state) {
     case QAbstractSocket::UnconnectedState: return "UnconnectedState";
@@ -116,7 +114,7 @@ QString SocketRDT::stateToString(SocketState state)
   }
 }
 
-QNetworkDatagram SocketRDT::RDTRequest2QNetworkDatagram(const RDTRequest& request)
+QNetworkDatagram SocketFTS::req2dtg(const RDTRequest& request)
 {
   QByteArray buffer(RDT_REQUEST_LENGTH, 0x00);
 
@@ -132,7 +130,7 @@ QNetworkDatagram SocketRDT::RDTRequest2QNetworkDatagram(const RDTRequest& reques
   return QNetworkDatagram(buffer);
 }
 
-QVariantList SocketRDT::QNetworkDatagram2Variant(const QNetworkDatagram& networkDatagram) const
+RDTResponse SocketFTS::dtg2resp(const QNetworkDatagram& networkDatagram) const
 {
   QByteArray bytes(networkDatagram.data());
 

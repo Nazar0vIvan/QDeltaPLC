@@ -1,5 +1,5 @@
-#ifndef SOCKETRDT_H
-#define SOCKETRDT_H
+#ifndef SOCKETFTS_H
+#define SOCKETFTS_H
 
 #include <QObject>
 #include <QUdpSocket>
@@ -13,13 +13,6 @@
 #include <QVariant>
 
 #include "logger.h"
-
-#define RDT_LOCAL_PORT 59152
-#define RDT_PEER_ADDRESS "192.168.1.3"
-#define RDT_PEER_PORT 49152
-
-#define RDT_REQUEST_LENGTH 8
-#define RDT_RESPONSE_LENGTH 36
 
 struct RDTRequest
 {
@@ -40,6 +33,7 @@ struct RDTResponse
   Q_PROPERTY(int32_t Tx MEMBER Tx)
   Q_PROPERTY(int32_t Ty MEMBER Ty)
   Q_PROPERTY(int32_t Tz MEMBER Tz)
+  Q_PROPERTY(double timestamp MEMBER timestamp)
 
 public:
   uint32_t rdt_sequence;
@@ -51,24 +45,26 @@ public:
   int32_t Tx;
   int32_t Ty;
   int32_t Tz;
+  double timestamp;
 };
 
 Q_DECLARE_METATYPE(RDTResponse)
 
-class SocketRDT : public QUdpSocket
+class SocketFTS : public QUdpSocket
 {
     Q_OBJECT
 
 public:
-  explicit SocketRDT(const QString& name, QObject* parent = nullptr);
+  explicit SocketFTS(const QString& name, QObject* parent = nullptr);
 
   Q_INVOKABLE void startStreaming();
   Q_INVOKABLE void stopStreaming();
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
 
 signals:
-  void dataSampleReady(const QVariantList sample); // for rsi
-  void dataBatchReady(const QVector<QVariantList>& samples); // for ui
+  void dataSampleHFReady(const RDTResponse& sample); // for rsi
+  void dataSampleLFReady(const RDTResponse& sample); // for ui
+  void dataBatchReady(const QVector<RDTResponse>& samples); // for ui
   void streamReset();
 
   void logMessage(const LoggerMessage& msg);
@@ -79,13 +75,12 @@ private slots:
   void onStateChanged(QAbstractSocket::SocketState state);
 
 private:
-  QNetworkDatagram RDTRequest2QNetworkDatagram(const RDTRequest& request);
-  //RDTResponse QNetworkDatagram2RDTResponse(const QNetworkDatagram& networkDatagram);
-  QVariantList QNetworkDatagram2Variant(const QNetworkDatagram& networkDatagram) const;
+  QNetworkDatagram req2dtg(const RDTRequest& request);
+  RDTResponse dtg2resp(const QNetworkDatagram& networkDatagram) const;
   QString stateToString(SocketState state);
 
          // batching state
-  QVector<QVariantList> m_readings;
+  QVector<RDTResponse> m_batch;
   QElapsedTimer m_emitTimer;
   quint32       m_baseSeq = 0;
   bool          m_isFirstRead = false;
@@ -99,4 +94,4 @@ private:
   QList<double> m_FzValues;
 };
 
-#endif // SOCKETRDT_H
+#endif // SOCKETFTS_H

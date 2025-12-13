@@ -11,6 +11,9 @@
 #include <QtMinMax>
 
 #include "logger.h"
+#include "socketfts.h"
+
+// ----- AbstractSocketRunner -----
 
 class AbstractSocketRunner : public QObject
 {
@@ -55,6 +58,8 @@ private:
   QVariant m_buffer;
 };
 
+// ----- TcpSocketRunner -----
+
 class TcpSocketRunner : public AbstractSocketRunner
 {
   Q_OBJECT
@@ -67,6 +72,8 @@ signals:
   void dataReady(const QVariantMap& data);
 };
 
+// ----- UdpSocketRunner -----
+
 class UdpSocketRunner : public AbstractSocketRunner
 {
   Q_OBJECT
@@ -75,30 +82,47 @@ public:
   explicit UdpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
   ~UdpSocketRunner() override;
 
-  Q_PROPERTY(QVariantList lastReading READ lastReading NOTIFY lastReadingChanged)
   Q_PROPERTY(bool isStreaming READ isStreaming NOTIFY isStreamingChanged)
 
-  QVariantList lastReading() const { return m_lastReading; }
   bool isStreaming() const { return m_isStreaming; }
 
 signals:
-  void lastReadingChanged();
   void isStreamingChanged();
-  void socketReady();
-
-public slots:
-  void onDataBatchReady(const QVector<QVariantList>& readings);
 
 private slots:
   void onPulse();
 
 private:
-  QVariantList m_lastReading = {};
   bool m_isStreaming = false;
   QTimer m_timer;
+};
 
+// ----- FtsRunner -----
+
+class FtsRunner : public UdpSocketRunner
+{
+  Q_OBJECT
+
+public:
+  explicit FtsRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  ~FtsRunner() override = default;
+
+  Q_PROPERTY(RDTResponse sample READ sample NOTIFY dataReady)
+
+  RDTResponse sample() const { return m_sample; }
+
+signals:
+   void sampleReady();
+
+public slots:
+  void onDataBatchReady(const QVector<RDTResponse>& batch);
+
+private:
+  RDTResponse m_sample;
   double m_tolerance = 0.5;
 };
+
+// ----- RsiRunner -----
 
 class RsiRunner : public UdpSocketRunner
 {

@@ -36,8 +36,8 @@ set(CPP_FILES
   qmlchartbridge.cpp
   socketdeltaplc.h
   socketdeltaplc.cpp
-  socketrdt.h
-  socketrdt.cpp
+  socketfts.h
+  socketfts.cpp
   socketrsi.h
   socketrsi.cpp
   socketrunner.h

@@ -197,12 +197,14 @@ void UdpSocketRunner::onPulse()
   m_timer.start(); // restart idle countdown on every pulse
 }
 
-void UdpSocketRunner::onDataBatchReady(const QVector<QVariantList>& readings)
+// ----- FtsRunner -----
+
+void FtsRunner::onDataBatchReady(const QVector<RDTResponse> &batch)
 {
-  if(readings.isEmpty()) return;
+  if(batch.isEmpty()) return;
 
   // Take the last sample from the batch
-  const QVariantList &latest = readings.back();
+  const RDTResponse &latest = batch.back();
 
   // First reading – just store and emit
   if (m_lastReading.isEmpty() || m_lastReading.size() != latest.size()) {
@@ -288,3 +290,4 @@ void RsiRunner::onMotionActiveChanged(bool active)
   m_motionActive = active;
   emit motionActiveChanged();
 }
+

@@ -6,7 +6,7 @@
 
 #include "socketrunner.h"
 #include "socketdeltaplc.h"
-#include "socketrdt.h"
+#include "socketfts.h"
 #include "socketrsi.h"
 #include "logger.h"
 
@@ -26,9 +26,9 @@ int main(int argc, char *argv[])
   QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::dataReady, Qt::QueuedConnection);
   plcRunner.start();
 
-  SocketRDT* socketRDT = new SocketRDT(QStringLiteral("FTS_Delta"));
-  UdpSocketRunner ftsRunner(socketRDT);
-  QObject::connect(socketRDT, &SocketRDT::dataBatchReady, &ftsRunner, &UdpSocketRunner::onDataBatchReady, Qt::QueuedConnection);
+  SocketFTS* SocketFTS = new SocketFTS(QStringLiteral("FTS_Delta"));
+  FtsRunner ftsRunner(SocketFTS);
+  QObject::connect(SocketFTS, &SocketFTS::dataBatchReady, &ftsRunner, &FtsRunner::onDataBatchReady, Qt::QueuedConnection);
   ftsRunner.start();
 
   SocketRSI* socketRSI = new SocketRSI(QStringLiteral("KRC4_RSI"));
@@ -39,11 +39,11 @@ int main(int argc, char *argv[])
   QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
   QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
 
-  QObject::connect(socketRDT, &SocketRDT::dataSampleReady, socketRSI, &SocketRSI::setForce);
+  QObject::connect(SocketFTS, &SocketFTS::dataSampleReady, socketRSI, &SocketRSI::setForce);
 
   // QmlChartBridge chartBridge;
-  // QObject::connect(socketRDT, &SocketRDT::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
-  // QObject::connect(socketRDT, &SocketRDT::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
+  // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
+  // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
 
   QQmlApplicationEngine engine;
   // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
