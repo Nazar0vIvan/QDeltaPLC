@@ -15,25 +15,29 @@
 using Vec6d = Eigen::Matrix<double, 6, 1>; // row 6x1
 
 struct Plane {
-  double A, B, C, D;   // A*x + B*y + C*z + D = 0
-  double AA, BB, DD;   // z = AA*x + BB*y + DD
+  double A, B, C, D; // A*x + B*y + C*z + D = 0
+  double AA, BB, DD; // z = AA*x + BB*y + DD
 };
 
 struct Pose {
   Vec6d frame;       // [x,y,z,A,B,C] (deg)
   Eigen::Matrix4d T; // homogeneous transform
 
-  Eigen::Vector3d t()   const { return T.block<3,1>(0,3); }
-  Eigen::Matrix3d R()   const { return T.block<3,3>(0,0); }
+  Eigen::Vector3d t() const { return T.block<3,1>(0,3); }
+  Eigen::Matrix3d R() const { return T.block<3,3>(0,0); }
 };
 
 struct Cylinder {
-  static Cylinder fromAxis(const Eigen::Vector3d& c1,
-                           const Eigen::Vector3d& c2,
+  static Cylinder fromPoints(const Eigen::Vector3d& c1,
+                             const Eigen::Vector3d& c2,
+                             const Eigen::Vector3d& pc,
+                             double R);
+
+  static Cylinder fromAxis(const Eigen::Vector3d& u,
                            const Eigen::Vector3d& pc,
                            double R);
 
-  Pose surfacePose(double deltaY) const;
+  Pose surfacePose(double dy, double angle = 0.0) const;
 
   double R;
   Pose pose;

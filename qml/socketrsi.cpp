@@ -20,13 +20,18 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent},
   connect(this, &SocketRSI::errorOccurred, this, &SocketRSI::onErrorOccurred);
   connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
   connect(this, &SocketRSI::logMessage, Logger::instance(), &Logger::push);
+
+  m_cooldownTimer.setSingleShot(true);
+  connect(&m_cooldownTimer, &QTimer::timeout, this, &SocketRSI::onCooldownFinished);
 }
 
 // Q_INVOKABLE
 
 void SocketRSI::stop()
 {
-
+  stopStreaming();
+  close();
+  emit logMessage({ "Socket stopped and closed", 1, objectName()});
 }
 
 QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
@@ -53,7 +58,7 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
   }
 
   auto txt = [&](const char* t){ return cfg.firstChildElement(QLatin1String(t)).text().trimmed(); };
-  const QString ipStr = txt("IP_NUMBER");
+  const QString ipStr   = txt("IP_NUMBER");
   const QString portStr = txt("PORT");
   const QString onlyStr = txt("ONLYSEND");
 
@@ -78,12 +83,6 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
     return;
   }
   emit logMessage({QString("Socket is bound: %1:%2").arg(m_la.toString()).arg(m_lp), 1, objectName()});
-
-  // emit logMessage({QString("Socket is configured:<br/>"
-  //                  "&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>"
-  //                  "&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:SP").
-  //                  arg(m_la.toString()).arg(m_lp).arg(m_pa.toString()),
-  //                  1, objectName()});
 }
 
 void SocketRSI::generateTrajectory()
@@ -105,51 +104,49 @@ void SocketRSI::generateTrajectory()
 void SocketRSI::startStreaming()
 {
   m_offsetIdx = 0;
-  m_isMoving  = true;
-  m_motionFinishedEmitted = false;
+  m_isFirstRead = true; // optional; keep if you expect peer re-learn per run
 
-  if (!m_motionActive) {
-    m_motionActive = true;
-    emit motionStarted();
-    emit motionActiveChanged(true);
-  }
-  m_isDelayActive = false; // Reset delay status
+  // cancel any cooldown and enter Moving
+  m_cooldownTimer.stop();
+  setMotionState(MotionState::Moving);
 }
 
 void SocketRSI::stopStreaming()
 {
-  if (!m_motionActive) return;
-
-  m_isMoving  = false;
-  m_offsetIdx = 0;
-
-  if (!m_motionFinishedEmitted) {
-    m_motionFinishedEmitted = true;
-    emit motionFinished();
-  }
-
-  m_motionActive = false;
-  emit motionActiveChanged(false);
+  // stop immediately (no cooldown)
+  m_cooldownTimer.stop();
+  finishMotion(false);
 }
 
 // PUBLIC SLOTS
+
+void SocketRSI::setForce(const RDTResponse& sample)
+{
+  m_Fz = sample.Fz / COUNT_FACTOR;
+}
 
 void SocketRSI::onReadyRead()
 {
   while (hasPendingDatagrams()) {
     QNetworkDatagram dg = receiveDatagram();
-    dgs.append(dg);
+    pushRxLog(dg);
 
     if (m_isFirstRead) {
       handleFirstRead(dg);
     }
 
-    const RsiResponce resp = parseRsiResponce(dg.data());
+    const RsiResponse resp = parseRsiResponse(dg.data());
 
-    QList<double> corr = getMotionCorrections();
+    const double Fz  = m_Fz;
+    const double Fth = m_Fth;
 
-    QByteArray reply = subsXml(corr, m_Fz, m_Fth, resp.ipoc, 0);
-    m_sentXmlLog.push_back(reply);
+    const bool shouldStop = (qFabs(m_Fz) >= qFabs(m_Fth));
+
+    const RsiTxFrame tx = makeTxFrame(resp.ipoc, shouldStop);
+
+    const QByteArray reply = subsXml(tx);
+    pushTxLog(reply);
+
     writeDatagram(reply, m_pa, m_pp);
   }
 }
@@ -162,7 +159,48 @@ void SocketRSI::onStateChanged(QAbstractSocket::SocketState state) {
   emit logMessage({stateToString(state), 2, objectName()});
 }
 
+void SocketRSI::onCooldownFinished()
+{
+  setMotionState(MotionState::Idle);
+}
+
 // PRIVATE
+
+void SocketRSI::setMotionState(MotionState s)
+{
+  if (m_state == s) return;
+
+  const MotionState prev = m_state;
+  m_state = s;
+
+  // transitions with signals
+  if (prev != MotionState::Moving && s == MotionState::Moving) {
+    emit motionStarted();
+    emit motionActiveChanged(true);
+  }
+
+  if (prev == MotionState::Moving && s != MotionState::Moving) {
+    emit motionFinished();
+    emit motionActiveChanged(false);
+  }
+}
+
+void SocketRSI::finishMotion(bool enterCooldown)
+{
+  if (m_state == MotionState::Idle) {
+    m_offsetIdx = 0;
+    return;
+  }
+
+  m_offsetIdx = 0;
+
+  if (enterCooldown) {
+    setMotionState(MotionState::Cooldown);
+    m_cooldownTimer.start(COOLDOWN_MS);
+  } else {
+    setMotionState(MotionState::Idle);
+  }
+}
 
 QString SocketRSI::stateToString(SocketState state)
 {
@@ -174,7 +212,7 @@ QString SocketRSI::stateToString(SocketState state)
     case QAbstractSocket::BoundState:       return "BoundState";
     case QAbstractSocket::ClosingState:     return "ClosingState";
     case QAbstractSocket::ListeningState:   return "ListeningState";
-    default: return "UnconnectedState";
+    default: return "UnknownState";
   }
 }
 
@@ -185,122 +223,119 @@ void SocketRSI::handleFirstRead(const QNetworkDatagram &dg)
   m_isFirstRead = false;
 }
 
-QList<double> SocketRSI::getMotionCorrections()
+void SocketRSI::pushRxLog(const QNetworkDatagram& dg)
 {
-  QList<double> corr(6, 0.0);
-
-  if (m_isMoving) {
-    if (m_offsetIdx < m_offsets.size()) {
-      const Vec6d& dP = m_offsets[m_offsetIdx++];
-      for (int i = 0; i < 6; ++i)
-        corr[i] = dP(i);
-      if (qFabs(m_Fz) >= qFabs(m_Fth) && !m_isDelayActive) {
-        stopMotion(); // Stop motion when Fz reaches Fth
-        m_isDelayActive = true; // Start the delay
-        QTimer::singleShot(10000, this, &SocketRSI::onDelayFinished); // 10 seconds delay
-      }
-    } else {
-      stopMotion();
-    }
+  m_rxLog.enqueue(dg);
+  while (m_rxLog.size() > MAX_LOG_FRAMES) {
+    m_rxLog.dequeue();
   }
+}
+
+void SocketRSI::pushTxLog(const QByteArray& xml)
+{
+  m_txXmlLog.enqueue(xml);
+  while (m_txXmlLog.size() > MAX_LOG_FRAMES) {
+    m_txXmlLog.dequeue();
+  }
+}
+
+std::array<double, 6> SocketRSI::tickMotion(bool shouldStop)
+{
+  std::array<double, 6> corr{};
+  corr.fill(0.0);
+
+  if (m_state != MotionState::Moving)
+    return corr;
+
+  if (m_offsets.isEmpty()) {
+    finishMotion(false);
+    return corr;
+  }
+
+  // apply next correction if available
+  if (m_offsetIdx < m_offsets.size()) {
+    const Vec6d& dP = m_offsets[m_offsetIdx++];
+    for (int i = 0; i < 6; ++i)
+      corr[static_cast<size_t>(i)] = dP(i);
+
+    // finish after sending last point
+    const bool exhausted = (m_offsetIdx >= m_offsets.size());
+    if (exhausted) {
+      finishMotion(false);
+    } else if (shouldStop) {
+      // force stop after emitting this correction
+      finishMotion(true);
+    }
+  } else {
+    finishMotion(false);
+  }
+
   return corr;
 }
 
-void SocketRSI::stopMotion()
+RsiTxFrame SocketRSI::makeTxFrame(quint64 ipoc, bool shouldStop)
 {
-  m_isMoving = false;
-  if (m_motionActive && !m_motionFinishedEmitted) {
-    m_motionFinishedEmitted = true;
-    emit motionFinished();
-  }
-  m_motionActive = false;
-  emit motionActiveChanged(false);
+  RsiTxFrame tx;
+  tx.ipoc = ipoc;
+  tx.shouldStop = shouldStop;
+  tx.corr = tickMotion(shouldStop);
+  return tx;
 }
 
-QByteArray SocketRSI::subsXml(const QList<double> &corr,
-                              double Fz, double Fth,
-                              quint64 ipoc, int indent)
+QByteArray SocketRSI::subsXml(const RsiTxFrame& tx)
 {
-  QDomDocument doc;
-  doc.setContent(defaultCommand);
+  QByteArray out;
+  out.reserve(256);
 
-  QDomElement root = doc.documentElement();
-  QDomElement rk   = root.firstChildElement("RKorr");
-  QDomElement fEl  = root.firstChildElement("F");
-  QLocale c = QLocale::c();
+  QXmlStreamWriter w(&out);
+  w.setAutoFormatting(false);
 
-  const char* keys[6] = { "X", "Y", "Z", "A", "B", "C" };
+  w.writeStartElement("Sen");
+  w.writeAttribute("Type", "ImFree");
 
-  const int n = qMin(corr.size(), 6);
-  for (int i = 0; i < n; ++i) {
-    rk.setAttribute(QLatin1String(keys[i]), c.toString(corr.at(i), 'g', 10));
+  // RKorr
+  w.writeEmptyElement("RKorr");
+  static const char* k[6] = {"X","Y","Z","A","B","C"};
+  const QLocale c = QLocale::c();
+  for (int i = 0; i < 6; ++i) {
+    w.writeAttribute(QLatin1String(k[i]), c.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
   }
 
-  fEl.setAttribute("Fz",  c.toString(Fz,  'g', 10));
-  fEl.setAttribute("Fth", c.toString(Fth, 'g', 10));
+  // Flags
+  w.writeEmptyElement("Flags");
+  w.writeAttribute("ShouldStop", tx.shouldStop ? "1" : "0");
 
-  QDomElement ipocEl = root.firstChildElement("IPOC");
-  ipocEl.firstChild().setNodeValue(QString::number(ipoc));
+  // IPOC
+  w.writeTextElement("IPOC", QString::number(tx.ipoc));
 
-  return doc.toByteArray(indent);
-}
-
-QByteArray SocketRSI::subsIPOC(const QByteArray& xml, quint64 ipoc)
-{
-  QDomDocument doc;
-  doc.setContent(xml);
-
-  QDomElement root = doc.documentElement();
-  QDomElement ipocEl = root.firstChildElement("IPOC");
-  ipocEl.firstChild().setNodeValue(QString::number(ipoc));
-
-  return doc.toByteArray();
+  w.writeEndElement(); // Sen
+  return out;
 }
 
 // PARSING
 
-SocketRSI::RsiResponce SocketRSI::parseRsiResponce(const QByteArray& xmlBytes)
+SocketRSI::RsiResponse SocketRSI::parseRsiResponse(const QByteArray& xmlBytes)
 {
-  RsiResponce r{};
+  RsiResponse r{};
   QXmlStreamReader xml(xmlBytes);
 
-  // Go to the root element
-  if (!xml.readNextStartElement())
-    return r;
+  if (!xml.readNextStartElement()) return r;
+  if (xml.name() != QLatin1String("Rob")) return r;
 
-  if (xml.name() != QLatin1String("Rob")) {
-    // unexpected root
-    return r;
-  }
-
-  // Now we are on <Rob>. Parse its children.
   while (xml.readNextStartElement()) {
     const auto name = xml.name();
 
     if (name == QLatin1String("RIst")) {
-      r.aiPos = readAxis6(xml.attributes());
-      xml.skipCurrentElement();   // for <AIPos .../>
-    } /* else if (name == QLatin1String("MACur")) {
-      r.maCur = readAxis6(xml.attributes());
+      r.pose = readCartesian6(xml.attributes());
       xml.skipCurrentElement();
-    } */ else if (name == QLatin1String("IPOC")) {
+    } else if (name == QLatin1String("IPOC")) {
       r.ipoc = xml.readElementText().toULongLong();
     } else {
-      xml.skipCurrentElement(); // skip unknown children of <Rob>
+      xml.skipCurrentElement();
     }
   }
 
   return r;
-}
-
-QVector<double> SocketRSI::readAxis6(const QXmlStreamAttributes &attrs)
-{
-  QVector<double> out = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-  static const char* keys[6] = {"A1","A2","A3","A4","A5","A6"};
-  for (size_t i = 0; i < 6; ++i) {
-    out[i] = attrs.value(QLatin1String(keys[i])).toString().toDouble();
-  }
-  return out;
 }
 
 QVector<double> SocketRSI::readCartesian6(const QXmlStreamAttributes &attrs)
@@ -316,22 +351,4 @@ QVector<double> SocketRSI::readCartesian6(const QXmlStreamAttributes &attrs)
 void SocketRSI::test()
 {
 
-}
-
-void SocketRSI::setForce(const RDTResponse& sample)
-{
-  m_Fz = sample.Fz / COUNT_FACTOR;
-}
-
-void SocketRSI::onDelayFinished()
-{
-  // After 10 seconds, the motion can be resumed or the correction stopped
-  if (!m_motionFinishedEmitted) {
-    m_motionFinishedEmitted = true;
-    emit motionFinished();
-  }
-  m_isMoving = false; // Disable further corrections
-  m_motionActive = false;
-  emit motionActiveChanged(false);
-  m_isDelayActive = false; // Reset the delay status
 }

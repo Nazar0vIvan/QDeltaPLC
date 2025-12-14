@@ -173,7 +173,6 @@ Airfoil loadBladeJson(const QString& filePath)
   return airfoil;
 }
 
-
 // ------------ Base ------------
 Vec6d getBeltFrame(const Eigen::Vector3d& o,
                    const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -205,12 +204,11 @@ Vec6d getBeltFrame(const Eigen::Vector3d& o,
   return { o.x(), o.y(), o.z(), A, B, C };
 }
 
-
 // ------------ Cylinder ------------
-Cylinder Cylinder::fromAxis(const Eigen::Vector3d& c1,
-                            const Eigen::Vector3d& c2,
-                            const Eigen::Vector3d& o,
-                            double R)
+Cylinder Cylinder::fromPoints(const Eigen::Vector3d& c1,
+                              const Eigen::Vector3d& c2,
+                              const Eigen::Vector3d& o,
+                              double R)
 {
   // unit vector along cyl axis in WCS
   Eigen::Vector3d y = c1 - c2;
@@ -234,28 +232,51 @@ Cylinder Cylinder::fromAxis(const Eigen::Vector3d& c1,
   return { R, pose };
 }
 
-Pose Cylinder::surfacePose(double deltaY) const
+Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u, const Eigen::Vector3d &pc, double R)
 {
-  Pose scs; // (surface coordinate system)
+  Eigen::Vector3d y = u.normalized();
 
-  const Eigen::Matrix3d Rw = pose.R();  // CCS rotation in WCS
-  const Eigen::Vector3d o  = pose.t();  // CCS origin in WCS
-  const Eigen::Vector3d y  = Rw.col(1); // CCS y-axis
-  const Eigen::Vector3d z  = Rw.col(2); // CCS z-axis (radial)
+  // choose helper not parallel to y
+  const Eigen::Vector3d helper =
+      (std::abs(y.x()) < 0.9) ? Eigen::Vector3d::UnitX() : Eigen::Vector3d::UnitY();
 
-  const Eigen::Vector3d os = o + deltaY * y + R * z;  // SCS origin in WCS
+  Eigen::Vector3d x = helper - helper.dot(y) * y; // remove y component
+  x.normalize();
 
-  scs.T = pose.T;
-  scs.T.block<3,1>(0,3) = os;
-  scs.frame << os, pose.frame(3), pose.frame(4), pose.frame(5); // same angles
+  Eigen::Vector3d z = x.cross(y).normalized();    // right-handed: x × y = z
 
+  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+  transform.block<3,3>(0,0) << x, y, z;           // columns
+  transform.block<3,1>(0,3) = pc;
+
+  EulerSolution angles = rot2euler(transform.topLeftCorner<3,3>(), true);
+
+  Vec6d frame;
+  frame << pc.x(), pc.y(), pc.z(), angles.A1, angles.B1, angles.C1;
+
+  Pose pose = { frame, transform };
+  return { R, pose };
+}
+
+Pose Cylinder::surfacePose(double dy, double angle) const
+{
+  const Eigen::Matrix4d T_local =
+      trMatrix4x4(Eigen::Vector3d(0.0, dy, 0.0)) *
+      rotMatrix4x4(angle, 'y') *
+      trMatrix4x4(Eigen::Vector3d(R, 0.0, 0.0));
+
+  Pose scs; // surface coordinate system
+  scs.T = pose.T * T_local;
+
+  const Eigen::Vector3d os = scs.T.block<3,1>(0,3);
+  EulerSolution angles = rot2euler(scs.T.topLeftCorner<3,3>(), true);
+
+  scs.frame << os.x(), os.y(), os.z(), angles.A1, angles.B1, angles.C1;
   return scs;
 }
 
-
 // ------------ Trajectory ------------
 namespace rsi {
-
   QVector<Vec6d> spline(const QVector<Vec6d>& ref_points, const MotionParams& mp, int decimals)
   {
     // [v] = mm/s; [a] = mm/s^2
@@ -337,8 +358,6 @@ namespace rsi {
 
     return offsets;
   }
-
-
   QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams &mp, int decimals)
   {
     const double dt = 0.004;          // 4 ms
