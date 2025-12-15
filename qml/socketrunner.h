@@ -126,7 +126,7 @@ private:
   bool        m_hasPublished = false;
 
   QVariantMap m_sampleMap;
-  double      m_tolerance = 0.5; // guaranteed >= 0 by your invariant
+  double      m_tolerance = 0.5;
 };
 
 // ----- RsiRunner -----

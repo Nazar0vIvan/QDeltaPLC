@@ -88,6 +88,24 @@ Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg)
   return R;
 }
 
+Eigen::Vector3d axisVec(char axis, double value)
+{
+  switch (axis) {
+    case 'x': return { value, 0.0,   0.0 };
+    case 'y': return { 0.0,   value, 0.0 };
+    case 'z': return { 0.0,   0.0,   value };
+    default:
+      throw std::invalid_argument("axis must be one of: 'x','y','z'");
+  }
+}
+
+Eigen::Vector3d prjPointToLine(const Eigen::Vector3d &l0, const Eigen::Vector3d &v, const Eigen::Vector3d &p)
+{
+  const double vv = v.squaredNorm();
+  const double t = (p - l0).dot(v) / vv;
+  return l0 + t * v;
+}
+
 // ------------ Frene ------------
 Frene::Frene(const Eigen::Vector3d& t_,
              const Eigen::Vector3d& b_,
@@ -229,7 +247,7 @@ Cylinder Cylinder::fromPoints(const Eigen::Vector3d& c1,
 
   Pose pose = { frame, transform };
 
-  return { R, pose };
+  return { R, L, pose };
 }
 
 Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u,
@@ -257,7 +275,7 @@ Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u,
   frame << pc.x(), pc.y(), pc.z(), angles.A1, angles.B1, angles.C1;
 
   Pose pose = { frame, transform };
-  return { R, pose };
+  return { R, L, pose };
 }
 
 Pose Cylinder::surfacePose(double dy, double angle) const
@@ -451,5 +469,7 @@ void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, 
   file.write(doc.toJson(QJsonDocument::Indented));
   file.close();
 }
+
+
 
 

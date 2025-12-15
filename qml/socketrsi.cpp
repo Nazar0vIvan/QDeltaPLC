@@ -87,7 +87,6 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
 
 void SocketRSI::generateTrajectory()
 {
-
   /*
   const Vec6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
   const Vec6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
@@ -99,11 +98,12 @@ void SocketRSI::generateTrajectory()
   }
   */
 
+
   // ROLLER
   const Eigen::Vector3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
   const Eigen::Vector3d Cr(854.512911, -16.511844, 623.196742); // A point on the axis (near the data “middle”)
   const double Rr = 19.991300;
-  const double Lr = 0.0;
+  const double Lr = 20.0;
 
   Cylinder roller = Cylinder::fromAxis(ur, Cr, Rr, Lr);
 
@@ -130,11 +130,9 @@ void SocketRSI::generateTrajectory()
   };
 
   const double Rwp = Eigen::Map<const Eigen::Matrix<double,8,1>>(Rswp).mean();
-  const double Lwp = 0.0;
+  const double Lwp = 74.0;
 
   Cylinder wp = Cylinder::fromPoints(C1wp, C2wp, Cwp, Rwp, Lwp);
-
-
 
   emit trajectoryReady();
 
