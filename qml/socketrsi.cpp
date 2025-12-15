@@ -12,7 +12,7 @@ RandomData generateRandomData()
   return data;
 }
 
-SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}, m_isFirstRead(true), m_isMoving(false)
+SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
 {
   setObjectName(name);
 
@@ -87,6 +87,8 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
 
 void SocketRSI::generateTrajectory()
 {
+
+  /*
   const Vec6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
   const Vec6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
 
@@ -95,6 +97,44 @@ void SocketRSI::generateTrajectory()
     emit logMessage({ "Generated RSI trajectory is empty", 0, objectName()});
     return;
   }
+  */
+
+  // ROLLER
+  const Eigen::Vector3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
+  const Eigen::Vector3d Cr(854.512911, -16.511844, 623.196742); // A point on the axis (near the data “middle”)
+  const double Rr = 19.991300;
+  const double Lr = 0.0;
+
+  Cylinder roller = Cylinder::fromAxis(ur, Cr, Rr, Lr);
+
+  // WORKPIECE
+  Eigen::Vector3d Cwp = { 0.012406, 111.290488, 0.113702 };
+
+  Eigen::Vector3d C11 = {  0.002515, 120.0, 0.151981 },
+                  C12 = {  0.003125, 120.0, 0.153901 },
+                  C21 = { -0.061220, 180.0, 0.422887 },
+                  C22 = { -0.065223, 180.0, 0.423638 };
+
+  Eigen::Vector3d C1wp = 0.5 * (C11 + C12),
+                  C2wp = 0.5 * (C21 + C22);
+
+  double Rswp[] = {
+    12.991316,
+    12.990244,
+    12.998138,
+    12.999339,
+    13.008986,
+    13.009134,
+    13.019839,
+    13.019753
+  };
+
+  const double Rwp = Eigen::Map<const Eigen::Matrix<double,8,1>>(Rswp).mean();
+  const double Lwp = 0.0;
+
+  Cylinder wp = Cylinder::fromPoints(C1wp, C2wp, Cwp, Rwp, Lwp);
+
+
 
   emit trajectoryReady();
 
@@ -140,7 +180,7 @@ void SocketRSI::onReadyRead()
     const double Fz  = m_Fz;
     const double Fth = m_Fth;
 
-    const bool shouldStop = (qFabs(m_Fz) >= qFabs(m_Fth));
+    const bool shouldStop = (qFabs(Fz) >= qFabs(Fth));
 
     const RsiTxFrame tx = makeTxFrame(resp.ipoc, shouldStop);
 

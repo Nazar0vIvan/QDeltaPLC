@@ -31,11 +31,11 @@ struct Cylinder {
   static Cylinder fromPoints(const Eigen::Vector3d& c1,
                              const Eigen::Vector3d& c2,
                              const Eigen::Vector3d& pc,
-                             double R);
+                             double R, double L);
 
   static Cylinder fromAxis(const Eigen::Vector3d& u,
                            const Eigen::Vector3d& pc,
-                           double R);
+                           double R, double L);
 
   Pose surfacePose(double dy, double angle = 0.0) const;
 
@@ -59,6 +59,16 @@ Eigen::Vector3d poly(double x0, double x1, double x2,
 
 EulerSolution rot2euler(const Eigen::Matrix3d& R, bool is_deg = false);
 Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg = false);
+
+Eigen::Vector3d prjPointToLine(
+    const Eigen::Vector3d& l0,
+    const Eigen::Vector3d& v,
+    const Eigen::Vector3d& p)
+{
+  const double vv = v.squaredNorm();
+  const double t = (p - l0).dot(v) / vv;
+  return l0 + t * v;
+}
 
 // ------------ Frene ------------
 struct Frene {

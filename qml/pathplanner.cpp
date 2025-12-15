@@ -208,7 +208,7 @@ Vec6d getBeltFrame(const Eigen::Vector3d& o,
 Cylinder Cylinder::fromPoints(const Eigen::Vector3d& c1,
                               const Eigen::Vector3d& c2,
                               const Eigen::Vector3d& o,
-                              double R)
+                              double R, double L)
 {
   // unit vector along cyl axis in WCS
   Eigen::Vector3d y = c1 - c2;
@@ -232,7 +232,9 @@ Cylinder Cylinder::fromPoints(const Eigen::Vector3d& c1,
   return { R, pose };
 }
 
-Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u, const Eigen::Vector3d &pc, double R)
+Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u,
+                            const Eigen::Vector3d &pc,
+                            double R, double L)
 {
   Eigen::Vector3d y = u.normalized();
 
