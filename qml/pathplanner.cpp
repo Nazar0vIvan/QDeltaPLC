@@ -19,7 +19,19 @@ Eigen::Matrix4d rotMatrix4x4(double angleDeg, char axis)
     case 'z': R(0,0)=c; R(0,1)=-s; R(1,0)= s; R(1,1)=c; break;
   }
   constexpr double EPS = 1e-4;
-  return R.unaryExpr([EPS](double v){ return std::abs(v) <= EPS ? 0.0 : v; });
+  R = R.unaryExpr([](double v){ return std::abs(v) <= EPS ? 0.0 : v; });
+  return R;
+}
+
+Eigen::Vector3d axisVec(char axis, double value)
+{
+  switch (axis) {
+    case 'x': return { value, 0.0,   0.0 };
+    case 'y': return { 0.0,   value, 0.0 };
+    case 'z': return { 0.0,   0.0,   value };
+    default:
+      throw std::invalid_argument("axis must be one of: 'x','y','z'");
+  }
 }
 
 Plane pointsToPlane(const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -88,22 +100,18 @@ Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg)
   return R;
 }
 
-Eigen::Vector3d axisVec(char axis, double value)
-{
-  switch (axis) {
-    case 'x': return { value, 0.0,   0.0 };
-    case 'y': return { 0.0,   value, 0.0 };
-    case 'z': return { 0.0,   0.0,   value };
-    default:
-      throw std::invalid_argument("axis must be one of: 'x','y','z'");
-  }
-}
-
 Eigen::Vector3d prjPointToLine(const Eigen::Vector3d &l0, const Eigen::Vector3d &v, const Eigen::Vector3d &p)
 {
   const double vv = v.squaredNorm();
   const double t = (p - l0).dot(v) / vv;
   return l0 + t * v;
+}
+
+Eigen::Vector3d prjToPerpPlane(const Eigen::Vector3d &vec, const Eigen::Vector3d &n)
+{
+  Eigen::Vector3d v = vec - vec.dot(n) * n;
+  const double nn = v.norm();
+  return v / nn;
 }
 
 // ------------ Frene ------------
@@ -222,37 +230,11 @@ Vec6d getBeltFrame(const Eigen::Vector3d& o,
   return { o.x(), o.y(), o.z(), A, B, C };
 }
 
+
 // ------------ Cylinder ------------
-Cylinder Cylinder::fromPoints(const Eigen::Vector3d& c1,
-                              const Eigen::Vector3d& c2,
-                              const Eigen::Vector3d& o,
-                              double R, double L)
-{
-  // unit vector along cyl axis in WCS
-  Eigen::Vector3d y = c1 - c2;
-  y /= y.norm();
-  // unit vector along cyl radius in WCS
-  Eigen::Vector3d z = Eigen::Vector3d::UnitX() - Eigen::Vector3d::UnitX().dot(y) * y;
-  z /= z.norm();
-  // third unit vector form right system in WCS
-  Eigen::Vector3d x = y.cross(z).normalized();
-  // Transform matrix from CSCS to WCS
-  Eigen::Matrix4d transform; transform.setIdentity();
-  transform.block<3,3>(0,0) << x, y, z;
-  transform.block<3,1>(0,3) = o;
-  // get Frame
-  EulerSolution angles = rot2euler(transform.topLeftCorner<3,3>(), true);
-  Vec6d frame;
-  frame << o, angles.A1, angles.B1, angles.C1;
-
-  Pose pose = { frame, transform };
-
-  return { R, L, pose };
-}
-
 Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u,
                             const Eigen::Vector3d &pc,
-                            double R, double L)
+                            double R, double L, char axis)
 {
   Eigen::Vector3d y = u.normalized();
 
@@ -278,26 +260,83 @@ Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u,
   return { R, L, pose };
 }
 
-Pose Cylinder::surfacePose(double dy, double angle) const
+Cylinder Cylinder::fromTwoPoints(const Eigen::Vector3d& c1,
+                                 const Eigen::Vector3d& c2,
+                                 const Eigen::Vector3d& o,
+                                 double R, double L,
+                                 char axis)
 {
-  const Eigen::Matrix4d T_local =
-      trMatrix4x4(Eigen::Vector3d(0.0, dy, 0.0)) *
-      rotMatrix4x4(angle, 'y') *
-      trMatrix4x4(Eigen::Vector3d(R, 0.0, 0.0));
+  axis = char(std::tolower(static_cast<unsigned char>(axis)));
+  Eigen::Vector3d d = (c2 - c1);
+  const double dn = d.norm();
+  d /= dn;
 
-  Pose scs; // surface coordinate system
-  scs.T = pose.T * T_local;
+  Eigen::Vector3d x, y, z;
+  if (axis == 'y') {
+    y = d;
+    z = prjToPerpPlane(Eigen::Vector3d::UnitZ(), y);
+    x = y.cross(z).normalized();
+  } else if (axis == 'z') {
+    z = d;
+    x = prjToPerpPlane(Eigen::Vector3d::UnitX(), z);
+    y = z.cross(x).normalized();
+  }
 
-  const Eigen::Vector3d os = scs.T.block<3,1>(0,3);
-  EulerSolution angles = rot2euler(scs.T.topLeftCorner<3,3>(), true);
+  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+  transform.block<3,3>(0,0) << x, y, z;
+  transform.block<3,1>(0,3) = o;
 
-  scs.frame << os.x(), os.y(), os.z(), angles.A1, angles.B1, angles.C1;
-  return scs;
+  EulerSolution angles = rot2euler(transform.topLeftCorner<3,3>(), true);
+
+  Vec6d frame;
+  frame << o.x(), o.y(), o.z(), angles.A1, angles.B1, angles.C1;
+
+  Pose pose = { frame, transform };
+  return { R, L, pose };
+
+}
+
+Pose Cylinder::surfacePose(char axis1, double val1,
+                           char axisRot, double angleDeg,
+                           char axis2, double val2,
+                           bool returnLocal) const
+{
+  const Eigen::Matrix4d T1 = trMatrix4x4(axisVec(axis1, val1));
+  const Eigen::Matrix4d RR = rotMatrix4x4(angleDeg, axisRot);
+  const Eigen::Matrix4d T2 = trMatrix4x4(axisVec(axis2, val2));
+
+  const Eigen::Matrix4d T_local = T1 * RR * T2;
+
+  Pose surf_pose;
+  surf_pose.T = returnLocal ? T_local : pose.T * T_local;
+
+  const Eigen::Vector3d os = surf_pose.T.block<3,1>(0,3);
+  EulerSolution eul = rot2euler(surf_pose.T.topLeftCorner<3,3>(), true);
+
+  surf_pose.frame << os.x(), os.y(), os.z(), eul.A1, eul.B1, eul.C1;
+  return surf_pose;
+}
+
+QVector<Pose> Cylinder::surfaceRing(int n, double L) const
+{
+  QVector<Pose> poses;
+  poses.reserve(n);
+
+  for (int k = 0; k < n; ++k) {
+    const double angleDeg = 360.0 * double(k) / double(n);
+    Pose p = surfacePose('z', L,
+                         'z', angleDeg,
+                         'y', -R,
+                         /*returnLocal=*/true);
+
+    poses.push_back(p);
+  }
+  return poses;
 }
 
 // ------------ Trajectory ------------
 namespace rsi {
-  QVector<Vec6d> spline(const QVector<Vec6d>& ref_points, const MotionParams& mp, int decimals)
+  QVector<Vec6d> polyline(const QVector<Vec6d>& ref_points, const MotionParams& mp, int decimals)
   {
     // [v] = mm/s; [a] = mm/s^2
     const double dt = 0.004; // 4 ms
@@ -364,8 +403,7 @@ namespace rsi {
       const double alpha    = segLen > 0.0 ? (s - segStart) / segLen : 0.0;
 
       // 5) interpolate pose
-      Vec6d currPos = (1.0 - alpha) * ref_points[idx]
-                      + alpha       * ref_points[idx + 1];
+      Vec6d currPos = (1.0 - alpha) * ref_points[idx] + alpha * ref_points[idx + 1];
 
       // 6) offset and rounding
       Vec6d dP = currPos - prevPos;
@@ -378,6 +416,7 @@ namespace rsi {
 
     return offsets;
   }
+
   QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams &mp, int decimals)
   {
     const double dt = 0.004;          // 4 ms
@@ -449,6 +488,39 @@ namespace rsi {
   }
 }
 
+QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT)
+{
+  QVector<Pose> path;
+  path.reserve(surf_poses.size());
+
+  for (const Pose& surf_pose : surf_poses) {
+    const Eigen::Matrix4d AiB = surf_pose.T;
+    const Eigen::Matrix4d ABT = AiT * AiB.inverse();
+
+    Pose out;
+    out.T = ABT;
+
+    const Eigen::Vector3d t = ABT.block<3,1>(0,3);
+    const EulerSolution eul = rot2euler(ABT.topLeftCorner<3,3>(), /*is_deg=*/true);
+
+    out.frame << t.x(), t.y(), t.z(), eul.A1, eul.B1, eul.C1;
+    path.push_back(out);
+  }
+
+  return path;
+}
+
+QVector<Vec6d> posesToFrames(const QVector<Pose>& poses)
+{
+  QVector<Vec6d> frames;
+  frames.reserve(poses.size());
+
+  for (const Pose& p : poses)
+    frames.push_back(p.frame);   // [x,y,z,A,B,C] in deg
+
+  return frames;
+}
+
 void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, int decimals)
 {
   QJsonArray root;
@@ -469,7 +541,3 @@ void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, 
   file.write(doc.toJson(QJsonDocument::Indented));
   file.close();
 }
-
-
-
-

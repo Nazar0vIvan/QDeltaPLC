@@ -15,8 +15,8 @@
 using Vec6d = Eigen::Matrix<double, 6, 1>; // row 6x1
 
 struct Plane {
-  double A, B, C, D; // A*x + B*y + C*z + D = 0
-  double AA, BB, DD; // z = AA*x + BB*y + DD
+  double A, B, C, D;   // A*x + B*y + C*z + D = 0
+  double AA, BB, DD;   // z = AA*x + BB*y + DD
 };
 
 struct Pose {
@@ -28,16 +28,23 @@ struct Pose {
 };
 
 struct Cylinder {
-  static Cylinder fromPoints(const Eigen::Vector3d& c1,
-                             const Eigen::Vector3d& c2,
-                             const Eigen::Vector3d& pc,
-                             double R, double L);
+  static Cylinder fromTwoPoints(const Eigen::Vector3d& c1,
+                                const Eigen::Vector3d& c2,
+                                const Eigen::Vector3d& pc,
+                                double R, double L,
+                                char axis = 'y');
 
   static Cylinder fromAxis(const Eigen::Vector3d& u,
                            const Eigen::Vector3d& pc,
-                           double R, double L);
+                           double R, double L,
+                           char axis = 'y');
 
-  Pose surfacePose(double dy, double angle = 0.0) const;
+  Pose surfacePose(char axis1, double val1,
+                   char axisRot, double angleDeg,
+                   char axis2, double val2,
+                   bool returnLocal = false) const;
+
+  QVector<Pose> surfaceRing(int n, double L) const;
 
   double R;
   double L;
@@ -61,10 +68,12 @@ Eigen::Vector3d poly(double x0, double x1, double x2,
 EulerSolution rot2euler(const Eigen::Matrix3d& R, bool is_deg = false);
 Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg = false);
 Eigen::Vector3d axisVec(char axis, double value);
-Eigen::Vector3d prjPointToLine(
-    const Eigen::Vector3d& l0,
-    const Eigen::Vector3d& v,
-    const Eigen::Vector3d& p);
+Eigen::Vector3d prjPointToLine(const Eigen::Vector3d& l0,
+                               const Eigen::Vector3d& v,
+                               const Eigen::Vector3d& p);
+
+// project vector vec onto plane ⟂ n (n assumed unit-ish)
+Eigen::Vector3d prjToPerpPlane(const Eigen::Vector3d& vec, const Eigen::Vector3d& n);
 
 // ------------ Frene ------------
 struct Frene {
@@ -100,15 +109,18 @@ Airfoil loadBladeJson(const QString& filePath);
 
 // ------------ Rsi Trajectory ------------
 struct MotionParams {
-  double v; // max contour velocity, mm/s;
-  double a; // contour acceleration, mm/s^2
+  double v; // max contour velocity
+  double a; // contour acceleration
 };
 
 namespace rsi {
-  QVector<Vec6d> spline(const QVector<Vec6d> &ref_points, const MotionParams& mp, int decimals = 3);
+  QVector<Vec6d> polyline(const QVector<Vec6d> &ref_points, const MotionParams& mp, int decimals = 3);
   QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams& mp, int decimals = 3);
 };
 
 void writeOffsetsToJson(const QVector<Vec6d>& offsets, const QString& filePath, int decimals = 3);
 
+QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT);
+
+QVector<Vec6d> posesToFrames(const QVector<Pose>& poses);
 #endif // PATHPLANNER_H

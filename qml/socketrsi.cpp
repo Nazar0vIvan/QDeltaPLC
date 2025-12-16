@@ -105,20 +105,21 @@ void SocketRSI::generateTrajectory()
   const double Rr = 19.991300;
   const double Lr = 20.0;
 
-  Cylinder roller = Cylinder::fromAxis(ur, Cr, Rr, Lr);
+  Cylinder rl = Cylinder::fromAxis(ur, Cr, Rr, Lr, 'y');
+  Pose rl_s = rl.surfacePose('y', 0.0, 'y', -45.0, 'z', rl.R + 10.0, false);
 
   // WORKPIECE
-  Eigen::Vector3d Cwp = { 0.012406, 111.290488, 0.113702 };
+  Eigen::Vector3d Pc = { -0.113702, -0.012406, 111.290488 };
 
-  Eigen::Vector3d C11 = {  0.002515, 120.0, 0.151981 },
-                  C12 = {  0.003125, 120.0, 0.153901 },
-                  C21 = { -0.061220, 180.0, 0.422887 },
-                  C22 = { -0.065223, 180.0, 0.423638 };
+  Eigen::Vector3d Pc11 = { -0.151981, -0.002515, 120.0},
+                  Pc12 = { -0.153901, -0.003125, 120.0 },
+                  Pc21 = { -0.422887,  0.061220, 180.0 },
+                  Pc22 = { -0.423638,  0.065223, 180.0};
 
-  Eigen::Vector3d C1wp = 0.5 * (C11 + C12),
-                  C2wp = 0.5 * (C21 + C22);
+  Eigen::Vector3d Pc1 = 0.5 * (Pc11 + Pc12),
+                  Pc2 = 0.5 * (Pc21 + Pc22);
 
-  double Rswp[] = {
+  double Rs[] = {
     12.991316,
     12.990244,
     12.998138,
@@ -129,10 +130,20 @@ void SocketRSI::generateTrajectory()
     13.019753
   };
 
-  const double Rwp = Eigen::Map<const Eigen::Matrix<double,8,1>>(Rswp).mean();
-  const double Lwp = 74.0;
+  const double Rc = Eigen::Map<const Eigen::Matrix<double,8,1>>(Rs).mean();
+  const double Lc = 74.0;
 
-  Cylinder wp = Cylinder::fromPoints(C1wp, C2wp, Cwp, Rwp, Lwp);
+  Cylinder cyl = Cylinder::fromTwoPoints(Pc1, Pc2, Pc, Rc, Lc, 'z');
+
+  Eigen::Matrix4d AiT;
+  AiT <<  -1.0, 0.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 0.0, 1.0; // ROLLER SURFACE
+
+
+  QVector<Pose> ref_poses = pathFromSurfPoses(cyl.surfaceRing(100, 0.0), AiT);
+  m_offsets = rsi::polyline(posesToFrames(ref_poses), {10, 4});
 
   emit trajectoryReady();
 
