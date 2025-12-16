@@ -208,6 +208,7 @@ FtsRunner::FtsRunner(QAbstractSocket *socket, QObject *parent) : UdpSocketRunner
   }
 
   connect(fts, &SocketFTS::dataSampleLFReady, this, &FtsRunner::onDataSampleLFReady, Qt::QueuedConnection);
+  connect(fts, &SocketFTS::startLogRecording, this, &FtsRunner::startLogRecording, Qt::QueuedConnection);
 }
 
 void FtsRunner::onDataSampleLFReady(const RDTResponse& s)

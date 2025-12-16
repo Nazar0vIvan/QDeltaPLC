@@ -23,21 +23,49 @@ QxGroupBox {
       title: qsTr("Monitoring")
     }
 
-    QxButton {
-      id: btnStart
+    RowLayout {
+      id: rl
 
-      enabled: ftsRunner
-      checked: ftsRunner && ftsRunner.isStreaming
-      text: checked ? "Stop" : "Start"
-      onClicked: {
-        if (!ftsRunner) return
-        if (checked) {
-          ftsRunner.invoke("stopStreaming");
-        } else {
-          ftsRunner.invoke("startStreaming");
+      QxButton {
+        id: btnStart
+
+        enabled: ftsRunner
+        checked: ftsRunner && ftsRunner.isStreaming
+        text: checked ? "Stop" : "Start"
+        onClicked: {
+          if (!ftsRunner) return
+          if (checked) {
+            ftsRunner.invoke("stopStreaming");
+          } else {
+            ftsRunner.invoke("startStreaming");
+          }
+        }
+      }
+
+      QxButton {
+        id: btnLog
+
+        enabled: ftsRunner && ftsRunner.isStreaming
+        text: "Record"
+        onClicked: {
+          if (!ftsRunner) return;
+          ftsRunner.invoke("startLogRecording");
+        }
+      }
+
+      QxButton {
+        id: btnSaveToFile
+
+        enabled: ftsRunner && !ftsRunner.isStreaming
+        text: "Save"
+        onClicked: {
+          if (!ftsRunner) return;
+          ftsRunner.invoke("saveLogToDefaultFile");
         }
       }
     }
+
+
   }
 }
 

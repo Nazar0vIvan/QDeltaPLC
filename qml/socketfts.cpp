@@ -42,6 +42,8 @@ void SocketFTS::startStreaming()
 
 void SocketFTS::stopStreaming()
 {
+  setLogRecordingEnabled(false);
+
   const QByteArray stopReq = req2dtg(RDTRequest{0x1234,0x0000,0}).data();
   writeDatagram(stopReq, m_pa, m_pp);
   emit streamReset();
@@ -90,6 +92,9 @@ void SocketFTS::onReadyRead()
 
     m_batch.push_back(sample);
     if (m_emitTimer.elapsed() >= m_emitIntervalMs && !m_batch.isEmpty()) {
+      const RDTResponse lf = m_batch.back();
+      appendLogSample(lf);
+
       emit dataSampleLFReady(m_batch.back());
       emit dataBatchReady(std::exchange(m_batch, {}));
       m_emitTimer.restart();
@@ -159,5 +164,134 @@ RDTResponse SocketFTS::dtg2resp(const QNetworkDatagram& dtg) const
   return r;
 }
 
+// samples logger
 
+void SocketFTS::setLogRecordingEnabled(bool enabled)
+{
+  if (enabled == m_logEnabled) return;
+
+  if (enabled) {
+    if (m_logCapacity <= 0) {
+      emit logMessage({"Log capacity must be > 0", 0, objectName()});
+      return;
+    }
+
+    m_logEnabled = true;
+    m_log.clear();
+    m_log.reserve(m_logCapacity);
+
+    emit logRecordingEnabledChanged(true);
+    emit logMessage({QString("LF log recording started (capacity=%1 samples)").arg(m_logCapacity),
+                     1, objectName()});
+    return;
+  }
+
+  // disabling
+  m_logEnabled = false;
+
+  emit logRecordingEnabledChanged(false);
+  emit logMessage({"LF log recording stopped", 1, objectName()});
+
+  if (!m_log.isEmpty()) {
+    emit logRecordingReady(m_log);
+  }
+}
+
+void SocketFTS::startLogRecording()
+{
+  setLogRecordingEnabled(true);
+}
+
+void SocketFTS::stopLogRecording()
+{
+  setLogRecordingEnabled(false);
+}
+
+void SocketFTS::appendLogSample(const RDTResponse &sample)
+{
+  if (!m_logEnabled) {
+    return;
+  }
+
+  if (m_logCapacity <= 0) {
+    setLogRecordingEnabled(false);
+    return;
+  }
+
+  if (m_log.size() < m_logCapacity) {
+    m_log.push_back(sample);
+  }
+
+  // Stop exactly when capacity is reached
+  if (m_log.size() >= m_logCapacity) {
+    emit logMessage({QString("LF log reached capacity (%1 samples), auto-stopping").arg(m_logCapacity),
+                     2, objectName()});
+    setLogRecordingEnabled(false);
+  }
+}
+
+void SocketFTS::clearLog()
+{
+  m_log.clear();
+}
+
+bool SocketFTS::saveLogToDefaultFile()
+{
+  return saveLogToFileImpl(m_logFilePath);
+}
+
+bool SocketFTS::saveLogToFileImpl(const QString &filePath)
+{
+  QJsonArray samplesArr;
+
+  for (const auto& s : std::as_const(m_log)) {
+    QJsonObject o;
+    o["rdt_sequence"] = static_cast<qint64>(s.rdt_sequence);
+    o["ft_sequence"]  = static_cast<qint64>(s.ft_sequence);
+    o["status"]       = static_cast<qint64>(s.status);
+    o["Fx"]           = static_cast<qint64>(s.Fx);
+    o["Fy"]           = static_cast<qint64>(s.Fy);
+    o["Fz"]           = static_cast<qint64>(s.Fz);
+    o["Tx"]           = static_cast<qint64>(s.Tx);
+    o["Ty"]           = static_cast<qint64>(s.Ty);
+    o["Tz"]           = static_cast<qint64>(s.Tz);
+    o["timestamp"]    = s.timestamp;
+
+    samplesArr.append(o);
+  }
+  QJsonObject meta;
+  meta["capacity"] = m_logCapacity;
+  meta["count"]    = m_log.size();
+  meta["emit_interval_ms"] = m_emitIntervalMs;
+  meta["note"] = QString("Low-frequency samples captured from dataSampleLFReady; overwritten each session.");
+
+  QJsonObject root;
+  root["meta"] = meta;
+  root["samples"] = samplesArr;
+
+  const QJsonDocument doc(root);
+  const QByteArray json = doc.toJson(QJsonDocument::Indented);
+
+  QFile f(filePath);
+  if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    emit logMessage({QString("Failed to write log file '%1': %2").arg(filePath, f.errorString()),
+                     0, objectName()});
+    return false;
+  }
+
+  const qint64 written = f.write(json);
+  f.close();
+
+  if (written != json.size()) {
+    emit logMessage({QString("Partial write to '%1': wrote %2 of %3 bytes")
+                       .arg(filePath).arg(written).arg(json.size()),
+                     0, objectName()});
+    return false;
+  }
+
+  emit logMessage({QString("Saved LF log to '%1' (%2 samples, %3 bytes)")
+                       .arg(filePath).arg(m_log.size()).arg(json.size()),
+                   1, objectName()});
+  return true;
+}
 

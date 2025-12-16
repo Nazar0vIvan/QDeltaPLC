@@ -1,4 +1,5 @@
 import numpy as np
+import json
 import matplotlib.pyplot as plt
 
 points = np.array([
@@ -34,4 +35,5 @@ ax.set_ylabel("Y")
 ax.set_zlabel("Z")
 ax.set_title("Touch points (3D)")
 plt.show()
+
 

@@ -116,11 +116,11 @@ struct MotionParams {
 namespace rsi {
   QVector<Vec6d> polyline(const QVector<Vec6d> &ref_points, const MotionParams& mp, int decimals = 3);
   QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams& mp, int decimals = 3);
+  QVector<Vec6d> offsetsFromAbsPoses(const QVector<Pose>& absPoses, int decimals);
 };
 
 void writeOffsetsToJson(const QVector<Vec6d>& offsets, const QString& filePath, int decimals = 3);
 
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT);
-
 QVector<Vec6d> posesToFrames(const QVector<Pose>& poses);
 #endif // PATHPLANNER_H

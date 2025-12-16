@@ -11,6 +11,11 @@
 #include <QElapsedTimer>
 #include <QVariantList>
 #include <QVariant>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDir>
 
 #include "logger.h"
 
@@ -61,11 +66,22 @@ public:
   Q_INVOKABLE void stopStreaming();
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
 
+  // logger
+  Q_INVOKABLE void setLogRecordingEnabled(bool enabled);
+  Q_INVOKABLE void startLogRecording();
+  Q_INVOKABLE void stopLogRecording();
+
+  Q_INVOKABLE bool saveLogToDefaultFile();
+
 signals:
   void dataSampleHFReady(const RDTResponse& sample); // for rsi
   void dataSampleLFReady(const RDTResponse& sample); // for ui
   void dataBatchReady(const QVector<RDTResponse>& samples); // for ui
   void streamReset();
+
+  // logger
+  void logRecordingEnabledChanged(bool enabled);
+  void logRecordingReady(const QVector<RDTResponse>& samples); // emitted when recording stops
 
   void logMessage(const LoggerMessage& msg);
 
@@ -79,7 +95,6 @@ private:
   RDTResponse dtg2resp(const QNetworkDatagram& networkDatagram) const;
   QString stateToString(SocketState state);
 
-         // batching state
   QVector<RDTResponse> m_batch;
   QElapsedTimer m_emitTimer;
   quint32       m_baseSeq = 0;
@@ -91,7 +106,19 @@ private:
   QHostAddress m_pa;
   quint16 m_pp = 0;
 
-  QList<double> m_FzValues;
+  // logger
+  void appendLogSample(const RDTResponse& sample);
+  QVector<RDTResponse> exportLogSamples() const;
+  void clearLog();
+
+  bool m_logEnabled = false;
+  int  m_logCapacity = 7500;   // number of LF samples to keep
+  int  m_logWriteIdx = 0;      // next write position
+  int  m_logCount    = 0;      // number of valid samples (<= capacity)
+  QVector<RDTResponse> m_log;  // fixed-size storage (resized to capacity)
+
+  bool saveLogToFileImpl(const QString& filePath);
+  QString m_logFilePath = "record.json";
 };
 
 #endif // SOCKETFTS_H

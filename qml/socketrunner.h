@@ -113,6 +113,7 @@ public:
 
 signals:
    void sampleReady();
+   void startLogRecording();
 
 public slots:
   void onDataSampleLFReady(const RDTResponse& sample);

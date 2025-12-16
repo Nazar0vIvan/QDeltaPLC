@@ -130,8 +130,8 @@ private:
 
 
   // --- logic helpers ---
-  std::array<double, 6> tickMotion(bool shouldStop);
-  RsiTxFrame makeTxFrame(quint64 ipoc, bool shouldStop);
+  std::array<double, 6> tickMotion(bool& shouldStopOut);
+  RsiTxFrame makeTxFrame(quint64 ipoc);
 
 
   // --- serialization/parsing ---

@@ -141,13 +141,14 @@ void SocketRSI::generateTrajectory()
            0.0, 1.0, 0.0, 0.0,
            0.0, 0.0, 0.0, 1.0; // ROLLER SURFACE
 
-
   QVector<Pose> ref_poses = pathFromSurfPoses(cyl.surfaceRing(100, 0.0), AiT);
-  m_offsets = rsi::polyline(posesToFrames(ref_poses), {10, 4});
+
+  m_offsets = rsi::polyline(posesToFrames(ref_poses), {10, 3});
+  m_offsets = m_offsets.mid(0, qsizetype(m_offsets.size() / 9));
 
   emit trajectoryReady();
 
-  // writeOffsetsToJson(m_offsets, "offsets");
+  writeOffsetsToJson(m_offsets, "offsets.json");
 }
 
 void SocketRSI::startStreaming()
@@ -186,12 +187,7 @@ void SocketRSI::onReadyRead()
 
     const RsiResponse resp = parseRsiResponse(dg.data());
 
-    const double Fz  = m_Fz;
-    const double Fth = m_Fth;
-
-    const bool shouldStop = (qFabs(Fz) >= qFabs(Fth));
-
-    const RsiTxFrame tx = makeTxFrame(resp.ipoc, shouldStop);
+    const RsiTxFrame tx = makeTxFrame(resp.ipoc);
 
     const QByteArray reply = subsXml(tx);
     pushTxLog(reply);
@@ -288,8 +284,10 @@ void SocketRSI::pushTxLog(const QByteArray& xml)
   }
 }
 
-std::array<double, 6> SocketRSI::tickMotion(bool shouldStop)
+std::array<double, 6> SocketRSI::tickMotion(bool& shouldStopOut)
 {
+  shouldStopOut = false;
+
   std::array<double, 6> corr{};
   corr.fill(0.0);
 
@@ -297,37 +295,42 @@ std::array<double, 6> SocketRSI::tickMotion(bool shouldStop)
     return corr;
 
   if (m_offsets.isEmpty()) {
+    shouldStopOut = true;
     finishMotion(false);
     return corr;
   }
 
-  // apply next correction if available
   if (m_offsetIdx < m_offsets.size()) {
     const Vec6d& dP = m_offsets[m_offsetIdx++];
+
     for (int i = 0; i < 6; ++i)
       corr[static_cast<size_t>(i)] = dP(i);
 
-    // finish after sending last point
     const bool exhausted = (m_offsetIdx >= m_offsets.size());
     if (exhausted) {
+      // last offset is sent in this frame -> stop in this same frame
+      shouldStopOut = true;
       finishMotion(false);
-    } else if (shouldStop) {
-      // force stop after emitting this correction
-      finishMotion(true);
     }
-  } else {
-    finishMotion(false);
+
+    return corr;
   }
 
+  // safety fallback (already past end)
+  shouldStopOut = true;
+  finishMotion(false);
   return corr;
 }
 
-RsiTxFrame SocketRSI::makeTxFrame(quint64 ipoc, bool shouldStop)
+RsiTxFrame SocketRSI::makeTxFrame(quint64 ipoc)
 {
   RsiTxFrame tx;
   tx.ipoc = ipoc;
-  tx.shouldStop = shouldStop;
-  tx.corr = tickMotion(shouldStop);
+
+  bool shouldStopOut = false;
+  tx.corr = tickMotion(shouldStopOut);
+  tx.shouldStop = shouldStopOut;
+
   return tx;
 }
 

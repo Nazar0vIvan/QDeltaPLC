@@ -90,7 +90,7 @@ EulerSolution rot2euler(const Eigen::Matrix3d &R, bool is_deg)
 
 Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg)
 {
-  const double k = is_deg ? (180.0 / M_PI) : 1.0;
+  const double k = is_deg ? (M_PI / 180.0) : 1.0;
   Eigen::Matrix3d R =
       (Eigen::AngleAxisd(A*k, Eigen::Vector3d::UnitZ()) *
        Eigen::AngleAxisd(B*k, Eigen::Vector3d::UnitY()) *
@@ -328,7 +328,6 @@ QVector<Pose> Cylinder::surfaceRing(int n, double L) const
                          'z', angleDeg,
                          'y', -R,
                          /*returnLocal=*/true);
-
     poses.push_back(p);
   }
   return poses;
@@ -486,12 +485,51 @@ namespace rsi {
 
     return offsets;
   }
+
+  QVector<Vec6d> offsetsFromAbsPoses(const QVector<Pose> &absPoses, int decimals)
+  {
+    if (absPoses.size() < 2) return {};
+
+    const double scale = std::pow(10.0, decimals);
+
+    QVector<Vec6d> offsets;
+    offsets.reserve(absPoses.size() - 1);
+
+    Pose prev = absPoses.front();
+
+    for (int i = 1; i < absPoses.size(); ++i) {
+      const Pose& curr = absPoses[i];
+
+      // translation delta in base
+      const Eigen::Vector3d dp = curr.t() - prev.t();
+
+      // rotation delta in base: R_inc such that R_curr = R_inc * R_prev
+      const Eigen::Matrix3d dR = curr.R() * prev.R().transpose();
+
+      const EulerSolution de = rot2euler(dR, /*is_deg=*/true);
+
+      Vec6d d;
+      d << dp.x(), dp.y(), dp.z(), de.A1, de.B1, de.C1;
+
+      for (int k = 0; k < 6; ++k)
+        d(k) = std::round(d(k) * scale) / scale;
+
+      offsets.push_back(d);
+      prev = curr;
+    }
+
+    return offsets;
+  }
+
 }
 
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT)
 {
   QVector<Pose> path;
   path.reserve(surf_poses.size());
+
+  bool havePrev = false;
+  Eigen::Vector3d prevABC = Eigen::Vector3d::Zero();
 
   for (const Pose& surf_pose : surf_poses) {
     const Eigen::Matrix4d AiB = surf_pose.T;
@@ -503,7 +541,16 @@ QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Ma
     const Eigen::Vector3d t = ABT.block<3,1>(0,3);
     const EulerSolution eul = rot2euler(ABT.topLeftCorner<3,3>(), /*is_deg=*/true);
 
-    out.frame << t.x(), t.y(), t.z(), eul.A1, eul.B1, eul.C1;
+    Eigen::Vector3d abc;
+    if (!havePrev) {
+      abc = Eigen::Vector3d(eul.A1, eul.B1, eul.C1);
+      havePrev = true;
+    } else {
+      abc = pickContinuousABC(eul, prevABC);
+    }
+    prevABC = abc;
+
+    out.frame << t.x(), t.y(), t.z(), abc[0], abc[1], abc[2];
     path.push_back(out);
   }
 
@@ -540,4 +587,27 @@ void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, 
   file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
   file.write(doc.toJson(QJsonDocument::Indented));
   file.close();
+}
+
+double unwrapToRefDeg(double a, double ref)
+{
+  // shift a by +/-360 so that it's closest to ref
+  while (a - ref > 180.0) a -= 360.0;
+  while (a - ref < -180.0) a += 360.0;
+  return a;
+}
+
+
+
+Eigen::Vector3d pickContinuousABC(const EulerSolution &e, const Eigen::Vector3d &prevABC)
+{
+  Eigen::Vector3d c1(e.A1, e.B1, e.C1);
+  Eigen::Vector3d c2(e.A2, e.B2, e.C2);
+
+  for (int i = 0; i < 3; ++i) {
+    c1[i] = unwrapToRefDeg(c1[i], prevABC[i]);
+    c2[i] = unwrapToRefDeg(c2[i], prevABC[i]);
+  }
+
+  return ((c1 - prevABC).squaredNorm() <= (c2 - prevABC).squaredNorm()) ? c1 : c2;
 }
