@@ -46,8 +46,11 @@ set(CPP_FILES
   pathplanner.cpp
 )
 
+qt_policy(SET QTP0004 NEW)
+
 qt_add_executable(qdeltaplc
   main.cpp
+  ${CPP_FILES}
 )
 
 qt_add_qml_module(qdeltaplc
@@ -55,8 +58,6 @@ qt_add_qml_module(qdeltaplc
   VERSION 1.0
   QML_FILES
     ${QML_FILES}
-  SOURCES
-    ${CPP_FILES}
   RESOURCES
     pics.qrc
     fonts.qrc
@@ -74,8 +75,8 @@ target_link_libraries(qdeltaplc
   PRIVATE Qt6::Network
   PRIVATE Qt6::Charts
   PRIVATE Qt6::Xml
-  PRIVATE Stylesplugin
-  PRIVATE Componentsplugin
+  PRIVATE Styles
+  PRIVATE Components
 )
 
 include(GNUInstallDirs)
@@ -85,5 +86,3 @@ install(TARGETS qdeltaplc
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-
-qt_import_qml_plugins(qdeltaplc)

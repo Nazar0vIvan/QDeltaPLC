@@ -5,6 +5,7 @@ qt_add_library(Components STATIC)
 qt_add_qml_module(Components
   URI Components
   VERSION 1.0
+  NO_PLUGIN
   QML_FILES
     QxLed.qml
     QxGroupBox.qml

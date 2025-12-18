@@ -7,6 +7,7 @@ qt_add_library(Styles STATIC)
 qt_add_qml_module(Styles
     URI Styles
     VERSION 1.0
+    NO_PLUGIN
     QML_FILES
         Styles.qml
 )
