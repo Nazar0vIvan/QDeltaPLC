@@ -39,52 +39,79 @@ int AbstractSocketRunner::indexOfSignature(const QByteArray& sig) const {
 void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args)
 {
   if (!m_socket) {
-    emit logMessage({method + ": Socket is null", 0, ""});
+    emit logMessage({method + ": socket is null", 0, ""});
     return;
+  }
+
+  // Enforce allow-list (your m_api is built from the socket's own public invokables/slots)
+  if (!allowed(method)) {
+    emit logMessage({method + ": not allowed", 0, m_socket->objectName()});
+    return;
+  }
+
+  // If somebody calls invoke() before start(), ensure thread is running.
+  if (m_thread && !m_thread->isRunning()) {
+    m_thread->start();
   }
 
   const QByteArray name = method.toLatin1();
   const bool haveArgs = !args.isEmpty();
 
-  int idx = -1; bool haveReturn = false;
+  // Find the method index (signature: () or (QVariantMap))
+  int idx = -1;
   if (haveArgs) {
     idx = indexOfSignature(name + "(QVariantMap)");
-    haveReturn = m_socket->metaObject()->method(idx).returnMetaType().id() == QMetaType::QVariantMap;
-  }
-  else {
-    idx = indexOfSignature(name + "()");
-  }
-
-  if (idx == -1) {
-    emit logMessage({method + ": no such method", 0, m_socket->objectName()});
-  }
-
-  bool ok = false; QVariantMap out;
-
-  if (haveReturn) {
-    ok = QMetaObject::invokeMethod(m_socket,
-                                  name.constData(),
-                                  Qt::BlockingQueuedConnection,
-                                  Q_RETURN_ARG(QVariantMap, out),
-                                  Q_ARG(QVariantMap, args));
-  }
-  else if (haveArgs) {
-    ok = QMetaObject::invokeMethod(m_socket,
-                                  name.constData(),
-                                  Qt::QueuedConnection,
-                                  Q_ARG(QVariantMap, args));
-  }
-  else {
-    ok = QMetaObject::invokeMethod(m_socket,
-                                  name.constData(),
-                                  Qt::QueuedConnection);
-  }
-
-  if (ok) {
-    emit resultReady(method, out);
   } else {
-    emit logMessage({method + ": failed to invoke", 0, m_socket->objectName()});
+    idx = indexOfSignature(name + "()");
+    if (idx < 0) {
+      // allow calling (QVariantMap) with empty args if that's the only signature
+      idx = indexOfSignature(name + "(QVariantMap)");
+    }
   }
+
+  if (idx < 0) {
+    emit logMessage({method + ": no such invokable signature", 0, m_socket->objectName()});
+    return;
+  }
+
+  const QMetaMethod mm = m_socket->metaObject()->method(idx);
+  const int retTypeId = mm.returnMetaType().id();
+  const bool returnsMap  = (retTypeId == QMetaType::QVariantMap);
+  const bool returnsVoid = (retTypeId == QMetaType::Void);
+
+  if (!returnsVoid && !returnsMap) {
+    emit logMessage({method + ": unsupported return type (only void/QVariantMap allowed)", 0, m_socket->objectName()});
+    return;
+  }
+
+  // if already on socket thread, do DirectConnection.
+  const bool sameThread = (QThread::currentThread() == m_socket->thread());
+  const Qt::ConnectionType ct =
+      returnsMap ? (sameThread ? Qt::DirectConnection : Qt::BlockingQueuedConnection)
+                 : (sameThread ? Qt::DirectConnection : Qt::QueuedConnection);
+
+  bool ok = false;
+  QVariantMap out;
+
+  if (returnsMap) {
+    ok = QMetaObject::invokeMethod(
+        m_socket, name.constData(), ct,
+        Q_RETURN_ARG(QVariantMap, out),
+        Q_ARG(QVariantMap, args)
+        );
+  } else {
+    if (mm.parameterCount() == 1) {
+      ok = QMetaObject::invokeMethod(
+          m_socket, name.constData(), ct,
+          Q_ARG(QVariantMap, args)
+          );
+    } else {
+      ok = QMetaObject::invokeMethod(m_socket, name.constData(), ct);
+    }
+  }
+
+  if (ok) emit resultReady(method, out);
+  else emit logMessage({method + ": invoke failed", 0, m_socket->objectName()});
 }
 
 void AbstractSocketRunner::start()
@@ -183,7 +210,6 @@ UdpSocketRunner::UdpSocketRunner(QAbstractSocket *socket, QObject *parent) : Abs
   });
 
   connect(m_socket, &QIODevice::readyRead, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
-  connect(m_socket, &QIODevice::bytesWritten, this, &UdpSocketRunner::onPulse, Qt::QueuedConnection);
 }
 
 UdpSocketRunner::~UdpSocketRunner() = default;
@@ -208,7 +234,19 @@ FtsRunner::FtsRunner(QAbstractSocket *socket, QObject *parent) : UdpSocketRunner
   }
 
   connect(fts, &SocketFTS::dataSampleLFReady, this, &FtsRunner::onDataSampleLFReady, Qt::QueuedConnection);
-  connect(fts, &SocketFTS::startLogRecording, this, &FtsRunner::startLogRecording, Qt::QueuedConnection);
+}
+
+double FtsRunner::axisValue(const QString &tag) const
+{
+  if (!m_hasPublished) return 0.0;
+
+  if (tag == "Fx") return m_sample.Fx;
+  if (tag == "Fy") return m_sample.Fy;
+  if (tag == "Fz") return m_sample.Fz;
+  if (tag == "Tx") return m_sample.Tx;
+  if (tag == "Ty") return m_sample.Ty;
+  if (tag == "Tz") return m_sample.Tz;
+  return 0.0;
 }
 
 void FtsRunner::onDataSampleLFReady(const RDTResponse& s)
@@ -260,15 +298,11 @@ bool FtsRunner::applyDeadbandAxes(RDTResponse &dst, const RDTResponse &src, qint
 
 void FtsRunner::publish(const RDTResponse &s)
 {
-  m_sampleMap["rdt_sequence"] = s.rdt_sequence;
-  m_sampleMap["ft_sequence"]  = s.ft_sequence;
-  m_sampleMap["status"]       = s.status;
-  m_sampleMap["Fx"] = s.Fx; m_sampleMap["Fy"] = s.Fy; m_sampleMap["Fz"] = s.Fz;
-  m_sampleMap["Tx"] = s.Tx; m_sampleMap["Ty"] = s.Ty; m_sampleMap["Tz"] = s.Tz;
-  m_sampleMap["timestamp"] = s.timestamp;
-
+  m_sample = s;
   emit sampleReady();
 }
+
+
 
 // ----- RsiRunner -----
 

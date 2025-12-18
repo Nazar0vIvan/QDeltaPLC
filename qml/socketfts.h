@@ -16,6 +16,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDir>
+#include <QtQml/qqmlregistration.h>
 
 #include "logger.h"
 
@@ -29,6 +30,7 @@ struct RDTRequest
 struct RDTResponse
 {
   Q_GADGET
+  QML_VALUE_TYPE(rdtResponse)
   Q_PROPERTY(uint32_t rdt_sequence MEMBER rdt_sequence)
   Q_PROPERTY(uint32_t ft_sequence MEMBER ft_sequence)
   Q_PROPERTY(uint32_t status MEMBER status)

@@ -100,6 +100,9 @@ Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg)
   return R;
 }
 
+double unwrapToRefDeg(double a, double ref);
+Eigen::Vector3d pickContinuousABC(const EulerSolution& e, const Eigen::Vector3d& prevABC);
+
 Eigen::Vector3d prjPointToLine(const Eigen::Vector3d &l0, const Eigen::Vector3d &v, const Eigen::Vector3d &p)
 {
   const double vv = v.squaredNorm();
@@ -520,7 +523,6 @@ namespace rsi {
 
     return offsets;
   }
-
 }
 
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT)
@@ -596,8 +598,6 @@ double unwrapToRefDeg(double a, double ref)
   while (a - ref < -180.0) a += 360.0;
   return a;
 }
-
-
 
 Eigen::Vector3d pickContinuousABC(const EulerSolution &e, const Eigen::Vector3d &prevABC)
 {

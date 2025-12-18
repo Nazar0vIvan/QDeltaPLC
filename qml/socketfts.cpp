@@ -11,10 +11,10 @@ SocketFTS::SocketFTS(const QString& name, QObject* parent) : QUdpSocket(parent)
 
   setOpenMode(QIODeviceBase::ReadWrite);
 
-  connect(this, &SocketFTS::readyRead, this, &SocketFTS::onReadyRead);
+  connect(this, &SocketFTS::readyRead,     this, &SocketFTS::onReadyRead);
   connect(this, &SocketFTS::errorOccurred, this, &SocketFTS::onErrorOccurred);
   connect(this, &SocketFTS::stateChanged,  this, &SocketFTS::onStateChanged);
-  connect(this, &SocketFTS::logMessage,  Logger::instance(), &Logger::push);
+  connect(this, &SocketFTS::logMessage,    Logger::instance(), &Logger::push);
 }
 
 // Q_INVOKABLE
@@ -96,7 +96,8 @@ void SocketFTS::onReadyRead()
       appendLogSample(lf);
 
       emit dataSampleLFReady(m_batch.back());
-      emit dataBatchReady(std::exchange(m_batch, {}));
+      emit dataBatchReady(m_batch);
+      m_batch.clear();
       m_emitTimer.restart();
     }
 
@@ -112,6 +113,7 @@ void SocketFTS::onStateChanged(QAbstractSocket::SocketState state) {
 }
 
 // PRIVATE
+
 QString SocketFTS::stateToString(SocketState state)
 {
   switch (state) {

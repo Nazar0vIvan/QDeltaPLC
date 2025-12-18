@@ -3,8 +3,8 @@ import json
 import matplotlib.pyplot as plt
 
 
-# record.json 
-with open("record_scaled_fx_fy.json", "r", encoding="utf-8") as f:
+#  
+with open("record.json", "r", encoding="utf-8") as f:
     data = json.load(f)
 
 samples = data["samples"]
@@ -14,21 +14,21 @@ t  = [s["timestamp"] for s in samples]
 scale = 1_000_000.0
 Fx = [s["Fx"] / scale for s in samples]
 Fy = [s["Fy"] / scale for s in samples]
-#Fz = [s["Fz"] / scale for s in samples]
+Fz = [s["Fz"] / scale for s in samples]
 Tx = [s["Tx"] / scale for s in samples]
 Ty = [s["Ty"] / scale for s in samples]
 Tz = [s["Tz"] / scale for s in samples]
 
 # Plot forces
-label_fs = 16
-tick_fs  = 14
-legend_fs = 14
+label_fs = 18
+tick_fs  = 16
+legend_fs = 18
 
 plt.figure()
 plt.plot(t, Fx, label="Fx")
 plt.plot(t, Fy, label="Fy")
+plt.plot(t, Fz, label="Fz")
 
-plt.xlabel("Время, с", fontsize=label_fs)
 plt.ylabel("Силы", fontsize=label_fs)
 
 plt.xticks(fontsize=tick_fs)

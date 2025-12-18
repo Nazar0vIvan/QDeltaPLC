@@ -109,8 +109,8 @@ Airfoil loadBladeJson(const QString& filePath);
 
 // ------------ Rsi Trajectory ------------
 struct MotionParams {
-  double v; // max contour velocity
-  double a; // contour acceleration
+  double v;
+  double a;
 };
 
 namespace rsi {

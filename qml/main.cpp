@@ -3,6 +3,7 @@
 #include <QQmlEngine>
 #include <QQmlContext>
 #include <QFontDatabase>
+#include <QMetaType>
 
 #include "socketrunner.h"
 #include "socketdeltaplc.h"
@@ -20,6 +21,9 @@ int main(int argc, char *argv[])
   if (idfont == -1) {
     qWarning() << "Failed to load font from resources!";
   }
+
+  qRegisterMetaType<RDTResponse>("RDTResponse");
+  qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
 
   SocketDeltaPLC* socketDeltaPLC = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
   TcpSocketRunner plcRunner(socketDeltaPLC);

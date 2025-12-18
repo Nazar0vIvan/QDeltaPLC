@@ -47,9 +47,8 @@ Control {
       color: Styles.secondary.base
 
       value: {
-        const raw = (ftsRunner.isStreaming && ftsRunner.sample)
-          ? (ftsRunner.sample[model.tag] ?? 0)
-          : 0;
+        const _ = ftsRunner.sampleSeq;
+        const raw = ftsRunner.isStreaming ? ftsRunner.axisValue(model.tag) : 0;
         return +(Number(raw) / root.countFactor).toFixed(3);
       }
     }

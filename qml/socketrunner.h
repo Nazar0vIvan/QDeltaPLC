@@ -107,9 +107,13 @@ public:
   explicit FtsRunner(QAbstractSocket* socket, QObject* parent = nullptr);
   ~FtsRunner() override = default;
 
-  Q_PROPERTY(QVariantMap sample READ sample NOTIFY sampleReady)
+  Q_PROPERTY(RDTResponse sample READ sample NOTIFY sampleReady)
+  Q_PROPERTY(quint32 sampleSeq READ sampleSeq NOTIFY sampleReady)
 
-  QVariantMap sample() const { return m_sampleMap; }
+  Q_INVOKABLE double axisValue(const QString& tag) const;
+
+  RDTResponse sample() const { return m_sample; }
+  quint32 sampleSeq() const { return m_sample.rdt_sequence; }
 
 signals:
    void sampleReady();
@@ -126,8 +130,8 @@ private:
   RDTResponse m_lastPublished{};
   bool        m_hasPublished = false;
 
-  QVariantMap m_sampleMap;
-  double      m_tolerance = 0.5;
+  RDTResponse m_sample{};
+  double      m_tolerance = 0.05;
 };
 
 // ----- RsiRunner -----
