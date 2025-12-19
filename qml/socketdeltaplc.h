@@ -32,7 +32,7 @@ signals:
   void logMessage(const LoggerMessage& msg);
   void errorOccurredMessage(const LoggerMessage& msg);
   void stateChangedMessage(const LoggerMessage& msg);
-  void plcDataReady(const QVariantMap& data);
+  void dataReady(const QVariantMap& data);
 
 public slots:
   void onErrorOccurred(QAbstractSocket::SocketError socketError);

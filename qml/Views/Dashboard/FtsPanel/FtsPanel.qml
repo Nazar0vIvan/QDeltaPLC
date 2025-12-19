@@ -43,6 +43,17 @@ QxGroupBox {
       }
 
       QxButton {
+        id: btnBias
+
+        enabled: ftsRunner && ftsRunner.isStreaming
+        text: "Bias"
+        onClicked: {
+          if (!ftsRunner) return;
+          ftsRunner.invoke("bias");
+        }
+      }
+
+      QxButton {
         id: btnLog
 
         enabled: ftsRunner && ftsRunner.isStreaming

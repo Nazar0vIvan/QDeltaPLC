@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Components 1.0
 import Styles 1.0
 
-import qdeltaplc_qml_module 1.0 // FOR NOW
+import qdeltaplc_qml_module 1.0 // !!
 
 Control {
   id: root
@@ -182,8 +182,6 @@ Control {
         text: "Safety Ok"
         enabled: plcRunner && plcRunner.socketState === 3 && root.isAutExt
       }
-
-
     }
   }
 

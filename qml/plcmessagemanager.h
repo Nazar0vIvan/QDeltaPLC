@@ -66,7 +66,7 @@ public:
     START_CELL = 0xC0,
     SFY_OK     = 0xC3,
   };
-  Q_ENUM(VAR_TYPE);
+  Q_ENUM(VAR_TYPE)
 
   enum CHG_TYPE : quint8 { // D
     IOs        = 0xD0,

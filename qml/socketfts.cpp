@@ -49,6 +49,13 @@ void SocketFTS::stopStreaming()
   emit streamReset();
 }
 
+void SocketFTS::bias()
+{
+  const QByteArray stopReq = req2dtg(RDTRequest{0x1234,0x0042,0}).data();
+  writeDatagram(stopReq, m_pa, m_pp);
+  emit streamReset();
+}
+
 void SocketFTS::setSocketConfig(const QVariantMap &config)
 {
   m_la = QHostAddress(config.value("localAddress").toString());

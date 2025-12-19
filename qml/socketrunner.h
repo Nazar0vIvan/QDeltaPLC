@@ -12,6 +12,8 @@
 
 #include "logger.h"
 #include "socketfts.h"
+#include "socketrsi.h"
+#include "socketdeltaplc.h"
 
 // ----- AbstractSocketRunner -----
 
@@ -65,11 +67,8 @@ class TcpSocketRunner : public AbstractSocketRunner
   Q_OBJECT
 
 public:
-  explicit TcpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
-  ~TcpSocketRunner() override;
-
-signals:
-  void dataReady(const QVariantMap& data);
+  explicit TcpSocketRunner(QTcpSocket* socket, QObject* parent = nullptr);
+  ~TcpSocketRunner() override = default;
 };
 
 // ----- UdpSocketRunner -----
@@ -79,7 +78,7 @@ class UdpSocketRunner : public AbstractSocketRunner
   Q_OBJECT
 
 public:
-  explicit UdpSocketRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  explicit UdpSocketRunner(QUdpSocket* socket, QObject* parent = nullptr);
   ~UdpSocketRunner() override;
 
   Q_PROPERTY(bool isStreaming READ isStreaming NOTIFY isStreamingChanged)
@@ -97,6 +96,20 @@ private:
   QTimer m_timer;
 };
 
+// ----- PlcRunner -----
+
+
+class PlcRunner : public TcpSocketRunner {
+  Q_OBJECT
+
+public:
+  explicit PlcRunner(QTcpSocket* socket, QObject* parent = nullptr);
+  ~PlcRunner() override = default;
+
+signals:
+  void dataReady(const QVariantMap& data);
+};
+
 // ----- FtsRunner -----
 
 class FtsRunner : public UdpSocketRunner
@@ -104,7 +117,7 @@ class FtsRunner : public UdpSocketRunner
   Q_OBJECT
 
 public:
-  explicit FtsRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  explicit FtsRunner(QUdpSocket* socket, QObject* parent = nullptr);
   ~FtsRunner() override = default;
 
   Q_PROPERTY(RDTResponse sample READ sample NOTIFY sampleReady)
@@ -117,7 +130,6 @@ public:
 
 signals:
    void sampleReady();
-   void startLogRecording();
 
 public slots:
   void onDataSampleLFReady(const RDTResponse& sample);
@@ -142,7 +154,7 @@ class RsiRunner : public UdpSocketRunner
   Q_OBJECT
 
 public:
-  explicit RsiRunner(QAbstractSocket* socket, QObject* parent = nullptr);
+  explicit RsiRunner(QUdpSocket* socket, QObject* parent = nullptr);
   ~RsiRunner() override = default;
 
   Q_PROPERTY(bool motionActive READ motionActive NOTIFY motionActiveChanged)

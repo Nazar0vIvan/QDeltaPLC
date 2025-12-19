@@ -66,6 +66,7 @@ public:
 
   Q_INVOKABLE void startStreaming();
   Q_INVOKABLE void stopStreaming();
+  Q_INVOKABLE void bias();
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
 
   // logger
@@ -83,7 +84,7 @@ signals:
 
   // logger
   void logRecordingEnabledChanged(bool enabled);
-  void logRecordingReady(const QVector<RDTResponse>& samples); // emitted when recording stops
+  void logRecordingReady(const QVector<RDTResponse>& samples);
 
   void logMessage(const LoggerMessage& msg);
 

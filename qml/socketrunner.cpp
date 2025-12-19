@@ -26,7 +26,8 @@ bool AbstractSocketRunner::allowed(const QString &methodName) const
   return m_api.contains(methodName);
 }
 
-int AbstractSocketRunner::indexOfSignature(const QByteArray& sig) const {
+int AbstractSocketRunner::indexOfSignature(const QByteArray& sig) const
+{
   if (!m_socket) return -1;
   const QByteArray norm = QMetaObject::normalizedSignature(sig.constData());
   for (auto m = m_socket->metaObject(); m; m = m->superClass()) {
@@ -192,16 +193,26 @@ void AbstractSocketRunner::onThreadFinished()
 
 // ----- TcpSocketRunner -----
 
-TcpSocketRunner::TcpSocketRunner(QAbstractSocket* socket, QObject *parent) : AbstractSocketRunner(socket, parent)
+TcpSocketRunner::TcpSocketRunner(QTcpSocket* socket, QObject *parent) : AbstractSocketRunner(socket, parent)
 {
-
 }
 
-TcpSocketRunner::~TcpSocketRunner() = default;
+// ----
+PlcRunner::PlcRunner(QTcpSocket *socket, QObject *parent) : TcpSocketRunner(socket, parent)
+{
+  auto* plc = qobject_cast<SocketDeltaPLC*>(socket);
+  if (!plc) {
+    emit logMessage({"PlcRunner: socket is not SocketDeltaPLC", 0, objectName()});
+    return;
+  }
+
+  connect(plc, &SocketDeltaPLC::dataReady, this, &PlcRunner::dataReady, Qt::QueuedConnection);
+}
+
 
 // ----- UdpSocketRunner -----
 
-UdpSocketRunner::UdpSocketRunner(QAbstractSocket *socket, QObject *parent) : AbstractSocketRunner(socket, parent)
+UdpSocketRunner::UdpSocketRunner(QUdpSocket *socket, QObject *parent) : AbstractSocketRunner(socket, parent)
 {
   m_timer.setSingleShot(true);
   m_timer.setInterval(300);
@@ -225,7 +236,7 @@ void UdpSocketRunner::onPulse()
 
 // ----- FtsRunner -----
 
-FtsRunner::FtsRunner(QAbstractSocket *socket, QObject *parent) : UdpSocketRunner(socket, parent)
+FtsRunner::FtsRunner(QUdpSocket *socket, QObject *parent) : UdpSocketRunner(socket, parent)
 {
   auto* fts = qobject_cast<SocketFTS*>(socket);
   if (!fts) {
@@ -302,11 +313,9 @@ void FtsRunner::publish(const RDTResponse &s)
   emit sampleReady();
 }
 
-
-
 // ----- RsiRunner -----
 
-RsiRunner::RsiRunner(QAbstractSocket* socket, QObject* parent) : UdpSocketRunner(socket, parent)
+RsiRunner::RsiRunner(QUdpSocket* socket, QObject* parent) : UdpSocketRunner(socket, parent)
 {
   auto* rsi = qobject_cast<SocketRSI*>(socket);
   if (!rsi) {

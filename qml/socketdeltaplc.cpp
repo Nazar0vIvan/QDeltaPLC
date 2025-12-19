@@ -95,7 +95,7 @@ void SocketDeltaPLC::onReadyRead()
     return;
   }
 
-  emit plcDataReady(parsedRespResult.data.toMap());
+  emit dataReady(parsedRespResult.data.toMap());
 }
 
 // PRIVATE

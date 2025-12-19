@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import qdeltaplc_qml_module 1.0 // FOR NOW
+import qdeltaplc_qml_module 1.0 // !!
 
 Control {
   id: root

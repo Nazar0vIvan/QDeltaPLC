@@ -26,8 +26,7 @@ int main(int argc, char *argv[])
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
 
   SocketDeltaPLC* socketDeltaPLC = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
-  TcpSocketRunner plcRunner(socketDeltaPLC);
-  QObject::connect(socketDeltaPLC, &SocketDeltaPLC::plcDataReady, &plcRunner, &TcpSocketRunner::dataReady, Qt::QueuedConnection);
+  PlcRunner plcRunner(socketDeltaPLC);
   plcRunner.start();
 
   SocketFTS* socketFTS = new SocketFTS(QStringLiteral("FTS_Delta"));
