@@ -98,16 +98,7 @@ void SocketRSI::generateTrajectory()
   }
   */
 
-
-  // ROLLER
-  const Eigen::Vector3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
-  const Eigen::Vector3d Cr(854.512911, -16.511844, 623.196742); // A point on the axis (near the data “middle”)
-  const double Rr = 19.991300;
-  const double Lr = 20.0;
-
-  Cylinder rl = Cylinder::fromAxis(ur, Cr, Rr, Lr, 'y');
-  Pose rl_s = rl.surfacePose('y', 0.0, 'y', -45.0, 'z', rl.R + 10.0, false);
-
+  /*
   // WORKPIECE
   Eigen::Vector3d Pc = { -0.113702, -0.012406, 111.290488 };
 
@@ -145,6 +136,29 @@ void SocketRSI::generateTrajectory()
 
   m_offsets = rsi::polyline(posesToFrames(ref_poses), {10, 3});
   m_offsets = m_offsets.mid(0, qsizetype(m_offsets.size() / 9));
+  */
+
+
+  // ROLLER
+  const Eigen::Vector3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
+  const Eigen::Vector3d Cr(854.512911, -16.511844, 623.196742); // A point on the axis (near the data “middle”)
+  const double Rr = 19.991300;
+  const double Lr = 20.0;
+
+  Cylinder rl = Cylinder::fromAxis(ur, Cr, Rr, Lr, 'y');
+  Pose rl_s = rl.surfacePose('y', 0.0, 'y', -45.0, 'z', rl.R + 10.0, false);
+
+  // BLADE
+
+  Airfoil af = loadBladeJson("242.json");
+
+  const int i = 0;
+  const Profile& cx      = af[i].cx;
+  const Profile& cx_next = af[i+1].cx;
+
+  QVector<Pose> poses = cxProfilePathToRoller(cx, cx_next, rl_s, /*L=*/20.0);
+
+  m_offsets = rsi::polyline(posesToFrames(poses), MotionParams{10, 3});
 
   emit trajectoryReady();
 

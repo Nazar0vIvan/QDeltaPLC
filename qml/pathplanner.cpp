@@ -100,9 +100,6 @@ Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg)
   return R;
 }
 
-double unwrapToRefDeg(double a, double ref);
-Eigen::Vector3d pickContinuousABC(const EulerSolution& e, const Eigen::Vector3d& prevABC);
-
 Eigen::Vector3d prjPointToLine(const Eigen::Vector3d &l0, const Eigen::Vector3d &v, const Eigen::Vector3d &p)
 {
   const double vv = v.squaredNorm();
@@ -118,27 +115,15 @@ Eigen::Vector3d prjToPerpPlane(const Eigen::Vector3d &vec, const Eigen::Vector3d
 }
 
 // ------------ Frene ------------
-Frene::Frene(const Eigen::Vector3d& t_,
-             const Eigen::Vector3d& b_,
-             const Eigen::Vector3d& n_,
-             const Eigen::Vector3d& p_)
-    : t(t_), b(b_), n(n_), p(p_)
-{
-  transf.setIdentity();
-  transf.block<3,1>(0,0) = t;
-  transf.block<3,1>(0,1) = b;
-  transf.block<3,1>(0,2) = n;
-  transf.block<3,1>(0,3) = p;
-}
-
-Frene getFreneByPoly(const Eigen::Vector3d& p0,
-                     const Eigen::Vector3d& u1,
-                     const Eigen::Vector3d& u2,
-                     const Eigen::Vector3d& v1)
+Pose getFreneByPoly(const Eigen::Vector3d& p0,
+                    const Eigen::Vector3d& u1,
+                    const Eigen::Vector3d& u2,
+                    const Eigen::Vector3d& v1)
 {
   const Eigen::Vector3d coef = poly(u1.x(), p0.x(), u2.x(), u1.y(), p0.y(), u2.y());
   const double a0 = coef[0], a1 = coef[1];
   const double dy_dt = 2.0*a0*p0.x() + a1;
+
   Eigen::Vector3d tanu(1.0, dy_dt, 0.0);
   tanu.normalize();
   if (tanu.x() < 0.0) tanu = -tanu;
@@ -146,61 +131,77 @@ Frene getFreneByPoly(const Eigen::Vector3d& p0,
   Eigen::Vector3d tanv = (v1 - p0).normalized();
   Eigen::Vector3d n = tanu.cross(tanv).normalized();
   Eigen::Vector3d b = n.cross(tanu).normalized();
-  return Frene(tanu, b, n, p0);
+
+  // This Pose represents ^B A_F  (columns: t,b,n ; translation: p0)
+  return Pose::fromAxes(tanu, b, n, p0);
 }
 
-Frene getFreneByCirc(const Eigen::Vector3d &pt0, const Eigen::Vector3d &ptc)
+Pose getFreneByCirc(const Eigen::Vector3d &pt0, const Eigen::Vector3d &ptc)
 {
   Eigen::Vector3d v = pt0 - ptc;
-  Eigen::Vector3d n = v.normalized();    // unit normal (radial)
-  Eigen::Vector3d t(-n.y(), n.x(), 0.0); // in-plane tangent
+  Eigen::Vector3d n = v.normalized();    // radial
+  Eigen::Vector3d t(-n.y(), n.x(), 0.0); // tangent in XY plane
   if (t.x() < 0.0) t = -t;
-  Eigen::Vector3d b = n.cross(t);        // binormal
+  Eigen::Vector3d b = n.cross(t);
 
-  return Frene(t, b, n, pt0);
+  return Pose::fromAxes(t, b, n, pt0);;
 }
 
 // ------------ Blade ------------
-static MatN3 jsonArrayToMat3(const QJsonArray& arr)
+Eigen::Vector3d jsonValueToVec3(const QJsonValue &v)
 {
-  MatN3 M(static_cast<int>(arr.size()), 3);
-  for (int i=0; i<arr.size(); ++i) {
-    const QJsonArray triple = arr[i].toArray();
-    M(i,0) = triple[0].toDouble();
-    M(i,1) = triple[1].toDouble();
-    M(i,2) = triple[2].toDouble();
+  const QJsonArray a = v.toArray(); // main-case: [x,y,z]
+  return Eigen::Vector3d(a[0].toDouble(), a[1].toDouble(), a[2].toDouble());
+}
+
+Profile jsonArrayToProfile(const QJsonArray &arr)
+{
+  Profile out;
+  out.reserve(arr.size());
+  for (const QJsonValue& v : arr) {
+    out.push_back(jsonValueToVec3(v));
   }
-  return M;
+  return out;
+}
+
+BladeProfile jsonObjectToBladeProfile(const QJsonObject &obj)
+{
+  BladeProfile bp;
+  bp.cx = jsonArrayToProfile(obj.value("cx").toArray());
+  bp.cv = jsonArrayToProfile(obj.value("cv").toArray());
+  bp.re = jsonArrayToProfile(obj.value("re").toArray());
+  bp.le = jsonArrayToProfile(obj.value("le").toArray());
+  return bp;
 }
 
 Airfoil loadBladeJson(const QString& filePath)
 {
   QFile f(filePath);
-  if (!f.open(QIODevice::ReadOnly))
-    throw std::runtime_error(("Cannot open file: " + filePath).toStdString());
+  f.open(QIODevice::ReadOnly);
+  const QByteArray bytes = f.readAll();
 
-  QJsonParseError perr{};
-  const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
-  if (perr.error)
-    throw std::runtime_error(("JSON parse error: " + perr.errorString()).toStdString());
-  if (!doc.isArray())
-    throw std::runtime_error("Top-level JSON must be an array");
-
+  const QJsonDocument doc = QJsonDocument::fromJson(bytes);
   const QJsonArray top = doc.array();
+
   Airfoil airfoil;
   airfoil.reserve(top.size());
 
-  for (int i=0; i<top.size(); ++i) {
-    const QJsonObject o = top[i].toObject();
-    Profile p;
-    p.cx = jsonArrayToMat3(o.value("cx").toArray());
-    p.cv = jsonArrayToMat3(o.value("cv").toArray());
-    p.le = jsonArrayToMat3(o.value("le").toArray());
-    p.re = jsonArrayToMat3(o.value("re").toArray());
-    airfoil.push_back(std::move(p));
+  for (const QJsonValue& v : top) {
+    airfoil.push_back(jsonObjectToBladeProfile(v.toObject()));
   }
   return airfoil;
 }
+
+Pose cxProfileStartFrene(const Profile &cx, const Profile &cx_next, double L)
+{
+
+}
+
+Pose cxProfileEndFrene(const Profile &cx, const Profile &cx_next, double L)
+{
+
+}
+
 
 // ------------ Base ------------
 Vec6d getBeltFrame(const Eigen::Vector3d& o,
@@ -336,7 +337,7 @@ QVector<Pose> Cylinder::surfaceRing(int n, double L) const
   return poses;
 }
 
-// ------------ Trajectory ------------
+// ------------ Rsi Trajectory ------------
 namespace rsi {
   QVector<Vec6d> polyline(const QVector<Vec6d>& ref_points, const MotionParams& mp, int decimals)
   {
@@ -525,34 +526,18 @@ namespace rsi {
   }
 }
 
+//-----------------------------------------
+
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT)
 {
   QVector<Pose> path;
   path.reserve(surf_poses.size());
 
-  bool havePrev = false;
-  Eigen::Vector3d prevABC = Eigen::Vector3d::Zero();
-
   for (const Pose& surf_pose : surf_poses) {
     const Eigen::Matrix4d AiB = surf_pose.T;
     const Eigen::Matrix4d ABT = AiT * AiB.inverse();
 
-    Pose out;
-    out.T = ABT;
-
-    const Eigen::Vector3d t = ABT.block<3,1>(0,3);
-    const EulerSolution eul = rot2euler(ABT.topLeftCorner<3,3>(), /*is_deg=*/true);
-
-    Eigen::Vector3d abc;
-    if (!havePrev) {
-      abc = Eigen::Vector3d(eul.A1, eul.B1, eul.C1);
-      havePrev = true;
-    } else {
-      abc = pickContinuousABC(eul, prevABC);
-    }
-    prevABC = abc;
-
-    out.frame << t.x(), t.y(), t.z(), abc[0], abc[1], abc[2];
+    Pose out = Pose::fromTransform(ABT);
     path.push_back(out);
   }
 
@@ -591,23 +576,10 @@ void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, 
   file.close();
 }
 
-double unwrapToRefDeg(double a, double ref)
-{
-  // shift a by +/-360 so that it's closest to ref
-  while (a - ref > 180.0) a -= 360.0;
-  while (a - ref < -180.0) a += 360.0;
-  return a;
-}
 
-Eigen::Vector3d pickContinuousABC(const EulerSolution &e, const Eigen::Vector3d &prevABC)
-{
-  Eigen::Vector3d c1(e.A1, e.B1, e.C1);
-  Eigen::Vector3d c2(e.A2, e.B2, e.C2);
 
-  for (int i = 0; i < 3; ++i) {
-    c1[i] = unwrapToRefDeg(c1[i], prevABC[i]);
-    c2[i] = unwrapToRefDeg(c2[i], prevABC[i]);
-  }
 
-  return ((c1 - prevABC).squaredNorm() <= (c2 - prevABC).squaredNorm()) ? c1 : c2;
-}
+
+
+
+

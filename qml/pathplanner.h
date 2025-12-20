@@ -20,11 +20,25 @@ struct Plane {
 };
 
 struct Pose {
-  Vec6d frame;       // [x,y,z,A,B,C] (deg)
-  Eigen::Matrix4d T; // homogeneous transform
+  Pose() = default;
+  Pose(const Vec6d& frame_, const Eigen::Matrix4d& T_);
 
-  Eigen::Vector3d t() const { return T.block<3,1>(0,3); }
-  Eigen::Matrix3d R() const { return T.block<3,3>(0,0); }
+  static Pose fromTransform(const Eigen::Matrix4d& T_);
+  static Pose fromAxes(const Eigen::Vector3d& t_,
+                       const Eigen::Vector3d& b_,
+                       const Eigen::Vector3d& n_,
+                       const Eigen::Vector3d& p_);
+
+  Vec6d frame;
+  Eigen::Matrix4d T;
+
+  Eigen::Vector3d t{Eigen::Vector3d::Zero()};
+  Eigen::Vector3d b{Eigen::Vector3d::Zero()};
+  Eigen::Vector3d n{Eigen::Vector3d::Zero()};
+  Eigen::Vector3d p{Eigen::Vector3d::Zero()};
+
+  Eigen::Vector3d pos() const { return T.block<3,1>(0,3); }
+  Eigen::Matrix3d rot() const { return T.block<3,3>(0,0); }
 };
 
 struct Cylinder {
@@ -76,51 +90,56 @@ Eigen::Vector3d prjPointToLine(const Eigen::Vector3d& l0,
 Eigen::Vector3d prjToPerpPlane(const Eigen::Vector3d& vec, const Eigen::Vector3d& n);
 
 // ------------ Frene ------------
-struct Frene {
-  Frene(const Eigen::Vector3d& t_, const Eigen::Vector3d& b_,
-        const Eigen::Vector3d& n_, const Eigen::Vector3d& p_);
+Pose getFreneByPoly(const Eigen::Vector3d& p0,
+                    const Eigen::Vector3d& u1,
+                    const Eigen::Vector3d& u2,
+                    const Eigen::Vector3d& v1);
 
-  Eigen::Vector3d t{Eigen::Vector3d::Zero()};
-  Eigen::Vector3d b{Eigen::Vector3d::Zero()};
-  Eigen::Vector3d n{Eigen::Vector3d::Zero()};
-  Eigen::Vector3d p{Eigen::Vector3d::Zero()};
-  Eigen::Matrix4d transf{Eigen::Matrix4d::Identity()};
-};
-
-Frene getFreneByPoly(const Eigen::Vector3d& p0,
-                     const Eigen::Vector3d& u1,
-                     const Eigen::Vector3d& u2,
-                     const Eigen::Vector3d& v1);
-
-Frene getFreneByCirc(const Eigen::Vector3d& pt0,
-                     const Eigen::Vector3d& ptc);
+Pose getFreneByCirc(const Eigen::Vector3d& pt0,
+                    const Eigen::Vector3d& ptc);
 
 // ------------ Blade ------------
-using MatN3 = Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>;
-struct Profile { MatN3 cx, cv, le, re; };
-using Airfoil = std::vector<Profile>;
+using Profile = QVector<Eigen::Vector3d>;
+struct BladeProfile {
+  Profile cx, cv, re, le;
+};
+using Airfoil = QVector<BladeProfile>;
 
 Vec6d getBeltFrame(const Eigen::Vector3d& o,
                    const Eigen::Ref<const Eigen::VectorXd>& x,
                    const Eigen::Ref<const Eigen::VectorXd>& y,
                    const Eigen::Ref<const Eigen::VectorXd>& z);
 
+Eigen::Vector3d jsonValueToVec3(const QJsonValue& v);
+Profile jsonArrayToProfile(const QJsonArray& arr);
+BladeProfile jsonObjectToBladeProfile(const QJsonObject& obj);
 Airfoil loadBladeJson(const QString& filePath);
+
+Pose cxProfileStartFrene(const Profile& cx,
+                         const Profile& cx_next,
+                         double L);
+
+Pose cxProfileEndFrene(const Profile& cx,
+                       const Profile& cx_next,
+                       double L);
+
+QVector<Pose> cxProfileFrenes(const Profile& cx,
+                              const Profile& cx_next,
+                              double L);
 
 // ------------ Rsi Trajectory ------------
 struct MotionParams {
-  double v;
-  double a;
+  double v, a
 };
 
 namespace rsi {
   QVector<Vec6d> polyline(const QVector<Vec6d> &ref_points, const MotionParams& mp, int decimals = 3);
   QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams& mp, int decimals = 3);
-  QVector<Vec6d> offsetsFromAbsPoses(const QVector<Pose>& absPoses, int decimals);
 };
 
-void writeOffsetsToJson(const QVector<Vec6d>& offsets, const QString& filePath, int decimals = 3);
-
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT);
+
 QVector<Vec6d> posesToFrames(const QVector<Pose>& poses);
+
+void writeOffsetsToJson(const QVector<Vec6d>& offsets, const QString& filePath, int decimals = 3);
 #endif // PATHPLANNER_H
