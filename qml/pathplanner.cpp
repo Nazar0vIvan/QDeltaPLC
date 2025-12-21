@@ -1,16 +1,16 @@
 #include "pathplanner.h"
 
 // ------------ Math ------------
-Eigen::Matrix4d trMatrix4x4(const Eigen::Vector3d& delta)
+M4d trMatrix4x4(const V3d& delta)
 {
-  Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+  M4d T = M4d::Identity();
   T.block<3,1>(0,3) = delta;
   return T;
 }
 
-Eigen::Matrix4d rotMatrix4x4(double angleDeg, char axis)
+M4d rotMatrix4x4(double angleDeg, char axis)
 {
-  Eigen::Matrix4d R = Eigen::Matrix4d::Identity();
+  M4d R = M4d::Identity();
   const double ang = angleDeg * M_PI / 180.0;
   const double c = std::cos(ang), s = std::sin(ang);
   switch (axis) {
@@ -23,7 +23,7 @@ Eigen::Matrix4d rotMatrix4x4(double angleDeg, char axis)
   return R;
 }
 
-Eigen::Vector3d axisVec(char axis, double value)
+V3d axisVec(char axis, double value)
 {
   switch (axis) {
     case 'x': return { value, 0.0,   0.0 };
@@ -39,14 +39,14 @@ Plane pointsToPlane(const Eigen::Ref<const Eigen::VectorXd>& x,
                     const Eigen::Ref<const Eigen::VectorXd>& z)
 {
   const double n = static_cast<double>(x.size());
-  Eigen::Matrix3d U;
+  M3d U;
   U << x.squaredNorm(), x.dot(y),        x.sum(),
        x.dot(y),        y.squaredNorm(), y.sum(),
        x.sum(),         y.sum(),         n;
-  Eigen::Vector3d V(x.dot(z), y.dot(z), z.sum());
+  V3d V(x.dot(z), y.dot(z), z.sum());
 
   const auto qr = U.colPivHouseholderQr();
-  const Eigen::Vector3d P = qr.solve(V);
+  const V3d P = qr.solve(V);
 
   Plane plane;
   plane.AA = P[0]; plane.BB = P[1]; plane.DD = P[2];
@@ -58,18 +58,17 @@ Plane pointsToPlane(const Eigen::Ref<const Eigen::VectorXd>& x,
   return plane;
 }
 
-Eigen::Vector3d poly(double x0, double x1, double x2,
-                     double y0, double y1, double y2)
+V3d poly(const V3d& p0, const V3d& p1, const V3d& p2)
 {
-  Eigen::Matrix3d A;
-  A << x0*x0, x0, 1.0,
-       x1*x1, x1, 1.0,
-       x2*x2, x2, 1.0;
-  Eigen::Vector3d B(y0,y1,y2);
-  return A.colPivHouseholderQr().solve(B);
+  M3d A;
+  A << p0.x()*p0.x(), p0.x(), 1.0,
+       p1.x()*p1.x(), p1.x(), 1.0,
+       p2.x()*p2.x(), p2.x(), 1.0;
+
+  return A.colPivHouseholderQr().solve(V3d(p0.y(), p1.y(), p2.y()));
 }
 
-EulerSolution rot2euler(const Eigen::Matrix3d &R, bool is_deg)
+EulerSolution rot2euler(const M3d &R, bool is_deg)
 {
   const double B1 = -std::asin(R(2,0));
   const double B2 = M_PI + std::asin(R(2,0));
@@ -88,75 +87,68 @@ EulerSolution rot2euler(const Eigen::Matrix3d &R, bool is_deg)
   return { k*A1, k*A2, k*B1, k*B2, k*C1, k*C2 };
 }
 
-Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg)
+M3d euler2rot(double A, double B, double C, bool is_deg)
 {
   const double k = is_deg ? (M_PI / 180.0) : 1.0;
-  Eigen::Matrix3d R =
-      (Eigen::AngleAxisd(A*k, Eigen::Vector3d::UnitZ()) *
-       Eigen::AngleAxisd(B*k, Eigen::Vector3d::UnitY()) *
-       Eigen::AngleAxisd(C*k, Eigen::Vector3d::UnitX())).toRotationMatrix();
+  M3d R =
+      (Eigen::AngleAxisd(A*k, V3d::UnitZ()) *
+       Eigen::AngleAxisd(B*k, V3d::UnitY()) *
+       Eigen::AngleAxisd(C*k, V3d::UnitX())).toRotationMatrix();
   double eps = 1e-4;
   R = R.unaryExpr([&](double v) { return std::abs(v) <= eps ? 0.0 : v; });
   return R;
 }
 
-Eigen::Vector3d prjPointToLine(const Eigen::Vector3d &l0, const Eigen::Vector3d &v, const Eigen::Vector3d &p)
+V3d prjPointToLine(const V3d &l0, const V3d &v, const V3d &p)
 {
   const double vv = v.squaredNorm();
   const double t = (p - l0).dot(v) / vv;
   return l0 + t * v;
 }
 
-Eigen::Vector3d prjToPerpPlane(const Eigen::Vector3d &vec, const Eigen::Vector3d &n)
+V3d prjToPerpPlane(const V3d &vec, const V3d &n)
 {
-  Eigen::Vector3d v = vec - vec.dot(n) * n;
+  V3d v = vec - vec.dot(n) * n;
   const double nn = v.norm();
   return v / nn;
 }
 
-// ------------ Frene ------------
-Pose getFreneByPoly(const Eigen::Vector3d& p0,
-                    const Eigen::Vector3d& u1,
-                    const Eigen::Vector3d& u2,
-                    const Eigen::Vector3d& v1)
+V3d tanByPoly(const V3d &p, const V3d &coeffs)
 {
-  const Eigen::Vector3d coef = poly(u1.x(), p0.x(), u2.x(), u1.y(), p0.y(), u2.y());
-  const double a0 = coef[0], a1 = coef[1];
-  const double dy_dt = 2.0*a0*p0.x() + a1;
+  const double a0 = coeffs[0];
+  const double a1 = coeffs[1];
 
-  Eigen::Vector3d tanu(1.0, dy_dt, 0.0);
-  tanu.normalize();
-  if (tanu.x() < 0.0) tanu = -tanu;
+  const double dy_dx = 2.0 * a0 * p.x() + a1;
 
-  Eigen::Vector3d tanv = (v1 - p0).normalized();
-  Eigen::Vector3d n = tanu.cross(tanv).normalized();
-  Eigen::Vector3d b = n.cross(tanu).normalized();
-
-  // This Pose represents ^B A_F  (columns: t,b,n ; translation: p0)
-  return Pose::fromAxes(tanu, b, n, p0);
+  V3d t(1.0, dy_dx, 0.0);
+  t.normalize();
+  if (t.x() < 0.0) t = -t;
+  return t;
 }
 
-Pose getFreneByCirc(const Eigen::Vector3d &pt0, const Eigen::Vector3d &ptc)
+// ------------ Frene ------------
+
+Pose getFreneByCirc(const V3d &pt0, const V3d &ptc)
 {
-  Eigen::Vector3d v = pt0 - ptc;
-  Eigen::Vector3d n = v.normalized();    // radial
-  Eigen::Vector3d t(-n.y(), n.x(), 0.0); // tangent in XY plane
+  V3d v = pt0 - ptc;
+  V3d n = v.normalized();    // radial
+  V3d t(-n.y(), n.x(), 0.0); // tangent in XY plane
   if (t.x() < 0.0) t = -t;
-  Eigen::Vector3d b = n.cross(t);
+  V3d b = n.cross(t);
 
   return Pose::fromAxes(t, b, n, pt0);;
 }
 
 // ------------ Blade ------------
-Eigen::Vector3d jsonValueToVec3(const QJsonValue &v)
+V3d jsonValueToVec3(const QJsonValue &v)
 {
   const QJsonArray a = v.toArray(); // main-case: [x,y,z]
-  return Eigen::Vector3d(a[0].toDouble(), a[1].toDouble(), a[2].toDouble());
+  return V3d(a[0].toDouble(), a[1].toDouble(), a[2].toDouble());
 }
 
-Profile jsonArrayToProfile(const QJsonArray &arr)
+QVector<V3d> jsonArrayToProfile(const QJsonArray &arr)
 {
-  Profile out;
+  QVector<V3d> out;
   out.reserve(arr.size());
   for (const QJsonValue& v : arr) {
     out.push_back(jsonValueToVec3(v));
@@ -192,36 +184,81 @@ Airfoil loadBladeJson(const QString& filePath)
   return airfoil;
 }
 
-Pose cxProfileStartFrene(const Profile &cx, const Profile &cx_next, double L)
+Pose getCxCvStartFrenet(const QVector<V3d>& cx, double L, const Pose& frenet)
 {
-
+  const V3d& pt0 = cx[0];
+  const V3d& pt1 = cx[1];
+  const V3d& pt = pt0 + L * (pt0 - pt1).normalized();
+  return Pose::fromAxes(frenet.t, frenet.b, frenet.n, pt);
 }
 
-Pose cxProfileEndFrene(const Profile &cx, const Profile &cx_next, double L)
+Pose getCxCvEndFrenet(const QVector<V3d>& cx, double L, const Pose& frenet)
 {
-
+  const int n = cx.size();
+  const V3d& ptn_1 = cx[n - 2];
+  const V3d& ptn   = cx[n - 1];
+  const V3d& pt = ptn + L * (ptn - ptn_1).normalized();
+  return Pose::fromAxes(frenet.t, frenet.b, frenet.n, pt);
 }
 
+Pose getCxCvFrenet(V3d pt, const V3d& poly, const V3d& v0) {
+  V3d t = tanByPoly(pt, poly);
+  V3d tanv = (v0 - pt).normalized();
+  V3d n = t.cross(tanv).normalized();
+  V3d b = n.cross(t).normalized();
+  return Pose::fromAxes(t, b, n, pt);
+}
+
+
+QVector<Pose> getCxCvFrenets(const QVector<V3d>& cx, const QVector<V3d>& cx_next, double L)
+{
+  int n = cx.size();
+
+  QVector<Pose> frenets;
+  frenets.reserve(n + 2);
+
+  V3d coef0 = poly(cx[0], cx[1], cx[2]);
+  Pose frenet0 = getCxCvFrenet(cx[0], coef0, cx_next[0]);
+
+  Pose startFrenet = getCxCvStartFrenet(cx, L, frenet0);
+
+  frenets << startFrenet << frenet0;
+
+  for (int j=1; j < n-2; j++) {
+    V3d coef = poly(cx[j-1], cx[j], cx[j+1]);
+    Pose frenet = getCxCvFrenet(cx[j], coef, cx_next[j]);
+    frenets.push_back(frenet);
+  }
+
+  V3d coefn = poly(cx[n-3], cx[n-2], cx[n-1]);
+  Pose nfrenet = getCxCvFrenet(cx[n-1], coefn, cx_next[n-1]);
+
+  Pose endFrenet = getCxCvEndFrenet(cx, L, nfrenet);
+
+  frenets << nfrenet << endFrenet;
+
+  return frenets;
+}
 
 // ------------ Base ------------
-Vec6d getBeltFrame(const Eigen::Vector3d& o,
-                   const Eigen::Ref<const Eigen::VectorXd>& x,
-                   const Eigen::Ref<const Eigen::VectorXd>& y,
-                   const Eigen::Ref<const Eigen::VectorXd>& z)
+V6d getBeltFrame(const V3d& o,
+                 const Eigen::Ref<const Eigen::VectorXd>& x,
+                 const Eigen::Ref<const Eigen::VectorXd>& y,
+                 const Eigen::Ref<const Eigen::VectorXd>& z)
 {
   const Plane pl = pointsToPlane(x,y,z);
-  Eigen::Vector3d n(pl.A,pl.B,pl.C);
+  V3d n(pl.A,pl.B,pl.C);
   n.normalize();
 
-  const Eigen::Vector3d helper = (std::abs(n.x()) < 0.9) ? Eigen::Vector3d::UnitX() : Eigen::Vector3d::UnitY();
-  Eigen::Vector3d t = helper - helper.dot(n)*n;
+  const V3d helper = (std::abs(n.x()) < 0.9) ? V3d::UnitX() : V3d::UnitY();
+  V3d t = helper - helper.dot(n)*n;
   t.normalize();
   t = -t;
 
-  Eigen::Vector3d b = n.cross(t).normalized();
+  V3d b = n.cross(t).normalized();
   t = b.cross(n);
 
-  Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+  M4d T = M4d::Identity();
   T.block<3,1>(0,0)=t;
   T.block<3,1>(0,1)=b;
   T.block<3,1>(0,2)=n;
@@ -236,63 +273,60 @@ Vec6d getBeltFrame(const Eigen::Vector3d& o,
 
 
 // ------------ Cylinder ------------
-Cylinder Cylinder::fromAxis(const Eigen::Vector3d &u,
-                            const Eigen::Vector3d &pc,
+Cylinder Cylinder::fromAxis(const V3d &u, const V3d &pc,
                             double R, double L, char axis)
 {
-  Eigen::Vector3d y = u.normalized();
+  V3d y = u.normalized();
 
   // choose helper not parallel to y
-  const Eigen::Vector3d helper =
-      (std::abs(y.x()) < 0.9) ? Eigen::Vector3d::UnitX() : Eigen::Vector3d::UnitY();
+  const V3d helper =
+      (std::abs(y.x()) < 0.9) ? V3d::UnitX() : V3d::UnitY();
 
-  Eigen::Vector3d x = helper - helper.dot(y) * y; // remove y component
+  V3d x = helper - helper.dot(y) * y; // remove y component
   x.normalize();
 
-  Eigen::Vector3d z = x.cross(y).normalized();    // right-handed: x × y = z
+  V3d z = x.cross(y).normalized();    // right-handed: x × y = z
 
-  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+  M4d transform = M4d::Identity();
   transform.block<3,3>(0,0) << x, y, z;           // columns
   transform.block<3,1>(0,3) = pc;
 
   EulerSolution angles = rot2euler(transform.topLeftCorner<3,3>(), true);
 
-  Vec6d frame;
+  V6d frame;
   frame << pc.x(), pc.y(), pc.z(), angles.A1, angles.B1, angles.C1;
 
   Pose pose = { frame, transform };
   return { R, L, pose };
 }
 
-Cylinder Cylinder::fromTwoPoints(const Eigen::Vector3d& c1,
-                                 const Eigen::Vector3d& c2,
-                                 const Eigen::Vector3d& o,
-                                 double R, double L,
-                                 char axis)
+Cylinder Cylinder::fromTwoPoints(const V3d& c1, const V3d& c2,
+                                 const V3d& o, double R,
+                                 double L, char axis)
 {
   axis = char(std::tolower(static_cast<unsigned char>(axis)));
-  Eigen::Vector3d d = (c2 - c1);
+  V3d d = (c2 - c1);
   const double dn = d.norm();
   d /= dn;
 
-  Eigen::Vector3d x, y, z;
+  V3d x, y, z;
   if (axis == 'y') {
     y = d;
-    z = prjToPerpPlane(Eigen::Vector3d::UnitZ(), y);
+    z = prjToPerpPlane(V3d::UnitZ(), y);
     x = y.cross(z).normalized();
   } else if (axis == 'z') {
     z = d;
-    x = prjToPerpPlane(Eigen::Vector3d::UnitX(), z);
+    x = prjToPerpPlane(V3d::UnitX(), z);
     y = z.cross(x).normalized();
   }
 
-  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+  M4d transform = M4d::Identity();
   transform.block<3,3>(0,0) << x, y, z;
   transform.block<3,1>(0,3) = o;
 
   EulerSolution angles = rot2euler(transform.topLeftCorner<3,3>(), true);
 
-  Vec6d frame;
+  V6d frame;
   frame << o.x(), o.y(), o.z(), angles.A1, angles.B1, angles.C1;
 
   Pose pose = { frame, transform };
@@ -305,16 +339,16 @@ Pose Cylinder::surfacePose(char axis1, double val1,
                            char axis2, double val2,
                            bool returnLocal) const
 {
-  const Eigen::Matrix4d T1 = trMatrix4x4(axisVec(axis1, val1));
-  const Eigen::Matrix4d RR = rotMatrix4x4(angleDeg, axisRot);
-  const Eigen::Matrix4d T2 = trMatrix4x4(axisVec(axis2, val2));
+  const M4d T1 = trMatrix4x4(axisVec(axis1, val1));
+  const M4d RR = rotMatrix4x4(angleDeg, axisRot);
+  const M4d T2 = trMatrix4x4(axisVec(axis2, val2));
 
-  const Eigen::Matrix4d T_local = T1 * RR * T2;
+  const M4d T_local = T1 * RR * T2;
 
   Pose surf_pose;
   surf_pose.T = returnLocal ? T_local : pose.T * T_local;
 
-  const Eigen::Vector3d os = surf_pose.T.block<3,1>(0,3);
+  const V3d os = surf_pose.T.block<3,1>(0,3);
   EulerSolution eul = rot2euler(surf_pose.T.topLeftCorner<3,3>(), true);
 
   surf_pose.frame << os.x(), os.y(), os.z(), eul.A1, eul.B1, eul.C1;
@@ -339,7 +373,7 @@ QVector<Pose> Cylinder::surfaceRing(int n, double L) const
 
 // ------------ Rsi Trajectory ------------
 namespace rsi {
-  QVector<Vec6d> polyline(const QVector<Vec6d>& ref_points, const MotionParams& mp, int decimals)
+  QVector<V6d> polyline(const QVector<V6d>& ref_points, const MotionParams& mp, int decimals)
   {
     // [v] = mm/s; [a] = mm/s^2
     const double dt = 0.004; // 4 ms
@@ -367,10 +401,10 @@ namespace rsi {
 
     const int steps = static_cast<int>(std::ceil(T_total / dt));
 
-    QVector<Vec6d> offsets;
+    QVector<V6d> offsets;
     offsets.reserve(steps);
 
-    Vec6d prevPos = ref_points.front();
+    V6d prevPos = ref_points.front();
 
     const double scale = std::pow(10.0, decimals);
 
@@ -406,10 +440,10 @@ namespace rsi {
       const double alpha    = segLen > 0.0 ? (s - segStart) / segLen : 0.0;
 
       // 5) interpolate pose
-      Vec6d currPos = (1.0 - alpha) * ref_points[idx] + alpha * ref_points[idx + 1];
+      V6d currPos = (1.0 - alpha) * ref_points[idx] + alpha * ref_points[idx + 1];
 
       // 6) offset and rounding
-      Vec6d dP = currPos - prevPos;
+      V6d dP = currPos - prevPos;
       for (int i = 0; i < 6; ++i)
         dP(i) = std::round(dP(i) * scale) / scale;
 
@@ -420,16 +454,16 @@ namespace rsi {
     return offsets;
   }
 
-  QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams &mp, int decimals)
+  QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams &mp, int decimals)
   {
     const double dt = 0.004;          // 4 ms
-    const Vec6d d   = P2 - P1;
+    const V6d d   = P2 - P1;
     const double L  = d.norm();       // total contour length
 
     if (L <= 0.0) return {};          // no motion
 
     // Normalize direction in 6D
-    const Vec6d dir = d / L;
+    const V6d dir = d / L;
 
     double v = mp.v;
     double a = mp.a;
@@ -453,10 +487,10 @@ namespace rsi {
 
     const int steps = static_cast<int>(std::ceil(T_total / dt));
 
-    QVector<Vec6d> offsets;
+    QVector<V6d> offsets;
     offsets.reserve(steps);
 
-    Vec6d prevPos = P1;
+    V6d prevPos = P1;
     const double scale = std::pow(10.0, decimals);
 
     for (int k = 1; k <= steps; ++k) {
@@ -476,8 +510,8 @@ namespace rsi {
       }
       if (s > L) s = L;
 
-      Vec6d currPos = P1 + dir * s;
-      Vec6d dP      = currPos - prevPos;
+      V6d currPos = P1 + dir * s;
+      V6d dP      = currPos - prevPos;
 
       // rounding
       for (int i = 0; i < 6; ++i)
@@ -489,53 +523,18 @@ namespace rsi {
 
     return offsets;
   }
-
-  QVector<Vec6d> offsetsFromAbsPoses(const QVector<Pose> &absPoses, int decimals)
-  {
-    if (absPoses.size() < 2) return {};
-
-    const double scale = std::pow(10.0, decimals);
-
-    QVector<Vec6d> offsets;
-    offsets.reserve(absPoses.size() - 1);
-
-    Pose prev = absPoses.front();
-
-    for (int i = 1; i < absPoses.size(); ++i) {
-      const Pose& curr = absPoses[i];
-
-      // translation delta in base
-      const Eigen::Vector3d dp = curr.t() - prev.t();
-
-      // rotation delta in base: R_inc such that R_curr = R_inc * R_prev
-      const Eigen::Matrix3d dR = curr.R() * prev.R().transpose();
-
-      const EulerSolution de = rot2euler(dR, /*is_deg=*/true);
-
-      Vec6d d;
-      d << dp.x(), dp.y(), dp.z(), de.A1, de.B1, de.C1;
-
-      for (int k = 0; k < 6; ++k)
-        d(k) = std::round(d(k) * scale) / scale;
-
-      offsets.push_back(d);
-      prev = curr;
-    }
-
-    return offsets;
-  }
 }
 
 //-----------------------------------------
 
-QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT)
+QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT)
 {
   QVector<Pose> path;
   path.reserve(surf_poses.size());
 
   for (const Pose& surf_pose : surf_poses) {
-    const Eigen::Matrix4d AiB = surf_pose.T;
-    const Eigen::Matrix4d ABT = AiT * AiB.inverse();
+    const M4d AiB = surf_pose.T;
+    const M4d ABT = AiT * AiB.inverse();
 
     Pose out = Pose::fromTransform(ABT);
     path.push_back(out);
@@ -544,9 +543,9 @@ QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Ma
   return path;
 }
 
-QVector<Vec6d> posesToFrames(const QVector<Pose>& poses)
+QVector<V6d> posesToFrames(const QVector<Pose>& poses)
 {
-  QVector<Vec6d> frames;
+  QVector<V6d> frames;
   frames.reserve(poses.size());
 
   for (const Pose& p : poses)
@@ -555,11 +554,11 @@ QVector<Vec6d> posesToFrames(const QVector<Pose>& poses)
   return frames;
 }
 
-void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, int decimals)
+void writeOffsetsToJson(const QVector<V6d> &offsets, const QString &filePath, int decimals)
 {
   QJsonArray root;
 
-  for (const Vec6d &v : offsets) {
+  for (const V6d &v : offsets) {
     QJsonArray row;
     for (int i = 0; i < 6; ++i) {
       QString s = QString::number(v(i), 'f', decimals);
@@ -575,9 +574,6 @@ void writeOffsetsToJson(const QVector<Vec6d> &offsets, const QString &filePath, 
   file.write(doc.toJson(QJsonDocument::Indented));
   file.close();
 }
-
-
-
 
 
 

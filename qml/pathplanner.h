@@ -12,7 +12,10 @@
 
 // ------------ Math ------------
 
-using Vec6d = Eigen::Matrix<double, 6, 1>; // row 6x1
+using V6d = Eigen::Matrix<double, 6, 1>; // row 6x1
+using V3d = Eigen::Vector3d;
+using M3d = Eigen::Matrix3d;
+using M4d = Eigen::Matrix4d;
 
 struct Plane {
   double A, B, C, D;   // A*x + B*y + C*z + D = 0
@@ -21,35 +24,32 @@ struct Plane {
 
 struct Pose {
   Pose() = default;
-  Pose(const Vec6d& frame_, const Eigen::Matrix4d& T_);
+  Pose(const V6d& frame_, const M4d& T_);
 
-  static Pose fromTransform(const Eigen::Matrix4d& T_);
-  static Pose fromAxes(const Eigen::Vector3d& t_,
-                       const Eigen::Vector3d& b_,
-                       const Eigen::Vector3d& n_,
-                       const Eigen::Vector3d& p_);
+  static Pose fromTransform(const M4d& T_);
+  static Pose fromAxes(const V3d& t_, const V3d& b_, const V3d& n_, const V3d& p_);
 
-  Vec6d frame;
-  Eigen::Matrix4d T;
+  V6d frame;
+  M4d T;
 
-  Eigen::Vector3d t{Eigen::Vector3d::Zero()};
-  Eigen::Vector3d b{Eigen::Vector3d::Zero()};
-  Eigen::Vector3d n{Eigen::Vector3d::Zero()};
-  Eigen::Vector3d p{Eigen::Vector3d::Zero()};
+  V3d t{V3d::Zero()};
+  V3d b{V3d::Zero()};
+  V3d n{V3d::Zero()};
+  V3d p{V3d::Zero()};
 
-  Eigen::Vector3d pos() const { return T.block<3,1>(0,3); }
-  Eigen::Matrix3d rot() const { return T.block<3,3>(0,0); }
+  V3d pos() const { return T.block<3,1>(0,3); }
+  M3d rot() const { return T.block<3,3>(0,0); }
 };
 
 struct Cylinder {
-  static Cylinder fromTwoPoints(const Eigen::Vector3d& c1,
-                                const Eigen::Vector3d& c2,
-                                const Eigen::Vector3d& pc,
+  static Cylinder fromTwoPoints(const V3d& c1,
+                                const V3d& c2,
+                                const V3d& pc,
                                 double R, double L,
                                 char axis = 'y');
 
-  static Cylinder fromAxis(const Eigen::Vector3d& u,
-                           const Eigen::Vector3d& pc,
+  static Cylinder fromAxis(const V3d& u,
+                           const V3d& pc,
                            double R, double L,
                            char axis = 'y');
 
@@ -71,75 +71,62 @@ struct EulerSolution {
          C1, C2;
 };
 
-Eigen::Matrix4d trMatrix4x4(const Eigen::Vector3d& delta);
-Eigen::Matrix4d rotMatrix4x4(double angleDeg, char axis);
+M4d trMatrix4x4(const V3d& delta);
+M4d rotMatrix4x4(double angleDeg, char axis);
 Plane pointsToPlane(const Eigen::Ref<const Eigen::VectorXd>& x,
                     const Eigen::Ref<const Eigen::VectorXd>& y,
                     const Eigen::Ref<const Eigen::VectorXd>& z);
-Eigen::Vector3d poly(double x0, double x1, double x2,
-                     double y0, double y1, double y2);
 
-EulerSolution rot2euler(const Eigen::Matrix3d& R, bool is_deg = false);
-Eigen::Matrix3d euler2rot(double A, double B, double C, bool is_deg = false);
-Eigen::Vector3d axisVec(char axis, double value);
-Eigen::Vector3d prjPointToLine(const Eigen::Vector3d& l0,
-                               const Eigen::Vector3d& v,
-                               const Eigen::Vector3d& p);
+V3d poly(const V3d &p0, const V3d &p1, const V3d &p2);
 
-// project vector vec onto plane ⟂ n (n assumed unit-ish)
-Eigen::Vector3d prjToPerpPlane(const Eigen::Vector3d& vec, const Eigen::Vector3d& n);
+EulerSolution rot2euler(const M3d& R, bool is_deg = false);
+M3d euler2rot(double A, double B, double C, bool is_deg = false);
+V3d axisVec(char axis, double value);
+V3d prjPointToLine(const V3d& l0, const V3d& v, const V3d& p);
+V3d prjToPerpPlane(const V3d& vec, const V3d& n);
+
+V3d tanByPoly(const V3d& p, const V3d& coeffs);
 
 // ------------ Frene ------------
-Pose getFreneByPoly(const Eigen::Vector3d& p0,
-                    const Eigen::Vector3d& u1,
-                    const Eigen::Vector3d& u2,
-                    const Eigen::Vector3d& v1);
 
-Pose getFreneByCirc(const Eigen::Vector3d& pt0,
-                    const Eigen::Vector3d& ptc);
+Pose getFreneByCirc(const V3d& pt0, const V3d& ptc);
 
 // ------------ Blade ------------
-using Profile = QVector<Eigen::Vector3d>;
 struct BladeProfile {
-  Profile cx, cv, re, le;
+  QVector<V3d> cx, cv, re, le;
 };
 using Airfoil = QVector<BladeProfile>;
 
-Vec6d getBeltFrame(const Eigen::Vector3d& o,
-                   const Eigen::Ref<const Eigen::VectorXd>& x,
-                   const Eigen::Ref<const Eigen::VectorXd>& y,
-                   const Eigen::Ref<const Eigen::VectorXd>& z);
-
-Eigen::Vector3d jsonValueToVec3(const QJsonValue& v);
-Profile jsonArrayToProfile(const QJsonArray& arr);
+V3d jsonValueToVec3(const QJsonValue& v);
+QVector<V3d> jsonArrayToProfile(const QJsonArray& arr);
 BladeProfile jsonObjectToBladeProfile(const QJsonObject& obj);
 Airfoil loadBladeJson(const QString& filePath);
 
-Pose cxProfileStartFrene(const Profile& cx,
-                         const Profile& cx_next,
-                         double L);
+Pose getCxCvStartFrenet(const QVector<V3d>& cx, double L, const Pose& frenet);
+Pose getCxCvEndFrenet(const QVector<V3d>& cx, double L, const Pose& frenet);
+Pose getCxCvFrenet(V3d pt, const V3d& poly, const V3d& v0);
+QVector<Pose> getCxCvFrenets(const QVector<V3d>& cx, const QVector<V3d>& cx_next, double L);
 
-Pose cxProfileEndFrene(const Profile& cx,
-                       const Profile& cx_next,
-                       double L);
+// ------------ Base ------------
 
-QVector<Pose> cxProfileFrenes(const Profile& cx,
-                              const Profile& cx_next,
-                              double L);
+V6d getBeltFrame(const V3d& o,
+                 const Eigen::Ref<const Eigen::VectorXd>& x,
+                 const Eigen::Ref<const Eigen::VectorXd>& y,
+                 const Eigen::Ref<const Eigen::VectorXd>& z);
 
 // ------------ Rsi Trajectory ------------
 struct MotionParams {
-  double v, a
+  double v, a;
 };
 
 namespace rsi {
-  QVector<Vec6d> polyline(const QVector<Vec6d> &ref_points, const MotionParams& mp, int decimals = 3);
-  QVector<Vec6d> lin(const Vec6d& P1, const Vec6d& P2, const MotionParams& mp, int decimals = 3);
+  QVector<V6d> polyline(const QVector<V6d> &ref_points, const MotionParams& mp, int decimals = 3);
+  QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams& mp, int decimals = 3);
 };
 
-QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const Eigen::Matrix4d& AiT);
+QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT);
 
-QVector<Vec6d> posesToFrames(const QVector<Pose>& poses);
+QVector<V6d> posesToFrames(const QVector<Pose>& poses);
 
-void writeOffsetsToJson(const QVector<Vec6d>& offsets, const QString& filePath, int decimals = 3);
+void writeOffsetsToJson(const QVector<V6d>& offsets, const QString& filePath, int decimals = 3);
 #endif // PATHPLANNER_H

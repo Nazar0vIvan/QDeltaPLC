@@ -108,7 +108,7 @@ private:
       "<IPOC>00000000</IPOC>"
       "</Sen>";
 
-  QVector<Vec6d> m_offsets;
+  QVector<V6d> m_offsets;
   int m_offsetIdx = 0;
 
   double m_Fz  = 0.0;

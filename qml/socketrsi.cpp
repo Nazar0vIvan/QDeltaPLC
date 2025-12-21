@@ -88,8 +88,8 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
 void SocketRSI::generateTrajectory()
 {
   /*
-  const Vec6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
-  const Vec6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
+  const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
+  const V6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
 
   m_offsets = rsi::lin(P1, P2, {10, 4});
   if (m_offsets.empty()) {
@@ -100,14 +100,14 @@ void SocketRSI::generateTrajectory()
 
   /*
   // WORKPIECE
-  Eigen::Vector3d Pc = { -0.113702, -0.012406, 111.290488 };
+  V3d Pc = { -0.113702, -0.012406, 111.290488 };
 
-  Eigen::Vector3d Pc11 = { -0.151981, -0.002515, 120.0},
+  V3d Pc11 = { -0.151981, -0.002515, 120.0},
                   Pc12 = { -0.153901, -0.003125, 120.0 },
                   Pc21 = { -0.422887,  0.061220, 180.0 },
                   Pc22 = { -0.423638,  0.065223, 180.0};
 
-  Eigen::Vector3d Pc1 = 0.5 * (Pc11 + Pc12),
+  V3d Pc1 = 0.5 * (Pc11 + Pc12),
                   Pc2 = 0.5 * (Pc21 + Pc22);
 
   double Rs[] = {
@@ -126,7 +126,7 @@ void SocketRSI::generateTrajectory()
 
   Cylinder cyl = Cylinder::fromTwoPoints(Pc1, Pc2, Pc, Rc, Lc, 'z');
 
-  Eigen::Matrix4d AiT;
+  M4d AiT;
   AiT <<  -1.0, 0.0, 0.0, 0.0,
            0.0, 0.0, 1.0, 0.0,
            0.0, 1.0, 0.0, 0.0,
@@ -140,8 +140,8 @@ void SocketRSI::generateTrajectory()
 
 
   // ROLLER
-  const Eigen::Vector3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
-  const Eigen::Vector3d Cr(854.512911, -16.511844, 623.196742); // A point on the axis (near the data “middle”)
+  const V3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
+  const V3d Cr(854.512911, -16.511844, 623.196742); // A point on the axis (near the data “middle”)
   const double Rr = 19.991300;
   const double Lr = 20.0;
 
@@ -153,10 +153,10 @@ void SocketRSI::generateTrajectory()
   Airfoil af = loadBladeJson("242.json");
 
   const int i = 0;
-  const Profile& cx      = af[i].cx;
-  const Profile& cx_next = af[i+1].cx;
+  const QVector<V3d>& cx      = af[i].cx;
+  const QVector<V3d>& cx_next = af[i+1].cx;
 
-  QVector<Pose> poses = cxProfilePathToRoller(cx, cx_next, rl_s, /*L=*/20.0);
+  QVector<Pose> poses = cxProfilePath(cx, cx_next , /*L=*/20.0);
 
   m_offsets = rsi::polyline(posesToFrames(poses), MotionParams{10, 3});
 
@@ -315,7 +315,7 @@ std::array<double, 6> SocketRSI::tickMotion(bool& shouldStopOut)
   }
 
   if (m_offsetIdx < m_offsets.size()) {
-    const Vec6d& dP = m_offsets[m_offsetIdx++];
+    const V6d& dP = m_offsets[m_offsetIdx++];
 
     for (int i = 0; i < 6; ++i)
       corr[static_cast<size_t>(i)] = dP(i);
