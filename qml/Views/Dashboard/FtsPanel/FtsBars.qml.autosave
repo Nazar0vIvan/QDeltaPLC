@@ -35,7 +35,7 @@ Control {
     }
 
     delegate: QxProgressBar {
-      id: barr
+      id: bar
 
       height: root.rowHeight
       width: implicitWidth
