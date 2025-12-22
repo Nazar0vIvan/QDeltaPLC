@@ -59,6 +59,7 @@ public:
   Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
   Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
   Q_INVOKABLE void generateTrajectory();
+  Q_INVOKABLE QVariantMap loadBladeJson(const QVariantMap& json);
 
   Q_INVOKABLE void startStreaming();
   Q_INVOKABLE void stopStreaming();
@@ -102,11 +103,11 @@ private:
 
   // rsi
   QByteArray defaultCommand =
-      "<Sen Type=\"ImFree\">"
-      "<RKorr X=\"0.0\" Y=\"0.0\" Z=\"0.0\" A=\"0.0\" B=\"0.0\" C=\"0.0\" />"
-      "<Flags ShouldStop=\"0\" />"
-      "<IPOC>00000000</IPOC>"
-      "</Sen>";
+    "<Sen Type=\"ImFree\">"
+    "<RKorr X=\"0.0\" Y=\"0.0\" Z=\"0.0\" A=\"0.0\" B=\"0.0\" C=\"0.0\" />"
+    "<Flags ShouldStop=\"0\" />"
+    "<IPOC>00000000</IPOC>"
+    "</Sen>";
 
   QVector<V6d> m_offsets;
   int m_offsetIdx = 0;
@@ -128,16 +129,21 @@ private:
   // --- timers ---
   QTimer m_cooldownTimer;
 
-
   // --- logic helpers ---
   std::array<double, 6> tickMotion(bool& shouldStopOut);
   RsiTxFrame makeTxFrame(quint64 ipoc);
-
 
   // --- serialization/parsing ---
   QByteArray subsXml(const RsiTxFrame& tx);
   RsiResponse parseRsiResponse(const QByteArray& xmlBytes);
   QVector<double> readCartesian6(const QXmlStreamAttributes& attrs);
+
+  // json
+  Airfoil m_af;
+  V3d jsonValueToVec3(const QJsonValue& v);
+  QVector<V3d> jsonArrayToProfile(const QJsonArray& arr);
+  BladeProfile jsonObjectToBladeProfile(const QJsonObject& obj);
+  Airfoil loadBladeJson(const QString& path);
 };
 
 #endif // SOCKETRSI_H

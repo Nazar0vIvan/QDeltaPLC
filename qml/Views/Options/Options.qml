@@ -112,11 +112,9 @@ ListView {
           imageSource: "qrc:/assets/pics/open.svg"
 
           onUploaded: path => {
-                        rsiRunner.invoke("parseConfigFile", {
-                                           "path": path
-                                         })
-                        rsiBtnApply.enabled = true
-                      }
+            rsiRunner.invoke("parseConfigFile", {"path": path})
+            rsiBtnApply.enabled = true
+          }
 
           Connections {
             target: rsiRunner
