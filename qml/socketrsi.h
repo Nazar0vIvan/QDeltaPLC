@@ -19,6 +19,7 @@
 #include "logger.h"
 #include "socketfts.h"
 #include "pathplanner.h"
+#include "bladejsonloader.h"
 
 // QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
 // QByteArray defaultCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.0\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
@@ -138,12 +139,8 @@ private:
   RsiResponse parseRsiResponse(const QByteArray& xmlBytes);
   QVector<double> readCartesian6(const QXmlStreamAttributes& attrs);
 
-  // json
   Airfoil m_af;
-  V3d jsonValueToVec3(const QJsonValue& v);
-  QVector<V3d> jsonArrayToProfile(const QJsonArray& arr);
-  BladeProfile jsonObjectToBladeProfile(const QJsonObject& obj);
-  Airfoil loadBladeJson(const QString& path);
+
 };
 
 #endif // SOCKETRSI_H

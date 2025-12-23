@@ -44,6 +44,8 @@ set(CPP_FILES
   socketrunner.cpp
   pathplanner.h
   pathplanner.cpp
+  bladejsonloader.h
+  bladejsonloader.cpp
 )
 
 qt_policy(SET QTP0004 NEW)

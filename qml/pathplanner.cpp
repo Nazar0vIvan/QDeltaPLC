@@ -552,7 +552,308 @@ QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams &mp, int decim
 
   return offsets;
 }
+
+
+M4d rigidInverse(const M4d &T)
+{
+  M4d inv = M4d::Identity();
+  const M3d R = T.topLeftCorner<3,3>();
+  const V3d p = T.block<3,1>(0,3);
+  const M3d Rt = R.transpose();
+  inv.topLeftCorner<3,3>() = Rt;
+  inv.block<3,1>(0,3) = -Rt * p;
+  return inv;
 }
+
+double unwrapToNearest(double angDeg, double refDeg)
+{
+  double a = angDeg;
+  while (a - refDeg > 180.0) a -= 360.0;
+  while (a - refDeg < -180.0) a += 360.0;
+  return a;
+}
+
+QVector<double> cumLen3(const QVector<V3d> &pts)
+{
+  QVector<double> s;
+  s.resize(pts.size());
+  if (pts.isEmpty()) return s;
+  s[0] = 0.0;
+  for (int i = 1; i < pts.size(); ++i)
+    s[i] = s[i-1] + (pts[i] - pts[i-1]).norm();
+  return s;
+}
+
+SampleAtSResult sampleAtS(const QVector<double> &s, double S)
+{
+  const int n = s.size();
+  if (n < 2) return {0, 0.0};
+
+  if (S <= s.front()) return {0, 0.0};
+  if (S >= s.back())  return {n-2, 1.0};
+
+  auto it = std::upper_bound(s.begin(), s.end(), S);
+  int idx = int(std::distance(s.begin(), it)) - 1;
+  idx = std::max(0, std::min(idx, n-2));
+
+  const double s0 = s[idx];
+  const double s1 = s[idx+1];
+  const double seg = (s1 - s0);
+  const double a = (seg > 1e-12) ? (S - s0) / seg : 0.0;
+  return { idx, std::max(0.0, std::min(1.0, a)) };
+}
+
+V3d lerp(const V3d &a, const V3d &b, double t)
+{
+  return (1.0 - t) * a + t * b;
+}
+
+void enforceFrameContinuity(bool hasPrev, const V3d &tPrev, const V3d &nPrev, V3d &t, V3d &n)
+{
+  if (!hasPrev) return;
+
+  // 1) keep tangent direction consistent (flip t and n together -> preserves det)
+  if (tPrev.dot(t) < 0.0) {
+    t = -t;
+    n = -n;
+  }
+
+  // 2) keep normal consistent (flip n only; then b will flip accordingly)
+  if (nPrev.dot(n) < 0.0) {
+    n = -n;
+  }
+}
+
+Pose frenetFromGeom(const V3d &p, const V3d &t_hint, const V3d &span_to_next, bool hasPrev, const V3d &tPrev, const V3d &nPrev)
+{
+  V3d t = t_hint;
+  const double tn = t.norm();
+  if (tn > 1e-12) t /= tn; else t = V3d::UnitX();
+
+  V3d v = span_to_next;
+  const double vn = v.norm();
+  if (vn > 1e-12) v /= vn; else v = V3d::UnitZ();
+
+  V3d n = t.cross(v);
+  const double nn = n.norm();
+  if (nn > 1e-12) n /= nn;
+  else {
+    // fallback: keep previous normal if degenerate
+    n = hasPrev ? nPrev : V3d::UnitZ();
+    const double nnn = n.norm();
+    if (nnn > 1e-12) n /= nnn;
+  }
+
+  enforceFrameContinuity(hasPrev, tPrev, nPrev, t, n);
+
+  // right-handed completion
+  V3d b = n.cross(t);
+  const double bn = b.norm();
+  if (bn > 1e-12) b /= bn;
+
+  // re-orthonormalize n to remove numeric drift
+  n = t.cross(b);
+  const double n2 = n.norm();
+  if (n2 > 1e-12) n /= n2;
+
+  return Pose::fromAxes(t, b, n, p);
+}
+
+void deltaRotToEulerZYX_deg(const M3d &dR, double &dA, double &dB, double &dC)
+{
+  const EulerSolution e = rot2euler(dR, true);
+
+  // rot2euler returns two branches; for delta we want the one closer to 0
+  const double s1 = std::abs(e.A1) + std::abs(e.B1) + std::abs(e.C1);
+  const double s2 = std::abs(e.A2) + std::abs(e.B2) + std::abs(e.C2);
+
+  if (s1 <= s2) { dA = e.A1; dB = e.B1; dC = e.C1; }
+  else          { dA = e.A2; dB = e.B2; dC = e.C2; }
+}
+
+QVector<V6d> offsetsFromCxContour(const QVector<V3d> &cx, const QVector<V3d> &cx_next, const M4d &AiT, const MotionParams &mp, int decimals)
+{
+  QVector<V6d> out;
+  if (cx.size() < 2 || cx_next.size() != cx.size()) return out;
+
+  const double dt = 0.004;           // RSI cycle [s]
+  const double V  = mp.v;            // [mm/s]
+  const double a  = mp.a;            // [mm/s^2]
+
+  // distance needed to reach V with accel a: s = V^2/(2a)
+  const double s_acc = (a > 1e-12) ? (0.5 * V * V / a) : 0.0;
+  const double s_dec = s_acc;
+
+  // --- build StartPoint / EndPoint extensions (same idea as your getCxCvStart/EndFrenet) ---
+  const V3d p0   = cx.front();
+  const V3d p1   = cx[1];
+  const V3d pn   = cx.back();
+  const V3d pn_1 = cx[cx.size() - 2];
+
+  const V3d dirStart = safeUnit(p0 - p1, V3d::UnitX());
+  const V3d dirEnd   = safeUnit(pn - pn_1, V3d::UnitX());
+
+  const V3d startP = p0 + s_acc * dirStart;
+  const V3d endP   = pn + s_dec * dirEnd;
+
+  const V3d q0   = cx_next.front();
+  const V3d q1   = cx_next[1];
+  const V3d qn   = cx_next.back();
+  const V3d qn_1 = cx_next[cx_next.size() - 2];
+
+  const V3d dirStartN = safeUnit(q0 - q1, V3d::UnitX());
+  const V3d dirEndN   = safeUnit(qn - qn_1, V3d::UnitX());
+
+  const V3d startQ = q0 + s_acc * dirStartN;
+  const V3d endQ   = qn + s_dec * dirEndN;
+
+  QVector<V3d> pts;      pts.reserve(cx.size() + 2);
+  QVector<V3d> ptsNext;  ptsNext.reserve(cx.size() + 2);
+
+  pts     << startP;
+  ptsNext << startQ;
+  for (int i = 0; i < cx.size(); ++i) {
+    pts     << cx[i];
+    ptsNext << cx_next[i];
+  }
+  pts     << endP;
+  ptsNext << endQ;
+
+  const QVector<double> S = cumLen3(pts);
+  const double totalLen = S.isEmpty() ? 0.0 : S.back();
+  if (totalLen <= 1e-9) return out;
+
+  // precompute smooth vertex tangents (THIS is the critical fix vs. segment t_hint)
+  const QVector<V3d> tV = vertexTangents(pts);
+
+  // trapezoid timing (extension ensures we can reach V)
+  const double t_acc = (a > 1e-12) ? (V / a) : 0.0;
+  const double s_const = std::max(0.0, totalLen - s_acc - s_dec);
+  const double t_const = (V > 1e-12) ? (s_const / V) : 0.0;
+  const double T_total = t_acc + t_const + t_acc;
+
+  const int steps = std::max(1, int(std::ceil(T_total / dt)));
+  out.reserve(steps);
+
+  // initial pose at s = 0
+  const V3d p_init = pts[0];
+  const V3d q_init = ptsNext[0];
+
+  Pose prevAiB = frenetFromGeom(p_init,
+                                tV[0],
+                                (q_init - p_init),
+                                /*hasPrev=*/false,
+                                V3d::Zero(),
+                                V3d::Zero());
+
+  M4d prevABT = AiT * rigidInverse(prevAiB.transf);
+
+  bool hasPrevFrame = true;
+  V3d tPrev = prevAiB.t;
+  V3d nPrev = prevAiB.n;
+
+  const double scale = std::pow(10.0, decimals);
+
+  for (int k = 1; k <= steps; ++k) {
+    double t = k * dt;
+    if (t > T_total) t = T_total;
+
+    // arc-length law s(t)
+    double s;
+    if (t <= t_acc) {
+      s = 0.5 * a * t * t;
+    } else if (t <= t_acc + t_const) {
+      const double t2 = t - t_acc;
+      s = s_acc + V * t2;
+    } else {
+      const double t3 = t - t_acc - t_const;
+      s = s_acc + s_const + V * t3 - 0.5 * a * t3 * t3;
+    }
+    if (s > totalLen) s = totalLen;
+
+    // sample along extended contour
+    const SampleAtSResult smp = sampleAtS(S, s);
+    const int i = smp.idx;
+    const double u = smp.alpha;
+
+    const V3d p = lerp(pts[i],     pts[i + 1],     u);
+    const V3d q = lerp(ptsNext[i], ptsNext[i + 1], u);
+
+    // smooth tangent hint (instead of raw segment direction)
+    const V3d t_hint = blendTangentAligned(tV[i], tV[i + 1], u);
+
+    Pose AiB_pose = frenetFromGeom(p, t_hint, (q - p),
+                                   hasPrevFrame, tPrev, nPrev);
+
+    tPrev = AiB_pose.t;
+    nPrev = AiB_pose.n;
+    hasPrevFrame = true;
+
+    const M4d ABT = AiT * rigidInverse(AiB_pose.transf);
+
+    // delta between successive ABT
+    const M4d dT = rigidInverse(prevABT) * ABT;
+    const V3d dp = dT.block<3,1>(0,3);
+
+    double dA = 0.0, dB = 0.0, dC = 0.0;
+    deltaRotToEulerZYX_deg(dT.topLeftCorner<3,3>(), dA, dB, dC);
+
+    V6d dP;
+    dP << dp.x(), dp.y(), dp.z(), dA, dB, dC;
+
+    for (int j = 0; j < 6; ++j)
+      dP(j) = std::round(dP(j) * scale) / scale;
+
+    out.push_back(dP);
+    prevABT = ABT;
+  }
+
+  return out;
+}
+
+V3d safeUnit(const V3d &v, const V3d &fallback, double eps)
+{
+  const double n = v.norm();
+  return (n > eps) ? (v / n) : fallback;
+}
+
+QVector<V3d> vertexTangents(const QVector<V3d> &pts)
+{
+  const int m = pts.size();
+  QVector<V3d> tv;
+  tv.resize(m);
+
+  if (m == 0) return tv;
+  if (m == 1) { tv[0] = V3d::UnitX(); return tv; }
+
+  for (int j = 0; j < m; ++j) {
+    V3d v;
+    if (j == 0) {
+      v = pts[1] - pts[0];
+    } else if (j == m - 1) {
+      v = pts[m - 1] - pts[m - 2];
+    } else {
+      v = pts[j + 1] - pts[j - 1];
+      if (v.norm() < 1e-9) v = pts[j + 1] - pts[j];
+      if (v.norm() < 1e-9) v = pts[j] - pts[j - 1];
+    }
+    tv[j] = safeUnit(v, V3d::UnitX());
+  }
+
+  return tv;
+}
+
+V3d blendTangentAligned(const V3d &t0_in, const V3d &t1_in, double u)
+{
+  V3d t0 = t0_in;
+  V3d t1 = t1_in;
+  if (t0.dot(t1) < 0.0) t1 = -t1;
+  V3d t = (1.0 - u) * t0 + u * t1;
+  return safeUnit(t, t0);
+}
+
+} // namespace
+
 
 // ----------------------------------------
 

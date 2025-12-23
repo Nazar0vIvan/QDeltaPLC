@@ -88,6 +88,9 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
 
 void SocketRSI::generateTrajectory()
 {
+  m_offsets.clear();
+  m_offsetIdx = 0;
+
   /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
   const V6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
@@ -149,11 +152,6 @@ void SocketRSI::generateTrajectory()
   Pose rl_s = rl.surfacePose('y', 0.0, 'y', -45.0, 'z', rl.R + 10.0, false);
 
   // BLADE
-  const int i = 0;
-  const QVector<V3d>& cx      = m_af[i].cx;
-  const QVector<V3d>& cx_next = m_af[i+1].cx;
-
-  QVector<Pose> cxFrenets = getCxCvFrenets(cx, cx_next , 20.0);
 
   M4d AiT;
   AiT <<  1.0,  0.0,  0.0, 0.0,
@@ -161,9 +159,23 @@ void SocketRSI::generateTrajectory()
           0.0,  0.0, -1.0, 0.0,
           0.0,  0.0,  0.0, 1.0;
 
-  QVector<Pose> path = pathFromSurfPoses(cxFrenets, AiT);
+  // const QVector<V3d>& cx0      = m_af[0].cx;
+  // const QVector<V3d>& cx0_next = m_af[1].cx;
+  // QVector<Pose> cxFrenets0 = getCxCvFrenets(cx0, cx0_next , 20.0);
+  // QVector<Pose> path0 = pathFromSurfPoses(cxFrenets0, AiT);
+  // QVector<V6d> frames0 = posesToFrames(path0);
 
-  m_offsets = rsi::polyline(posesToFrames(path), MotionParams{10, 3});
+  // const QVector<V3d>& cx1      = m_af[1].cx;
+  // const QVector<V3d>& cx1_next = m_af[2].cx;
+  // QVector<Pose> cxFrenets1 = getCxCvFrenets(cx1, cx1_next , 20.0);
+  // QVector<Pose> path1 = pathFromSurfPoses(cxFrenets1, AiT);
+  // QVector<V6d> frames1 = posesToFrames(path1);
+  // std::reverse(frames1.begin(), frames1.end());
+
+  const MotionParams mp{10.0, 3.0}; // V [mm/s], a [mm/s^2]
+  const int decimals = 3;
+
+  m_offsets = rsi::offsetsFromCxContour(m_af[0].cx, m_af[1].cx, AiT, mp, decimals);
 
   emit trajectoryReady();
 
@@ -172,55 +184,17 @@ void SocketRSI::generateTrajectory()
 
 QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)
 {
-  if(data.value("path").isNull() || !data.value("path").canConvert<QUrl>()) {
-    emit logMessage({"Empty/Invalid path", 0, objectName()});
+  const BladeJsonLoader::LoadResult res = BladeJsonLoader::load(data);
+
+  if (!res.ok) {
+    emit logMessage({res.error, 0, objectName()});
     return { {"path", ""}, {"parseResult", false} };
   }
 
-  const QString path = data.value("path").toUrl().toLocalFile();
-
-  QFile f(path);
-  if (!f.open(QIODevice::ReadOnly)) {
-    emit logMessage({f.errorString(), 0, objectName()});
-    return { {"path", ""}, {"parseResult", false} };
-  }
-
-  const QByteArray bytes = f.readAll();
-
-  if (bytes.isEmpty()) {
-    emit logMessage({"JSON file is empty", 0, objectName()});
-    return { {"path", ""}, {"parseResult", false} };
-  }
-
-  QJsonParseError err;
-  const QJsonDocument doc = QJsonDocument::fromJson(bytes, &err);
-  if (err.error != QJsonParseError::NoError) {
-    const QString msg = QString("JSON parse error at offset %1: %2")
-    .arg(err.offset)
-        .arg(err.errorString());
-    emit logMessage({msg, 0, objectName()});
-    return { {"path", ""}, {"parseResult", false} };
-  }
-
-  if (!doc.isArray()) {
-    emit logMessage({"Invalid JSON: top-level value must be an array", 0, objectName()});
-    return { {"path", ""}, {"parseResult", false} };
-  }
-
-  const QJsonArray top = doc.array();
-
-  m_af.reserve(top.size());
-
-  for (const QJsonValue &v : top) {
-    if (!v.isObject()) {
-      emit logMessage({"Invalid JSON: array element is not an object", 0, objectName()});
-      return { {"path", ""}, {"parseResult", false} };
-    }
-    m_af.push_back(jsonObjectToBladeProfile(v.toObject()));
-  }
+  m_af = res.airfoil;
 
   emit logMessage({"JSON file is loaded successfully", 1, objectName()});
-  return { {"path", path}, {"parseResult", true} };
+  return { {"path", res.path}, {"parseResult", true} };
 }
 
 void SocketRSI::startStreaming()
@@ -476,31 +450,4 @@ void SocketRSI::test()
 
 }
 
-// json
-
-V3d SocketRSI::jsonValueToVec3(const QJsonValue &v)
-{
-  const QJsonArray a = v.toArray(); // main-case: [x,y,z]
-  return V3d(a[0].toDouble(), a[1].toDouble(), a[2].toDouble());
-}
-
-QVector<V3d> SocketRSI::jsonArrayToProfile(const QJsonArray &arr)
-{
-  QVector<V3d> out;
-  out.reserve(arr.size());
-  for (const QJsonValue& v : arr) {
-    out.push_back(jsonValueToVec3(v));
-  }
-  return out;
-}
-
-BladeProfile SocketRSI::jsonObjectToBladeProfile(const QJsonObject &obj)
-{
-  BladeProfile bp;
-  bp.cx = jsonArrayToProfile(obj.value("cx").toArray());
-  bp.cv = jsonArrayToProfile(obj.value("cv").toArray());
-  bp.re = jsonArrayToProfile(obj.value("re").toArray());
-  bp.le = jsonArrayToProfile(obj.value("le").toArray());
-  return bp;
-}
 

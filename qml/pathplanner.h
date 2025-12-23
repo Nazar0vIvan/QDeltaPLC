@@ -106,11 +106,6 @@ struct BladeProfile {
 };
 using Airfoil = QVector<BladeProfile>;
 
-// V3d jsonValueToVec3(const QJsonValue& v);
-// QVector<V3d> jsonArrayToProfile(const QJsonArray& arr);
-// BladeProfile jsonObjectToBladeProfile(const QJsonObject& obj);
-// Airfoil parseBladeJson(QFile& f);
-
 Pose getCxCvStartFrenet(const QVector<V3d>& cx, double L, const Pose& frenet);
 Pose getCxCvEndFrenet(const QVector<V3d>& cx, double L, const Pose& frenet);
 Pose getCxCvFrenet(V3d pt, const V3d& poly, const V3d& v0);
@@ -128,9 +123,50 @@ struct MotionParams {
 };
 
 namespace rsi {
-QVector<V6d> polyline(const QVector<V6d> &ref_points, const MotionParams& mp, int decimals = 3);
+
+QVector<V6d> offsetsFromCxContour(const QVector<V3d>& cx,
+                                  const QVector<V3d>& cx_next,
+                                  const M4d& AiT,
+                                  double V_mm_s,
+                                  double dt_s = 0.004,
+                                  int decimals = 3);
+
+// QVector<V6d> polyline(const QVector<V6d> &ref_points, const MotionParams& mp, int decimals = 3);
 QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams& mp, int decimals = 3);
+
+struct SampleAtSResult {
+  int idx;
+  double alpha;
 };
+
+M4d rigidInverse(const M4d& T);
+double unwrapToNearest(double angDeg, double refDeg);
+QVector<double> cumLen3(const QVector<V3d>& pts);
+SampleAtSResult sampleAtS(const QVector<double>& s, double S);
+V3d lerp(const V3d& a, const V3d& b, double t);
+void enforceFrameContinuity(bool hasPrev,
+                            const V3d& tPrev, const V3d& nPrev,
+                            V3d& t, V3d& n);
+Pose frenetFromGeom(const V3d& p,
+                    const V3d& t_hint,
+                    const V3d& span_to_next,
+                    bool hasPrev,
+                    const V3d& tPrev,
+                    const V3d& nPrev);
+
+void deltaRotToEulerZYX_deg(const M3d& dR, double& dA, double& dB, double& dC);
+QVector<V6d> offsetsFromCxContour(const QVector<V3d>& cx,
+                                  const QVector<V3d>& cx_next,
+                                  const M4d& AiT,
+                                  const MotionParams& mp,
+                                  int decimals);
+
+V3d safeUnit(const V3d& v, const V3d& fallback = V3d::UnitX(), double eps = 1e-12);
+QVector<V3d> vertexTangents(const QVector<V3d>& pts);
+V3d blendTangentAligned(const V3d& t0_in, const V3d& t1_in, double u);
+
+
+}
 
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT);
 
