@@ -27,25 +27,27 @@ set(QML_FILES
 )
 
 ## CPP ##
+set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
+
 set(CPP_FILES
-  logger.h
-  logger.cpp
-  plcmessagemanager.h
-  plcmessagemanager.cpp
-  qmlchartbridge.h
-  qmlchartbridge.cpp
-  socketdeltaplc.h
-  socketdeltaplc.cpp
-  socketfts.h
-  socketfts.cpp
-  socketrsi.h
-  socketrsi.cpp
-  socketrunner.h
-  socketrunner.cpp
-  pathplanner.h
-  pathplanner.cpp
-  bladejsonloader.h
-  bladejsonloader.cpp
+  ${SRC_DIR}/network/socketdeltaplc.cpp
+  ${SRC_DIR}/network/socketfts.h
+  ${SRC_DIR}/network/socketfts.cpp
+  ${SRC_DIR}/network/socketrsi.h
+  ${SRC_DIR}/network/socketrsi.cpp
+  ${SRC_DIR}/network/socketrunner.h
+  ${SRC_DIR}/network/socketrunner.cpp
+  ${SRC_DIR}/logger.h
+  ${SRC_DIR}/logger.cpp
+  ${SRC_DIR}/plcmessagemanager.h
+  ${SRC_DIR}/plcmessagemanager.cpp
+  ${SRC_DIR}/qmlchartbridge.h
+  ${SRC_DIR}/qmlchartbridge.cpp
+  ${SRC_DIR}/network/socketdeltaplc.h
+  ${SRC_DIR}/pathplanner.h
+  ${SRC_DIR}/pathplanner.cpp
+  ${SRC_DIR}/bladejsonloader.h
+  ${SRC_DIR}/bladejsonloader.cpp
 )
 
 qt_policy(SET QTP0004 NEW)
@@ -61,14 +63,16 @@ qt_add_qml_module(qdeltaplc
   QML_FILES
     ${QML_FILES}
   RESOURCES
-    pics.qrc
-    fonts.qrc
-    files.qrc
+    resources/pics.qrc
+    resources/fonts.qrc
 )
 
 set(EIGEN5_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/libs/eigen-5.0.0)
+
 target_include_directories(qdeltaplc
-  PRIVATE "${EIGEN5_INCLUDE_DIR}"
+  PRIVATE
+    "${SRC_DIR}"
+    "${EIGEN5_INCLUDE_DIR}"
 )
 
 target_link_libraries(qdeltaplc

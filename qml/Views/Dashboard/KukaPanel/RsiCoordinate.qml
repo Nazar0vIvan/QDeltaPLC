@@ -45,7 +45,7 @@ Item {
 
         contentItem: Image {
           fillMode: Image.PreserveAspectFit
-          source: "qrc:/assets/pics/minus.svg"
+          source: "qrc:/pics/minus.svg"
           mipmap: true
           smooth: true
         }
@@ -91,7 +91,7 @@ Item {
 
         contentItem: Image {
           fillMode: Image.PreserveAspectFit
-          source: "qrc:/assets/pics/plus.svg"
+          source: "qrc:/pics/plus.svg"
           mipmap: true
           smooth: true
         }

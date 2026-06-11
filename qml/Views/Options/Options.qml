@@ -109,7 +109,7 @@ ListView {
 
           height: parent.height
           fieldWidth: 400
-          imageSource: "qrc:/assets/pics/open.svg"
+          imageSource: "qrc:/pics/open.svg"
 
           onUploaded: path => {
             rsiRunner.invoke("parseConfigFile", {"path": path})

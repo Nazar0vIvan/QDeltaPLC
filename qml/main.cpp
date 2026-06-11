@@ -5,19 +5,19 @@
 #include <QFontDatabase>
 #include <QMetaType>
 
-#include "socketrunner.h"
-#include "socketdeltaplc.h"
-#include "socketfts.h"
-#include "socketrsi.h"
+#include "network/socketrunner.h"
+#include "network/socketdeltaplc.h"
+#include "network/socketfts.h"
+#include "network/socketrsi.h"
 #include "logger.h"
 
 int main(int argc, char *argv[])
 {
   QApplication app(argc, argv);
 
-  QFontDatabase::addApplicationFont("://assets/fonts/roboto/Roboto-Regular.ttf");
-  QFontDatabase::addApplicationFont("://assets/fonts/roboto/Roboto-Medium.ttf");
-  auto idfont = QFontDatabase::addApplicationFont("://assets/fonts/roboto/Roboto-Bold.ttf");
+  QFontDatabase::addApplicationFont("://fonts/roboto/Roboto-Regular.ttf");
+  QFontDatabase::addApplicationFont("://fonts/roboto/Roboto-Medium.ttf");
+  auto idfont = QFontDatabase::addApplicationFont("://fonts/roboto/Roboto-Bold.ttf");
   if (idfont == -1) {
     qWarning() << "Failed to load font from resources!";
   }

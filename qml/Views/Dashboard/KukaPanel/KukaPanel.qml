@@ -74,7 +74,7 @@ QxGroupBox {
 
           height: parent.height
           fieldWidth: 245
-          imageSource: "qrc:/assets/pics/open.svg"
+          imageSource: "qrc:/pics/open.svg"
 
           onUploaded: path => {
             rsiRunner.invoke("loadBladeJson", {"path": path})

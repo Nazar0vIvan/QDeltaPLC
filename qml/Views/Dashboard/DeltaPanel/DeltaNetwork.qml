@@ -112,7 +112,7 @@ Control {
           radius: 0
           padding: 6
           enabled: plcRunner && plcRunner.socketState === 3
-          imageSource: "qrc:/assets/pics/arrow_right.svg"
+          imageSource: "qrc:/pics/arrow_right.svg"
           onClicked: {
             if (!wRawValueInput.text) return;
             const args = {
@@ -185,7 +185,7 @@ Control {
           radius: 0
           padding: 6
           enabled: plcRunner && plcRunner.socketState === 3
-          imageSource: "qrc:/assets/pics/arrow_right.svg"
+          imageSource: "qrc:/pics/arrow_right.svg"
           onClicked: {
             if (!wRegAddrInput.text || !wRegValueInput.text) return;
             const args = {
@@ -267,7 +267,7 @@ Control {
           radius: 0
           padding: 6
           enabled: plcRunner && plcRunner.socketState === 3
-          imageSource: "qrc:/assets/pics/arrow_right.svg"
+          imageSource: "qrc:/pics/arrow_right.svg"
           onClicked: {
             if (!rRegInput.text) return;
             const args = {

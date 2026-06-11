@@ -16,9 +16,9 @@ Rectangle {
     spacing: 0
 
     model: ListModel {
-      ListElement { iconPath: "qrc:/assets/pics/dashboard.svg" }
-      ListElement { iconPath: "qrc:/assets/pics/settings.svg" }
-      // ListElement { iconPath: "qrc:/assets/pics/test.svg" }
+      ListElement { iconPath: "qrc:/pics/dashboard.svg" }
+      ListElement { iconPath: "qrc:/pics/settings.svg" }
+      // ListElement { iconPath: "qrc:/pics/test.svg" }
     }
 
     delegate: NavigationMenuDelegate {

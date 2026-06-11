@@ -39,7 +39,7 @@ Item {
 
       Layout.preferredWidth: root.switchWidth
       Layout.preferredHeight: root.switchHeight
-      imageSource: "qrc:/assets/pics/lock.svg"
+      imageSource: "qrc:/pics/lock.svg"
       enabled: root.enabled
       displayonly: root.displayonly
 

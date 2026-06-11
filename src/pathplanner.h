@@ -97,7 +97,40 @@ V3d prjToPerpPlane(const V3d& vec, const V3d& n);
 V3d tanByPoly(const V3d& p, const V3d& coeffs);
 
 // ------------ Frene ------------
+
 Pose getFreneByCirc(const V3d& pt0, const V3d& ptc);
+
+// ------------ Plane ------------
+
+struct PlaneMeshAxis {
+  V3d dir{V3d::Zero()}; // must belong to plane
+  double step{0.0};     // signed step, mm
+  int count{0};
+};
+
+struct PlanePoseMeshParams {
+  Plane plane{};
+  V3d origin{V3d::Zero()};
+
+  PlaneMeshAxis axis1{};
+  PlaneMeshAxis axis2{};
+
+  bool projectOriginToPlane{true};
+};
+
+struct PoseMesh {
+  QVector<QVector<Pose>> poses; // poses[row][col]
+
+  bool empty() const noexcept;
+  int rows() const noexcept;
+  int cols() const noexcept;
+  int size() const noexcept;
+
+  Pose& at(int row, int col);
+  const Pose& at(int row, int col) const;
+};
+
+PoseMesh makePlanePoseMesh(const PlanePoseMeshParams& params);
 
 // ------------ Blade ------------
 
@@ -112,60 +145,60 @@ Pose getCxCvFrenet(V3d pt, const V3d& poly, const V3d& v0);
 QVector<Pose> getCxCvFrenets(const QVector<V3d>& cx, const QVector<V3d>& cx_next, double L);
 
 // ------------ Base ------------
+
 V6d getBeltFrame(const V3d& o,
                  const Eigen::Ref<const Eigen::VectorXd>& x,
                  const Eigen::Ref<const Eigen::VectorXd>& y,
                  const Eigen::Ref<const Eigen::VectorXd>& z);
 
 // ------------ Rsi Trajectory ------------
+
 struct MotionParams {
   double v, a;
 };
 
-namespace rsi {
+namespace rsi
+{
+  QVector<V6d> offsetsFromCxContour(const QVector<V3d>& cx,
+                                    const QVector<V3d>& cx_next,
+                                    const M4d& AiT,
+                                    double V_mm_s,
+                                    double dt_s = 0.004,
+                                    int decimals = 3);
 
-QVector<V6d> offsetsFromCxContour(const QVector<V3d>& cx,
-                                  const QVector<V3d>& cx_next,
-                                  const M4d& AiT,
-                                  double V_mm_s,
-                                  double dt_s = 0.004,
-                                  int decimals = 3);
+  // QVector<V6d> polyline(const QVector<V6d> &ref_points, const MotionParams& mp, int decimals = 3);
+  QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams& mp, int decimals = 3);
 
-// QVector<V6d> polyline(const QVector<V6d> &ref_points, const MotionParams& mp, int decimals = 3);
-QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams& mp, int decimals = 3);
+  struct SampleAtSResult {
+    int idx;
+    double alpha;
+  };
 
-struct SampleAtSResult {
-  int idx;
-  double alpha;
-};
+  M4d rigidInverse(const M4d& T);
+  double unwrapToNearest(double angDeg, double refDeg);
+  QVector<double> cumLen3(const QVector<V3d>& pts);
+  SampleAtSResult sampleAtS(const QVector<double>& s, double S);
+  V3d lerp(const V3d& a, const V3d& b, double t);
+  void enforceFrameContinuity(bool hasPrev,
+                              const V3d& tPrev, const V3d& nPrev,
+                              V3d& t, V3d& n);
+  Pose frenetFromGeom(const V3d& p,
+                      const V3d& t_hint,
+                      const V3d& span_to_next,
+                      bool hasPrev,
+                      const V3d& tPrev,
+                      const V3d& nPrev);
 
-M4d rigidInverse(const M4d& T);
-double unwrapToNearest(double angDeg, double refDeg);
-QVector<double> cumLen3(const QVector<V3d>& pts);
-SampleAtSResult sampleAtS(const QVector<double>& s, double S);
-V3d lerp(const V3d& a, const V3d& b, double t);
-void enforceFrameContinuity(bool hasPrev,
-                            const V3d& tPrev, const V3d& nPrev,
-                            V3d& t, V3d& n);
-Pose frenetFromGeom(const V3d& p,
-                    const V3d& t_hint,
-                    const V3d& span_to_next,
-                    bool hasPrev,
-                    const V3d& tPrev,
-                    const V3d& nPrev);
+  void deltaRotToEulerZYX_deg(const M3d& dR, double& dA, double& dB, double& dC);
+  QVector<V6d> offsetsFromCxContour(const QVector<V3d>& cx,
+                                    const QVector<V3d>& cx_next,
+                                    const M4d& AiT,
+                                    const MotionParams& mp,
+                                    int decimals);
 
-void deltaRotToEulerZYX_deg(const M3d& dR, double& dA, double& dB, double& dC);
-QVector<V6d> offsetsFromCxContour(const QVector<V3d>& cx,
-                                  const QVector<V3d>& cx_next,
-                                  const M4d& AiT,
-                                  const MotionParams& mp,
-                                  int decimals);
-
-V3d safeUnit(const V3d& v, const V3d& fallback = V3d::UnitX(), double eps = 1e-12);
-QVector<V3d> vertexTangents(const QVector<V3d>& pts);
-V3d blendTangentAligned(const V3d& t0_in, const V3d& t1_in, double u);
-
-
+  V3d safeUnit(const V3d& v, const V3d& fallback = V3d::UnitX(), double eps = 1e-12);
+  QVector<V3d> vertexTangents(const QVector<V3d>& pts);
+  V3d blendTangentAligned(const V3d& t0_in, const V3d& t1_in, double u);
 }
 
 QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT);
@@ -173,4 +206,5 @@ QVector<Pose> pathFromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT)
 QVector<V6d> posesToFrames(const QVector<Pose>& poses);
 
 void writeOffsetsToJson(const QVector<V6d>& offsets, const QString& filePath, int decimals = 3);
+
 #endif // PATHPLANNER_H

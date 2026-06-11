@@ -29,7 +29,7 @@ Item {
       Layout.preferredHeight: root.fieldHeight
       Layout.rightMargin: 14
       fillMode: Image.PreserveAspectFit
-      source: "qrc:/assets/pics/step.svg"
+      source: "qrc:/pics/step.svg"
     }
 
     Button {
@@ -44,7 +44,7 @@ Item {
       leftPadding: 4
 
       contentItem: Image {
-        source: "qrc:/assets/pics/arrow_left.svg"
+        source: "qrc:/pics/arrow_left.svg"
         mipmap: true
         smooth: true
       }
@@ -94,7 +94,7 @@ Item {
       leftPadding: 4
 
       contentItem: Image {
-        source: "qrc:/assets/pics/arrow_right.svg"
+        source: "qrc:/pics/arrow_right.svg"
         mipmap: true
         smooth: true
       }
