@@ -17,9 +17,6 @@ using V3d = Eigen::Vector3d;
 using M3d = Eigen::Matrix3d;
 using M4d = Eigen::Matrix4d;
 
-struct LoadBladeResult {
-
-};
 
 struct Plane {
   double A, B, C, D;   // A*x + B*y + C*z + D = 0
