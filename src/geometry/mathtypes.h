@@ -16,3 +16,9 @@ struct EulerSolution {
   double B1{}; double B2{};
   double C1{}; double C2{};
 };
+
+struct Basis {
+  V3d x{V3d::UnitX()};
+  V3d y{V3d::UnitY()};
+  V3d z{V3d::UnitZ()};
+};

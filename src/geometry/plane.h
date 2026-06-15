@@ -16,5 +16,5 @@ struct Plane {
   );
 
   V3d normal() const noexcept;
-  V3d explicitCoeffs() const noexcept;
+  std::optional<V3d> explicitCoeffs() const noexcept;
 };

@@ -8,14 +8,11 @@
 struct Cylinder
 {
 public:
-  static Cylinder fromTwoPoints(const V3d& c1, const V3d& c2, const V3d& pc,
-                                double R, double L,
-                                char axis = 'y');
+  // static Cylinder fromTwoPoints(const V3d& c1, const V3d& c2, const V3d& pc,
+  //                               double R, double L,
+  //                               char axis = 'y');
 
-  static Cylinder fromAxis(const V3d& u,
-                           const V3d& pc,
-                           double R, double L,
-                           char axis = 'y');
+  static std::optional<Cylinder> fromAxis(const V3d& axisDir, double radius, Axis axis = Axis::X);
 
   Pose surfacePose(char axis1, double val1,
                    char axisRot, double angleDeg,

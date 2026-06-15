@@ -1,4 +1,5 @@
 #include "pose.h"
+#include "utils.h"
 
 Pose Pose::fromFrame(const V6d& frame)
 {
@@ -15,26 +16,37 @@ Pose Pose::fromFrame(const V6d& frame)
 
 std::optional<Pose> Pose::fromTransform(const M4d& tf)
 {
-  const M3d rawRot = tf.block<3, 3>(0, 0);
+  if (!tf.allFinite()) {
+    return std::nullopt;
+  }
 
-  const auto rot = vec2rot(rawRot.col(0), rawRot.col(1), rawRot.col(2));
+  if (!nearlyEqual(tf(3, 0), 0.0) ||
+      !nearlyEqual(tf(3, 1), 0.0) ||
+      !nearlyEqual(tf(3, 2), 0.0) ||
+      !nearlyEqual(tf(3, 3), 1.0)) {
+    return std::nullopt;
+  }
 
-  if (!rot) return std::nullopt;
+  const M3d R = tf.block<3, 3>(0, 0);
+
+  if (!isRotBasis(R.col(0), R.col(1), R.col(2))){
+    return std::nullopt;
+  }
 
   Pose pose;
-  pose.setFromRotation(*rot, tf.block<3, 1>(0, 3));
+  pose.setFromRotation(R, tf.block<3, 1>(0, 3));
 
   return pose;
 }
 
 std::optional<Pose> Pose::fromAxes(const V3d& t, const V3d& b, const V3d& n, const V3d& origin)
 {
-  const auto rot = vec2rot(t, b, n);
+  const auto R = basis2rot(t, b, n);
 
-  if (!rot) return std::nullopt;
+  if (!R) return std::nullopt;
 
   Pose pose;
-  pose.setFromRotation(*rot, origin);
+  pose.setFromRotation(*R, origin);
 
   return pose;
 }

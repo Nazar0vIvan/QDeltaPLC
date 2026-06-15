@@ -20,9 +20,10 @@ M4d translation(const V3d& delta);
 M4d rotation(const double angleDeg, const Axis axis);
 M4d transform(const M3d& rot, const V3d& origin);
 
+bool isRotBasis(const Basis& basis, double eps = GeomConst::Eps);
 EulerSolution rot2euler(const M3d& rot);
 M3d euler2rot(const double A, const double B, const double C);
-std::optional<M3d> vec2rot(const V3d& ux, const V3d& uy, const V3d& uz);
+std::optional<M3d> basis2rot(const Basis& basis);
 
 std::optional<V3d> prjPointOnLine(const V3d& linePoint, const V3d& lineDir, const V3d& point);
 

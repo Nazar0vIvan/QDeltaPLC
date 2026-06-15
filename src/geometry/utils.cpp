@@ -1,7 +1,6 @@
 #include "utils.h"
 
 #include <algorithm>
-#include <cctype>
 
 bool nearlyEqual(double lhs, double rhs, double eps)
 {
@@ -23,7 +22,6 @@ V3d axisVec(const Axis axis, double value)
     case Axis::X: return {value, 0.0, 0.0};
     case Axis::Y: return {0.0, value, 0.0};
     case Axis::Z: return {0.0, 0.0, value};
-    default: return V3d::Zero();
   }
 }
 
@@ -75,6 +73,32 @@ M4d transform(const M3d& rot, const V3d& origin)
   return T;
 }
 
+bool isRotBasis(const Basis &basis, double eps)
+{
+  const V3d& x = basis.x;
+  const V3d& y = basis.y;
+  const V3d& z = basis.z;
+
+  if (!x.allFinite() || !y.allFinite() || !z.allFinite()) {
+    return false;
+  }
+
+  const bool isUnit =
+      nearlyEqual(x.squaredNorm(), 1.0, eps) &&
+      nearlyEqual(y.squaredNorm(), 1.0, eps) &&
+      nearlyEqual(z.squaredNorm(), 1.0, eps);
+
+  const bool isOrthogonal =
+      nearlyEqual(x.dot(y), 0.0, eps) &&
+      nearlyEqual(x.dot(z), 0.0, eps) &&
+      nearlyEqual(y.dot(z), 0.0, eps);
+
+  const bool isRightHanded =
+      nearlyEqual(x.cross(y).dot(z), 1.0, eps);
+
+  return isUnit && isOrthogonal && isRightHanded;
+}
+
 EulerSolution rot2euler(const M3d& r)
 {
   const double r20 = std::clamp(r(2, 0), -1.0, 1.0);
@@ -109,8 +133,6 @@ EulerSolution rot2euler(const M3d& r)
 
 M3d euler2rot(const double A, const double B, const double C)
 {
-  const double scale = GeomConst::DegToRad;
-
   const double yaw = A * GeomConst::DegToRad;
   const double pitch = B * GeomConst::DegToRad;
   const double roll = C * GeomConst::DegToRad;
@@ -126,18 +148,26 @@ M3d euler2rot(const double A, const double B, const double C)
   return R;
 }
 
-std::optional<M3d> vec2rot(const V3d& ux, const V3d& uy, const V3d& uz)
+std::optional<M3d> basis2rot(const Basis &basis)
 {
-  const auto ux_norm = normalize(ux);
-  const auto uy_norm = normalize(uy);
-  const auto uz_norm = normalize(uz);
+  const auto x = normalize(basis.x);
+  const auto y = normalize(basis.y);
+  const auto z = normalize(basis.z);
 
-  if (!ux_norm || !uy_norm || !uz_norm) return std::nullopt;
+  if (!x || !y || !z) {
+    return std::nullopt;
+  }
+
+  const Basis normalizedBasis{*x, *y, *z};
+
+  if (!isRotBasis(normalizedBasis)) {
+    return std::nullopt;
+  }
 
   M3d R;
-  R.col(0) = *ux_norm;
-  R.col(1) = *uy_norm;
-  R.col(2) = *uz_norm;
+  R.col(0) = normalizedBasis.x;
+  R.col(1) = normalizedBasis.y;
+  R.col(2) = normalizedBasis.z;
 
   return R;
 }
@@ -167,6 +197,10 @@ std::optional<V3d> prjUnitOnPlane(const V3d& vec, const V3d& normal)
 
 std::optional<V3d> polyfit2d(const V3d& p0, const V3d& p1, const V3d& p2)
 {
+  if (!p0.allFinite() || !p1.allFinite() || !p2.allFinite()) {
+    return std::nullopt;
+  }
+
   const double x0 = p0.x();
   const double x1 = p1.x();
   const double x2 = p2.x();
@@ -191,6 +225,4 @@ V3d deriv2d(const V3d& point, const V3d& coeffs)
 
   return V3d{1.0, slope, 0.0}.normalized();
 }
-
-
 

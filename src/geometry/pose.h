@@ -1,10 +1,10 @@
 #pragma once
 
-#include <optional>
-
 #include <QVector>
 
-#include "utils.h"
+#include <optional>
+
+#include "mathtypes.h"
 
 class Pose {
 public:
