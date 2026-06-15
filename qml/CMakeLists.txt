@@ -37,24 +37,19 @@ set(CPP_FILES
   ${SRC_DIR}/network/socketrsi.cpp
   ${SRC_DIR}/network/socketrunner.h
   ${SRC_DIR}/network/socketrunner.cpp
+  ${SRC_DIR}/network/socketdeltaplc.h
+  ${SRC_DIR}/network/plcmessagemanager.h
+  ${SRC_DIR}/network/plcmessagemanager.cpp
   ${SRC_DIR}/logger.h
   ${SRC_DIR}/logger.cpp
-  ${SRC_DIR}/plcmessagemanager.h
-  ${SRC_DIR}/plcmessagemanager.cpp
   ${SRC_DIR}/qmlchartbridge.h
   ${SRC_DIR}/qmlchartbridge.cpp
-  ${SRC_DIR}/network/socketdeltaplc.h
-  ${SRC_DIR}/pathplanner.h
-  ${SRC_DIR}/pathplanner.cpp
-  ${SRC_DIR}/bladejsonloader.h
-  ${SRC_DIR}/bladejsonloader.cpp
 )
 
 qt_policy(SET QTP0004 NEW)
 
 qt_add_executable(qdeltaplc
   main.cpp
-  ${CPP_FILES}
 )
 
 qt_add_qml_module(qdeltaplc
@@ -62,6 +57,8 @@ qt_add_qml_module(qdeltaplc
   VERSION 1.0
   QML_FILES
     ${QML_FILES}
+  SOURCES
+    ${CPP_FILES}
   RESOURCES
     resources/pics.qrc
     resources/fonts.qrc
@@ -72,6 +69,7 @@ set(EIGEN5_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/libs/eigen-5.0.0)
 target_include_directories(qdeltaplc
   PRIVATE
     "${SRC_DIR}"
+    "${SRC_DIR}/network"
     "${EIGEN5_INCLUDE_DIR}"
 )
 
