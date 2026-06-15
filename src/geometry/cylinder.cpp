@@ -1,5 +1,7 @@
 #include "cylinder.h"
 
+#include "utils.h"
+
 namespace {
 
 bool isValidInput(const V3d& axisDir, double radius)
@@ -28,11 +30,10 @@ Axis radialAxis(Axis axis)
     case Axis::Y: return Axis::Z;
     case Axis::Z: return Axis::Y;
   }
-
   return Axis::Y;
 }
 
-std::optional<M3d> basisFromAxis(const V3d& axisDir, Axis axis) {
+std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis) {
   const auto unitAxis = normalize(axisDir);
 
   if (!unitAxis || !unitAxis->allFinite()) {
@@ -67,7 +68,7 @@ std::optional<M3d> basisFromAxis(const V3d& axisDir, Axis axis) {
     }
   }
 
-  return basis2rot(x, y, z);
+  return OrthoBasis{x, y, z};
 }
 
 } // namespace
@@ -79,3 +80,25 @@ std::optional<Cylinder> Cylinder::fromAxis(const V3d &axisDir, double radius, Ax
     return std::nullopt;
   }
 }
+
+
+Pose Cylinder::originPose() const
+{
+  return m_originPose;
+}
+
+Pose Cylinder::surfacePose() const
+{
+  return m_surfacePose;
+}
+
+V3d Cylinder::axisDir() const
+{
+  return m_axisDir;
+}
+
+double Cylinder::radius() const
+{
+  return m_R;
+}
+

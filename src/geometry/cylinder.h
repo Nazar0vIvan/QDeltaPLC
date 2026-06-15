@@ -2,28 +2,31 @@
 
 #include <QVector>
 
-#include "utils.h"
 #include "pose.h"
 
-struct Cylinder
+class Cylinder
 {
 public:
-  // static Cylinder fromTwoPoints(const V3d& c1, const V3d& c2, const V3d& pc,
-  //                               double R, double L,
-  //                               char axis = 'y');
+  Cylinder() = default;
 
+  static std::optional<Cylinder> fromTwoPoints(const V3d& c1, const V3d& c2, double radius, Axis axis = Axis::X);
   static std::optional<Cylinder> fromAxis(const V3d& axisDir, double radius, Axis axis = Axis::X);
 
-  Pose surfacePose(char axis1, double val1,
-                   char axisRot, double angleDeg,
-                   char axis2, double val2,
-                   bool returnLocal = false) const;
+  void setOriginPose(const V3d& origin);
+  void setSurfacePose(double offset, double angleDeg);
 
-  QVector<Pose> surfaceRing(int n, double L) const;
+  QVector<Pose> surfaceRing(int n, double offset) const;
 
-  double R;
-  double L;
-  Pose pose;
+  Pose originPose() const;
+  Pose surfacePose() const;
+  V3d axisDir() const;
+  double radius() const;
+
+private:
+  Pose m_originPose{};
+  Pose m_surfacePose{};
+  V3d m_axisDir{V3d::Zero()};
+  double m_R = 0.0;
 };
 
 

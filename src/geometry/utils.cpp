@@ -73,30 +73,53 @@ M4d transform(const M3d& rot, const V3d& origin)
   return T;
 }
 
-bool isRotBasis(const Basis &basis, double eps)
+bool isBasis(const V3d& v1, const V3d& v2, const V3d& v3, double eps)
 {
-  const V3d& x = basis.x;
-  const V3d& y = basis.y;
-  const V3d& z = basis.z;
-
-  if (!x.allFinite() || !y.allFinite() || !z.allFinite()) {
+  if (!v1.allFinite() || !v2.allFinite() || !v3.allFinite()) {
     return false;
   }
 
   const bool isUnit =
-      nearlyEqual(x.squaredNorm(), 1.0, eps) &&
-      nearlyEqual(y.squaredNorm(), 1.0, eps) &&
-      nearlyEqual(z.squaredNorm(), 1.0, eps);
+      nearlyEqual(v1.squaredNorm(), 1.0, eps) &&
+      nearlyEqual(v2.squaredNorm(), 1.0, eps) &&
+      nearlyEqual(v3.squaredNorm(), 1.0, eps);
 
   const bool isOrthogonal =
-      nearlyEqual(x.dot(y), 0.0, eps) &&
-      nearlyEqual(x.dot(z), 0.0, eps) &&
-      nearlyEqual(y.dot(z), 0.0, eps);
+      nearlyEqual(v1.dot(v2), 0.0, eps) &&
+      nearlyEqual(v2.dot(v3), 0.0, eps) &&
+      nearlyEqual(v1.dot(v3), 0.0, eps);
 
   const bool isRightHanded =
-      nearlyEqual(x.cross(y).dot(z), 1.0, eps);
+      nearlyEqual(v1.cross(v2).dot(v3), 1.0, eps);
 
   return isUnit && isOrthogonal && isRightHanded;
+}
+
+std::optional<OrthoBasis> vecs2basis(const V3d &v1, const V3d &v2, const V3d &v3, double eps)
+{
+  const auto e1 = normalize(v1, eps);
+  const auto e2 = normalize(v2, eps);
+  const auto e3 = normalize(v3, eps);
+
+  if (!e1 || !e2 || !e3) {
+    return std::nullopt;
+  }
+
+  if (!isBasis(*e1, *e2, *e3, eps)) {
+    return std::nullopt;
+  }
+
+  return OrthoBasis{*e1, *e2, *e3};
+}
+
+M3d basis2rot(const OrthoBasis& orthobasis)
+{
+  M3d R;
+  R.col(0) = orthobasis.e1;
+  R.col(1) = orthobasis.e2;
+  R.col(2) = orthobasis.e3;
+
+  return R;
 }
 
 EulerSolution rot2euler(const M3d& r)
@@ -144,30 +167,6 @@ M3d euler2rot(const double A, const double B, const double C)
   M3d R = (rotZ * rotY * rotX).toRotationMatrix();
 
   R = R.unaryExpr([](double v) { return std::abs(v) <= GeomConst::Eps ? 0.0 : v; });
-
-  return R;
-}
-
-std::optional<M3d> basis2rot(const Basis &basis)
-{
-  const auto x = normalize(basis.x);
-  const auto y = normalize(basis.y);
-  const auto z = normalize(basis.z);
-
-  if (!x || !y || !z) {
-    return std::nullopt;
-  }
-
-  const Basis normalizedBasis{*x, *y, *z};
-
-  if (!isRotBasis(normalizedBasis)) {
-    return std::nullopt;
-  }
-
-  M3d R;
-  R.col(0) = normalizedBasis.x;
-  R.col(1) = normalizedBasis.y;
-  R.col(2) = normalizedBasis.z;
 
   return R;
 }
@@ -225,4 +224,5 @@ V3d deriv2d(const V3d& point, const V3d& coeffs)
 
   return V3d{1.0, slope, 0.0}.normalized();
 }
+
 
