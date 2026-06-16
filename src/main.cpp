@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
   QQmlApplicationEngine engine;
   // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module");
-  engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module/qml/Modules/");
+  // engine.addImportPath("qrc:/qt/qml/qdeltaplc_qml_module/qml/Modules/");
 
   QQmlContext* ctx  = engine.rootContext();
   ctx->setContextProperty("logger", Logger::instance());

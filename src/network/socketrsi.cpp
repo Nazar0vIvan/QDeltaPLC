@@ -1,5 +1,4 @@
 #include "socketrsi.h"
-#include "pathplanner.h"
 
 RandomData generateRandomData()
 {
@@ -86,12 +85,13 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
   emit logMessage({QString("Socket is bound: %1:%2").arg(m_la.toString()).arg(m_lp), 1, objectName()});
 }
 
+
 void SocketRSI::generateTrajectory()
 {
+  /*
   m_offsets.clear();
   m_offsetIdx = 0;
 
-  /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
   const V6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
 
@@ -100,9 +100,7 @@ void SocketRSI::generateTrajectory()
     emit logMessage({ "Generated RSI trajectory is empty", 0, objectName()});
     return;
   }
-  */
 
-  /*
   // WORKPIECE
   V3d Pc = { -0.113702, -0.012406, 111.290488 };
 
@@ -140,7 +138,6 @@ void SocketRSI::generateTrajectory()
 
   m_offsets = rsi::polyline(posesToFrames(ref_poses), {10, 3});
   m_offsets = m_offsets.mid(0, qsizetype(m_offsets.size() / 9));
-  */
 
   // ROLLER
   const V3d ur(-0.0237168939, 0.9997013354, -0.0058948179);
@@ -180,7 +177,9 @@ void SocketRSI::generateTrajectory()
   emit trajectoryReady();
 
   writeOffsetsToJson(m_offsets, "offsets.json");
+*/
 }
+
 
 QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)
 {

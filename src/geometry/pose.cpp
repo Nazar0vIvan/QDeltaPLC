@@ -57,7 +57,7 @@ std::optional<Pose> Pose::fromRotAndOrigin(const M3d &rot, const V3d &origin)
   pose.m_t = rot.col(0);
   pose.m_b = rot.col(1);
   pose.m_n = rot.col(2);
-  pose.m_tf = transform(rot, origin);
+  pose.m_tf = makeTransform(rot, origin);
 
   const EulerSolution euler = rot2euler(rot);
 

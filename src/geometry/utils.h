@@ -9,9 +9,9 @@ bool nearlyEqual(double lhs, double rhs, double eps = GeomConst::Eps);
 std::optional<V3d> normalize(const V3d& v, double eps = GeomConst::Eps);
 V3d axisVec(const Axis axis, double value);
 
-M4d translation(const V3d& delta);
-M4d rotation(const double angleDeg, const Axis axis);
-M4d transform(const M3d& rot, const V3d& origin);
+M4d makeTranslation(const V3d& delta);
+M4d makeRotation(const double angleDeg, const Axis axis);
+M4d makeTransform(const M3d& rot, const V3d& origin);
 
 bool isBasis(const V3d& v1, const V3d& v2, const V3d& v3, double eps = GeomConst::Eps);
 std::optional<OrthoBasis> vecs2basis(const V3d& v1, const V3d& v2, const V3d& v3, double eps = GeomConst::Eps);

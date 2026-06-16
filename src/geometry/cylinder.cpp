@@ -112,9 +112,9 @@ void Cylinder::setSurfacePose(double offset, double angleDeg)
   }
 
   const M4d localTf =
-      translation(axisVec(m_axis, offset)) *
-      rotation(angleDeg, m_axis) *
-      translation(axisVec(radialAxis(m_axis), -m_radius));
+      makeTranslation(axisVec(m_axis, offset)) *
+      makeRotation(angleDeg, m_axis) *
+      makeTranslation(axisVec(radialAxis(m_axis), -m_radius));
 
   const auto pose = Pose::fromTransform(m_originPose.transform() * localTf);
 
@@ -138,9 +138,9 @@ QVector<Pose> Cylinder::surfaceRing(int n, double offset) const
         360.0 * static_cast<double>(i) / static_cast<double>(n);
 
     const M4d localTf =
-        translation(axisVec(m_axis, offset)) *
-        rotation(angleDeg, m_axis) *
-        translation(axisVec(radialAxis(m_axis), -m_radius));
+        makeTranslation(axisVec(m_axis, offset)) *
+        makeRotation(angleDeg, m_axis) *
+        makeTranslation(axisVec(radialAxis(m_axis), -m_radius));
 
     const auto pose = Pose::fromTransform(m_originPose.transform() * localTf);
 

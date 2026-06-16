@@ -27,14 +27,14 @@ V3d axisVec(const Axis axis, double value)
   }
 }
 
-M4d translation(const V3d& delta)
+M4d makeTranslation(const V3d& delta)
 {
   M4d result = M4d::Identity();
   result.block<3, 1>(0, 3) = delta;
   return result;
 }
 
-M4d rotation(const double angleDeg, const Axis axis)
+M4d makeRotation(const double angleDeg, const Axis axis)
 {
   const double angleRad = angleDeg * GeomConst::DegToRad;
   const double c = std::cos(angleRad);
@@ -65,7 +65,7 @@ M4d rotation(const double angleDeg, const Axis axis)
   return R;
 }
 
-M4d transform(const M3d& rot, const V3d& origin)
+M4d makeTransform(const M3d& rot, const V3d& origin)
 {
   M4d T = M4d::Identity();
 
