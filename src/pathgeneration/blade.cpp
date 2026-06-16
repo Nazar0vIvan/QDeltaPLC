@@ -1,157 +1,277 @@
 #include "blade.h"
+#include "geometry/utils.h"
 
-V3d jsonValueToVec3(const QJsonValue& v)
+#include <cmath>
+#include <utility>
+
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QJsonValue>
+#include <QUrl>
+
+namespace {
+
+std::optional<V3d> jsonValueToVec3(const QJsonValue& value, QString* error)
 {
-  const QJsonArray a = v.toArray(); // expected [x,y,z]
-  return V3d(a[0].toDouble(), a[1].toDouble(), a[2].toDouble());
+  if (!value.isArray()) {
+    if (error) *error = "Expected point as [x, y, z]";
+    return std::nullopt;
+  }
+
+  const QJsonArray array = value.toArray();
+
+  if (array.size() != 3) {
+    if (error) *error = "Point array must contain exactly 3 numbers";
+    return std::nullopt;
+  }
+
+  if (!array[0].isDouble() || !array[1].isDouble() || !array[2].isDouble()) {
+    if (error) *error = "Point coordinates must be numbers";
+    return std::nullopt;
+  }
+
+  return V3d{ array[0].toDouble(), array[1].toDouble(), array[2].toDouble() };
 }
 
-QVector<V3d> jsonArrayToProfile(const QJsonArray& arr)
+std::optional<QVector<V3d>> jsonArrayToProfile(const QJsonObject& object, const QString& fieldName, QString* error)
 {
-  QVector<V3d> out;
-  out.reserve(arr.size());
-  for (const QJsonValue& v : arr) {
-      out.push_back(jsonValueToVec3(v));
+  const QJsonValue value = object.value(fieldName);
+
+  if (!value.isArray()) {
+    if (error) *error = QString("Invalid JSON: field '%1' must be an array").arg(fieldName);
+    return std::nullopt;
+  }
+
+  const QJsonArray array = value.toArray();
+
+  QVector<V3d> points;
+  points.reserve(array.size());
+
+  for (int i = 0; i < array.size(); ++i) {
+    QString pointError;
+    const auto point = jsonValueToVec3(array[i], &pointError);
+    if (!point) {
+      if (error) { *error = QString("Invalid JSON: field '%1', point %2: %3").arg(fieldName).arg(i).arg(pointError); }
+      return std::nullopt;
     }
-  return out;
+    points.push_back(*point);
+  }
+  return points;
 }
 
-BladeProfile jsonObjectToBladeProfile(const QJsonObject& obj)
+std::optional<BladeProfile> jsonObjectToBladeProfile(const QJsonObject& object, QString* error)
 {
-  BladeProfile bp;
-  bp.cx = jsonArrayToProfile(obj.value("cx").toArray());
-  bp.cv = jsonArrayToProfile(obj.value("cv").toArray());
-  bp.re = jsonArrayToProfile(obj.value("re").toArray());
-  bp.le = jsonArrayToProfile(obj.value("le").toArray());
-  return bp;
+  BladeProfile profile;
+
+  const auto cx = jsonArrayToProfile(object, "cx", error);
+  if (!cx) return std::nullopt;
+
+  const auto cv = jsonArrayToProfile(object, "cv", error);
+  if (!cv) return std::nullopt;
+
+  const auto re = jsonArrayToProfile(object, "re", error);
+  if (!re) return std::nullopt;
+
+  const auto le = jsonArrayToProfile(object, "le", error);
+  if (!le) return std::nullopt;
+
+  profile.cx = *cx;
+  profile.cv = *cv;
+  profile.re = *re;
+  profile.le = *le;
+
+  return profile;
 }
+
+bool isValidCxCvInput(const QVector<V3d>& cx, const QVector<V3d>& cxNext, double length)
+{
+  return cx.size() >= 3 &&
+         cxNext.size() == cx.size() &&
+         std::isfinite(length);
+}
+
+} // namespace
 
 BladeJsonLoader::LoadResult BladeJsonLoader::load(const QVariantMap& data)
 {
-  LoadResult res;
+  LoadResult result;
 
-  if (data.value("path").isNull() || !data.value("path").canConvert<QUrl>()) {
-      res.ok = false;
-      res.error = "Empty/Invalid path";
-      res.path.clear();
-      return res;
-    }
+  const QVariant pathValue = data.value("path");
 
-  res.path = data.value("path").toUrl().toLocalFile();
-  return loadFromFile(res.path);
+  if (pathValue.isNull() || !pathValue.canConvert<QUrl>()) {
+    result.error = "Empty/Invalid path";
+    return result;
+  }
+
+  const QUrl url = pathValue.toUrl();
+  const QString path = url.toLocalFile();
+
+  if (path.isEmpty()) {
+    result.error = "Empty/Invalid local file path";
+    return result;
+  }
+
+  return loadFromFile(path);
 }
 
 BladeJsonLoader::LoadResult BladeJsonLoader::loadFromFile(const QString& path)
 {
-  LoadResult res;
-  res.path = path;
+  LoadResult result;
+  result.path = path;
 
-  QFile f(path);
-  if (!f.open(QIODevice::ReadOnly)) {
-      res.ok = false;
-      res.error = f.errorString();
-      res.path.clear();
-      return res;
-    }
+  QFile file(path);
 
-  const QByteArray bytes = f.readAll();
+  if (!file.open(QIODevice::ReadOnly)) {
+    result.error = file.errorString();
+    return result;
+  }
+
+  const QByteArray bytes = file.readAll();
+
   if (bytes.isEmpty()) {
-      res.ok = false;
-      res.error = "JSON file is empty";
-      res.path.clear();
-      return res;
+    result.error = "JSON file is empty";
+    return result;
+  }
+
+  QJsonParseError parseError;
+  const QJsonDocument document = QJsonDocument::fromJson(bytes, &parseError);
+
+  if (parseError.error != QJsonParseError::NoError) {
+    result.error = QString("JSON parse error at offset %1: %2").arg(parseError.offset).arg(parseError.errorString());
+    return result;
+  }
+
+  if (!document.isArray()) {
+    result.error = "Invalid JSON: top-level value must be an array";
+    return result;
+  }
+
+  const QJsonArray top = document.array();
+
+  Airfoil airfoil;
+  airfoil.reserve(top.size());
+
+  for (int i = 0; i < top.size(); ++i) {
+    if (!top[i].isObject()) {
+      result.error = QString("Invalid JSON: array element %1 is not an object").arg(i);
+      return result;
     }
 
-  QJsonParseError err;
-  const QJsonDocument doc = QJsonDocument::fromJson(bytes, &err);
-  if (err.error != QJsonParseError::NoError) {
-      res.ok = false;
-      res.error = QString("JSON parse error at offset %1: %2")
-                      .arg(err.offset)
-                      .arg(err.errorString());
-      res.path.clear();
-      return res;
+    QString profileError;
+    const auto profile = jsonObjectToBladeProfile(top[i].toObject(), &profileError);
+
+    if (!profile) {
+      result.error = QString("Invalid JSON: profile %1: %2")
+      .arg(i)
+          .arg(profileError);
+      return result;
     }
 
-  if (!doc.isArray()) {
-      res.ok = false;
-      res.error = "Invalid JSON: top-level value must be an array";
-      res.path.clear();
-      return res;
-    }
+    airfoil.push_back(*profile);
+  }
 
-  const QJsonArray top = doc.array();
+  result.airfoil = std::move(airfoil);
+  result.ok = true;
 
-  Airfoil af;
-  af.reserve(top.size());
-
-  for (const QJsonValue& v : top) {
-      if (!v.isObject()) {
-          res.ok = false;
-          res.error = "Invalid JSON: array element is not an object";
-          res.path.clear();
-          return res;
-        }
-      af.push_back(jsonObjectToBladeProfile(v.toObject()));
-    }
-
-  res.airfoil = std::move(af);
-  res.ok = true;
-  return res;
+  return result;
 }
 
-Pose getCxCvStartFrenet(const QVector<V3d>& cx, double L, const Pose& frenet)
+std::optional<Pose> getCxCvStartFrenet(const QVector<V3d>& cx, double length, const Pose& frenet)
 {
-  const V3d& pt0 = cx[0];
-  const V3d& pt1 = cx[1];
-  const V3d& pt = pt0 + L * (pt0 - pt1).normalized();
-  return Pose::fromAxes(frenet.t, frenet.b, frenet.n, pt);
+  if (cx.size() < 2 || !std::isfinite(length)) {
+    return std::nullopt;
+  }
+
+  const auto direction = normalize(cx[0] - cx[1]);
+
+  if (!direction) return std::nullopt;
+
+  const V3d point = cx[0] + length * *direction;
+
+  return Pose::fromAxes(frenet.t(), frenet.b(), frenet.n(), point);
 }
 
-Pose getCxCvEndFrenet(const QVector<V3d>& cx, double L, const Pose& frenet)
+std::optional<Pose> getCxCvEndFrenet(const QVector<V3d>& cx, double length, const Pose& frenet)
 {
+  if (cx.size() < 2 || !std::isfinite(length)) {
+    return std::nullopt;
+  }
+
   const int n = cx.size();
-  const V3d& ptn_1 = cx[n - 2];
-  const V3d& ptn   = cx[n - 1];
-  const V3d& pt = ptn + L * (ptn - ptn_1).normalized();
-  return Pose::fromAxes(frenet.t, frenet.b, frenet.n, pt);
+
+  const auto direction = normalize(cx[n - 1] - cx[n - 2]);
+
+  if (!direction) return std::nullopt;
+
+  const V3d point = cx[n - 1] + length * *direction;
+
+  return Pose::fromAxes(frenet.t(), frenet.b(), frenet.n(), point);
 }
 
-Pose getCxCvFrenet(V3d pt, const V3d& poly, const V3d& v0)
+std::optional<Pose> getCxCvFrenet(const V3d& point, const V3d& coeffs, const V3d& v0)
 {
-  V3d t = tanByPoly(pt, poly);
-  V3d tanv = (v0 - pt).normalized();
-  V3d n = t.cross(tanv).normalized();
-  V3d b = n.cross(t).normalized();
-  return Pose::fromAxes(t, b, n, pt);
+  const auto tangent = normalize(deriv2d(point, coeffs));
+  if (!tangent)  return std::nullopt;
+
+  const auto radial = normalize(v0 - point);
+  if (!radial) return std::nullopt;
+
+  const auto normal = normalize(tangent->cross(*radial));
+  if (!normal) return std::nullopt;
+
+  const auto binormal = normalize(normal->cross(*tangent));
+  if (!binormal) return std::nullopt;
+
+  return Pose::fromAxes(*tangent, *binormal, *normal, point);
 }
 
-QVector<Pose> getCxCvFrenets(const QVector<V3d>& cx, const QVector<V3d>& cx_next, double L)
+std::optional<QVector<Pose>> getCxCvFrenets(const QVector<V3d>& cx,  const QVector<V3d>& cxNext, double length)
 {
-  int n = cx.size();
+  if (!isValidCxCvInput(cx, cxNext, length)) {
+    return std::nullopt;
+  }
+
+  const int n = cx.size();
 
   QVector<Pose> frenets;
   frenets.reserve(n + 2);
 
-  V3d coef0 = poly(cx[0], cx[1], cx[2]);
-  Pose frenet0 = getCxCvFrenet(cx[0], coef0, cx_next[0]);
+  const auto firstCoeffs = polyfit2d(cx[0], cx[1], cx[2]);
+  if (!firstCoeffs) return std::nullopt;
 
-  Pose startFrenet = getCxCvStartFrenet(cx, L, frenet0);
+  const auto firstFrenet = getCxCvFrenet(cx[0], *firstCoeffs, cxNext[0]);
+  if (!firstFrenet) return std::nullopt;
 
-  frenets << startFrenet << frenet0;
+  const auto startFrenet = getCxCvStartFrenet(cx, length, *firstFrenet);
+  if (!startFrenet)  return std::nullopt;
 
-  for (int j=1; j < n-2; j++) {
-      V3d coef = poly(cx[j-1], cx[j], cx[j+1]);
-      Pose frenet = getCxCvFrenet(cx[j], coef, cx_next[j]);
-      frenets.push_back(frenet);
-    }
+  frenets.push_back(*startFrenet);
+  frenets.push_back(*firstFrenet);
 
-  V3d coefn = poly(cx[n-3], cx[n-2], cx[n-1]);
-  Pose nfrenet = getCxCvFrenet(cx[n-1], coefn, cx_next[n-1]);
+  for (int i = 1; i < n - 1; ++i) {
+    const auto coeffs = polyfit2d(cx[i - 1], cx[i], cx[i + 1]);
+    if (!coeffs) return std::nullopt;
 
-  Pose endFrenet = getCxCvEndFrenet(cx, L, nfrenet);
+    const auto frenet = getCxCvFrenet(cx[i], *coeffs, cxNext[i]);
+    if (!frenet) return std::nullopt;
 
-  frenets << nfrenet << endFrenet;
+    frenets.push_back(*frenet);
+  }
+
+  const auto lastCoeffs = polyfit2d(cx[n - 3], cx[n - 2], cx[n - 1]);
+  if (!lastCoeffs) return std::nullopt;
+
+  const auto lastFrenet = getCxCvFrenet(cx[n - 1], *lastCoeffs, cxNext[n - 1]);
+  if (!lastFrenet) return std::nullopt;
+
+  const auto endFrenet = getCxCvEndFrenet(cx, length, *lastFrenet);
+  if (!endFrenet) return std::nullopt;
+
+  frenets.push_back(*lastFrenet);
+  frenets.push_back(*endFrenet);
 
   return frenets;
 }

@@ -1,12 +1,15 @@
 #include "cylinder.h"
 
+#include <cmath>
+
 #include "utils.h"
 
 namespace {
 
-bool isValidInput(const V3d& axisDir, double radius)
+bool isValidInput(const V3d& axisDir, const V3d& origin, double radius)
 {
   return axisDir.allFinite() &&
+         origin.allFinite() &&
          std::isfinite(radius) &&
          radius > GeomConst::Eps;
 }
@@ -30,66 +33,123 @@ Axis radialAxis(Axis axis)
     case Axis::Y: return Axis::Z;
     case Axis::Z: return Axis::Y;
   }
+
   return Axis::Y;
 }
 
-std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis) {
+std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis)
+{
   const auto unitAxis = normalize(axisDir);
 
-  if (!unitAxis || !unitAxis->allFinite()) {
+  if (!unitAxis) {
     return std::nullopt;
   }
 
   const V3d helper = leastParallelUnit(*unitAxis);
-  const auto helperProjected = normalize(helper - helper.dot(*unitAxis) * *unitAxis);
+  const auto projectedHelper =
+      normalize(helper - helper.dot(*unitAxis) * *unitAxis);
 
-  if (!helperProjected) return std::nullopt;
-
-  V3d x; V3d y; V3d z;
-
-  switch (axis) {
-    case Axis::X: {
-      x = *unitAxis;
-      y = *helperProjected;
-      z = x.cross(y);
-      break;
-    }
-    case Axis::Y: {
-      x = *helperProjected;
-      y = *unitAxis;
-      z = x.cross(y);
-      break;
-    }
-    case Axis::Z: {
-      x = *helperProjected;
-      z = *unitAxis;
-      y = z.cross(x);
-      break;
-    }
+  if (!projectedHelper) {
+    return std::nullopt;
   }
 
-  return OrthoBasis{x, y, z};
+  V3d e1;
+  V3d e2;
+  V3d e3;
+
+  switch (axis) {
+    case Axis::X:
+      e1 = *unitAxis;
+      e2 = *projectedHelper;
+      e3 = e1.cross(e2);
+      break;
+
+    case Axis::Y:
+      e1 = *projectedHelper;
+      e2 = *unitAxis;
+      e3 = e1.cross(e2);
+      break;
+
+    case Axis::Z:
+      e1 = *projectedHelper;
+      e3 = *unitAxis;
+      e2 = e3.cross(e1);
+      break;
+  }
+
+  return vecs2basis(e1, e2, e3);
 }
 
 } // namespace
 
-
-std::optional<Cylinder> Cylinder::fromAxis(const V3d &axisDir, double radius, Axis axis)
+std::optional<Cylinder> Cylinder::fromAxis(const V3d& axisDir, const V3d& origin, double radius, Axis axis)
 {
-  if (!isValidInput(axisDir, radius)) {
+  if (!isValidInput(axisDir, origin, radius)) {
     return std::nullopt;
+  }
+
+  const auto basis = basisFromAxis(axisDir, axis);
+
+  if (!basis) return std::nullopt;
+
+  const auto originPose = Pose::fromAxes(basis->e1, basis->e2, basis->e3, origin);
+
+  if (!originPose) return std::nullopt;
+
+  Cylinder cylinder;
+  cylinder.m_axisDir = *normalize(axisDir);
+  cylinder.m_originPose = *originPose;
+  cylinder.m_radius = radius;
+  cylinder.m_axis = axis;
+
+  return cylinder;
+}
+
+void Cylinder::setSurfacePose(double offset, double angleDeg)
+{
+  if (!std::isfinite(offset) || !std::isfinite(angleDeg)) {
+    return;
+  }
+
+  const M4d localTf =
+      translation(axisVec(m_axis, offset)) *
+      rotation(angleDeg, m_axis) *
+      translation(axisVec(radialAxis(m_axis), -m_radius));
+
+  const auto pose = Pose::fromTransform(m_originPose.transform() * localTf);
+
+  if (pose) {
+    m_surfacePose = *pose;
   }
 }
 
-
-Pose Cylinder::originPose() const
+QVector<Pose> Cylinder::surfaceRing(int n, double offset) const
 {
-  return m_originPose;
-}
+  QVector<Pose> poses;
 
-Pose Cylinder::surfacePose() const
-{
-  return m_surfacePose;
+  if (n <= 0 || !std::isfinite(offset)) {
+    return poses;
+  }
+
+  poses.reserve(n);
+
+  for (int i = 0; i < n; ++i) {
+    const double angleDeg =
+        360.0 * static_cast<double>(i) / static_cast<double>(n);
+
+    const M4d localTf =
+        translation(axisVec(m_axis, offset)) *
+        rotation(angleDeg, m_axis) *
+        translation(axisVec(radialAxis(m_axis), -m_radius));
+
+    const auto pose = Pose::fromTransform(m_originPose.transform() * localTf);
+
+    if (pose) {
+      poses.push_back(*pose);
+    }
+  }
+
+  return poses;
 }
 
 V3d Cylinder::axisDir() const
@@ -97,8 +157,22 @@ V3d Cylinder::axisDir() const
   return m_axisDir;
 }
 
-double Cylinder::radius() const
+Pose Cylinder::originPose() const
 {
-  return m_R;
+  return m_originPose;
 }
 
+double Cylinder::radius() const
+{
+  return m_radius;
+}
+
+Axis Cylinder::axis() const
+{
+  return m_axis;
+}
+
+Pose Cylinder::surfacePose() const
+{
+  return m_surfacePose;
+}

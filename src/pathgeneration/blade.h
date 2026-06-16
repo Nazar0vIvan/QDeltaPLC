@@ -9,8 +9,7 @@
 #include <QJsonValue>
 #include <QJsonParseError>
 
-#include "../geometry/utils.h"
-#include "../geometry/pose.h"
+#include "geometry/pose.h"
 
 struct BladeProfile {
   QVector<V3d> cx, cv, re, le;
@@ -35,10 +34,10 @@ public:
   static LoadResult loadFromFile(const QString& path);
 };
 
-Pose getCxCvStartFrenet(const QVector<V3d>& cx, double L, const Pose& frenet);
-Pose getCxCvEndFrenet(const QVector<V3d>& cx, double L, const Pose& frenet);
-Pose getCxCvFrenet(V3d pt, const V3d& poly, const V3d& v0);
-QVector<Pose> getCxCvFrenets(const QVector<V3d>& cx, const QVector<V3d>& cx_next, double L);
+std::optional<Pose> getCxCvStartFrenet(const QVector<V3d>& cx, double length, const Pose& frenet);
+std::optional<Pose> getCxCvEndFrenet(const QVector<V3d>& cx, double length, const Pose& frenet);
+std::optional<Pose> getCxCvFrenet(const V3d& point, const V3d& poly2d, const V3d& v0);
+std::optional<QVector<Pose>> getCxCvFrenets(const QVector<V3d>& cx, const QVector<V3d>& cxNext, double length);
 
 
 

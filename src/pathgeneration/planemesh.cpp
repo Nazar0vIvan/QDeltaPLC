@@ -1,70 +1,54 @@
 #include "planemesh.h"
+#include "geometry/utils.h"
 
-constexpr double kPlaneMeshEps = 1e-9;
-constexpr double kPlaneMeshBasisTol = 1e-6;
+#include <cmath>
+#include <stdexcept>
 
-V3d unitOrThrow(const V3d& v, const char* message)
+namespace {
+
+bool isValidMeshAxis(const PlaneMeshAxis& axis)
 {
-  const double norm = v.norm();
+  if (axis.count <= 0) {
+    return false;
+  }
 
-  if (norm <= kPlaneMeshEps)
-    throw std::invalid_argument(message);
+  if (!std::isfinite(axis.step)) {
+    return false;
+  }
 
-  return v / norm;
+  if (!axis.dir.allFinite()) {
+    return false;
+  }
+
+  if (axis.dir.squaredNorm() <= GeomConst::Eps * GeomConst::Eps) {
+    return false;
+  }
+
+  if (axis.count > 1 && std::abs(axis.step) <= GeomConst::Eps) {
+    return false;
+  }
+
+  return true;
 }
 
-V3d normalOfPlane(const Plane& plane)
+double planeValue(const Plane& plane, const V3d& point)
 {
-  return unitOrThrow(V3d(plane.A, plane.B, plane.C),
-                      "Plane normal is degenerate");
+  // CHANGE: Plane no longer has A/B/C/D fields; use coeffs
+  return plane.coeffs.dot(V4d{point.x(), point.y(), point.z(), 1.0});
 }
 
-double planeValue(const Plane& plane, const V3d& p)
+std::optional<OrthoBasis> makePlaneBasis(const PlanePoseMeshParams& params)
 {
-  return plane.A * p.x() +
-         plane.B * p.y() +
-         plane.C * p.z() +
-         plane.D;
+  const auto x = normalize(params.axis1.dir);
+  const auto y = normalize(params.axis2.dir);
+  const auto z = normalize(params.plane.normal());
+
+  if (!x || !y || !z) return std::nullopt;
+
+  return vecs2basis(*x, *y, *z);
 }
 
-V3d projectPointToPlane(const Plane& plane, const V3d& p)
-{
-  const V3d n(plane.A, plane.B, plane.C);
-  const double nn = n.squaredNorm();
-
-  if (nn <= kPlaneMeshEps * kPlaneMeshEps)
-    throw std::invalid_argument("Plane normal is degenerate");
-
-  return p - planeValue(plane, p) / nn * n;
-}
-
-void validateMeshAxis(const PlaneMeshAxis& axis, const char* name)
-{
-  if (axis.count <= 0)
-    throw std::invalid_argument(std::string(name) + ".count must be positive");
-
-  if (axis.dir.norm() <= kPlaneMeshEps)
-    throw std::invalid_argument(std::string(name) + ".dir is degenerate");
-
-  if (axis.count > 1 && std::abs(axis.step) <= kPlaneMeshEps)
-    throw std::invalid_argument(std::string(name) + ".step must be non-zero when count > 1");
-}
-
-void validatePlaneBasis(const V3d& x, const V3d& y, const V3d& z)
-{
-  if (std::abs(x.dot(z)) > kPlaneMeshBasisTol)
-    throw std::invalid_argument("axis1.dir must belong to the plane");
-
-  if (std::abs(y.dot(z)) > kPlaneMeshBasisTol)
-    throw std::invalid_argument("axis2.dir must belong to the plane");
-
-  if (std::abs(x.dot(y)) > kPlaneMeshBasisTol)
-    throw std::invalid_argument("axis1.dir and axis2.dir must be orthogonal");
-
-  if ((x.cross(y) - z).norm() > kPlaneMeshBasisTol)
-    throw std::invalid_argument(
-        "axis1.dir, axis2.dir and plane normal must form a right-handed basis");
-}
+} // namespace
 
 bool PoseMesh::empty() const noexcept
 {
@@ -83,55 +67,79 @@ int PoseMesh::cols() const noexcept
 
 int PoseMesh::size() const noexcept
 {
-  return rows() * cols();
+  // CHANGE: robust for accidentally non-rectangular public poses
+  int total = 0;
+
+  for (const auto& row : poses) {
+    total += row.size();
+  }
+
+  return total;
 }
 
 Pose& PoseMesh::at(int row, int col)
 {
-  if (row < 0 || row >= rows() || col < 0 || col >= cols())
+  // CHANGE: check against concrete row size, not cols(),
+  // because public poses can theoretically be non-rectangular
+  if (row < 0 || row >= rows() || col < 0 || col >= poses[row].size()) {
     throw std::out_of_range("PoseMesh index is out of range");
+  }
 
   return poses[row][col];
 }
 
 const Pose& PoseMesh::at(int row, int col) const
 {
-  if (row < 0 || row >= rows() || col < 0 || col >= cols())
+  // CHANGE: check against concrete row size, not cols()
+  if (row < 0 || row >= rows() || col < 0 || col >= poses[row].size()) {
     throw std::out_of_range("PoseMesh index is out of range");
+  }
 
   return poses[row][col];
 }
 
-PoseMesh makePlanePoseMesh(const PlanePoseMeshParams& params)
+std::optional<PoseMesh> makePlanePoseMesh(const PlanePoseMeshParams& params)
 {
-  validateMeshAxis(params.axis1, "axis1");
-  validateMeshAxis(params.axis2, "axis2");
+  if (!params.origin.allFinite()) {
+    return std::nullopt;
+  }
 
-  const V3d x = unitOrThrow(params.axis1.dir, "axis1.dir is degenerate");
-  const V3d y = unitOrThrow(params.axis2.dir, "axis2.dir is degenerate");
-  const V3d z = normalOfPlane(params.plane);
+  if (!params.plane.coeffs.allFinite()) {
+    return std::nullopt;
+  }
 
-  validatePlaneBasis(x, y, z);
+  if (!isValidMeshAxis(params.axis1) || !isValidMeshAxis(params.axis2)) {
+    return std::nullopt;
+  }
 
-  const V3d origin = params.projectOriginToPlane
-                         ? projectPointToPlane(params.plane, params.origin)
-                         : params.origin;
+  const auto basis = makePlaneBasis(params);
+
+  if (!basis) return std::nullopt;
+
+  V3d origin = params.origin;
 
   PoseMesh mesh;
   mesh.poses.resize(params.axis1.count);
 
   for (int row = 0; row < params.axis1.count; ++row) {
-      mesh.poses[row].reserve(params.axis2.count);
+    mesh.poses[row].reserve(params.axis2.count);
 
-      for (int col = 0; col < params.axis2.count; ++col) {
-          const V3d p =
-              origin +
-              static_cast<double>(row) * params.axis1.step * x +
-              static_cast<double>(col) * params.axis2.step * y;
+    for (int col = 0; col < params.axis2.count; ++col) {
+      const V3d point =
+          origin +
+          static_cast<double>(row) * params.axis1.step * basis->e1 +
+          static_cast<double>(col) * params.axis2.step * basis->e2;
 
-          mesh.poses[row].push_back(Pose::fromAxes(x, y, z, p));
-        }
+      const auto pose = Pose::fromAxes(basis->e1, basis->e2, basis->e3, point);
+
+      if (!pose) return std::nullopt;
+
+      mesh.poses[row].push_back(*pose);
     }
+  }
 
   return mesh;
 }
+
+
+

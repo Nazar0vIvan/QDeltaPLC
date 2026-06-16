@@ -72,7 +72,7 @@ const V6d& Pose::frame() const noexcept
   return m_frame;
 }
 
-const M4d& Pose::tf() const noexcept
+const M4d& Pose::transform() const noexcept
 {
   return m_tf;
 }
@@ -120,7 +120,7 @@ QVector<M4d> poses2Transforms(const QVector<Pose>& poses)
   transforms.reserve(poses.size());
 
   for (const Pose& pose : poses) {
-    transforms.push_back(pose.tf());
+    transforms.push_back(pose.transform());
   }
 
   return transforms;

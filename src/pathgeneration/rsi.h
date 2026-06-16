@@ -1,29 +1,37 @@
 #pragma once
 
-#include <QVector>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QFile>
-#include <QIODevice>
+#include <optional>
 
-#include "../geometry/utils.h"
-#include "../geometry/pose.h"
+#include <QString>
+#include <QVector>
+
+#include "geometry/pose.h"
 
 struct MotionParams {
-  double v, a;
+  double v{0.0};
+  double a{0.0};
+};
+
+struct MotionProfile {
+  double v{0.0};
+  double a{0.0};
+  double tAcc{0.0};
+  double sAcc{0.0};
+  double sConst{0.0};
+  double tConst{0.0};
+  double totalTime{0.0};
 };
 
 class RsiPath
 {
 public:
-  RsiPath();
+  RsiPath() = default;
 
-  static QVector<Pose> fromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT);
+  static std::optional<QVector<Pose>> fromSurfPoses(const QVector<Pose>& surfPoses, const M4d& aiT);
 
-  QVector<V6d> lin(const V6d& P1, const V6d& P2, const MotionParams& mp, int decimals = 3);
-  QVector<V6d> polyline(const QVector<V6d> &ref_points, const MotionParams& mp, int decimals = 3);
+  QVector<V6d> lin(const V6d& p1, const V6d& p2, const MotionParams& mp, int decimals = 3);
 
+  QVector<V6d> polyline(const QVector<V6d>& refPoints, const MotionParams& mp, int decimals = 3);
 };
 
-void writeOffsetsToJson(const QVector<V6d>& offsets, const QString& filePath, int decimals = 3);
+bool writeOffsetsToJson(const QVector<V6d>& offsets, const QString& filePath, int decimals = 3);

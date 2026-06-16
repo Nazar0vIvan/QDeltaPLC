@@ -1,14 +1,15 @@
 #pragma once
 
+#include <optional>
+
 #include <QVector>
 
-#include "../geometry/utils.h"
-#include "../geometry/plane.h"
-#include "../geometry/pose.h"
+#include "geometry/plane.h"
+#include "geometry/pose.h"
 
 struct PlaneMeshAxis {
-  V3d dir{V3d::Zero()}; // must belong to plane
-  double step{0.0};     // signed step, mm
+  V3d dir{V3d::Zero()};
+  double step{0.0};
   int count{0};
 };
 
@@ -18,12 +19,10 @@ struct PlanePoseMeshParams {
 
   PlaneMeshAxis axis1{};
   PlaneMeshAxis axis2{};
-
-  bool projectOriginToPlane{true};
 };
 
 struct PoseMesh {
-  QVector<QVector<Pose>> poses; // poses[row][col]
+  QVector<QVector<Pose>> poses;
 
   bool empty() const noexcept;
   int rows() const noexcept;
@@ -34,4 +33,4 @@ struct PoseMesh {
   const Pose& at(int row, int col) const;
 };
 
-PoseMesh makePlanePoseMesh(const PlanePoseMeshParams& params);
+std::optional<PoseMesh> makePlanePoseMesh(const PlanePoseMeshParams& params);

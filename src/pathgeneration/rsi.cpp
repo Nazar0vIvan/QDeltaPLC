@@ -1,195 +1,255 @@
 #include "rsi.h"
 
-RsiPath::RsiPath () {}
+#include <algorithm>
+#include <cmath>
 
-QVector<V6d> RsiPath::lin(const V6d& P1, const V6d& P2, const MotionParams &mp, int decimals)
+#include <QFile>
+#include <QIODevice>
+#include <QJsonArray>
+#include <QJsonDocument>
+
+namespace {
+
+constexpr double kDt = 0.004; // 4 ms
+
+bool isValidMotionParams(const MotionParams& mp)
 {
-  const double dt = 0.004;    // 4 ms
-  const V6d d   = P2 - P1;
-  const double L  = d.norm(); // total contour length
+  return std::isfinite(mp.v) &&
+         std::isfinite(mp.a) &&
+         mp.v > 0.0 &&
+         mp.a > 0.0;
+}
 
-  if (L <= 0.0) return {};    // no motion
+int normalizedDecimals(int decimals)
+{
+  return std::clamp(decimals, 0, 12);
+}
 
-  // Normalize direction in 6D
-  const V6d dir = d / L;
+double roundToDecimals(double value, int decimals)
+{
+  const double scale = std::pow(10.0, normalizedDecimals(decimals));
+  return std::round(value * scale) / scale;
+}
 
-  double v = mp.v;
-  double a = mp.a;
+V6d roundedOffset(const V6d& offset, int decimals)
+{
+  V6d rounded = offset;
 
-  // Trapezoidal / triangular profile in 1D (arc length) ---
-  double t_acc = v / a;
-  double s_acc = 0.5 * a * t_acc * t_acc;
-
-  // If we can't reach v_max -> triangular profile
-  if (2.0 * s_acc > L) {
-    t_acc = std::sqrt(L / a);
-    s_acc = 0.5 * a * t_acc * t_acc;
-    v     = a * t_acc; // peak velocity for triangular
+  for (int i = 0; i < 6; ++i) {
+    rounded(i) = roundToDecimals(rounded(i), decimals);
   }
 
-  const double t_dec   = t_acc;
-  const double s_dec   = s_acc;
-  const double s_const = L - s_acc - s_dec;
-  const double t_const = s_const > 0.0 ? s_const / v : 0.0;
-  const double T_total = t_acc + t_const + t_dec;
+  return rounded;
+}
 
-  const int steps = static_cast<int>(std::ceil(T_total / dt));
+std::optional<MotionProfile> makeMotionProfile(double length, const MotionParams& mp)
+{
+  if (!std::isfinite(length) || length <= 0.0 || !isValidMotionParams(mp)) {
+    return std::nullopt;
+  }
+
+  MotionProfile profile;
+  profile.v = mp.v;
+  profile.a = mp.a;
+
+  profile.tAcc = profile.v / profile.a;
+  profile.sAcc = 0.5 * profile.a * profile.tAcc * profile.tAcc;
+
+  if (2.0 * profile.sAcc > length) {
+    profile.tAcc = std::sqrt(length / profile.a);
+    profile.sAcc = 0.5 * profile.a * profile.tAcc * profile.tAcc;
+    profile.v = profile.a * profile.tAcc;
+  }
+
+  profile.sConst = length - 2.0 * profile.sAcc;
+  if (profile.sConst < 0.0) {
+    profile.sConst = 0.0;
+  }
+
+  profile.tConst = profile.sConst > 0.0 ? profile.sConst / profile.v : 0.0;
+  profile.totalTime = 2.0 * profile.tAcc + profile.tConst;
+
+  if (!std::isfinite(profile.totalTime) || profile.totalTime <= 0.0) {
+    return std::nullopt;
+  }
+
+  return profile;
+}
+
+double distanceAtTime(const MotionProfile& profile, double time)
+{
+  if (time <= profile.tAcc) {
+    return 0.5 * profile.a * time * time;
+  }
+
+  if (time <= profile.tAcc + profile.tConst) {
+    const double t = time - profile.tAcc;
+    return profile.sAcc + profile.v * t;
+  }
+  const double t = time - profile.tAcc - profile.tConst;
+
+  return profile.sAcc + profile.sConst + profile.v * t - 0.5 * profile.a * t * t;
+}
+
+} // namespace
+
+QVector<V6d> RsiPath::lin(const V6d& p1, const V6d& p2, const MotionParams& mp, int decimals)
+{
+  if (!p1.allFinite() || !p2.allFinite()) {
+    return {};
+  }
+
+  const V6d delta = p2 - p1;
+  const double length = delta.norm();
+
+  const auto profile = makeMotionProfile(length, mp);
+
+  if (!profile) return {};
+
+  const V6d dir = delta / length;
+
+  const int steps = static_cast<int>(std::ceil(profile->totalTime / kDt));
+
+  if (steps <= 0) return {};
 
   QVector<V6d> offsets;
   offsets.reserve(steps);
 
-  V6d prevPos = P1;
-  const double scale = std::pow(10.0, decimals);
+  V6d prevPos = p1;
 
   for (int k = 1; k <= steps; ++k) {
-    double t = k * dt;
-    if (t > T_total) t = T_total;
+    double time = static_cast<double>(k) * kDt;
 
-    // s(t) along the line
-    double s;
-    if (t <= t_acc) {
-      s = 0.5 * a * t * t;                              // accel
-    } else if (t <= t_acc + t_const) {
-      double t2 = t - t_acc;
-      s = s_acc + v * t2;                               // const
-    } else {
-      double t3 = t - t_acc - t_const;
-      s = s_acc + s_const + v * t3 - 0.5 * a * t3 * t3; // decel
+    if (time > profile->totalTime) {
+      time = profile->totalTime;
     }
 
-    if (s > L) {
-      s = L;
-    }
+    double s = distanceAtTime(*profile, time);
 
-    V6d currPos = P1 + dir * s;
-    V6d dP      = currPos - prevPos;
+    if (s > length) s = length;
 
-    // rounding
-    for (int i = 0; i < 6; ++i)
-      dP(i) = std::round(dP(i) * scale) / scale;
+    const V6d currPos = p1 + dir * s;
+    const V6d offset = roundedOffset(currPos - prevPos, decimals);
 
-    offsets.push_back(dP);
+    offsets.push_back(offset);
+
     prevPos = currPos;
   }
 
   return offsets;
 }
 
-QVector<V6d> RsiPath::polyline(const QVector<V6d>& ref_points, const MotionParams& mp, int decimals)
+QVector<V6d> RsiPath::polyline(const QVector<V6d>& refPoints, const MotionParams& mp, int decimals)
 {
-  // [v] = mm/s; [a] = mm/s^2
-  const double dt = 0.004; // 4 ms
-  const int n = ref_points.size();
+  if (refPoints.size() < 2)  return {};
 
-  // 1) cumulative arc length
+  const int n = refPoints.size();
+
   QVector<double> cumLen(n);
   cumLen[0] = 0.0;
-  for (int i = 1; i < n; ++i)
-    cumLen[i] = cumLen[i - 1] + (ref_points[i] - ref_points[i - 1]).norm();
 
-  const double totalLen = cumLen.last(); // S
+  for (int i = 1; i < n; ++i) {
+    const V6d segment = refPoints[i] - refPoints[i - 1];
+    const double segmentLen = segment.norm();
 
-  const double v_max = mp.v;
-  const double a     = mp.a;
+    if (!std::isfinite(segmentLen)) return {};
 
-  // 2) trapezoidal profile parameters (assuming constant velocity is reached)
-  const double t_acc = v_max / a;                 // accel time
-  const double t_dec = t_acc;                     // decel time (symmetric)
-  const double s_acc = 0.5 * a * t_acc * t_acc;   // distance in accel
-  const double s_dec = s_acc;                     // distance in decel
-  const double s_const = totalLen - s_acc - s_dec;
-  const double t_const = s_const / v_max;
-  const double T_total = t_acc + t_const + t_dec;
+    cumLen[i] = cumLen[i - 1] + segmentLen;
+  }
 
-  const int steps = static_cast<int>(std::ceil(T_total / dt));
+  const double totalLen = cumLen.last();
+
+  const auto profile = makeMotionProfile(totalLen, mp);
+
+  if (!profile) return {};
+
+  const int steps = static_cast<int>(std::ceil(profile->totalTime / kDt));
+
+  if (steps <= 0) return {};
 
   QVector<V6d> offsets;
   offsets.reserve(steps);
 
-  V6d prevPos = ref_points.front();
-
-  const double scale = std::pow(10.0, decimals);
+  V6d prevPos = refPoints.front();
 
   for (int k = 1; k <= steps; ++k) {
-    double t = k * dt;
-    if (t > T_total) t = T_total;
+    double time = static_cast<double>(k) * kDt;
 
-           // 3) s(t) along contour
-    double s;
-    if (t <= t_acc) {
-      // acceleration
-      s = 0.5 * a * t * t;
-    } else if (t <= t_acc + t_const) {
-      // constant speed
-      const double t2 = t - t_acc;
-      s = s_acc + v_max * t2;
-    } else {
-      // deceleration
-      const double t3 = t - t_acc - t_const;
-      s = s_acc + s_const + v_max * t3 - 0.5 * a * t3 * t3;
-    }
-    if (s > totalLen) {
-      s = totalLen;
+    if (time > profile->totalTime) {
+      time = profile->totalTime;
     }
 
-    // 4) find segment for this s
+    double s = distanceAtTime(*profile, time);
+
+    if (s > totalLen)  s = totalLen;
+
     auto it = std::upper_bound(cumLen.begin(), cumLen.end(), s);
-    int idx = int(std::distance(cumLen.begin(), it)) - 1;
-    if (idx < 0)      idx = 0;
+
+    int idx = static_cast<int>(std::distance(cumLen.begin(), it)) - 1;
+
+    if (idx < 0) idx = 0;
     if (idx >= n - 1) idx = n - 2;
 
     const double segStart = cumLen[idx];
-    const double segLen   = cumLen[idx + 1] - segStart;
-    const double alpha    = segLen > 0.0 ? (s - segStart) / segLen : 0.0;
+    const double segLen = cumLen[idx + 1] - segStart;
+    const double alpha = segLen > 0.0 ? (s - segStart) / segLen : 0.0;
 
-           // 5) interpolate pose
-    V6d currPos = (1.0 - alpha) * ref_points[idx] + alpha * ref_points[idx + 1];
+    const V6d currPos = (1.0 - alpha) * refPoints[idx] + alpha * refPoints[idx + 1];
 
-           // 6) offset and rounding
-    V6d dP = currPos - prevPos;
-    for (int i = 0; i < 6; ++i)
-      dP(i) = std::round(dP(i) * scale) / scale;
+    const V6d offset = roundedOffset(currPos - prevPos, decimals);
 
-    offsets.push_back(dP);
+    offsets.push_back(offset);
+
     prevPos = currPos;
   }
 
   return offsets;
 }
 
-QVector<Pose> RsiPath::fromSurfPoses(const QVector<Pose>& surf_poses, const M4d& AiT)
+std::optional<QVector<Pose>> RsiPath::fromSurfPoses(const QVector<Pose>& surfPoses, const M4d& aiT)
 {
+  if (!aiT.allFinite()) return std::nullopt;
+
   QVector<Pose> path;
-  path.reserve(surf_poses.size());
+  path.reserve(surfPoses.size());
 
-  for (const Pose& surf_pose : surf_poses) {
-      const M4d AiB = surf_pose.transf;
-      const M4d ABT = AiT * AiB.inverse();
+  for (const Pose& surfPose : surfPoses) {
+    const M4d aiB = surfPose.transform();
+    const M4d abT = aiT * aiB.inverse();
+    const auto pose = Pose::fromTransform(abT);
 
-      Pose out = Pose::fromTransform(ABT);
-      path.push_back(out);
-    }
+    if (!pose) return std::nullopt;
+
+    path.push_back(*pose);
+  }
 
   return path;
 }
 
-void writeOffsetsToJson(const QVector<V6d> &offsets, const QString &filePath, int decimals)
+bool writeOffsetsToJson(const QVector<V6d>& offsets, const QString& filePath, int decimals)
 {
+  if (filePath.isEmpty()) return false;
+
   QJsonArray root;
 
-  for (const V6d &v : offsets) {
+  for (const V6d& offset : offsets) {
     QJsonArray row;
+
     for (int i = 0; i < 6; ++i) {
-      QString s = QString::number(v(i), 'f', decimals);
-      row.append(s);
+      row.append(QString::number(offset(i), 'f', normalizedDecimals(decimals)));
     }
+
     root.append(row);
   }
 
-  QJsonDocument doc(root);
+  const QJsonDocument document(root);
+  const QByteArray bytes = document.toJson(QJsonDocument::Indented);
 
   QFile file(filePath);
-  file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
-  file.write(doc.toJson(QJsonDocument::Indented));
-  file.close();
+
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    return false;
+  }
+
+  return file.write(bytes) == bytes.size();
 }

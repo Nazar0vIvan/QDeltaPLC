@@ -9,6 +9,8 @@ bool nearlyEqual(double lhs, double rhs, double eps)
 
 std::optional<V3d> normalize(const V3d& v, double eps)
 {
+  if (!v.allFinite()) return std::nullopt;
+
   const double len2 = v.squaredNorm();
 
   if (len2 <= eps * eps) return std::nullopt;
@@ -225,4 +227,20 @@ V3d deriv2d(const V3d& point, const V3d& coeffs)
   return V3d{1.0, slope, 0.0}.normalized();
 }
 
+std::optional<V3d> prjPointToPlane(const V3d &point, const V4d &planeCoeffs)
+{
+  if (!point.allFinite() || !planeCoeffs.allFinite()) {
+    return std::nullopt;
+  }
 
+  const V3d normal = planeCoeffs.head<3>();
+  const double normalLen2 = normal.squaredNorm();
+
+  if (normalLen2 <= GeomConst::Eps * GeomConst::Eps) {
+    return std::nullopt;
+  }
+
+  const double planeValue = normal.dot(point) + planeCoeffs.w();
+
+  return point - planeValue / normalLen2 * normal;
+}
