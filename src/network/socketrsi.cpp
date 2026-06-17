@@ -1,5 +1,6 @@
 #include "socketrsi.h"
 #include "geometry/cylinder.h"
+#include "geometry/plane.h"
 
 #include <iostream>
 
@@ -101,6 +102,13 @@ void SocketRSI::generateTrajectory()
   Cylinder rl = *Cylinder::fromAxis(ur, Cr, Rr, Axis::X);
   std::cout << "AT0: \n" << rl.originPose().transform() << "\n";
 
+  // WORKPIECE
+
+  VXd x{0.0, 0.0, 10.0};
+  VXd y{0.0, 0.0, 10.0};
+  VXd z{0.0, 0.0, 10.0};
+
+  Plane pl = *Plane::fromPoints(x,y,z);
 
   /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
@@ -251,11 +259,13 @@ void SocketRSI::onReadyRead()
   }
 }
 
-void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError) {
+void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError)
+{
   emit logMessage({this->errorString(), 0, objectName()});
 }
 
-void SocketRSI::onStateChanged(QAbstractSocket::SocketState state) {
+void SocketRSI::onStateChanged(QAbstractSocket::SocketState state)
+{
   emit logMessage({stateToString(state), 2, objectName()});
 }
 

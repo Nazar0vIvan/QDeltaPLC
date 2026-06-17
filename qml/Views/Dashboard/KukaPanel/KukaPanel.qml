@@ -62,6 +62,7 @@ QxGroupBox {
 
       spacing: 10
 
+      /*
       QxField {
         id: uploadFileField
 
@@ -91,6 +92,7 @@ QxGroupBox {
           }
         }
       }
+      */
 
       RowLayout {
         id: rl2
@@ -101,7 +103,7 @@ QxGroupBox {
           id: genTraj
 
           text: "Generate Trajectory"
-          enabled: rsiRunner && isValidBlade
+          enabled: rsiRunner // && isValidBlade
           onClicked: {
             if (!rsiRunner) return;
             rsiRunner.invoke("generateTrajectory");
