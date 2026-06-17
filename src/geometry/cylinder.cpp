@@ -37,47 +37,47 @@ Axis radialAxis(Axis axis)
   return Axis::Y;
 }
 
-std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis)
+std::optional<V3d> projectedWorldAxis(const V3d& worldAxis, const V3d& normal, double eps = GeomConst::Eps)
 {
-  const auto unitAxis = normalize(axisDir);
+  return normalize(worldAxis - worldAxis.dot(normal) * normal, eps);
+}
 
-  if (!unitAxis) {
-    return std::nullopt;
-  }
+std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis, double eps = GeomConst::Eps)
+{
+  const auto u = normalize(axisDir, eps);
 
-  const V3d helper = leastParallelUnit(*unitAxis);
-  const auto projectedHelper =
-      normalize(helper - helper.dot(*unitAxis) * *unitAxis);
+  if (!u) return std::nullopt;
 
-  if (!projectedHelper) {
-    return std::nullopt;
-  }
-
-  V3d e1;
-  V3d e2;
-  V3d e3;
+  V3d e1, e2, e3;
 
   switch (axis) {
-    case Axis::X:
-      e1 = *unitAxis;
-      e2 = *projectedHelper;
+    case Axis::X: {
+      e1 = *u;
+      const auto y = projectedWorldAxis(V3d::UnitY(), e1, eps);
+      if (!y) return std::nullopt;
+      e2 = *y;
       e3 = e1.cross(e2);
       break;
-
-    case Axis::Y:
-      e1 = *projectedHelper;
-      e2 = *unitAxis;
-      e3 = e1.cross(e2);
+    }
+    case Axis::Y: {
+      e2 = *u;
+      const auto z = projectedWorldAxis(V3d::UnitZ(), e2, eps);
+      if (!z) return std::nullopt;
+      e3 = *z;
+      e1 = e2.cross(e3);
       break;
-
-    case Axis::Z:
-      e1 = *projectedHelper;
-      e3 = *unitAxis;
+    }
+    case Axis::Z: {
+      e3 = *u;
+      const auto x = projectedWorldAxis(V3d::UnitX(), e3, eps);
+      if (!x) return std::nullopt;
+      e1 = *x;
       e2 = e3.cross(e1);
       break;
+    }
   }
 
-  return vecs2basis(e1, e2, e3);
+  return vecs2basis(e1, e2, e3, eps);
 }
 
 } // namespace

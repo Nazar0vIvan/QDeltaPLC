@@ -94,13 +94,19 @@ for u0 in starts:
     if best is None or cost < best["cost"]:
         best = {"r": r, "u": u, "P0": P0, "rms": rms, "cost": cost}
 
-np.set_printoptions(precision=10, suppress=False)
-print("Best-fit cylinder:")
-print("r  =", best["r"])
-print("u  =", best["u"])
-print("P0 =", best["P0"])
-print("RMS residual (mm) =", best["rms"])
+np.set_printoptions(precision=6, suppress=False)
 
-# Optional: canonicalize P0 to be the closest point on the axis to the origin.
+def fmt_vec(v):
+    return np.array2string(
+        v,
+        formatter={"float_kind": lambda x: f"{x:.6f}"}
+    )
+
+print("Best-fit cylinder:")
+print(f"r  = {best['r']:.6f}")
+print(f"u  = {fmt_vec(best['u'])}")
+print(f"P0 = {fmt_vec(best['P0'])}")
+print(f"RMS residual (mm) = {best['rms']:.6f}")
+
 P0_closest_to_origin = best["P0"] - (best["P0"] @ best["u"]) * best["u"]
-print("P0 (closest to origin on axis) =", P0_closest_to_origin)
+print(f"P0 (closest to origin on axis) = {fmt_vec(P0_closest_to_origin)}")

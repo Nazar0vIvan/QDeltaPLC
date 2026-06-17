@@ -72,23 +72,21 @@ qt_add_qml_module(qdeltaplc
     ${QML_FILES}
 )
 
-target_sources(qdeltaplc
-  PRIVATE
-    ${RESOURCE_FILES}
+target_sources(qdeltaplc PRIVATE
+  ${RESOURCE_FILES}
 )
 
-target_link_libraries(qdeltaplc
-  PRIVATE
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Quick
-    Qt6::Qml
-    Qt6::Network
-    Qt6::Charts
-    Qt6::Xml
-    Qt6::Widgets
-    Styles
-    Components
+target_link_libraries(qdeltaplc PRIVATE
+  Qt6::Core
+  Qt6::Gui
+  Qt6::Quick
+  Qt6::Qml
+  Qt6::Network
+  Qt6::Charts
+  Qt6::Xml
+  Qt6::Widgets
+  Styles
+  Components
 )
 
 include(GNUInstallDirs)

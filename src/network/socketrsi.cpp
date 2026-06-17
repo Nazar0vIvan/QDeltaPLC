@@ -1,4 +1,7 @@
 #include "socketrsi.h"
+#include "geometry/cylinder.h"
+
+#include <iostream>
 
 RandomData generateRandomData()
 {
@@ -85,13 +88,21 @@ void SocketRSI::setSocketConfig(const QVariantMap &config)
   emit logMessage({QString("Socket is bound: %1:%2").arg(m_la.toString()).arg(m_lp), 1, objectName()});
 }
 
-
 void SocketRSI::generateTrajectory()
 {
-  /*
   m_offsets.clear();
   m_offsetIdx = 0;
 
+  // ROLLER
+  const V3d ur(0.999349, -0.036055, 0.000879);
+  const V3d Cr(926.290032, -59.007181, 623.760314); // A point on the axis (near the data “middle”)
+  const double Rr = 20.043646;
+
+  Cylinder rl = *Cylinder::fromAxis(ur, Cr, Rr, Axis::X);
+  std::cout << "AT0: \n" << rl.originPose().transform() << "\n";
+
+
+  /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
   const V6d P2 = { 622.889465, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
 
