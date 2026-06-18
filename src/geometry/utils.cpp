@@ -2,6 +2,37 @@
 
 #include <algorithm>
 
+std::optional<V3d> jsonValueToPoint(const QJsonValue &value)
+{
+  if (!value.isArray()) return std::nullopt;
+
+  const QJsonArray array = value.toArray();
+
+  if (array.size() != 3) return std::nullopt;
+
+  if (!array[0].isDouble() || !array[1].isDouble() || !array[2].isDouble()) {
+    return std::nullopt;
+  }
+
+  return V3d{ array[0].toDouble(), array[1].toDouble(), array[2].toDouble() };
+}
+
+
+std::optional<QVector<V3d> > jsonArrayToPoints(const QJsonArray &array)
+{
+  QVector<V3d> points;
+  points.reserve(array.size());
+
+  for (const QJsonValue& value : array) {
+    const auto point = jsonValueToPoint(value);
+    if (!point) return std::nullopt;
+    points.push_back(*point);
+  }
+
+  return points;
+}
+
+
 bool nearlyEqual(double lhs, double rhs, double eps)
 {
   return std::abs(lhs - rhs) <= eps;
@@ -244,3 +275,6 @@ std::optional<V3d> prjPointToPlane(const V3d &point, const V4d &planeCoeffs)
 
   return point - planeValue / normalLen2 * normal;
 }
+
+
+

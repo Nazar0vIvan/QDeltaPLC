@@ -58,8 +58,9 @@ set(QML_FILES
 )
 
 set(RESOURCE_FILES
-  qml/resources/pics.qrc
-  qml/resources/fonts.qrc
+  resources/pics.qrc
+  resources/fonts.qrc
+  resources/files.qrc
 )
 
 qt_add_qml_module(qdeltaplc

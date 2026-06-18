@@ -1,4 +1,5 @@
 #include "plane.h"
+#include "utils.h"
 
 #include <cmath>
 
@@ -16,13 +17,24 @@ bool hasValidInput(const VXdRef& x, const VXdRef& y, const VXdRef& z)
 
 } // namespace
 
-std::optional<Plane> Plane::fromPoints(const VXdRef& x, const VXdRef& y, const VXdRef& z, double eps)
+std::optional<Plane> Plane::fromPoints(const QVector<V3d>& points, double eps)
 {
-  if (!hasValidInput(x, y, z)) {
-    return std::nullopt;
+  if (points.size() < 3) return std::nullopt;
+
+  VXd x(points.size());
+  VXd y(points.size());
+  VXd z(points.size());
+
+  for (int i = 0; i < points.size(); ++i) {
+    const V3d& point = points[i];
+    if (!point.allFinite()) return std::nullopt;
+
+    x(i) = point.x();
+    y(i) = point.y();
+    z(i) = point.z();
   }
 
-  const double pointCount = static_cast<double>(x.size());
+  const double pointCount = static_cast<double>(points.size());
 
   M3d lhs;
   lhs << x.squaredNorm(), x.dot(y),        x.sum(),
@@ -34,9 +46,7 @@ std::optional<Plane> Plane::fromPoints(const VXdRef& x, const VXdRef& y, const V
   auto qr = lhs.colPivHouseholderQr();
   qr.setThreshold(eps);
 
-  if (qr.rank() < 3) {
-    return std::nullopt;
-  }
+  if (qr.rank() < 3) return std::nullopt;
 
   const V3d explicitCoeffs = qr.solve(rhs);
 
@@ -57,6 +67,39 @@ std::optional<Plane> Plane::fromPoints(const VXdRef& x, const VXdRef& y, const V
   return Plane{coeffs};
 }
 
+std::optional<Plane> Plane::fromJsonFile(const QString &jsonFilePath, double eps)
+{
+  if (jsonFilePath.isEmpty()) {
+    return std::nullopt;
+  }
+
+  QFile file(jsonFilePath);
+  if (!file.open(QIODevice::ReadOnly)) {
+    return std::nullopt;
+  }
+
+  const QByteArray bytes = file.readAll();
+  if (bytes.isEmpty()) {
+    return std::nullopt;
+  }
+
+  QJsonParseError parseError;
+  const QJsonDocument document = QJsonDocument::fromJson(bytes, &parseError);
+  if (parseError.error != QJsonParseError::NoError) {
+    return std::nullopt;
+  }
+  if (!document.isArray()) {
+    return std::nullopt;
+  }
+
+  const auto points = jsonArrayToPoints(document.array());
+  if (!points) {
+    return std::nullopt;
+  }
+
+  return Plane::fromPoints(*points, eps);
+}
+
 V3d Plane::normal() const noexcept
 {
   return coeffs.head<3>();
@@ -74,3 +117,4 @@ std::optional<V3d> Plane::explicitCoeffs(double eps) const noexcept
     -coeffs.w() / coeffs.z()
   };
 }
+

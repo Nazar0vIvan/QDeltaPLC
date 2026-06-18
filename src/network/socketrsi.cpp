@@ -1,6 +1,7 @@
 #include "socketrsi.h"
 #include "geometry/cylinder.h"
 #include "geometry/plane.h"
+#include "utils.h"
 
 #include <iostream>
 
@@ -9,7 +10,6 @@ RandomData generateRandomData()
   RandomData data;
   auto generator = QRandomGenerator::global();
 
-  // Use std::generate for cleaner loop
   std::generate_n(std::back_inserter(data.values), 6, [&](){ return 0.001 + generator->generateDouble() * 0.009; });
   data.ipoc = generator->generate64();
 
@@ -100,15 +100,28 @@ void SocketRSI::generateTrajectory()
   const double Rr = 20.043646;
 
   Cylinder rl = *Cylinder::fromAxis(ur, Cr, Rr, Axis::X);
-  std::cout << "AT0: \n" << rl.originPose().transform() << "\n";
+  // std::cout << "AT0: \n" << rl.originPose().transform() << "\n";
 
   // WORKPIECE
 
-  VXd x{0.0, 0.0, 10.0};
-  VXd y{0.0, 0.0, 10.0};
-  VXd z{0.0, 0.0, 10.0};
+  Plane pl = *Plane::fromJsonFile("://files/blank-plane-top.json");
 
-  Plane pl = *Plane::fromPoints(x,y,z);
+  V3d po{-7.716498, 26.999603, 156.195167};
+  V3d pu{-7.671799, 8.999204, 156.199554};
+  V3d pv{-7.722479, 27.000259, 141.192631};
+
+  V3d prjo = *prjPointToPlane(po, pl.coeffs);
+  V3d prju = *prjPointToPlane(pv, pl.coeffs);
+  V3d prjv = *prjPointToPlane(pv, pl.coeffs);
+
+  V3d u = prju - prjo;
+  V3d v = prjv - prjo;
+
+
+
+
+
+  // Plane pl = *Plane::fromPoints(x,y,z);
 
   /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };

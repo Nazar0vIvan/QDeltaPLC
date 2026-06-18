@@ -2,8 +2,13 @@
 
 #include <cmath>
 #include <optional>
+#include <QJsonValue>
+#include <QJsonArray>
 
 #include "mathtypes.h"
+
+std::optional<V3d> jsonValueToPoint(const QJsonValue& value);
+std::optional<QVector<V3d>> jsonArrayToPoints(const QJsonArray& array);
 
 bool nearlyEqual(double lhs, double rhs, double eps = GeomConst::Eps);
 std::optional<V3d> normalize(const V3d& v, double eps = GeomConst::Eps);

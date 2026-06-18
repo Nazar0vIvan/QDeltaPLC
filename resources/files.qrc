@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>files/242.json</file>
+        <file>files/blank-plane-bottom.json</file>
+        <file>files/blank-plane-top.json</file>
+    </qresource>
+</RCC>
