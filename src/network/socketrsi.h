@@ -19,6 +19,10 @@
 #include "logger.h"
 #include "socketfts.h"
 #include "pathgeneration/blade.h"
+#include "geometry/cylinder.h"
+#include "geometry/plane.h"
+#include "planemesh.h"
+#include "utils.h"
 
 
 // QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };

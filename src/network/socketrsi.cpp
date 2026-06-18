@@ -1,7 +1,5 @@
 #include "socketrsi.h"
-#include "geometry/cylinder.h"
-#include "geometry/plane.h"
-#include "utils.h"
+
 
 #include <iostream>
 
@@ -100,28 +98,19 @@ void SocketRSI::generateTrajectory()
   const double Rr = 20.043646;
 
   Cylinder rl = *Cylinder::fromAxis(ur, Cr, Rr, Axis::X);
-  // std::cout << "AT0: \n" << rl.originPose().transform() << "\n";
+  rl.setSurfacePose(0.0, -45.0);
 
   // WORKPIECE
-
   Plane pl = *Plane::fromJsonFile("://files/blank-plane-top.json");
 
   V3d po{-7.716498, 26.999603, 156.195167};
-  V3d pu{-7.671799, 8.999204, 156.199554};
-  V3d pv{-7.722479, 27.000259, 141.192631};
-
   V3d prjo = *prjPointToPlane(po, pl.coeffs);
-  V3d prju = *prjPointToPlane(pv, pl.coeffs);
-  V3d prjv = *prjPointToPlane(pv, pl.coeffs);
 
-  V3d u = prju - prjo;
-  V3d v = prjv - prjo;
-
+  const auto uy = *prjUnitOnPlane(V3d::UnitY(), pl.normal());
+  const auto uz = *normalize(-pl.normal().cross(uy));
+  const auto ux = -pl.normal();
 
 
-
-
-  // Plane pl = *Plane::fromPoints(x,y,z);
 
   /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
@@ -132,7 +121,9 @@ void SocketRSI::generateTrajectory()
     emit logMessage({ "Generated RSI trajectory is empty", 0, objectName()});
     return;
   }
+  */
 
+  /*
   // WORKPIECE
   V3d Pc = { -0.113702, -0.012406, 111.290488 };
 
@@ -211,6 +202,8 @@ void SocketRSI::generateTrajectory()
   writeOffsetsToJson(m_offsets, "offsets.json");
 */
 }
+
+
 
 
 QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)

@@ -16,8 +16,8 @@ Window {
 
   property int navPanelWidth: 60
 
-  width: 1300
-  height: 1000
+  width: 1000
+  height: 800
   visible: true
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
