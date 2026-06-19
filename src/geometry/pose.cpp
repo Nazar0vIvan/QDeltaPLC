@@ -1,6 +1,21 @@
 #include "pose.h"
 #include "utils.h"
 
+namespace {
+
+V3d poseAxisVec(const Pose& pose, Axis axis)
+{
+  switch (axis) {
+    case Axis::X: return pose.t();
+    case Axis::Y: return pose.b();
+    case Axis::Z: return pose.n();
+  }
+
+  return V3d::Zero();
+}
+
+} // namespace
+
 std::optional<Pose> Pose::fromFrame(const V6d& frame)
 {
   if (!frame.allFinite()) return std::nullopt;
@@ -30,6 +45,7 @@ std::optional<Pose> Pose::fromTransform(const M4d& tf)
 
   return fromRotAndOrigin(rot, origin);
 }
+
 std::optional<Pose> Pose::fromAxes(const V3d& t, const V3d& b, const V3d& n, const V3d& origin)
 {
   const auto basis = vecs2basis(t, b, n);
@@ -65,6 +81,17 @@ std::optional<Pose> Pose::fromRotAndOrigin(const M3d &rot, const V3d &origin)
                   euler.A1, euler.B1, euler.C1;
 
   return pose;
+}
+
+std::optional<Pose> Pose::offsetPose(Axis axis, double offset) const
+{
+  if (!std::isfinite(offset)) {
+    return std::nullopt;
+  }
+
+  const V3d newOrigin = m_origin + offset * poseAxisVec(*this, axis);
+
+  return Pose::fromAxes(m_t, m_b, m_n, newOrigin);
 }
 
 const V6d& Pose::frame() const noexcept

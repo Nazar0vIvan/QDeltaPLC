@@ -1,6 +1,5 @@
 #include "socketrsi.h"
 
-
 #include <iostream>
 
 RandomData generateRandomData()
@@ -100,17 +99,39 @@ void SocketRSI::generateTrajectory()
   Cylinder rl = *Cylinder::fromAxis(ur, Cr, Rr, Axis::X);
   rl.setSurfacePose(0.0, -45.0);
 
+  std::cout << rl.surfacePose().frame() << "\n\n";
+  // std::cout << rl.surfacePose().transform();
+
   // WORKPIECE
-  Plane pl = *Plane::fromJsonFile("://files/blank-plane-top.json");
+  Plane pl = *Plane::fromJsonFile("://files/blank-plane-bottom.json");
 
-  V3d po{-7.716498, 26.999603, 156.195167};
-  V3d prjo = *prjPointToPlane(po, pl.coeffs);
+  V3d p214{8.377225, 26.999799, 156.207670};
+  V3d p211{8.464722, -27.000830, 156.213933};
 
-  const auto uy = *prjUnitOnPlane(V3d::UnitY(), pl.normal());
-  const auto uz = *normalize(-pl.normal().cross(uy));
+  V3d prj_p214 = *prjPointToPlane(p214, pl.coeffs);
+  V3d prj_p211 = *prjPointToPlane(p211, pl.coeffs);
+
   const auto ux = -pl.normal();
+  const auto uy = *normalize(prj_p214 - prj_p211);
+  const auto uz = *normalize(-pl.normal().cross(uy));
 
+  Pose pt1 = *Pose::fromAxes(ux, uy, uz, prj_p214);
+  Pose pt2 = *Pose::fromAxes(ux, uy, uz, prj_p211);
 
+  Pose startPose = *pt1.offsetPose(Axis::Y, 40.0);
+  Pose endPose   = *pt2.offsetPose(Axis::Y, -40.0);
+
+  M4d AiS;
+  AiS <<   0.0,  0.0, 1.0, 0.0,
+           0.0,  1.0, 0.0, 0.0,
+          -1.0,  0.0, 0.0, 0.0,
+           0.0,  0.0, 0.0, 1.0; // ROLLER SURFACE
+
+  //std::cout << startPose.frame() << "\n\n";
+  //std::cout << startPose.transform() << "\n\n";
+
+  //std::cout << RsiPath::fromSurfPose(startPose, AiS)->frame() << "\n\n";
+  //std::cout << RsiPath::fromSurfPose(pt1, AiS)->frame() << "\n\n";
 
   /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };

@@ -206,20 +206,24 @@ QVector<V6d> RsiPath::polyline(const QVector<V6d>& refPoints, const MotionParams
   return offsets;
 }
 
+std::optional<Pose> RsiPath::fromSurfPose(const Pose& surfPose, const M4d& aiS)
+{
+  if (!aiS.allFinite()) return std::nullopt;
+
+  const M4d aiF = surfPose.transform();
+  const M4d aFS = aiS * aiF.inverse();
+
+  return Pose::fromTransform(aFS);
+}
+
 std::optional<QVector<Pose>> RsiPath::fromSurfPoses(const QVector<Pose>& surfPoses, const M4d& aiT)
 {
-  if (!aiT.allFinite()) return std::nullopt;
-
   QVector<Pose> path;
   path.reserve(surfPoses.size());
 
   for (const Pose& surfPose : surfPoses) {
-    const M4d aiB = surfPose.transform();
-    const M4d abT = aiT * aiB.inverse();
-    const auto pose = Pose::fromTransform(abT);
-
+    const auto pose = fromSurfPose(surfPose, aiT);
     if (!pose) return std::nullopt;
-
     path.push_back(*pose);
   }
 

@@ -16,6 +16,8 @@ public:
   static std::optional<Pose> fromAxes(const V3d& t, const V3d& b, const V3d& n, const V3d& origin);
   static std::optional<Pose> fromRotAndOrigin(const M3d& rot, const V3d& origin);
 
+  std::optional<Pose> offsetPose(Axis axis, double offset) const;
+
   const V6d& frame() const noexcept;
   const M4d& transform() const noexcept;
   M3d rot() const noexcept;
