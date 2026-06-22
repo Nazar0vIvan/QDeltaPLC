@@ -1,5 +1,4 @@
-#ifndef SOCKETRSI_H
-#define SOCKETRSI_H
+#pragma once
 
 #include <QUdpSocket>
 #include <QHostAddress>
@@ -9,22 +8,14 @@
 #include <QQueue>
 #include <QTimer>
 #include <QVariantMap>
-#include <QDomDocument>
 #include <QXmlStreamReader>
-
-#include <QRandomGenerator>
 
 #include <array>
 
 #include "logger.h"
-#include "socketfts.h"
-#include "pathgeneration/blade.h"
-#include "geometry/cylinder.h"
-#include "geometry/plane.h"
-#include "planemesh.h"
-#include "utils.h"
-#include "pathgeneration/rsi.h"
-
+#include "network/fts/rdtmessage.h"
+#include "pathgeneration/blade/airfoil.h"
+#include "geometry/mathtypes.h"
 
 // QByteArray moveCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.01\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
 // QByteArray defaultCommand{ "<Sen Type=\"ImFree\"><AKorr A1=\"0.0\" A2=\"0.0\" A3=\"0.0\" A4=\"0.0\" A5=\"0.0\" A6=\"0.0\" /><IPOC>00000000</IPOC></Sen>" };
@@ -107,7 +98,7 @@ private:
   static constexpr double COUNT_FACTOR = 1000000.0;
   static constexpr int COOLDOWN_MS = 10000;
 
-  // rsi
+         // rsi
   QByteArray defaultCommand =
     "<Sen Type=\"ImFree\">"
     "<RKorr X=\"0.0\" Y=\"0.0\" Z=\"0.0\" A=\"0.0\" B=\"0.0\" C=\"0.0\" />"
@@ -145,7 +136,4 @@ private:
   QVector<double> readCartesian6(const QXmlStreamAttributes& attrs);
 
   Airfoil m_af;
-
 };
-
-#endif // SOCKETRSI_H

@@ -1,6 +1,26 @@
-#include "socketrsi.h"
+#include "network/rsi/socketrsi.h"
 
+#include <algorithm>
 #include <iostream>
+
+#include <QDomDocument>
+#include <QDomElement>
+#include <QFile>
+#include <QIODevice>
+#include <QLocale>
+#include <QRandomGenerator>
+#include <QUrl>
+#include <QXmlStreamWriter>
+
+#include "geometry/cylinder.h"
+#include "geometry/plane.h"
+#include "geometry/pose.h"
+#include "geometry/utils.h"
+
+#include "pathgeneration/blade/bladejsonloader.h"
+#include "pathgeneration/blade/bladefrenet.h"
+#include "pathgeneration/rsi/rsipath.h"
+#include "pathgeneration/rsi/offsetjsonwriter.h"
 
 RandomData generateRandomData()
 {
@@ -41,9 +61,9 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
 
   QFile f(path);
   if (!f.open(QIODevice::ReadOnly)) {
-    emit logMessage({f.errorString(), 0, objectName()});
-    return {};
-  }
+      emit logMessage({f.errorString(), 0, objectName()});
+      return {};
+    }
 
   QDomDocument dom;
   QDomDocument::ParseResult res = dom.setContent(&f, QDomDocument::ParseOption::Default);
@@ -100,7 +120,6 @@ void SocketRSI::generateTrajectory()
   rl.setSurfacePose(0.0, -45.0);
 
   std::cout << rl.surfacePose().frame() << "\n\n";
-  // std::cout << rl.surfacePose().transform();
 
   // WORKPIECE
   Plane pl = *Plane::fromJsonFile("://files/blank-plane-bottom.json");
@@ -122,13 +141,10 @@ void SocketRSI::generateTrajectory()
   Pose endPose   = *pt2.offsetPose(Axis::Y, -40.0);
 
   M4d AiS;
-  AiS <<   0.0,  0.0, 1.0, 0.0,
-           0.0,  1.0, 0.0, 0.0,
-          -1.0,  0.0, 0.0, 0.0,
-           0.0,  0.0, 0.0, 1.0; // ROLLER SURFACE
-
-  //std::cout << startPose.frame() << "\n\n";
-  //std::cout << startPose.transform() << "\n\n";
+  AiS << 0.0,  0.0, 1.0, 0.0,
+         0.0,  1.0, 0.0, 0.0,
+        -1.0,  0.0, 0.0, 0.0,
+         0.0,  0.0, 0.0, 1.0; // ROLLER SURFACE
 
   //std::cout << RsiPath::fromSurfPose(startPose, AiS)->frame() << "\n\n";
   //std::cout << RsiPath::fromSurfPose(pt1, AiS)->frame() << "\n\n";
@@ -149,12 +165,12 @@ void SocketRSI::generateTrajectory()
   V3d Pc = { -0.113702, -0.012406, 111.290488 };
 
   V3d Pc11 = { -0.151981, -0.002515, 120.0},
-                  Pc12 = { -0.153901, -0.003125, 120.0 },
-                  Pc21 = { -0.422887,  0.061220, 180.0 },
-                  Pc22 = { -0.423638,  0.065223, 180.0};
+      Pc12 = { -0.153901, -0.003125, 120.0 },
+      Pc21 = { -0.422887,  0.061220, 180.0 },
+      Pc22 = { -0.423638,  0.065223, 180.0};
 
   V3d Pc1 = 0.5 * (Pc11 + Pc12),
-                  Pc2 = 0.5 * (Pc21 + Pc22);
+                 Pc2 = 0.5 * (Pc21 + Pc22);
 
   double Rs[] = {
     12.991316,
@@ -195,10 +211,10 @@ void SocketRSI::generateTrajectory()
   // BLADE
 
   M4d AiT;
-  AiT <<  1.0,  0.0,  0.0, 0.0,
-          0.0, -1.0,  0.0, 0.0,
-          0.0,  0.0, -1.0, 0.0,
-          0.0,  0.0,  0.0, 1.0;
+  AiT << 1.0,  0.0,  0.0, 0.0,
+         0.0, -1.0,  0.0, 0.0,
+         0.0,  0.0, -1.0, 0.0,
+         0.0,  0.0,  0.0, 1.0;
 
   // const QVector<V3d>& cx0      = m_af[0].cx;
   // const QVector<V3d>& cx0_next = m_af[1].cx;
@@ -221,7 +237,7 @@ void SocketRSI::generateTrajectory()
   emit trajectoryReady();
 
   writeOffsetsToJson(m_offsets, "offsets.json");
-*/
+  */
 }
 
 
@@ -232,9 +248,9 @@ QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)
   const BladeJsonLoader::LoadResult res = BladeJsonLoader::load(data);
 
   if (!res.ok) {
-    emit logMessage({res.error, 0, objectName()});
-    return { {"path", ""}, {"parseResult", false} };
-  }
+      emit logMessage({res.error, 0, objectName()});
+      return { {"path", ""}, {"parseResult", false} };
+    }
 
   m_af = res.airfoil;
 
@@ -268,26 +284,28 @@ void SocketRSI::setForce(const RDTResponse& sample)
 void SocketRSI::onReadyRead()
 {
   while (hasPendingDatagrams()) {
-    QNetworkDatagram dg = receiveDatagram();
-    pushRxLog(dg);
+      QNetworkDatagram dg = receiveDatagram();
+      pushRxLog(dg);
 
-    if (m_isFirstRead) {
-      handleFirstRead(dg);
+      if (m_isFirstRead) {
+          handleFirstRead(dg);
+        }
+
+      const RsiResponse resp = parseRsiResponse(dg.data());
+
+      const RsiTxFrame tx = makeTxFrame(resp.ipoc);
+
+      const QByteArray reply = subsXml(tx);
+      pushTxLog(reply);
+
+      writeDatagram(reply, m_pa, m_pp);
     }
-
-    const RsiResponse resp = parseRsiResponse(dg.data());
-
-    const RsiTxFrame tx = makeTxFrame(resp.ipoc);
-
-    const QByteArray reply = subsXml(tx);
-    pushTxLog(reply);
-
-    writeDatagram(reply, m_pa, m_pp);
-  }
 }
 
 void SocketRSI::onErrorOccurred(QAbstractSocket::SocketError socketError)
 {
+  Q_UNUSED(socketError)
+
   emit logMessage({this->errorString(), 0, objectName()});
 }
 
@@ -310,33 +328,33 @@ void SocketRSI::setMotionState(MotionState s)
   const MotionState prev = m_state;
   m_state = s;
 
-  // transitions with signals
+         // transitions with signals
   if (prev != MotionState::Moving && s == MotionState::Moving) {
-    emit motionStarted();
-    emit motionActiveChanged(true);
-  }
+      emit motionStarted();
+      emit motionActiveChanged(true);
+    }
 
   if (prev == MotionState::Moving && s != MotionState::Moving) {
-    emit motionFinished();
-    emit motionActiveChanged(false);
-  }
+      emit motionFinished();
+      emit motionActiveChanged(false);
+    }
 }
 
 void SocketRSI::finishMotion(bool enterCooldown)
 {
   if (m_state == MotionState::Idle) {
-    m_offsetIdx = 0;
-    return;
-  }
+      m_offsetIdx = 0;
+      return;
+    }
 
   m_offsetIdx = 0;
 
   if (enterCooldown) {
-    setMotionState(MotionState::Cooldown);
-    m_cooldownTimer.start(COOLDOWN_MS);
-  } else {
-    setMotionState(MotionState::Idle);
-  }
+      setMotionState(MotionState::Cooldown);
+      m_cooldownTimer.start(COOLDOWN_MS);
+    } else {
+      setMotionState(MotionState::Idle);
+    }
 }
 
 QString SocketRSI::stateToString(SocketState state)
@@ -350,7 +368,7 @@ QString SocketRSI::stateToString(SocketState state)
     case QAbstractSocket::ClosingState:     return "ClosingState";
     case QAbstractSocket::ListeningState:   return "ListeningState";
     default: return "UnknownState";
-  }
+    }
 }
 
 void SocketRSI::handleFirstRead(const QNetworkDatagram &dg)
@@ -364,16 +382,16 @@ void SocketRSI::pushRxLog(const QNetworkDatagram& dg)
 {
   m_rxLog.enqueue(dg);
   while (m_rxLog.size() > MAX_LOG_FRAMES) {
-    m_rxLog.dequeue();
-  }
+      m_rxLog.dequeue();
+    }
 }
 
 void SocketRSI::pushTxLog(const QByteArray& xml)
 {
   m_txXmlLog.enqueue(xml);
   while (m_txXmlLog.size() > MAX_LOG_FRAMES) {
-    m_txXmlLog.dequeue();
-  }
+      m_txXmlLog.dequeue();
+    }
 }
 
 std::array<double, 6> SocketRSI::tickMotion(bool& shouldStopOut)
@@ -387,28 +405,28 @@ std::array<double, 6> SocketRSI::tickMotion(bool& shouldStopOut)
     return corr;
 
   if (m_offsets.isEmpty()) {
-    shouldStopOut = true;
-    finishMotion(false);
-    return corr;
-  }
-
-  if (m_offsetIdx < m_offsets.size()) {
-    const V6d& dP = m_offsets[m_offsetIdx++];
-
-    for (int i = 0; i < 6; ++i)
-      corr[static_cast<size_t>(i)] = dP(i);
-
-    const bool exhausted = (m_offsetIdx >= m_offsets.size());
-    if (exhausted) {
-      // last offset is sent in this frame -> stop in this same frame
       shouldStopOut = true;
       finishMotion(false);
+      return corr;
     }
 
-    return corr;
-  }
+  if (m_offsetIdx < m_offsets.size()) {
+      const V6d& dP = m_offsets[m_offsetIdx++];
 
-  // safety fallback (already past end)
+      for (int i = 0; i < 6; ++i)
+        corr[static_cast<size_t>(i)] = dP(i);
+
+      const bool exhausted = (m_offsetIdx >= m_offsets.size());
+      if (exhausted) {
+          // last offset is sent in this frame -> stop in this same frame
+          shouldStopOut = true;
+          finishMotion(false);
+        }
+
+      return corr;
+    }
+
+         // safety fallback (already past end)
   shouldStopOut = true;
   finishMotion(false);
   return corr;
@@ -437,19 +455,19 @@ QByteArray SocketRSI::subsXml(const RsiTxFrame& tx)
   w.writeStartElement("Sen");
   w.writeAttribute("Type", "ImFree");
 
-  // RKorr
+         // RKorr
   w.writeEmptyElement("RKorr");
   static const char* k[6] = {"X","Y","Z","A","B","C"};
   const QLocale c = QLocale::c();
   for (int i = 0; i < 6; ++i) {
-    w.writeAttribute(QLatin1String(k[i]), c.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
-  }
+      w.writeAttribute(QLatin1String(k[i]), c.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
+    }
 
-  // Flags
+         // Flags
   w.writeEmptyElement("Flags");
   w.writeAttribute("ShouldStop", tx.shouldStop ? "1" : "0");
 
-  // IPOC
+         // IPOC
   w.writeTextElement("IPOC", QString::number(tx.ipoc));
 
   w.writeEndElement(); // Sen
@@ -467,17 +485,17 @@ SocketRSI::RsiResponse SocketRSI::parseRsiResponse(const QByteArray& xmlBytes)
   if (xml.name() != QLatin1String("Rob")) return r;
 
   while (xml.readNextStartElement()) {
-    const auto name = xml.name();
+      const auto name = xml.name();
 
-    if (name == QLatin1String("RIst")) {
-      r.pose = readCartesian6(xml.attributes());
-      xml.skipCurrentElement();
-    } else if (name == QLatin1String("IPOC")) {
-      r.ipoc = xml.readElementText().toULongLong();
-    } else {
-      xml.skipCurrentElement();
+      if (name == QLatin1String("RIst")) {
+          r.pose = readCartesian6(xml.attributes());
+          xml.skipCurrentElement();
+        } else if (name == QLatin1String("IPOC")) {
+          r.ipoc = xml.readElementText().toULongLong();
+        } else {
+          xml.skipCurrentElement();
+        }
     }
-  }
 
   return r;
 }
@@ -487,8 +505,8 @@ QVector<double> SocketRSI::readCartesian6(const QXmlStreamAttributes &attrs)
   QVector<double> out = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
   static const char* keys[6] = {"X","Y","Z","A","B","C"};
   for (size_t i = 0; i < 6; ++i) {
-    out[i] = attrs.value(QLatin1String(keys[i])).toString().toDouble();
-  }
+      out[i] = attrs.value(QLatin1String(keys[i])).toString().toDouble();
+    }
   return out;
 }
 
@@ -496,5 +514,3 @@ void SocketRSI::test()
 {
 
 }
-
-

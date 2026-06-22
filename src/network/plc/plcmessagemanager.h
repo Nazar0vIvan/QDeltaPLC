@@ -1,5 +1,4 @@
-#ifndef PLCMESSAGEMANAGER_H
-#define PLCMESSAGEMANAGER_H
+#pragma once
 
 #include <QQmlEngine>
 #include <QByteArray>
@@ -147,5 +146,3 @@ private:
 };
 
 Q_DECLARE_METATYPE(PlcMessageManager::Header)
-
-#endif // PLCMESSAGEMANAGER_H

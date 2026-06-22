@@ -17,8 +17,7 @@ std::optional<V3d> jsonValueToPoint(const QJsonValue &value)
   return V3d{ array[0].toDouble(), array[1].toDouble(), array[2].toDouble() };
 }
 
-
-std::optional<QVector<V3d> > jsonArrayToPoints(const QJsonArray &array)
+std::optional<QVector<V3d>> jsonArrayToPoints(const QJsonArray &array)
 {
   QVector<V3d> points;
   points.reserve(array.size());
@@ -31,7 +30,6 @@ std::optional<QVector<V3d> > jsonArrayToPoints(const QJsonArray &array)
 
   return points;
 }
-
 
 bool nearlyEqual(double lhs, double rhs, double eps)
 {

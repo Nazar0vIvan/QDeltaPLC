@@ -1,5 +1,4 @@
-#ifndef SOCKETDELTAPLC_H
-#define SOCKETDELTAPLC_H
+#pragma once
 
 #include <QTcpSocket>
 #include <QThread>
@@ -10,7 +9,7 @@
 
 class SocketDeltaPLC : public QTcpSocket
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
   enum CELL_STATE : quint8 {
@@ -56,4 +55,3 @@ private:
 
 };
 
-#endif // SOCKETDELTAPLC_H

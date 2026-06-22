@@ -14,16 +14,12 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
   Network
   Charts
   Xml
-  Widgets
 )
 
 qt_standard_project_setup(REQUIRES 6.8)
 
-option(QDELTAPLC_FAST_BUILD "Speed up local builds by disabling expensive QML build steps" ON)
-
-if(QDELTAPLC_FAST_BUILD)
-  set(QT_QML_NO_CACHEGEN TRUE)
-endif()
+set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
+set(QML_IMPORT_PATH "${QT_QML_OUTPUT_DIRECTORY}" CACHE STRING "QML import paths for Qt Creator" FORCE)
 
 qt_add_executable(qdeltaplc
   src/main.cpp
@@ -66,11 +62,13 @@ set(RESOURCE_FILES
 qt_add_qml_module(qdeltaplc
   URI qdeltaplc_qml_module
   VERSION 1.0
-  DEPENDENCIES
-    TARGET Styles
-    TARGET Components
+  IMPORTS
+    Styles
+    Components
   QML_FILES
     ${QML_FILES}
+  SOURCES
+    src/network/fts/rdtmessage.h
 )
 
 target_sources(qdeltaplc PRIVATE
@@ -85,7 +83,6 @@ target_link_libraries(qdeltaplc PRIVATE
   Qt6::Network
   Qt6::Charts
   Qt6::Xml
-  Qt6::Widgets
   Styles
   Components
 )

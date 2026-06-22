@@ -5,7 +5,7 @@ qt_add_qml_module(Components
   VERSION 1.0
   OUTPUT_DIRECTORY "${QT_QML_OUTPUT_DIRECTORY}/Components"
   IMPORTS
-    TARGET Styles
+    Styles
   NO_PLUGIN
   QML_FILES
     QxLed.qml
@@ -23,4 +23,5 @@ qt_add_qml_module(Components
 target_link_libraries(Components
   PRIVATE
     Qt6::Qml
+    Styles
 )
