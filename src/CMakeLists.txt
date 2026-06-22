@@ -37,6 +37,8 @@ target_sources(qdeltaplc PRIVATE
   network/runner/rsirunner.cpp
   network/runner/tcpsocketrunner.h
   network/runner/tcpsocketrunner.cpp
+  network/runner/udpsocketrunner.h
+  network/runner/udpsocketrunner.cpp
 
   pathgeneration/blade/airfoil.h
   pathgeneration/blade/bladefrenet.h

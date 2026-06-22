@@ -29,7 +29,7 @@ V3d leastParallelUnit(const V3d& v)
 Axis radialAxis(Axis axis)
 {
   switch (axis) {
-    case Axis::X: return Axis::Y;
+    case Axis::X: return Axis::Z;
     case Axis::Y: return Axis::Z;
     case Axis::Z: return Axis::Y;
   }
@@ -113,7 +113,7 @@ void Cylinder::setSurfacePose(double offset, double angleDeg)
 
   const M4d localTf =
       makeTranslation(axisVec(m_axis, offset)) *
-      makeRotation(-angleDeg, m_axis) *
+      makeRotation(angleDeg, m_axis) *
       makeTranslation(axisVec(radialAxis(m_axis), m_radius));
 
   const auto pose = Pose::fromTransform(m_originPose.transform() * localTf);

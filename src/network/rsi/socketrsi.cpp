@@ -17,8 +17,6 @@
 #include "geometry/pose.h"
 #include "geometry/utils.h"
 
-#include "pathgeneration/blade/bladejsonloader.h"
-#include "pathgeneration/blade/bladefrenet.h"
 #include "pathgeneration/rsi/rsipath.h"
 #include "pathgeneration/rsi/offsetjsonwriter.h"
 
@@ -117,9 +115,13 @@ void SocketRSI::generateTrajectory()
   const double Rr = 20.043646;
 
   Cylinder rl = *Cylinder::fromAxis(ur, Cr, Rr, Axis::X);
-  rl.setSurfacePose(0.0, -45.0);
+  rl.setSurfacePose(-13.0, -45.0); // B = 3 мм
 
-  std::cout << rl.surfacePose().frame() << "\n\n";
+  const Pose surfacePose = rl.surfacePose();
+  const double dz = 3.0; // mm along local Z of cylinder surface pose
+  const auto shiftedPose = *surfacePose.offsetPose(Axis::Z, dz);
+
+  std::cout << shiftedPose.frame() << "\n\n";
 
   // WORKPIECE
   Plane pl = *Plane::fromJsonFile("://files/blank-plane-bottom.json");
@@ -137,8 +139,8 @@ void SocketRSI::generateTrajectory()
   Pose pt1 = *Pose::fromAxes(ux, uy, uz, prj_p214);
   Pose pt2 = *Pose::fromAxes(ux, uy, uz, prj_p211);
 
-  Pose startPose = *pt1.offsetPose(Axis::Y, 40.0);
-  Pose endPose   = *pt2.offsetPose(Axis::Y, -40.0);
+  Pose pt0 = *pt1.offsetPose(Axis::Y, 40.0);
+  Pose ptn = *pt2.offsetPose(Axis::Y, -40.0);
 
   M4d AiS;
   AiS << 0.0,  0.0, 1.0, 0.0,
@@ -146,8 +148,23 @@ void SocketRSI::generateTrajectory()
         -1.0,  0.0, 0.0, 0.0,
          0.0,  0.0, 0.0, 1.0; // ROLLER SURFACE
 
-  //std::cout << RsiPath::fromSurfPose(startPose, AiS)->frame() << "\n\n";
-  //std::cout << RsiPath::fromSurfPose(pt1, AiS)->frame() << "\n\n";
+  // std::cout << RsiPath::fromSurfPose(pt0, AiS)->frame() << "\n\n";
+  // std::cout << RsiPath::fromSurfPose(pt1, AiS)->frame() << "\n\n";
+  // std::cout << RsiPath::fromSurfPose(pt2, AiS)->frame() << "\n\n";
+  // std::cout << RsiPath::fromSurfPose(ptn, AiS)->frame() << "\n\n";
+
+  const V6d P1 = RsiPath::fromSurfPose(pt0, AiS)->frame();
+  const V6d P2 = RsiPath::fromSurfPose(ptn, AiS)->frame();
+
+  // std::cout << P1 << "\n\n";
+  // std::cout << P2 << "\n\n";
+
+  m_offsets = RsiPath::lin(P1, P2, {10, 4});
+
+  if (m_offsets.empty()) {
+    emit logMessage({ "Generated RSI trajectory is empty", 0, objectName()});
+    return;
+  }
 
   /*
   const V6d P1 = { 478.453461, 400.827942, 357.948029, 0.0, 89.9999924, 0.0 };
@@ -233,16 +250,14 @@ void SocketRSI::generateTrajectory()
   const int decimals = 3;
 
   m_offsets = rsi::offsetsFromCxContour(m_af[0].cx, m_af[1].cx, AiT, mp, decimals);
-
+  */
   emit trajectoryReady();
 
   writeOffsetsToJson(m_offsets, "offsets.json");
-  */
+
 }
 
-
-
-
+/*
 QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)
 {
   const BladeJsonLoader::LoadResult res = BladeJsonLoader::load(data);
@@ -257,6 +272,7 @@ QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)
   emit logMessage({"JSON file is loaded successfully", 1, objectName()});
   return { {"path", res.path}, {"parseResult", true} };
 }
+*/
 
 void SocketRSI::startStreaming()
 {
@@ -328,33 +344,33 @@ void SocketRSI::setMotionState(MotionState s)
   const MotionState prev = m_state;
   m_state = s;
 
-         // transitions with signals
+  // transitions with signals
   if (prev != MotionState::Moving && s == MotionState::Moving) {
-      emit motionStarted();
-      emit motionActiveChanged(true);
-    }
+    emit motionStarted();
+    emit motionActiveChanged(true);
+  }
 
   if (prev == MotionState::Moving && s != MotionState::Moving) {
-      emit motionFinished();
-      emit motionActiveChanged(false);
-    }
+    emit motionFinished();
+    emit motionActiveChanged(false);
+  }
 }
 
 void SocketRSI::finishMotion(bool enterCooldown)
 {
   if (m_state == MotionState::Idle) {
-      m_offsetIdx = 0;
-      return;
-    }
+    m_offsetIdx = 0;
+    return;
+  }
 
   m_offsetIdx = 0;
 
   if (enterCooldown) {
-      setMotionState(MotionState::Cooldown);
-      m_cooldownTimer.start(COOLDOWN_MS);
-    } else {
-      setMotionState(MotionState::Idle);
-    }
+    setMotionState(MotionState::Cooldown);
+    m_cooldownTimer.start(COOLDOWN_MS);
+  } else {
+    setMotionState(MotionState::Idle);
+  }
 }
 
 QString SocketRSI::stateToString(SocketState state)
@@ -368,7 +384,7 @@ QString SocketRSI::stateToString(SocketState state)
     case QAbstractSocket::ClosingState:     return "ClosingState";
     case QAbstractSocket::ListeningState:   return "ListeningState";
     default: return "UnknownState";
-    }
+  }
 }
 
 void SocketRSI::handleFirstRead(const QNetworkDatagram &dg)
@@ -382,16 +398,16 @@ void SocketRSI::pushRxLog(const QNetworkDatagram& dg)
 {
   m_rxLog.enqueue(dg);
   while (m_rxLog.size() > MAX_LOG_FRAMES) {
-      m_rxLog.dequeue();
-    }
+    m_rxLog.dequeue();
+  }
 }
 
 void SocketRSI::pushTxLog(const QByteArray& xml)
 {
   m_txXmlLog.enqueue(xml);
   while (m_txXmlLog.size() > MAX_LOG_FRAMES) {
-      m_txXmlLog.dequeue();
-    }
+    m_txXmlLog.dequeue();
+  }
 }
 
 std::array<double, 6> SocketRSI::tickMotion(bool& shouldStopOut)
@@ -405,28 +421,28 @@ std::array<double, 6> SocketRSI::tickMotion(bool& shouldStopOut)
     return corr;
 
   if (m_offsets.isEmpty()) {
-      shouldStopOut = true;
-      finishMotion(false);
-      return corr;
-    }
+    shouldStopOut = true;
+    finishMotion(false);
+    return corr;
+  }
 
   if (m_offsetIdx < m_offsets.size()) {
-      const V6d& dP = m_offsets[m_offsetIdx++];
+    const V6d& dP = m_offsets[m_offsetIdx++];
 
-      for (int i = 0; i < 6; ++i)
-        corr[static_cast<size_t>(i)] = dP(i);
+    for (int i = 0; i < 6; ++i)
+      corr[static_cast<size_t>(i)] = dP(i);
 
-      const bool exhausted = (m_offsetIdx >= m_offsets.size());
-      if (exhausted) {
-          // last offset is sent in this frame -> stop in this same frame
-          shouldStopOut = true;
-          finishMotion(false);
-        }
-
-      return corr;
+    const bool exhausted = (m_offsetIdx >= m_offsets.size());
+    if (exhausted) {
+      // last offset is sent in this frame -> stop in this same frame
+      shouldStopOut = true;
+      finishMotion(false);
     }
 
-         // safety fallback (already past end)
+    return corr;
+  }
+
+  // safety fallback (already past end)
   shouldStopOut = true;
   finishMotion(false);
   return corr;
@@ -455,19 +471,19 @@ QByteArray SocketRSI::subsXml(const RsiTxFrame& tx)
   w.writeStartElement("Sen");
   w.writeAttribute("Type", "ImFree");
 
-         // RKorr
+  // RKorr
   w.writeEmptyElement("RKorr");
   static const char* k[6] = {"X","Y","Z","A","B","C"};
   const QLocale c = QLocale::c();
   for (int i = 0; i < 6; ++i) {
-      w.writeAttribute(QLatin1String(k[i]), c.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
-    }
+    w.writeAttribute(QLatin1String(k[i]), c.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
+  }
 
-         // Flags
-  w.writeEmptyElement("Flags");
-  w.writeAttribute("ShouldStop", tx.shouldStop ? "1" : "0");
+  // Flags
+  // w.writeEmptyElement("Flags");
+  // w.writeAttribute("ShouldStop", tx.shouldStop ? "1" : "0");
 
-         // IPOC
+  // IPOC
   w.writeTextElement("IPOC", QString::number(tx.ipoc));
 
   w.writeEndElement(); // Sen

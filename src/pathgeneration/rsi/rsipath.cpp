@@ -145,7 +145,6 @@ QVector<V6d> RsiPath::lin(const V6d& p1, const V6d& p2, const MotionParams& mp, 
 
   if (!profile) return {};
 
-
   const V6d dir = delta / length;
   const int steps = static_cast<int>(std::ceil(profile->totalTime / kDt));
 
