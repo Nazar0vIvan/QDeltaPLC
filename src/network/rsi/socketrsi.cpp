@@ -118,7 +118,7 @@ void SocketRSI::generateTrajectory()
   rl.setSurfacePose(-13.0, -45.0); // B = 3 мм
 
   const Pose surfacePose = rl.surfacePose();
-  const double dz = 3.0; // mm along local Z of cylinder surface pose
+  const double dz = 0.0; // mm along local Z of cylinder surface pose
   const auto shiftedPose = *surfacePose.offsetPose(Axis::Z, dz);
 
   std::cout << shiftedPose.frame() << "\n\n";
@@ -126,7 +126,7 @@ void SocketRSI::generateTrajectory()
   // WORKPIECE
   Plane pl = *Plane::fromJsonFile("://files/blank-plane-bottom.json");
 
-  V3d p214{8.377225, 26.999799, 156.207670};
+  V3d p214{8.377225,  26.999799, 156.207670};
   V3d p211{8.464722, -27.000830, 156.213933};
 
   V3d prj_p214 = *prjPointToPlane(p214, pl.coeffs);

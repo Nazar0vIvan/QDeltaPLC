@@ -258,12 +258,12 @@ void SocketFTS::clearLog()
   m_log.clear();
 }
 
-bool SocketFTS::saveLogToDefaultFile()
+void SocketFTS::saveLogToDefaultFile()
 {
   return saveLogToFileImpl(m_logFilePath);
 }
 
-bool SocketFTS::saveLogToFileImpl(const QString& filePath)
+void SocketFTS::saveLogToFileImpl(const QString& filePath)
 {
   QJsonArray samples;
 
@@ -304,9 +304,8 @@ bool SocketFTS::saveLogToFileImpl(const QString& filePath)
 
   if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
     emit logMessage({QString("Failed to write log file '%1': %2").arg(filePath, file.errorString()), 0, objectName()});
-    return false;
+    return;
   }
-
   const qint64 written = file.write(json);
   file.close();
 
@@ -319,8 +318,7 @@ bool SocketFTS::saveLogToFileImpl(const QString& filePath)
       0,
       objectName()
     });
-
-    return false;
+    return;
   }
 
   emit logMessage({
@@ -331,6 +329,4 @@ bool SocketFTS::saveLogToFileImpl(const QString& filePath)
     1,
     objectName()
   });
-
-  return true;
 }

@@ -27,7 +27,7 @@ public:
   Q_INVOKABLE void setLogRecordingEnabled(bool enabled);
   Q_INVOKABLE void startLogRecording();
   Q_INVOKABLE void stopLogRecording();
-  Q_INVOKABLE bool saveLogToDefaultFile();
+  Q_INVOKABLE void saveLogToDefaultFile();
 
 signals:
   void dataSampleHFReady(const RDTResponse& sample);
@@ -53,7 +53,7 @@ private:
   QVector<RDTResponse> exportLogSamples() const;
   void clearLog();
 
-  bool saveLogToFileImpl(const QString& filePath);
+  void saveLogToFileImpl(const QString& filePath);
 
   QVector<RDTResponse> m_batch;
   QElapsedTimer m_emitTimer;
