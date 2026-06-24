@@ -2,46 +2,60 @@ import numpy as np
 import json
 import matplotlib.pyplot as plt
 from scipy.signal import butter, sosfiltfilt, welch
-
-scale = 1_000_000.0
+from dataclasses import dataclass
 
 label_fs = 18
 tick_fs = 16
 legend_fs = 18
 title_fs = 18
 
-def load_fxfy_record(filename, scale=1_000_000.0):
+width_px = 1000
+height_px = 600
+dpi = 100
+
+scale = 1_000_000.0
+
+@dataclass
+class ChartInfo:
+    xlabel: str
+    ylabel: str
+    filename: str
+    name: str
+    color: str
+
+def load_forces_record(filename):
     with open(filename, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     samples = data["samples"]
 
     timestamp = np.array([s["timestamp"] for s in samples], dtype=float)
+
     Fx = np.array([s["Fx"] / scale for s in samples], dtype=float)
     Fy = np.array([s["Fy"] / scale for s in samples], dtype=float)
+    Fz = np.array([s["Fz"] / scale for s in samples], dtype=float)
 
     order_idx = np.argsort(timestamp)
 
     timestamp = timestamp[order_idx]
     Fx = Fx[order_idx]
     Fy = Fy[order_idx]
+    Fz = Fz[order_idx]
 
     time = timestamp - timestamp[0]
+    
+    return time, Fx, Fy, Fz
 
-    return time, Fx, Fy
-
-def resample_uniform(time, Fx, Fy):
+def resample_uniform(time, signal):
     dt = np.median(np.diff(time))
-    fs = 1.0 / dt
+    fs = 1.0 / dt # how many sensor samples are recorded per second
 
     time_u = np.arange(time[0], time[-1], dt)
+    signal_u = np.interp(time_u, time, signal)
 
-    Fx_u = np.interp(time_u, time, Fx)
-    Fy_u = np.interp(time_u, time, Fy)
+    return time_u, signal_u, fs
 
-    return time_u, Fx_u, Fy_u, fs
-
-def fxfy_psd_spectrum(time_u, Fx_u, Fy_u, fs, nperseg_max=512, plot=True,):
+def psd_spectrum(time_u, Fx_u, Fy_u, fs, nperseg_max=512, plot=True,):
     Fx_centered = Fx_u - np.mean(Fx_u)
     Fy_centered = Fy_u - np.mean(Fy_u)
 
@@ -95,99 +109,89 @@ def fxfy_psd_spectrum(time_u, Fx_u, Fy_u, fs, nperseg_max=512, plot=True,):
 
     return Fx_hz, Fx_psd, Fy_hz, Fy_psd
 
-def fxfy_fft_spectrum(time_u, Fx_u, Fy_u, fs, remove_mean=True, use_window=True, plot=True,):
-    if len(time_u) != len(Fx_u) or len(time_u) != len(Fy_u):
-        raise ValueError("time_u, Fx_u and Fy_u must have the same length")
-    
+def fft_spectrum(time_u, signal_u, fs, remove_mean=True, use_hann_window=True):
+    if len(time_u) != len(signal_u):
+        raise ValueError("time_u and signal_u must have the same length")
+
     n = len(time_u)
 
-    Fx = Fx_u.copy()
-    Fy = Fy_u.copy()
+    signal = signal_u.copy()
 
     if remove_mean:
-        Fx = Fx - np.mean(Fx)
-        Fy = Fy - np.mean(Fy)
+        signal = signal - np.mean(signal)
 
-    if use_window:
+    if use_hann_window:
         window = np.hanning(n)
-        scale = np.sum(window)
-        Fx = Fx * window
-        Fy = Fy * window
+        normalization = np.sum(window)
+        signal = signal * window
     else:
-        scale = n
+        normalization = n
 
-    Fx_fft = np.fft.rfft(Fx)
-    Fy_fft = np.fft.rfft(Fy)
+    signal_fft = np.fft.rfft(signal)
 
     hz = np.fft.rfftfreq(n, d=1.0 / fs)
 
-    Fx_amp = 2.0 * np.abs(Fx_fft) / scale
-    Fy_amp = 2.0 * np.abs(Fy_fft) / scale
+    amp = 2.0 * np.abs(signal_fft) / normalization
 
     # DC component should not be doubled
-    Fx_amp[0] *= 0.5
-    Fy_amp[0] *= 0.5
+    amp[0] *= 0.5
 
     # Nyquist component should not be doubled if it exists
     if n % 2 == 0:
-        Fx_amp[-1] *= 0.5
-        Fy_amp[-1] *= 0.5
+        amp[-1] *= 0.5
 
-    if plot:
-        plt.figure(figsize=(14, 7), dpi=100)
+    return hz, amp
 
-        bin_width = hz[1] - hz[0] if len(hz) > 1 else 1.0
-        width = bin_width * 0.4
+def plot_line_chart(x, y, info):
+    plt.figure(figsize=(width_px / dpi, height_px / dpi), dpi=dpi)
 
-        plt.bar(
-            hz - width / 2,
-            Fx_amp,
-            width=width,
-            alpha=0.7,
-            label="Fx FFT amplitude",
-        )
+    plt.plot(
+        x,
+        y,
+        label=info.name,
+        color=info.color,
+    )
 
-        plt.bar(
-            hz + width / 2,
-            Fy_amp,
-            width=width,
-            alpha=0.7,
-            label="Fy FFT amplitude",
-        )
+    plt.title(f"{info.filename}: {info.name}", fontsize=title_fs)
+    plt.xlabel(info.xlabel, fontsize=label_fs)
+    plt.ylabel(info.ylabel, fontsize=label_fs)
 
-        plt.title("Fx/Fy FFT spectrum")
-        plt.xlabel("Frequency, Hz")
-        plt.ylabel("Amplitude")
-        plt.grid(True)
-        plt.legend()
-        plt.tight_layout()
+    plt.xticks(fontsize=tick_fs)
+    plt.yticks(fontsize=tick_fs)
 
-    return hz, Fx_amp, hz, Fy_amp
+    plt.legend(fontsize=legend_fs, loc="upper right")
+    plt.grid(True)
+    plt.tight_layout()
 
-def lowpass_filter_channel(
-    json_path,
-    channel,
-    cutoff_hz,
-    scale=1_000_000.0,
-    order=4,
-    plot=True,
-):
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+def plot_bar_chart(x, y, info):
+    plt.figure(figsize=(width_px / dpi, height_px / dpi), dpi=dpi)
 
-    samples = data["samples"]
+    bin_width = x[1] - x[0] if len(x) > 1 else 1.0
+    width = bin_width * 0.8
 
-    timestamp = np.array([s["timestamp"] for s in samples], dtype=float)
-    signal = np.array([s[channel] / scale for s in samples], dtype=float)
+    plt.bar(
+        x,
+        y,
+        width=width,
+        label=info.name,
+        color=info.color,
+        alpha=0.7,
+    )
 
-    order_idx = np.argsort(timestamp)
-    timestamp = timestamp[order_idx]
-    signal = signal[order_idx]
+    plt.title(f"{info.filename}: {info.name}", fontsize=title_fs)
+    plt.xlabel(info.xlabel, fontsize=label_fs)
+    plt.ylabel(info.ylabel, fontsize=label_fs)
 
-    time = timestamp - timestamp[0]
+    plt.xticks(fontsize=tick_fs)
+    plt.yticks(fontsize=tick_fs)
 
-    dt = np.median(np.diff(time))
-    fs = 1.0 / dt
+    plt.legend(fontsize=legend_fs, loc="upper right")
+    plt.grid(True)
+    plt.tight_layout()
+
+def butter_filter(time, signal, cutoff_hz, order=4):
+    time_u, signal_u, fs = resample_uniform(time, signal)
+
     nyquist = fs / 2.0
 
     if cutoff_hz <= 0.0:
@@ -195,11 +199,8 @@ def lowpass_filter_channel(
 
     if cutoff_hz >= nyquist:
         raise ValueError(
-            "cutoff_hz must be lower than Nyquist frequency: %.3f Hz" % nyquist
+            f"cutoff_hz must be lower than Nyquist frequency: {nyquist:.3f} Hz"
         )
-
-    time_uniform = np.arange(time[0], time[-1], dt)
-    signal_uniform = np.interp(time_uniform, time, signal)
 
     sos = butter(
         N=order,
@@ -209,35 +210,11 @@ def lowpass_filter_channel(
         output="sos",
     )
 
-    signal_filtered = sosfiltfilt(sos, signal_uniform)
+    signal_filtered = sosfiltfilt(sos, signal_u)
 
-    if plot:
-        plt.figure(figsize=(12, 6), dpi=100)
+    return time_u, signal_filtered
 
-        plt.plot(
-            time_uniform,
-            signal_uniform,
-            linewidth=1.0,
-            alpha=0.35,
-            label="Original " + channel,
-        )
-
-        plt.plot(
-            time_uniform,
-            signal_filtered,
-            linewidth=2.0,
-            label="Low-pass %s, cutoff = %.2f Hz" % (channel, cutoff_hz),
-        )
-
-        plt.xlabel("Time, s")
-        plt.ylabel(channel)
-        plt.title("%s low-pass filtering" % channel)
-        plt.grid(True)
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-
-    return time_uniform, signal_uniform, signal_filtered, fs
+### START
 
 files = [
     "record -0.2 -w-cut -A=0 -1.json",
@@ -249,55 +226,125 @@ files = [
     #"record -0.5 -wo-cut -1.json",
     #"record -1.0 -wo-cut -1.json",
     #"record -1.5 -wo-cut -1.json",
-    #"record -0.0 -wo-cut -A=0.json"
+    #"record -0.0 -wo-cut -A=0.json",
+    "record_fx_8_15_changed_mean_minus_10N_same_vibrations_v2.json"
 ]
 
-'''
 for filename in files:
-    time, Fx, Fy, Fz, Tx, Ty, Tz = load_record(filename)
+    time, Fx, Fy, Fz = load_forces_record(filename)
 
-    plt.figure(figsize=(width_px / dpi, height_px / dpi), dpi=dpi)
-
-    plt.plot(time, Fx, label="Fx")
-    plt.plot(time, Fy, label="Fy")
-    #plt.plot(time, Fz, label="Fz")
-
-    plt.title(filename, fontsize=title_fs)
-    plt.xlabel("Время, с", fontsize=label_fs)
-    plt.ylabel("Силы", fontsize=label_fs)
-
-    plt.xticks(fontsize=tick_fs)
-    plt.yticks(fontsize=tick_fs)
-
-    plt.legend(fontsize=legend_fs)
-    plt.grid(True)
-    plt.tight_layout()
-
-plt.show()
-'''
-'''
-def resample_uniform(time, signal):
-    dt = np.median(np.diff(time))
-    fs = 1.0 / dt
-
-    time_uniform = np.arange(time[0], time[-1], dt)
-    signal_uniform = np.interp(time_uniform, time, signal)
-
-    return time_uniform, signal_uniform, fs
-'''
-
-for filename in files:
-    time, Fx, Fy = load_fxfy_record(filename)
-    time_u, Fx_u, Fy_u, fs = resample_uniform(time, Fx, Fy)
-
-    Fx_hz, Fx_amp, Fy_hz, Fy_amp = fxfy_fft_spectrum(
-        time_u,
-        Fx_u,
-        Fy_u,
-        fs,
-        plot=True,
+    plot_line_chart(time, Fx,
+        ChartInfo(
+            xlabel="Time, s",
+            ylabel="Force, N",
+            filename=filename,
+            name="Fx",
+            color="red",
+        ),
     )
-    
-    plt.title("Fx/Fy spectrum: " + filename)
 
 plt.show()
+'''
+time_u, Fx_u, fs = resample_uniform(time, Fx)
+hz, Fx_amp = fft_spectrum(time_u, Fx_u, fs)
+
+plot_bar_chart(
+    hz,
+    Fx_amp,
+    ChartInfo(
+        xlabel="Frequency, Hz",
+        ylabel="Amplitude",
+        filename=filename,
+        name="Fx FFT amplitude",
+        color="red",
+    ),
+)
+
+time_u, Fy_u, fs = resample_uniform(time, Fy)
+hz, Fy_amp = fft_spectrum(time_u, Fy_u, fs)
+
+plot_bar_chart(
+    hz,
+    Fy_amp,
+    ChartInfo(
+        xlabel="Frequency, Hz",
+        ylabel="Amplitude",
+        filename=filename,
+        name="Fy FFT amplitude",
+        color="green",
+    ),
+)
+
+time_u, Fz_u, fs = resample_uniform(time, Fz)
+hz, Fz_amp = fft_spectrum(time_u, Fz_u, fs)
+
+plot_bar_chart(
+    hz,
+    Fz_amp,
+    ChartInfo(
+        xlabel="Frequency, Hz",
+        ylabel="Amplitude",
+        filename=filename,
+        name="Fz FFT amplitude",
+        color="blue",
+    ),
+)
+
+time_f, Fx_filtered = butter_filter(
+    time,
+    Fx,
+    cutoff_hz=2.0,
+    order=4,
+)
+
+plot_line_chart(
+    time_f,
+    Fx_filtered,
+    ChartInfo(
+        xlabel="Time, s",
+        ylabel="Force, N",
+        filename=filename,
+        name="Fx, Butterworth 5 Hz",
+        color="red",
+    ),
+)
+
+time_f, Fy_filtered = butter_filter(
+    time,
+    Fy,
+    cutoff_hz=2.0,
+    order=4,
+)
+
+plot_line_chart(
+    time_f,
+    Fy_filtered,
+    ChartInfo(
+        xlabel="Time, s",
+        ylabel="Force, N",
+        filename=filename,
+        name="Fy, Butterworth 5 Hz",
+        color="green",
+    ),
+)
+
+time_f, Fz_filtered = butter_filter(
+    time,
+    Fz,
+    cutoff_hz=2.0,
+    order=4,
+)
+
+plot_line_chart(
+    time_f,
+    Fz_filtered,
+    ChartInfo(
+        xlabel="Time, s",
+        ylabel="Force, N",
+        filename=filename,
+        name="Fz, Butterworth 5 Hz",
+        color="blue",
+    ),
+)
+'''
+
