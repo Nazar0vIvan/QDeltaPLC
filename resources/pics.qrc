@@ -13,5 +13,6 @@
         <file>pics/disconnect.svg</file>
         <file>pics/connect.svg</file>
         <file>pics/test.svg</file>
+        <file>pics/network.svg</file>
     </qresource>
 </RCC>
