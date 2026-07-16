@@ -3,6 +3,7 @@ qt_add_library(Components STATIC)
 qt_add_qml_module(Components
   URI Components
   VERSION 1.0
+  ${QDELTA_QML_OPTIONS}
   OUTPUT_DIRECTORY "${QT_QML_OUTPUT_DIRECTORY}/Components"
   IMPORTS
     Styles

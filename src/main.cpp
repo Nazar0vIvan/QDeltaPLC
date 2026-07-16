@@ -71,7 +71,9 @@ int main(int argc, char* argv[])
     "PlcMessage is not creatable from QML"
   );
 
-  engine.loadFromModule("qdeltaplc_qml_module", "Main");
+  //engine.loadFromModule("qdeltaplc_qml_module", "Main");
+  const QUrl mainQmlUrl = QUrl::fromLocalFile(QStringLiteral(QDELTA_QML_SOURCE_DIR "/Main.qml"));
+  engine.load(mainQmlUrl);
 
   if (engine.rootObjects().isEmpty())
     return -1;

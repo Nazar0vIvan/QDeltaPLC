@@ -8,6 +8,7 @@ set_source_files_properties(Styles.qml
 qt_add_qml_module(Styles
   URI Styles
   VERSION 1.0
+  ${QDELTA_QML_OPTIONS}
   OUTPUT_DIRECTORY "${QT_QML_OUTPUT_DIRECTORY}/Styles"
   NO_PLUGIN
   QML_FILES

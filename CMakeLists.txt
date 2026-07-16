@@ -18,6 +18,18 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
 
 qt_standard_project_setup(REQUIRES 6.8)
 
+option(
+  QDELTA_FAST_QML_BUILD
+  "Disable QML cache generation for faster development builds"
+  ON
+)
+
+set(QDELTA_QML_OPTIONS)
+
+if(QDELTA_FAST_QML_BUILD)
+  list(APPEND QDELTA_QML_OPTIONS NO_CACHEGEN)
+endif()
+
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
 set(QML_IMPORT_PATH "${QT_QML_OUTPUT_DIRECTORY}" CACHE STRING "QML import paths for Qt Creator" FORCE)
 
@@ -51,6 +63,7 @@ set(QML_FILES
   qml/Views/Options/Options.qml
   qml/Views/Options/OptionsSection.qml
   qml/Views/Test/Test.qml
+  qml/Views/Network/Network.qml
 )
 
 set(RESOURCE_FILES
@@ -62,14 +75,17 @@ set(RESOURCE_FILES
 qt_add_qml_module(qdeltaplc
   URI qdeltaplc_qml_module
   VERSION 1.0
+  ${QDELTA_QML_OPTIONS}
   IMPORTS
     Styles
     Components
   QML_FILES
     ${QML_FILES}
-  SOURCES
-    src/network/fts/rdtmessage.h
-    QML_FILES qml/Views/Network/Network.qml
+)
+
+target_compile_definitions(qdeltaplc
+  PRIVATE
+    QDELTA_QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
 )
 
 target_sources(qdeltaplc PRIVATE
