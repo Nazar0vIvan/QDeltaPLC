@@ -8,9 +8,6 @@ import Styles 1.0
 GroupBox {
   id: control
 
-  topPadding: 30
-  bottomPadding: 20
-
   label: Label {
     x: 20
     y: -height / 2

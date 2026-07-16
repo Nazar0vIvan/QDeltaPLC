@@ -227,19 +227,19 @@ files = [
     #"record -1.0 -wo-cut -1.json",
     #"record -1.5 -wo-cut -1.json",
     #"record -0.0 -wo-cut -A=0.json",
-    "record_fx_8_15_changed_mean_minus_10N_same_vibrations_v2.json"
+    "record_fy_9_16_synthetic_mean_8N_zero_edges.json"
 ]
 
 for filename in files:
     time, Fx, Fy, Fz = load_forces_record(filename)
 
-    plot_line_chart(time, Fx,
+    plot_line_chart(time, Fy,
         ChartInfo(
             xlabel="Time, s",
             ylabel="Force, N",
             filename=filename,
-            name="Fx",
-            color="red",
+            name="Fy",
+            color="green",
         ),
     )
 

@@ -39,7 +39,6 @@ QxGroupBox {
 
       spacing: 20
 
-
       RsiPosition {
         id: cartesianPosition
 
@@ -56,7 +55,6 @@ QxGroupBox {
         dimension: "deg"
         title: "Joint Space"
       }
-
     }
 
     ColumnLayout {

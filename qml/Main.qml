@@ -7,6 +7,7 @@ import "NavigationPanel"
 import "Views/Options"
 import "Views/Dashboard"
 import "Views/Test"
+import "Views/Network"
 
 import Styles 1.0
 import Components 1.0
@@ -54,7 +55,7 @@ Window {
       StackLayout {
         id: sl
 
-
+        anchors.fill: parent
         SplitView.fillWidth: true; SplitView.fillHeight: true
         currentIndex: navPanel.currentIndex
 
@@ -62,7 +63,7 @@ Window {
 
         Options { id: options }
 
-        Test { id: test }
+        Network { id: network }
       }
 
       Logger {

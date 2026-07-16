@@ -69,6 +69,7 @@ qt_add_qml_module(qdeltaplc
     ${QML_FILES}
   SOURCES
     src/network/fts/rdtmessage.h
+    QML_FILES qml/Views/Network/Network.qml
 )
 
 target_sources(qdeltaplc PRIVATE

@@ -18,6 +18,7 @@ qt_add_qml_module(Components
     QxUploadFile.qml
     QxToolButton.qml
     QxStepButton.qml
+    QML_FILES QxPanel.qml
 )
 
 target_link_libraries(Components
