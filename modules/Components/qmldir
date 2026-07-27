@@ -1,0 +1,12 @@
+module Components
+QxLed 1.0 QxLed.qml
+QxGroupBox 1.0 QxGroupBox.qml
+QxButton 1.0 QxButton.qml
+QxField 1.0 QxField.qml
+QxSwitch 1.0 QxSwitch.qml
+QxTextInput 1.0 QxTextInput.qml
+QxProgressBar 1.0 QxProgressBar.qml
+QxUploadFile 1.0 QxUploadFile.qml
+QxToolButton 1.0 QxToolButton.qml
+QxStepButton 1.0 QxStepButton.qml
+QxPanel 1.0 QxPanel.qml

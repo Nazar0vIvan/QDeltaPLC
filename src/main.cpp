@@ -6,6 +6,12 @@
 #include <QQmlEngine>
 #include <QUrl>
 
+#ifdef USE_FELGO_HOT_RELOAD          // ADDED: defined by felgohotreload_configure_executable()
+#include <FelgoHotReload>
+#include <QStandardPaths>
+#include <QTimer>
+#endif
+
 #include "logger.h"
 
 #include "network/fts/rdtmessage.h"
@@ -14,22 +20,23 @@
 #include "network/plc/socketdeltaplc.h"
 #include "network/rsi/socketrsi.h"
 
-#include "network/runner/abstractsocketrunner.h"
 #include "network/runner/ftsrunner.h"
 #include "network/runner/plcrunner.h"
 #include "network/runner/rsirunner.h"
 
 int main(int argc, char* argv[])
 {
+	QCoreApplication::setOrganizationName(QStringLiteral("QDelta"));
+	QCoreApplication::setApplicationName(QStringLiteral("QDeltaPLC"));
+
   QApplication app(argc, argv);
 
   QFontDatabase::addApplicationFont("://fonts/roboto/Roboto-Regular.ttf");
   QFontDatabase::addApplicationFont("://fonts/roboto/Roboto-Medium.ttf");
 
   const int idfont = QFontDatabase::addApplicationFont("://fonts/roboto/Roboto-Bold.ttf");
-  if (idfont == -1) {
+  if (idfont == -1)
     qWarning() << "Failed to load font from resources!";
-  }
 
   qRegisterMetaType<RDTResponse>("RDTResponse");
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
@@ -46,16 +53,24 @@ int main(int argc, char* argv[])
   RsiRunner rsiRunner(socketRSI);
   rsiRunner.start();
 
-  QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
-  QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
-  QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
-  QObject::connect(socketFTS, &SocketFTS::dataSampleHFReady, socketRSI, &SocketRSI::setForce);
+	qmlRegisterUncreatableType<PlcMessageManager>(
+		"qdeltaplc_qml_module", 1, 0,
+		"PlcMessage", "PlcMessage is not creatable from QML"
+	);
 
   // QmlChartBridge chartBridge;
   // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
   // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
 
   QQmlApplicationEngine engine;
+  engine.addImportPath(QStringLiteral(":/"));
+
+#ifndef USE_FELGO_HOT_RELOAD
+	// CHANGED: was unconditional. In hot reload builds this MUST be gone.
+	// Otherwise "import Styles"/"import Components" resolve to the source tree,
+	// while Felgo hot-patches its cached copies -> edits silently do nothing.
+	engine.addImportPath(QStringLiteral(QDELTA_QML_MODULES_DIR));
+#endif
 
   QQmlContext* ctx = engine.rootContext();
   ctx->setContextProperty("logger", Logger::instance());
@@ -64,19 +79,22 @@ int main(int argc, char* argv[])
   ctx->setContextProperty("rsiRunner", &rsiRunner);
   // ctx->setContextProperty("chartBridge", &chartBridge);
 
-  qmlRegisterUncreatableType<PlcMessageManager>(
-    "qdeltaplc_qml_module",
-    1, 0,
-    "PlcMessage",
-    "PlcMessage is not creatable from QML"
-  );
+#ifdef USE_FELGO_HOT_RELOAD
+	static FelgoHotReload felgoHotReload(&engine);
 
-  //engine.loadFromModule("qdeltaplc_qml_module", "Main");
-  const QUrl mainQmlUrl = QUrl::fromLocalFile(QStringLiteral(QDELTA_QML_SOURCE_DIR "/Main.qml"));
-  engine.load(mainQmlUrl);
+	qInfo() << "[FHR] app data root :" << QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+	qInfo() << "[FHR] qml disk cache:" << QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
 
-  if (engine.rootObjects().isEmpty())
-    return -1;
+	QTimer::singleShot(5000, &engine, [&engine] {
+		qInfo() << "[FHR] import path list:";
+		for (const QString& p : engine.importPathList())
+			qInfo() << "        " << p;
+	});
+#else
+	engine.loadFromModule("qdeltaplc_qml_module", "Main");
+	if (engine.rootObjects().isEmpty())
+		return EXIT_FAILURE;
+#endif
 
   return app.exec();
 }

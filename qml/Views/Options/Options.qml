@@ -7,6 +7,9 @@ import Components 1.0
 ListView {
   id: root
 
+  implicitWidth: 700
+  implicitHeight: 500
+
   function onApply(runner, la, lp, pa, pp) {
     if (!runner) return;
     const args = {

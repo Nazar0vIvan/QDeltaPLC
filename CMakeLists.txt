@@ -1,10 +1,12 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 
 project(QDeltaPLC VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTORCC ON)
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS
   Core
@@ -16,6 +18,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
   Xml
 )
 
+qt_policy(SET QTP0004 NEW)
 qt_standard_project_setup(REQUIRES 6.8)
 
 option(
@@ -24,22 +27,36 @@ option(
   ON
 )
 
+option(
+  QDELTA_HOT_RELOAD
+  "Build qdeltaplc as a Felgo Hot Reload client"
+  OFF
+)
+
 set(QDELTA_QML_OPTIONS)
 
 if(QDELTA_FAST_QML_BUILD)
   list(APPEND QDELTA_QML_OPTIONS NO_CACHEGEN)
 endif()
 
-set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
-set(QML_IMPORT_PATH "${QT_QML_OUTPUT_DIRECTORY}" CACHE STRING "QML import paths for Qt Creator" FORCE)
+set(QT_QML_OUTPUT_DIRECTORY
+  "${CMAKE_BINARY_DIR}/qml"
+)
+set( QML_IMPORT_PATH
+  "${QT_QML_OUTPUT_DIRECTORY};${CMAKE_CURRENT_SOURCE_DIR}/modules"
+  CACHE STRING
+  "QML import paths for Qt Creator"
+  FORCE
+)
 
 qt_add_executable(qdeltaplc
+  MANUAL_FINALIZATION
   src/main.cpp
 )
 
 add_subdirectory(src)
-add_subdirectory(qml/Modules/Styles)
-add_subdirectory(qml/Modules/Components)
+add_subdirectory(modules/Styles)
+add_subdirectory(modules/Components)
 
 set(QML_FILES
   qml/Main.qml
@@ -83,11 +100,6 @@ qt_add_qml_module(qdeltaplc
     ${QML_FILES}
 )
 
-target_compile_definitions(qdeltaplc
-  PRIVATE
-    QDELTA_QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
-)
-
 target_sources(qdeltaplc PRIVATE
   ${RESOURCE_FILES}
 )
@@ -100,9 +112,23 @@ target_link_libraries(qdeltaplc PRIVATE
   Qt6::Network
   Qt6::Charts
   Qt6::Xml
+  Qt6::Widgets
   Styles
   Components
 )
+
+target_compile_definitions(qdeltaplc
+  PRIVATE
+    QDELTA_QML_MODULES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/modules"
+)
+
+if(QDELTA_HOT_RELOAD)
+  set(QDELTA_HR_TARGET qdeltaplc)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FelgoHotReload.cmake)
+endif()
+
+qt_import_qml_plugins(qdeltaplc)
+qt_finalize_executable(qdeltaplc)
 
 include(GNUInstallDirs)
 

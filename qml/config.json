@@ -1,0 +1,8 @@
+{
+  "title": "QDeltaPLC",
+  "identifier": "com.qdelta.qdeltaplc",
+  "orientation": "auto",
+  "versioncode": 1,
+  "versionname": "0.1",
+  "stage": "test"
+}
