@@ -2,32 +2,26 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import Styles 1.0
-
 Control {
   id: root
-
-  Component.onCompleted: {
-    console.log(
-      "QxPanel loaded from:",
-      Qt.resolvedUrl(".")
-    )
-  }
 
   required property string title
   default property alias content: cl.data
 
-  padding: 1
+  property int frameWidth: 6
+
+  padding: frameWidth
 
   background: Rectangle {
-    color: "red"
-    border {width: 1; color: Styles.background.dp12}
+    color: "transparent"
+    border {
+      width: root.frameWidth
+      color: "orange"
+    }
   }
 
   contentItem: ColumnLayout {
     id: cl
-
-    anchors.fill: parent
     spacing: 0
 
     Label {
@@ -43,12 +37,15 @@ Control {
 
       text: root.title
       textFormat: Text.RichText
-      color: Styles.foreground.high
+      color: Styles.foreground.medium
       font.pixelSize: 12
 
       background: Rectangle {
-        color: Styles.background.dp06
-        border{ width: 1; color: Styles.background.dp12 }
+        color: "red"
+        border {
+          width: 1
+          color: Styles.background.dp12
+        }
       }
     }
   }

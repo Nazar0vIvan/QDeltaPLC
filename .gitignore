@@ -1,4 +1,2 @@
-*.user
 build*/
 .qtcreator/
-felgo_hot_reload_cmake_targets_info.json

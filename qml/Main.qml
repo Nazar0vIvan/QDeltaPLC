@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
+import Felgo
 
 import "NavigationPanel"
 import "Views/Options"
@@ -12,7 +13,7 @@ import "Views/Network"
 import Styles 1.0
 import Components 1.0
 
-Window {
+App {
   id: root
 
   property int navPanelWidth: 60

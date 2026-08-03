@@ -3,51 +3,42 @@ import QtQuick.Layouts
 import QtQuick.Controls
 
 import Components 1.0
-import Styles 1.0
 
 Item  {
   id: root
 
-  implicitWidth: 700
-  implicitHeight: 500
-
   ColumnLayout {
-    id: contentLayout
 
     anchors.fill: parent
     anchors.margins: 14
 
-    spacing: 30
+    spacing: 20
 
     Label {
-      Layout.preferredHeight: 10
+      Layout.preferredHeight: 30
       text: qsTr("Network")
       font: Styles.fonts.title
       color: Styles.foreground.high
     }
 
     QxPanel {
-      id: configPanel
-
       title: "Configuration"
 
       Rectangle {
         Layout.preferredWidth: 300
         Layout.preferredHeight: 100
-        color: "transparent"
+        color: "green"
       }
-    }
-
-    QxPanel {
-      id: connePanel
-
-      title: "Connections"
 
       Rectangle {
         Layout.preferredWidth: 300
         Layout.preferredHeight: 100
-        color: "transparent"
+        color: "blue"
       }
+    }
+
+    QxPanel {
+      title: "Connections"
     }
 
     Item { Layout.fillHeight: true }
