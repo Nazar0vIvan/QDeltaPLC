@@ -5,10 +5,17 @@ import QtQuick.Layouts
 Control {
   id: root
 
+  Component.onCompleted: {
+    console.warn(
+      "QDELTA_QXPANEL_SOURCE:",
+      Qt.resolvedUrl("QxPanel.qml", root)
+    )
+  }
+
   required property string title
   default property alias content: cl.data
 
-  property int frameWidth: 6
+  property int frameWidth: 13
 
   padding: frameWidth
 
@@ -16,7 +23,7 @@ Control {
     color: "transparent"
     border {
       width: root.frameWidth
-      color: "orange"
+      color: "red"
     }
   }
 

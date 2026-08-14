@@ -17,6 +17,12 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
 )
 
 find_package(Felgo REQUIRED)
+find_package(FelgoHotReload CONFIG REQUIRED)
+
+set(PRODUCT_IDENTIFIER "com.qdelta.qdeltaplc")
+set(PRODUCT_VERSION_NAME "0.1.0")
+set(PRODUCT_VERSION_CODE 1)
+set(PRODUCT_STAGE "test")
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -39,7 +45,15 @@ qt_add_executable(qdeltaplc
   src/main.cpp
 )
 
+qt_add_resources(qdeltaplc "felgo_config"
+  PREFIX "/"
+  BASE "${CMAKE_CURRENT_SOURCE_DIR}"
+  FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/qml/config.json"
+)
+
 felgo_configure_executable(qdeltaplc)
+felgohotreload_configure_executable(qdeltaplc)
 
 add_subdirectory(src)
 add_subdirectory(qml/Modules/Styles)

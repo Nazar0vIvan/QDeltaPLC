@@ -1,5 +1,10 @@
 #include <QApplication>
 #include <FelgoApplication>
+
+#ifdef USE_FELGO_HOT_RELOAD
+#include <FelgoHotReload>
+#endif
+
 #include <QFontDatabase>
 #include <QMetaType>
 #include <QQmlApplicationEngine>
@@ -74,12 +79,23 @@ int main(int argc, char* argv[])
     "PlcMessage is not creatable from QML"
   );
 
-  //engine.loadFromModule("qdeltaplc_qml_module", "Main");
+  // engine.loadFromModule("qdeltaplc_qml_module", "Main");
+  // const QUrl mainQmlUrl = QUrl::fromLocalFile(QStringLiteral(QDELTA_QML_SOURCE_DIR "/Main.qml"));
+  // engine.load(mainQmlUrl);
+
+#ifdef USE_FELGO_HOT_RELOAD
+
+  FelgoHotReload felgoHotReload(&engine);
+
+#else
+
   const QUrl mainQmlUrl = QUrl::fromLocalFile(QStringLiteral(QDELTA_QML_SOURCE_DIR "/Main.qml"));
   engine.load(mainQmlUrl);
 
   if (engine.rootObjects().isEmpty())
     return -1;
+
+#endif
 
   return app.exec();
 }

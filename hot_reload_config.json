@@ -1,0 +1,14 @@
+{
+  "main_qml_file": "qml/Main.qml",
+  "qml_module_paths": [
+    "qml",
+    {
+      "path": "qml/Modules/Components",
+      "target_path": "Components"
+    },
+    {
+      "path": "qml/Modules/Styles",
+      "target_path": "Styles"
+    }
+  ]
+}
