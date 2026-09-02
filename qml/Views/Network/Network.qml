@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 
 import Components 1.0
+import Styles 1.0
 
 Item  {
   id: root
@@ -24,16 +25,19 @@ Item  {
     QxPanel {
       title: "Configuration"
 
-      Rectangle {
-        Layout.preferredWidth: 300
-        Layout.preferredHeight: 100
-        color: "green"
-      }
+      QxComboBox {
 
-      Rectangle {
-        Layout.preferredWidth: 300
-        Layout.preferredHeight: 100
-        color: "blue"
+          label: qsTr("Device")
+
+          model: [
+              "PLC AT332T",
+              "PLC AS332T",
+              "PLC AS228T"
+          ]
+
+          onActivated: index => {
+              console.log(index, currentText)
+          }
       }
     }
 

@@ -14,5 +14,6 @@
         <file>pics/connect.svg</file>
         <file>pics/test.svg</file>
         <file>pics/network.svg</file>
+        <file>pics/arrow_dropdown.svg</file>
     </qresource>
 </RCC>

@@ -9,17 +9,19 @@ qt_add_qml_module(Components
     Styles
   NO_PLUGIN
   QML_FILES
-    QxLed.qml
-    QxGroupBox.qml
     QxButton.qml
+    QxComboBox.qml
     QxField.qml
+    QxGroupBox.qml
+    QxLed.qml
+    QxPanel.qml
+    QxProgressBar.qml
+    QxStepButton.qml
     QxSwitch.qml
     QxTextInput.qml
-    QxProgressBar.qml
-    QxUploadFile.qml
     QxToolButton.qml
-    QxStepButton.qml
-    QML_FILES QxPanel.qml
+    QxUploadFile.qml
+    QxVField.qml
 )
 
 target_link_libraries(Components

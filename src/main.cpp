@@ -11,6 +11,8 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QUrl>
+#include <QDir>
+#include <QStandardPaths>
 
 #include "logger.h"
 
@@ -84,6 +86,22 @@ int main(int argc, char* argv[])
   // engine.load(mainQmlUrl);
 
 #ifdef USE_FELGO_HOT_RELOAD
+
+  const QString appName = QCoreApplication::applicationName();
+  const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+
+  const QString hotReloadModulesPath =
+      QDir(appDataPath).filePath(
+        QStringLiteral("FelgoDevApp/%1/%1/qml/Modules").arg(appName)
+      );
+
+  engine.addImportPath(hotReloadModulesPath);
+
+  qWarning() << "Application name:"
+             << QCoreApplication::applicationName();
+
+  qWarning() << "App data:"
+             << QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 
   FelgoHotReload felgoHotReload(&engine);
 

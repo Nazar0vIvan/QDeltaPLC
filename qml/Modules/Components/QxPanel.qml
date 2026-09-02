@@ -2,58 +2,80 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Control {
-  id: root
+import Styles 1.0
 
-  Component.onCompleted: {
-    console.warn(
-      "QDELTA_QXPANEL_SOURCE:",
-      Qt.resolvedUrl("QxPanel.qml", root)
-    )
-  }
+Item {
+    id: root
 
-  required property string title
-  default property alias content: cl.data
+    required property string title
+    default property alias content: contentLayout.children
 
-  property int frameWidth: 13
+    property int radius: 10
 
-  padding: frameWidth
+    implicitWidth: Math.max(
+      header.implicitWidth,
+      contentLayout.implicitWidth + 32)
+    implicitHeight: layout.implicitHeight
 
-  background: Rectangle {
-    color: "transparent"
-    border {
-      width: root.frameWidth
-      color: "red"
+    Rectangle {
+        anchors.fill: parent
+
+        color: "transparent"
+        radius: root.radius
     }
-  }
 
-  contentItem: ColumnLayout {
-    id: cl
-    spacing: 0
+    ColumnLayout {
+        id: layout
 
-    Label {
-      id: header
+        anchors.fill: parent
+        spacing: 0
 
-      Layout.fillWidth: true
-      Layout.preferredHeight: 28
+        Label {
+            id: header
 
-      leftPadding: 10
-      rightPadding: 10
-      topPadding: 6
-      bottomPadding: 6
+            Layout.fillWidth: true
+            Layout.preferredHeight: 28
 
-      text: root.title
-      textFormat: Text.RichText
-      color: Styles.foreground.medium
-      font.pixelSize: 12
+            leftPadding: 16
+            rightPadding: 16
+            topPadding: 6
+            bottomPadding: 6
 
-      background: Rectangle {
-        color: "red"
-        border {
-          width: 1
-          color: Styles.background.dp12
+            text: root.title
+            color: Styles.foreground.high
+            font.pixelSize: 12
+
+            background: Rectangle {
+                color: Styles.background.dp03
+
+                topLeftRadius: root.radius
+                topRightRadius: root.radius
+            }
         }
-      }
+
+        ColumnLayout {
+            id: contentLayout
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            Layout.leftMargin: 16
+            Layout.topMargin: 14
+            Layout.rightMargin: 16
+            Layout.bottomMargin: 14
+        }
     }
-  }
+
+    // border
+    Rectangle {
+        anchors.fill: parent
+
+        color: "transparent"
+        radius: root.radius
+
+        border {
+            width: 1
+            color: Styles.background.dp24
+        }
+    }
 }
