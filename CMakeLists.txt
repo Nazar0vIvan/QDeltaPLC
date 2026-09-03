@@ -82,12 +82,14 @@ set(QML_FILES
   qml/Views/Options/OptionsSection.qml
   qml/Views/Test/Test.qml
   qml/Views/Network/Network.qml
+  qml/Views/Network/NetworkPanel.qml
 )
 
 set(RESOURCE_FILES
   resources/pics.qrc
   resources/fonts.qrc
   resources/files.qrc
+  resources/json.qrc
 )
 
 qt_add_qml_module(qdeltaplc

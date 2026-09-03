@@ -50,7 +50,7 @@ Rectangle {
         Layout.fillWidth: true
         spacing: 20
 
-        QxField {
+        QxHField {
           id: ipocField
 
           labelWidth: 40

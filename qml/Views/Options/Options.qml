@@ -55,7 +55,7 @@ ListView {
       }
     }
 
-    QxField { // pc address
+    QxHField { // pc address
 
       id: pcAddrField
 
@@ -96,7 +96,7 @@ ListView {
       gap: 20
       spacing: 12
 
-      QxField {
+      QxHField {
         // config file
         id: uploadFileField
 
@@ -129,7 +129,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
         // rsi local port
         id: rsiLpField
 
@@ -146,7 +146,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
 
         // rsi onlysend
         id: rsiOnlysendField
@@ -164,7 +164,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
 
         // rsi peer address
         id: rsiPaField
@@ -223,7 +223,7 @@ ListView {
       gap: 20
       spacing: 12
 
-      QxField {
+      QxHField {
         // plc local port
         id: plcLpField
 
@@ -246,7 +246,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
         // plc peer address
         id: plcPaField
 
@@ -268,7 +268,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
         // plc peer port
         id: plcPpField
 
@@ -330,7 +330,7 @@ ListView {
       spacing: 12
       enabled: !ftsRunner.isStreaming
 
-      QxField {
+      QxHField {
         // fts local port
         id: ftsLpField
 
@@ -353,7 +353,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
         // fts peer address
         id: ftsPaField
 
@@ -375,7 +375,7 @@ ListView {
         }
       }
 
-      QxField {
+      QxHField {
         // fts peer port
         id: ftsPpField
 

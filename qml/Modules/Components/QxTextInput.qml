@@ -11,18 +11,19 @@ TextField {
   property alias placeholder: defaultTxt.text
   property int radius: 4
 
-  leftPadding: 5
+  leftPadding: 8
   color: Styles.foreground.high
   selectionColor: Styles.primary.highlight
+  selectedTextColor: Styles.foreground.high
   selectByMouse: true
   readOnly: false
   verticalAlignment: TextInput.AlignVCenter
 
   background: Rectangle {
-    color: control.readOnly ? "transparent" : Styles.background.dp04
+    color: "transparent"
     radius: control.radius
     border {
-      width: control.readOnly ? 0 : control.activeFocus ? 2 : control.hovered ? 0 : 1
+      width: control.readOnly ? 0 : 1
       color: control.activeFocus ? Styles.primary.base : control.confirmed ? "green" : Styles.background.dp12
     }
   }
@@ -37,7 +38,6 @@ TextField {
 
     anchors.fill: parent
     verticalAlignment: Text.AlignVCenter
-    leftPadding: 5
     color: Styles.foreground.medium
     font: Styles.fonts.body
     visible: !(control.activeFocus || control.text)

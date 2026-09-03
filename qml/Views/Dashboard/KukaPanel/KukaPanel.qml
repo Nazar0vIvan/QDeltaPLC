@@ -63,7 +63,7 @@ QxGroupBox {
       spacing: 10
 
       /*
-      QxField {
+      QxHField {
         id: uploadFileField
 
         labelText: "Blade Json :"

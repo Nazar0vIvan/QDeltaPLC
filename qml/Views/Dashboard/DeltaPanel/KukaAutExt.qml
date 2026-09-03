@@ -71,7 +71,7 @@ Control {
 
     spacing: 6
 
-    QxField {
+    QxHField {
       id: autExtField
 
       labelWidth: root.labelWidth
@@ -87,7 +87,7 @@ Control {
         border{width: 1; color: Styles.background.dp12}
       }
     }
-    QxField {
+    QxHField {
       id: idleField
 
       labelWidth: root.labelWidth
@@ -104,7 +104,7 @@ Control {
 
       }
     }
-    QxField {
+    QxHField {
       id: runningField
 
       labelWidth: root.labelWidth
@@ -121,7 +121,7 @@ Control {
 
       }
     }
-    QxField {
+    QxHField {
       id: doneField
 
       labelWidth: root.labelWidth

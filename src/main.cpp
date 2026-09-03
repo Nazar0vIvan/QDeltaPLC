@@ -26,6 +26,7 @@
 #include "network/runner/ftsrunner.h"
 #include "network/runner/plcrunner.h"
 #include "network/runner/rsirunner.h"
+#include "network/common/deviceprofiles.h"
 
 int main(int argc, char* argv[])
 {
@@ -73,6 +74,12 @@ int main(int argc, char* argv[])
   ctx->setContextProperty("ftsRunner", &ftsRunner);
   ctx->setContextProperty("rsiRunner", &rsiRunner);
   // ctx->setContextProperty("chartBridge", &chartBridge);
+
+  qmlRegisterType<DeviceProfiles>(
+    "qdeltaplc_qml_module",
+    1, 0,
+    "DeviceProfiles"
+  );
 
   qmlRegisterUncreatableType<PlcMessageManager>(
     "qdeltaplc_qml_module",

@@ -11,10 +11,9 @@ qt_add_qml_module(Components
   QML_FILES
     QxButton.qml
     QxComboBox.qml
-    QxField.qml
     QxGroupBox.qml
+    QxHField.qml
     QxLed.qml
-    QxPanel.qml
     QxProgressBar.qml
     QxStepButton.qml
     QxSwitch.qml

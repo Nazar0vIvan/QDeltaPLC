@@ -7,26 +7,26 @@ import Styles 1.0
 Item {
   id: root
 
-  property int labelWidth: 0
   property alias labelText: label.text
   property alias color: label.color
-  property alias spacing: rl.spacing
+  property alias spacing: cl.spacing
   default property alias content: slot.data
 
-  implicitWidth: rl.implicitWidth // Math.max(root.labelWidth, label.implicitWidth) + rl.spacing + slot.data.width
-  implicitHeight: rl.implicitHeight
+  implicitWidth: cl.implicitWidth // Math.max(root.labelWidth, label.implicitWidth) + rl.spacing + slot.data.width
+  implicitHeight: cl.implicitHeight
 
   ColumnLayout {
-    id: rl
+    id: cl
+
+    spacing: 8
 
     Label {
       id: label
 
       Layout.preferredWidth: Math.max(root.labelWidth, implicitWidth)
-      Layout.preferredHeight: root.height
-      Layout.alignment: Qt.AlignVCenter
-      verticalAlignment: Text.AlignVCenter
-      color: Styles.foreground.high
+      Layout.preferredHeight: implicitHeight
+
+      color: Styles.foreground.medium
       font: Styles.fonts.body
     }
 
@@ -34,8 +34,7 @@ Item {
       id: slot
 
       Layout.preferredWidth: childrenRect.width
-      Layout.preferredHeight: root.height
-      Layout.alignment: Qt.AlignVCenter
+      Layout.preferredHeight: childrenRect.height
     }
   }
 }

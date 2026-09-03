@@ -1,0 +1,40 @@
+{
+	"devices": [
+		{
+			"name": "PLC AT332T",
+			"protocol": "TCP",
+			"openmode": "R/W",
+			"localAddress": "192.168.1.100",
+			"localPort": 1234,
+			"peerAddress": "192.168.1.2",
+			"peerPort": 5051
+		},
+		{
+			"name": "KUKA RSI 3.3.1",
+			"protocol": "XML/UDP",
+			"openmode": "R/W",
+			"localAddress": "192.168.1.100",
+			"localPort": 5555,
+			"peerAddress": "192.168.1.200",
+			"peerPort": "-"
+		},
+		{	
+			"name": "Schunk FTS Delta-660-60-S",
+			"protocol": "RDT/UDP",
+			"openmode": "R",
+			"localAddress": "192.168.1.100",
+			"localPort": 59152,
+			"peerAddress": "192.168.1.3",
+			"peerPort": 49152
+		},
+		{
+			"name": "VFD ATV320U40N4C",
+			"protocol": "Modbus TCP",
+			"openmode": "R/W",
+			"localAddress": "192.168.1.100",
+			"localPort": 3333,
+			"peerAddress": "192.168.1.4",
+			"peerPort": 4333
+		}
+	]
+}
