@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import qdeltaplc_qml_module 1.0 // !!
+import QDelta.Backend 1.0 as Backend
 
 QxGroupBox {
   id: root
@@ -17,13 +17,13 @@ QxGroupBox {
     target: plcRunner
 
     function onDataReady(data) {
-      console.log(PlcMessage.SNAPSHOT)
-      if ((data.cmd && data.cmd === PlcMessage.SNAPSHOT) ||
-          (data.chg && data.chg === PlcMessage.IOs)) {
+      console.log(Backend.PlcMessage.SNAPSHOT)
+      if ((data.cmd && data.cmd === Backend.PlcMessage.SNAPSHOT) ||
+          (data.chg && data.chg === Backend.IOs)) {
         moduleAP_P.refreshAll(data.x1, data.y1);
         moduleAP_T.refreshAll(data.x2, data.y2);
       }
-      if (data.cmd && data.cmd === PlcMessage.WRITE_IO) {
+      if (data.cmd && data.cmd === Backend.PlcMessage.WRITE_IO) {
         if (data.module === 1)
           moduleAP_P.refreshY(data.state)
         else

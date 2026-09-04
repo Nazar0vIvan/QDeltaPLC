@@ -26,7 +26,7 @@
 #include "network/runner/ftsrunner.h"
 #include "network/runner/plcrunner.h"
 #include "network/runner/rsirunner.h"
-#include "network/common/deviceprofiles.h"
+#include "network/common/deviceprofilemodel.h"
 
 int main(int argc, char* argv[])
 {
@@ -75,18 +75,12 @@ int main(int argc, char* argv[])
   ctx->setContextProperty("rsiRunner", &rsiRunner);
   // ctx->setContextProperty("chartBridge", &chartBridge);
 
-  qmlRegisterType<DeviceProfiles>(
-    "qdeltaplc_qml_module",
-    1, 0,
-    "DeviceProfiles"
-  );
+  qmlRegisterType<DeviceProfileModel>(
+      "QDelta.Backend", 1, 0, "DeviceProfileModel");
 
   qmlRegisterUncreatableType<PlcMessageManager>(
-    "qdeltaplc_qml_module",
-    1, 0,
-    "PlcMessage",
-    "PlcMessage is not creatable from QML"
-  );
+      "QDelta.Backend", 1, 0, "PlcMessage",
+      "PlcMessage is not creatable from QML");
 
   // engine.loadFromModule("qdeltaplc_qml_module", "Main");
   // const QUrl mainQmlUrl = QUrl::fromLocalFile(QStringLiteral(QDELTA_QML_SOURCE_DIR "/Main.qml"));

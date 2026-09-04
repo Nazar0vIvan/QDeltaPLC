@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import qdeltaplc_qml_module 1.0 // !!
+import QDelta.Backend 1.0 as Backend
 
 Control {
   id: root
@@ -22,17 +22,17 @@ Control {
     function onDataReady(data) {
       if (!data.cmd) return;
       switch(data.cmd) {
-        case PlcMessage.READ_REG: {
+        case Backend.PlcMessage.READ_REG: {
           rRegValueInput.text = data.value;
           break;
         }
-        case PlcMessage.WRITE_REG: {
+        case Backend.PlcMessage.WRITE_REG: {
           if (Number(wRegValueInput.text) === data.value) {
             wRegValueInput.confirmed = true;
           }
           break;
         }
-        case PlcMessage.WRITE_RAW: {
+        case Backend.PlcMessage.WRITE_RAW: {
           if (wRawValueInput.text === String(data.value)) {
             wRawValueInput.confirmed = true;
           }
@@ -116,7 +116,7 @@ Control {
           onClicked: {
             if (!wRawValueInput.text) return;
             const args = {
-              "cmd": PlcMessage.WRITE_RAW,
+              "cmd": Backend.PlcMessage.WRITE_RAW,
               "raw": wRawValueInput.text,
             }
             plcRunner.invoke("writeMessage", args);
@@ -189,7 +189,7 @@ Control {
           onClicked: {
             if (!wRegAddrInput.text || !wRegValueInput.text) return;
             const args = {
-              "cmd": PlcMessage.WRITE_REG,
+              "cmd": Backend.PlcMessage.WRITE_REG,
               "addr": Number(wRegAddrInput.text),
               "value": Number(wRegValueInput.text),
 
@@ -271,7 +271,7 @@ Control {
           onClicked: {
             if (!rRegInput.text) return;
             const args = {
-              "cmd": PlcMessage.READ_REG,
+              "cmd": Backend.PlcMessage.READ_REG,
               "addr": Number(rRegInput.text),
             }
             plcRunner.invoke("writeMessage", args);

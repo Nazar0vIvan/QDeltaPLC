@@ -16,8 +16,21 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
   Xml
 )
 
-find_package(Felgo REQUIRED)
-find_package(FelgoHotReload CONFIG REQUIRED)
+option(
+  QDELTA_FAST_QML_BUILD
+  "Disable QML cache generation for faster development builds"
+  ON
+)
+
+option(
+  QDELTA_USE_HOT_RELOAD
+  "Enable Felgo Hot Reload"
+ON)
+
+if(QDELTA_USE_HOT_RELOAD)
+  find_package(Felgo REQUIRED)
+  find_package(FelgoHotReload CONFIG REQUIRED)
+endif()
 
 set(PRODUCT_IDENTIFIER "com.qdelta.qdeltaplc")
 set(PRODUCT_VERSION_NAME "0.1.0")
@@ -25,12 +38,6 @@ set(PRODUCT_VERSION_CODE 1)
 set(PRODUCT_STAGE "test")
 
 qt_standard_project_setup(REQUIRES 6.8)
-
-option(
-  QDELTA_FAST_QML_BUILD
-  "Disable QML cache generation for faster development builds"
-  ON
-)
 
 set(QDELTA_QML_OPTIONS)
 
@@ -52,8 +59,10 @@ qt_add_resources(qdeltaplc "felgo_config"
     "${CMAKE_CURRENT_SOURCE_DIR}/qml/config.json"
 )
 
-felgo_configure_executable(qdeltaplc)
-felgohotreload_configure_executable(qdeltaplc)
+if(QDELTA_USE_HOT_RELOAD)
+  felgo_configure_executable(qdeltaplc)
+  felgohotreload_configure_executable(qdeltaplc)
+endif()
 
 add_subdirectory(src)
 add_subdirectory(qml/Modules/Styles)
@@ -83,6 +92,7 @@ set(QML_FILES
   qml/Views/Test/Test.qml
   qml/Views/Network/Network.qml
   qml/Views/Network/NetworkPanel.qml
+  qml/Views/Network/ConnectionsTable.qml
 )
 
 set(RESOURCE_FILES
@@ -92,16 +102,24 @@ set(RESOURCE_FILES
   resources/json.qrc
 )
 
-qt_add_qml_module(qdeltaplc
-  URI qdeltaplc_qml_module
-  VERSION 1.0
-  ${QDELTA_QML_OPTIONS}
-  IMPORTS
-    Styles
-    Components
-  QML_FILES
-    ${QML_FILES}
-)
+if(QDELTA_USE_HOT_RELOAD)
+  qt_add_qml_module(qdeltaplc
+    URI qdeltaplc_qml_module
+    VERSION 1.0
+    ${QDELTA_QML_OPTIONS}
+  )
+else()
+  qt_add_qml_module(qdeltaplc
+    URI qdeltaplc_qml_module
+    VERSION 1.0
+    ${QDELTA_QML_OPTIONS}
+    IMPORTS
+      Styles
+      Components
+    QML_FILES
+      ${QML_FILES}
+  )
+endif()
 
 target_compile_definitions(qdeltaplc
   PRIVATE

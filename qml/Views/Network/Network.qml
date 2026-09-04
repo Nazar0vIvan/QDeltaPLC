@@ -5,17 +5,16 @@ import QtQuick.Controls
 import Components 1.0
 import Styles 1.0
 
-import qdeltaplc_qml_module 1.0
+import QDelta.Backend 1.0 as Backend
 
 Item  {
   id: root
 
-  DeviceProfiles {
-    id: deviceProfiles
+  Backend.DeviceProfileModel {
+    id: devProfModel
   }
 
-  readonly property var selectedDevice:
-      deviceProfiles.device(cbDevice.currentIndex)
+  readonly property var selectedDevice: devProfModel.device(cbDevice.currentIndex)
 
   ColumnLayout {
     id: cl
@@ -29,6 +28,7 @@ Item  {
       id: titleView
 
       Layout.preferredHeight: implicitHeight
+
       text: qsTr("Network")
       font: Styles.fonts.title
       color: Styles.foreground.high
@@ -39,11 +39,14 @@ Item  {
 
       title: "Configuration"
 
+      contentHorizontalMargin: 14
+      contentVerticalMargin: 16
+
       QxComboBox {
         id: cbDevice
 
         label: qsTr("Device")
-        model: deviceProfiles.names
+        model: devProfModel.names
       }
 
       QxVField {
@@ -55,7 +58,7 @@ Item  {
           id: laInput
 
           height: 32
-          width: 160
+          width: 120
           text: root.selectedDevice.localAddress ?? ""
           validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
@@ -72,7 +75,7 @@ Item  {
           id: lpInput
 
           height: 32
-          width: 160
+          width: 90
 
           text: root.selectedDevice.localPort >= 0
                 ? String(root.selectedDevice.localPort)
@@ -93,7 +96,7 @@ Item  {
           id: paInput
 
           height: 32
-          width: 160
+          width: 120
 
           text: root.selectedDevice.peerAddress ?? ""
           validator: RegularExpressionValidator {
@@ -111,7 +114,7 @@ Item  {
           id: ppInput
 
           height: 32
-          width: 160
+          width: 90
 
           text: root.selectedDevice.peerPort >= 0
                 ? String(root.selectedDevice.peerPort)
@@ -138,7 +141,16 @@ Item  {
 
       title: "Connections"
 
-      Layout.alignment: Qt.AlignVCenter
+      contentVerticalMargin: 14
+
+      ConnectionsTable {
+        id: conTable
+
+        Layout.fillWidth: true
+        model: devProfModel
+        selectedRow: cbDevice.currentIndex
+      }
+
     }
 
     Item { Layout.fillHeight: true }

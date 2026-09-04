@@ -22,7 +22,7 @@ public:
   Q_INVOKABLE void startStreaming();
   Q_INVOKABLE void stopStreaming();
   Q_INVOKABLE void bias();
-  Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
+  Q_INVOKABLE void connectDevice(const QVariantMap& config);
 
   Q_INVOKABLE void setLogRecordingEnabled(bool enabled);
   Q_INVOKABLE void startLogRecording();

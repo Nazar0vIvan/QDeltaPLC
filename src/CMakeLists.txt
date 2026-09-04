@@ -14,8 +14,8 @@ target_sources(qdeltaplc PRIVATE
 
   network/common/socketstateutils.h
   network/common/socketstateutils.cpp
-  network/common/deviceprofiles.h
-  network/common/deviceprofiles.cpp
+  network/common/deviceprofilemodel.h
+  network/common/deviceprofilemodel.cpp
 
   network/fts/rdtmessage.h
   network/fts/socketfts.h

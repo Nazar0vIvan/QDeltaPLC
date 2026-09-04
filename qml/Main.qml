@@ -49,14 +49,17 @@ App {
     SplitView {
       id: sv
 
-      Layout.fillWidth: true; Layout.fillHeight: true
+      Layout.fillWidth: true;
+      Layout.fillHeight: true
+
       orientation: Qt.Vertical
 
       StackLayout {
         id: sl
 
-        anchors.fill: parent
-        SplitView.fillWidth: true; SplitView.fillHeight: true
+        SplitView.fillWidth: true;
+        SplitView.fillHeight: true
+
         currentIndex: navPanel.currentIndex
 
         Dashboard { id: dashboard }
@@ -71,6 +74,7 @@ App {
 
         SplitView.fillWidth: true
         SplitView.preferredHeight: 100
+        SplitView.minimumHeight: 50
       }
     }
   }

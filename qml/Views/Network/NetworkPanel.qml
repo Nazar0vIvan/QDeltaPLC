@@ -11,11 +11,15 @@ Item {
     default property alias content: contentLayout.children
     property alias spacing: contentLayout.spacing
 
+    property double contentHorizontalMargin: 0
+    property double contentVerticalMargin: 0
+
     property int radius: 10
 
     implicitWidth: Math.max(
       header.implicitWidth,
-      contentLayout.implicitWidth + 32)
+      contentLayout.implicitWidth + 2 * contentHorizontalMargin)
+
     implicitHeight: layout.implicitHeight
 
     Rectangle {
@@ -26,47 +30,47 @@ Item {
     }
 
     ColumnLayout {
-        id: layout
+      id: layout
 
-        anchors.fill: parent
-        spacing: 0
+      anchors.fill: parent
+      spacing: 0
 
-        Label {
-          id: header
+      Label {
+        id: header
 
-          Layout.fillWidth: true
-          Layout.preferredHeight: 28
+        Layout.fillWidth: true
+        Layout.preferredHeight: implicitHeight
 
-          leftPadding: 16
-          rightPadding: 16
-          topPadding: 6
-          bottomPadding: 6
+        leftPadding: 16
+        rightPadding: 16
+        topPadding: 10
+        bottomPadding: 10
 
-          text: root.title
-          color: Styles.foreground.high
-          font.pixelSize: 12
+        text: root.title
+        color: Styles.foreground.high
+        font: Styles.fonts.subtitle
 
-          background: Rectangle {
-            color: Styles.background.dp03
+        background: Rectangle {
+          color: Styles.background.dp03
 
-            topLeftRadius: root.radius
-            topRightRadius: root.radius
-          }
+          topLeftRadius: root.radius
+          topRightRadius: root.radius
         }
+      }
 
-        RowLayout {
-          id: contentLayout
+      RowLayout {
+        id: contentLayout
 
-          spacing: 10
+        spacing: 10
 
-          Layout.fillWidth: true
-          Layout.fillHeight: true
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
-          Layout.leftMargin: 16
-          Layout.topMargin: 14
-          Layout.rightMargin: 16
-          Layout.bottomMargin: 14
-        }
+        Layout.leftMargin: root.contentHorizontalMargin
+        Layout.rightMargin: root.contentHorizontalMargin
+        Layout.topMargin: root.contentVerticalMargin
+        Layout.bottomMargin: root.contentVerticalMargin
+      }
     }
 
     // border

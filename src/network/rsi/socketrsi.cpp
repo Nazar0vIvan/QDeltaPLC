@@ -91,17 +91,59 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
   return { {"path", path}, {"port", portStr}, {"onlysend", onlyStr} };
 }
 
-void SocketRSI::setSocketConfig(const QVariantMap &config)
+void SocketRSI::connectDevice(const QVariantMap &config)
 {
-  m_la = QHostAddress(config.value("localAddress").toString());
-  m_lp = config.value("localPort").toUInt();
-  m_pa = QHostAddress(config.value("peerAddress").toString());
+  const QHostAddress localAddress(config.value("localAddress").toString());
+  const QHostAddress peerAddress(config.value("peerAddress").toString());
+  bool localPortOk = false;
 
-  if (!QUdpSocket::bind(m_la, m_lp)) {
-    emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
+  const uint localPort = config.value("localPort").toUInt(&localPortOk);
+
+  if (localAddress.isNull()
+      || peerAddress.isNull()
+      || !localPortOk
+      || localPort > 65535) {
+
+    emit logMessage({
+      "Invalid socket configuration",
+      0,
+      objectName()
+    });
+
     return;
   }
-  emit logMessage({QString("Socket is bound: %1:%2").arg(m_la.toString()).arg(m_lp), 1, objectName()});
+
+  // CHANGED:
+  // Allow applying another configuration after an earlier bind.
+  if (state() != QAbstractSocket::UnconnectedState)
+    close();
+
+  m_la = localAddress;
+  m_lp = static_cast<quint16>(localPort);
+  m_pa = peerAddress;
+
+  // NEW:
+  // KUKA's source port will be learned again from the first datagram.
+  m_pp = 0;
+  m_isFirstRead = true;
+
+  if (!bind(m_la, m_lp)) {
+    emit logMessage({
+      QString("Bind failed: %1").arg(errorString()),
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  emit logMessage({
+    QString("Socket configured and bound: %1:%2")
+            .arg(m_la.toString())
+            .arg(m_lp),
+    1,
+    objectName()
+  });
 }
 
 void SocketRSI::generateTrajectory()

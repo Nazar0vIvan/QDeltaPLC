@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Components 1.0
 import Styles 1.0
 
-import qdeltaplc_qml_module 1.0 // !!
+import QDelta.Backend 1.0 as Backend
 
 Control {
   id: root
@@ -17,12 +17,12 @@ Control {
     target: plcRunner
 
     function onDataReady(data) {
-      if (data.cmd && data.cmd === PlcMessage.SNAPSHOT ||
-          data.chg && data.chg === PlcMessage.IOs) {
+      if (data.cmd && data.cmd === Backend.PlcMessage.SNAPSHOT ||
+          data.chg && data.chg === Backend.PlcMessage.IOs) {
         autExt.color = data.x1[5] ? "green" : "red"; // data.x1[5] - AutExt
         root.isAutExt = !!data.x1[5];
       }
-      if (data.chg && data.chg === PlcMessage.CELL_STATE) {
+      if (data.chg && data.chg === Backend.PlcMessage.CELL_STATE) {
         switch (data.state) {
           case 0: {
             idle.color = "green";
@@ -168,8 +168,8 @@ Control {
 
         onClicked: {
           const args = {
-            "cmd": PlcMessage.SET_VAR,
-            "var": PlcMessage.START_CELL,
+            "cmd": Backend.PlcMessage.SET_VAR,
+            "var": Backend.PlcMessage.START_CELL,
             "attr": 1 // PGNO
           }
           plcRunner.invoke("writeMessage", args);

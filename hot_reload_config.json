@@ -10,5 +10,6 @@
       "path": "qml/Modules/Styles",
       "target_path": "Styles"
     }
-  ]
+  ],
+	"use_local_plugins": true
 }

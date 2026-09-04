@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import qdeltaplc_qml_module 1.0 // !!
+import QDelta.Backend 1.0 as Backend
 
 Control {
   id: root
@@ -155,7 +155,7 @@ Control {
           const desired = !isOn
           const { andMask, orMask} = root.buildMasks(index, desired);
           const args = {
-             "cmd": PlcMessage.WRITE_IO,
+             "cmd": Backend.PlcMessage.WRITE_IO,
              "module": root.moduleIndex,
              "andMask": andMask,
              "orMask": orMask

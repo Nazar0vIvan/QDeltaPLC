@@ -54,7 +54,7 @@ public:
 
   Q_INVOKABLE void stop();
   Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
-  Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
+  Q_INVOKABLE void connectDevice(const QVariantMap& config);
   Q_INVOKABLE void generateTrajectory();
   // Q_INVOKABLE QVariantMap loadBladeJson(const QVariantMap& json);
 

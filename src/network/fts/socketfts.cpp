@@ -72,30 +72,64 @@ void SocketFTS::bias()
   emit streamReset();
 }
 
-void SocketFTS::setSocketConfig(const QVariantMap& config)
+void SocketFTS::connectDevice(const QVariantMap& config)
 {
-  m_la = QHostAddress(config.value("localAddress").toString());
-  m_lp = config.value("localPort").toUInt();
+  const QHostAddress localAddress(config.value("localAddress").toString());
+  const QHostAddress peerAddress(config.value("peerAddress").toString());
 
-  m_pa = QHostAddress(config.value("peerAddress").toString());
-  m_pp = config.value("peerPort").toUInt();
+  bool localPortOk = false;
+  bool peerPortOk = false;
 
-  if (state() != QAbstractSocket::BoundState) {
-    if (!bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
-      emit logMessage({QString("Bind failed: %1").arg(errorString()), 0, objectName()});
-      return;
-    }
+  const uint localPort = config.value("localPort").toUInt(&localPortOk);
+  const uint peerPort = config.value("peerPort").toUInt(&peerPortOk);
+
+  if (localAddress.isNull()
+      || peerAddress.isNull()
+      || !localPortOk
+      || !peerPortOk
+      || localPort > 65535
+      || peerPort == 0
+      || peerPort > 65535) {
+
+    emit logMessage({
+      "Invalid socket configuration",
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  if (state() != QAbstractSocket::UnconnectedState)
+    close();
+
+  m_la = localAddress;
+  m_lp = static_cast<quint16>(localPort);
+
+  m_pa = peerAddress;
+  m_pp = static_cast<quint16>(peerPort);
+
+  if (!bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+    emit logMessage({
+      QString("Bind failed: %1").arg(errorString()),
+      0,
+      objectName()
+    });
+
+    return;
   }
 
   emit logMessage({
-    QString("Socket configured:<br/>&nbsp;&nbsp;Local: &nbsp;%1:%2<br/>&nbsp;&nbsp;Peer: &nbsp;&nbsp;%3:%4")
-      .arg(m_la.toString())
-      .arg(m_lp)
-      .arg(m_pa.toString())
-      .arg(m_pp),
-      1,
-      objectName()
-    });
+    QString("Socket configured and bound:<br/>"
+            "&nbsp;&nbsp;Local: &nbsp;[%1] : [%2]<br/>"
+            "&nbsp;&nbsp;Peer: &nbsp;&nbsp;[%3] : [%4]")
+            .arg(m_la.toString())
+            .arg(m_lp)
+            .arg(m_pa.toString())
+            .arg(m_pp),
+    1,
+    objectName()
+  });
 }
 
 void SocketFTS::onReadyRead()

@@ -25,7 +25,7 @@ public:
   Q_INVOKABLE void connectToHost();
   Q_INVOKABLE virtual void disconnectFromHost() override;
   Q_INVOKABLE void writeMessage(const QVariantMap& msg);
-  Q_INVOKABLE void setSocketConfig(const QVariantMap& config);
+  Q_INVOKABLE void connectDevice(const QVariantMap& config);
 
 signals:
   void logMessage(const LoggerMessage& msg);
@@ -45,9 +45,9 @@ private:
   QByteArray swapBytes(const QByteArray& data);
 
   QHostAddress m_la;
-  qint16 m_lp = 0;
+  quint16 m_lp = 0;
   QHostAddress m_pa;
-  qint16 m_pp = 0;
+  quint16 m_pp = 0;
 
   PlcMessageManager m_mgr;
   quint8 m_nextTid = 1;

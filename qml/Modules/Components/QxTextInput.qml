@@ -13,9 +13,13 @@ TextField {
 
   leftPadding: 8
   color: Styles.foreground.high
+  font: Styles.fonts.body
+
+
   selectionColor: Styles.primary.highlight
   selectedTextColor: Styles.foreground.high
   selectByMouse: true
+
   readOnly: false
   verticalAlignment: TextInput.AlignVCenter
 
