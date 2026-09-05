@@ -7,15 +7,18 @@ import Components 1.0
 ListView {
   id: root
 
-  function onApply(runner, la, lp, pa, pp) {
-    if (!runner) return;
-    const args = {
-      "localAddress": la.text,
-      "localPort": Number(lp.text),
-      "peerAddress": pa.text,
-      "peerPort": Number(pp.text)
-    };
-    runner.invoke("setSocketConfig", args);
+  function connectDevice(runner, la, lp, pa, pp) {
+    if (!runner) return
+
+    const config = {
+      localAddress: la.text,
+      localPort: Number(lp.text),
+      peerAddress: pa.text
+    }
+
+    if (pp) config.peerPort = Number(pp.text)
+
+    runner.invoke("connectDevice", config)
   }
 
   property int fieldHeight: 28
@@ -113,7 +116,6 @@ ListView {
 
           onUploaded: path => {
             rsiRunner.invoke("parseConfigFile", {"path": path})
-            rsiBtnApply.enabled = true
           }
 
           Connections {
@@ -182,7 +184,6 @@ ListView {
           validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
-          onTextEdited: rsiBtnApply.enabled = true
         }
       }
 
@@ -190,11 +191,11 @@ ListView {
         // rsi apply button
         id: rsiBtnApply
 
-        text: "Apply"
+        text: "Bind"
         enabled: pcAddr.text && rsiLp.text && rsiPa.text && !rsiRunner.isStreaming
 
         onClicked: {
-          onApply(rsiRunner, pcAddr, rsiLp, rsiPa, 0)
+          connectDevice(rsiRunner, pcAddr, rsiLp, rsiPa, null)
         }
       }
     }
@@ -242,7 +243,6 @@ ListView {
             bottom: 0
             top: 65535
           }
-          onTextEdited: plcBtnApply.enabled = true
         }
       }
 
@@ -264,7 +264,6 @@ ListView {
           validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
-          onTextEdited: plcBtnApply.enabled = true
         }
       }
 
@@ -287,7 +286,6 @@ ListView {
             bottom: 0
             top: 65535
           }
-          onTextEdited: plcBtnApply.enabled = true
         }
       }
 
@@ -295,12 +293,12 @@ ListView {
         // plc apply button
         id: plcBtnApply
 
-        text: "Apply"
+        text: "Connect"
         enabled: pcAddr.text && plcLp.text && plcPa.text && plcPp.text
                  && plcRunner.socketState !== 3 // 3 - connected
 
         onClicked: {
-          onApply(plcRunner, pcAddr, plcLp, plcPa, plcPp)
+          connectDevice(plcRunner, pcAddr, plcLp, plcPa, plcPp)
         }
       }
     }
@@ -349,7 +347,6 @@ ListView {
             bottom: 0
             top: 65535
           }
-          onTextEdited: ftsBtnApply.enabled = true
         }
       }
 
@@ -371,7 +368,6 @@ ListView {
           validator: RegularExpressionValidator {
             regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
           }
-          onTextEdited: ftsBtnApply.enabled = true
         }
       }
 
@@ -398,11 +394,11 @@ ListView {
         // fts apply button
         id: ftsBtnApply
 
-        text: "Apply"
+        text: "Bind"
         enabled: pcAddr.text && ftsLp.text && ftsPa.text && ftsPp.text && !ftsRunner.isStreaming
 
         onClicked: {
-          onApply(ftsRunner, pcAddr, ftsLp, ftsPa, ftsPp)
+          connectDevice(ftsRunner, pcAddr, ftsLp, ftsPa, ftsPp)
         }
       }
     }

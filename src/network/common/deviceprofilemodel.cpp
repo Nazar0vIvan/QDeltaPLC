@@ -122,7 +122,6 @@ QVariantMap DeviceProfileModel::device(int row) const
     { "peerPort", device.peerPort },
     { "protocol", device.protocol },
     { "openMode", device.openMode },
-    { "driver", static_cast<int>(device.driver) },
     { "status", device.status }
   };
 }
@@ -187,39 +186,18 @@ void DeviceProfileModel::load()
                       : obj.value("peerPort").toInt(-1);
     device.protocol = obj.value("protocol").toString();
     device.openMode = obj.value("openMode").toString();
-    device.driver = driverFromString(obj.value("driver").toString());
 
     m_devices.append(std::move(device));
   }
-}
-
-DeviceProfileModel::Driver
-DeviceProfileModel::driverFromString(const QString& value)
-{
-  const QString driver = value.trimmed().toLower();
-
-  if (driver == "plc")
-    return PlcDriver;
-
-  if (driver == "rsi")
-    return RsiDriver;
-
-  if (driver == "fts")
-    return FtsDriver;
-
-  if (driver == "vfd")
-    return VfdDriver;
-
-  return UnknownDriver;
 }
 
 QString DeviceProfileModel::statusText(Status status)
 {
   switch (status) {
     case Disconnected: return tr("Disconnected");
-    case Connected: return tr("Connected");
-    case Bound: return tr("Bound");
-    case Streaming: return tr("Streaming");
+    case Connected:    return tr("Connected");
+    case Bound:        return tr("Bound");
+    case Streaming:    return tr("Streaming");
   }
 
   return {};

@@ -52,16 +52,14 @@ public:
     quint64 ipoc = 0;
   };
 
-  Q_INVOKABLE void stop();
-  Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
-  Q_INVOKABLE void connectDevice(const QVariantMap& config);
+  Q_INVOKABLE void connect(const QVariantMap& config);
+  Q_INVOKABLE void disconnect();
+
+  // Q_INVOKABLE QVariantMap parseConfigFile(const QVariantMap& data);
   Q_INVOKABLE void generateTrajectory();
-  // Q_INVOKABLE QVariantMap loadBladeJson(const QVariantMap& json);
 
   Q_INVOKABLE void startStreaming();
   Q_INVOKABLE void stopStreaming();
-
-  Q_INVOKABLE void test();
 
 signals:
   void motionStarted();

@@ -22,7 +22,8 @@ public:
   Q_INVOKABLE void startStreaming();
   Q_INVOKABLE void stopStreaming();
   Q_INVOKABLE void bias();
-  Q_INVOKABLE void connectDevice(const QVariantMap& config);
+  Q_INVOKABLE void connect(const QVariantMap& config);
+  Q_INVOKABLE void disconnect();
 
   Q_INVOKABLE void setLogRecordingEnabled(bool enabled);
   Q_INVOKABLE void startLogRecording();

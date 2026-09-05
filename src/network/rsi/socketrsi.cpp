@@ -35,24 +35,98 @@ SocketRSI::SocketRSI(const QString& name, QObject *parent) : QUdpSocket{parent}
 {
   setObjectName(name);
 
-  connect(this, &SocketRSI::readyRead,     this, &SocketRSI::onReadyRead);
-  connect(this, &SocketRSI::errorOccurred, this, &SocketRSI::onErrorOccurred);
-  connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
-  connect(this, &SocketRSI::logMessage, Logger::instance(), &Logger::push);
+  QObject::connect(this, &SocketRSI::readyRead,     this, &SocketRSI::onReadyRead);
+  QObject::connect(this, &SocketRSI::errorOccurred, this, &SocketRSI::onErrorOccurred);
+  QObject::connect(this, &SocketRSI::stateChanged,  this, &SocketRSI::onStateChanged);
+  QObject::connect(this, &SocketRSI::logMessage, Logger::instance(), &Logger::push);
 
   m_cooldownTimer.setSingleShot(true);
-  connect(&m_cooldownTimer, &QTimer::timeout, this, &SocketRSI::onCooldownFinished);
+  QObject::connect(&m_cooldownTimer, &QTimer::timeout, this, &SocketRSI::onCooldownFinished);
 }
 
 // Q_INVOKABLE
 
-void SocketRSI::stop()
+void SocketRSI::connect(const QVariantMap& config)
+{
+  if (!config.isEmpty()) {
+    const QHostAddress localAddress(config.value("localAddress").toString());
+    const QHostAddress peerAddress(config.value("peerAddress").toString());
+    bool localPortOk = false;
+    const uint localPort = config.value("localPort").toUInt(&localPortOk);
+
+    if (localAddress.isNull()
+     || peerAddress.isNull()
+     || !localPortOk
+     || localPort == 0
+     || localPort > 65535) {
+
+      emit logMessage({
+        "Invalid socket configuration",
+        0,
+        objectName()
+      });
+
+      return;
+    }
+
+    m_la = localAddress;
+    m_lp = static_cast<quint16>(localPort);
+    m_pa = peerAddress;
+
+    // Learned from incoming RSI datagram.
+    m_pp = 0;
+  }
+
+  if (m_la.isNull() || m_lp == 0 || m_pa.isNull()) {
+    emit logMessage({
+      "Socket configuration is incomplete",
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  if (state() != QAbstractSocket::UnconnectedState)
+    disconnect();
+
+  m_isFirstRead = true;
+
+  // UDP "connect" means bind locally.
+  if (!QUdpSocket::bind(m_la, m_lp)) {
+    emit logMessage({
+      QString("Bind failed: %1").arg(errorString()),
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  emit logMessage({
+    QString("Socket connected: %1:%2")
+    .arg(m_la.toString())
+    .arg(m_lp),
+    1,
+    objectName()
+  });
+}
+
+void SocketRSI::disconnect()
 {
   stopStreaming();
   close();
-  emit logMessage({ "Socket stopped and closed", 1, objectName()});
+
+  m_isFirstRead = true;
+
+  emit logMessage({
+    "Socket disconnected",
+    1,
+    objectName()
+  });
 }
 
+/*
 QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
 {
   const QString path = data.value("path").toUrl().toLocalFile();
@@ -90,61 +164,7 @@ QVariantMap SocketRSI::parseConfigFile(const QVariantMap& data)
 
   return { {"path", path}, {"port", portStr}, {"onlysend", onlyStr} };
 }
-
-void SocketRSI::connectDevice(const QVariantMap &config)
-{
-  const QHostAddress localAddress(config.value("localAddress").toString());
-  const QHostAddress peerAddress(config.value("peerAddress").toString());
-  bool localPortOk = false;
-
-  const uint localPort = config.value("localPort").toUInt(&localPortOk);
-
-  if (localAddress.isNull()
-      || peerAddress.isNull()
-      || !localPortOk
-      || localPort > 65535) {
-
-    emit logMessage({
-      "Invalid socket configuration",
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  // CHANGED:
-  // Allow applying another configuration after an earlier bind.
-  if (state() != QAbstractSocket::UnconnectedState)
-    close();
-
-  m_la = localAddress;
-  m_lp = static_cast<quint16>(localPort);
-  m_pa = peerAddress;
-
-  // NEW:
-  // KUKA's source port will be learned again from the first datagram.
-  m_pp = 0;
-  m_isFirstRead = true;
-
-  if (!bind(m_la, m_lp)) {
-    emit logMessage({
-      QString("Bind failed: %1").arg(errorString()),
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  emit logMessage({
-    QString("Socket configured and bound: %1:%2")
-            .arg(m_la.toString())
-            .arg(m_lp),
-    1,
-    objectName()
-  });
-}
+*/
 
 void SocketRSI::generateTrajectory()
 {
@@ -568,7 +588,4 @@ QVector<double> SocketRSI::readCartesian6(const QXmlStreamAttributes &attrs)
   return out;
 }
 
-void SocketRSI::test()
-{
 
-}

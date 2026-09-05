@@ -25,10 +25,101 @@ SocketFTS::SocketFTS(const QString& name, QObject* parent) : QUdpSocket(parent)
   setObjectName(name);
   setOpenMode(QIODeviceBase::ReadWrite);
 
-  connect(this, &SocketFTS::readyRead, this, &SocketFTS::onReadyRead);
-  connect(this, &SocketFTS::errorOccurred, this, &SocketFTS::onErrorOccurred);
-  connect(this, &SocketFTS::stateChanged, this, &SocketFTS::onStateChanged);
-  connect(this, &SocketFTS::logMessage, Logger::instance(), &Logger::push);
+  QObject::connect(this, &SocketFTS::readyRead, this, &SocketFTS::onReadyRead);
+  QObject::connect(this, &SocketFTS::errorOccurred, this, &SocketFTS::onErrorOccurred);
+  QObject::connect(this, &SocketFTS::stateChanged, this, &SocketFTS::onStateChanged);
+  QObject::connect(this, &SocketFTS::logMessage, Logger::instance(), &Logger::push);
+}
+void SocketFTS::connect(const QVariantMap& config)
+{
+  if (!config.isEmpty()) {
+    const QHostAddress localAddress(config.value("localAddress").toString());
+    const QHostAddress peerAddress(config.value("peerAddress").toString());
+
+    bool localPortOk = false;
+    bool peerPortOk = false;
+    const uint localPort = config.value("localPort").toUInt(&localPortOk);
+    const uint peerPort = config.value("peerPort").toUInt(&peerPortOk);
+
+    if (localAddress.isNull()
+        || peerAddress.isNull()
+        || !localPortOk
+        || !peerPortOk
+        || localPort == 0
+        || localPort > 65535
+        || peerPort == 0
+        || peerPort > 65535) {
+
+      emit logMessage({
+        "Invalid socket configuration",
+        0,
+        objectName()
+      });
+
+      return;
+    }
+
+    m_la = localAddress;
+    m_lp = static_cast<quint16>(localPort);
+    m_pa = peerAddress;
+    m_pp = static_cast<quint16>(peerPort);
+  }
+
+  if (m_la.isNull()
+      || m_lp == 0
+      || m_pa.isNull()
+      || m_pp == 0) {
+
+    emit logMessage({
+      "Socket configuration is incomplete",
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  if (state() != QAbstractSocket::UnconnectedState)
+    disconnect();
+
+  // UDP "connect" means bind locally.
+  if (!QUdpSocket::bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+
+    emit logMessage({
+      QString("Bind failed: %1").arg(errorString()),
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  emit logMessage({
+    QString("Socket connected:<br/>"
+            "&nbsp;&nbsp;Local: &nbsp;[%1] : [%2]<br/>"
+            "&nbsp;&nbsp;Peer: &nbsp;&nbsp;[%3] : [%4]")
+            .arg(m_la.toString())
+            .arg(m_lp)
+            .arg(m_pa.toString())
+            .arg(m_pp),
+    1,
+    objectName()
+  });
+}
+
+void SocketFTS::disconnect()
+{
+  // Tell the FTS to stop sending before closing the UDP socket.
+  if (state() == QAbstractSocket::BoundState && !m_pa.isNull() && m_pp != 0) {
+    stopStreaming();
+  }
+  close();
+
+  emit logMessage({
+    "Socket disconnected",
+    1,
+    objectName()
+  });
 }
 
 void SocketFTS::startStreaming()
@@ -70,66 +161,6 @@ void SocketFTS::bias()
   writeDatagram(request, m_pa, m_pp);
 
   emit streamReset();
-}
-
-void SocketFTS::connectDevice(const QVariantMap& config)
-{
-  const QHostAddress localAddress(config.value("localAddress").toString());
-  const QHostAddress peerAddress(config.value("peerAddress").toString());
-
-  bool localPortOk = false;
-  bool peerPortOk = false;
-
-  const uint localPort = config.value("localPort").toUInt(&localPortOk);
-  const uint peerPort = config.value("peerPort").toUInt(&peerPortOk);
-
-  if (localAddress.isNull()
-      || peerAddress.isNull()
-      || !localPortOk
-      || !peerPortOk
-      || localPort > 65535
-      || peerPort == 0
-      || peerPort > 65535) {
-
-    emit logMessage({
-      "Invalid socket configuration",
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  if (state() != QAbstractSocket::UnconnectedState)
-    close();
-
-  m_la = localAddress;
-  m_lp = static_cast<quint16>(localPort);
-
-  m_pa = peerAddress;
-  m_pp = static_cast<quint16>(peerPort);
-
-  if (!bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
-    emit logMessage({
-      QString("Bind failed: %1").arg(errorString()),
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  emit logMessage({
-    QString("Socket configured and bound:<br/>"
-            "&nbsp;&nbsp;Local: &nbsp;[%1] : [%2]<br/>"
-            "&nbsp;&nbsp;Peer: &nbsp;&nbsp;[%3] : [%4]")
-            .arg(m_la.toString())
-            .arg(m_lp)
-            .arg(m_pa.toString())
-            .arg(m_pp),
-    1,
-    objectName()
-  });
 }
 
 void SocketFTS::onReadyRead()

@@ -13,6 +13,7 @@ Item {
   id: root
 
   required property var model
+  required property var runners
   property int selectedRow: -1
 
   implicitWidth: table.contentWidth
@@ -102,11 +103,15 @@ Item {
         required property int row
         required property int column
         required property var display
-        required property int status
 
-        color: row === root.selectedRow
-            ? Styles.background.dp12
-            : "transparent"
+        readonly property var runner:
+          cell.row >= 0 && cell.row < root.runners.length
+            ? root.runners[cell.row] : null
+
+        readonly property bool connected:
+          runner && runner.isConnected
+
+        color: row === root.selectedRow ? Styles.background.dp12 : "transparent"
 
         TextInput {
           visible:
@@ -133,8 +138,7 @@ Item {
         }
 
         Row {
-          visible:
-            cell.column === Backend.DeviceProfileModel.StatusColumn
+          visible: cell.column === Backend.DeviceProfileModel.StatusColumn
 
           anchors {
             left: parent.left
@@ -150,17 +154,14 @@ Item {
             height: 12
             radius: width / 2
 
-            color:
-              cell.status === Backend.DeviceProfileModel.Disconnected
-                ? Styles.maxColor
-                : Styles.minColor
+            color: cell.connected ? Styles.minColor : Styles.maxColor
           }
 
           TextInput {
             width: contentWidth
             height: parent.height
 
-            text: cell.display ?? ""
+            text: cell.connected ? qsTr("Connected") : qsTr("Disconnected")
 
             readOnly: true
             selectByMouse: true

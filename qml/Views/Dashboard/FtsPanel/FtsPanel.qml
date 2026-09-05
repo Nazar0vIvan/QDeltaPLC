@@ -38,6 +38,7 @@ QxGroupBox {
             ftsRunner.invoke("stopStreaming");
           } else {
             ftsRunner.invoke("startStreaming");
+            console.log("start pressed")
           }
         }
       }

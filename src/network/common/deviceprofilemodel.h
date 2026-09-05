@@ -37,16 +37,9 @@ public:
     StatusRole = Qt::UserRole + 1
   };
 
-  enum Driver {
-    UnknownDriver,
-    PlcDriver,
-    RsiDriver,
-    FtsDriver,
-    VfdDriver
-  };
-  Q_ENUM(Driver)
-
   explicit DeviceProfileModel(QObject* parent = nullptr);
+
+  Q_INVOKABLE QVariantMap device(int row) const;
 
   int rowCount(const QModelIndex& parent = {}) const override;
   int columnCount(const QModelIndex& parent = {}) const override;
@@ -56,8 +49,6 @@ public:
   QHash<int, QByteArray> roleNames() const override;
 
   QStringList names() const;
-
-  Q_INVOKABLE QVariantMap device(int row) const;
 
   void setStatus(int row, Status status);
 
@@ -71,14 +62,12 @@ private:
     int peerPort = -1;
     QString protocol;
     QString openMode;
-    Driver driver = UnknownDriver;
     Status status = Disconnected;
   };
 
   void load();
 
   static QString statusText(Status status);
-  static Driver driverFromString(const QString& value);
 
   QVector<Device> m_devices;
 };

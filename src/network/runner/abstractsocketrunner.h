@@ -18,8 +18,12 @@ public:
   ~AbstractSocketRunner() override;
 
   Q_INVOKABLE void invoke(const QString& method, const QVariantMap& args = {});
+  Q_PROPERTY(bool isConnected READ isConnected NOTIFY socketStateChanged)
+  Q_PROPERTY(bool isDisconnected READ isDisconnected NOTIFY socketStateChanged)
 
-  int socketState() const { return m_socketState; }
+  int socketState() const;
+  bool isConnected() const;
+  bool isDisconnected() const;
 
 signals:
   void logMessage(const LoggerMessage& msg);

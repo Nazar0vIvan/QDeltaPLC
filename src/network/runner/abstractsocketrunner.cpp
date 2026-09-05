@@ -124,6 +124,22 @@ void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args
   else emit logMessage({method + ": invoke failed", 0, m_socket->objectName()});
 }
 
+int AbstractSocketRunner::socketState() const
+{
+{ return m_socketState; }
+}
+
+bool AbstractSocketRunner::isConnected() const
+{
+  return m_socketState == QAbstractSocket::ConnectedState
+      || m_socketState == QAbstractSocket::BoundState;
+}
+
+bool AbstractSocketRunner::isDisconnected() const
+{
+  return m_socketState == QAbstractSocket::UnconnectedState;
+}
+
 void AbstractSocketRunner::start()
 {
   if (m_thread && !m_thread->isRunning()) {

@@ -14,7 +14,32 @@ Item  {
     id: devProfModel
   }
 
-  readonly property var selectedDevice: devProfModel.device(cbDevice.currentIndex)
+  readonly property var runners: [
+    plcRunner, // 0 - PLC
+    rsiRunner, // 1 - RSI
+    ftsRunner, // 2 - FTS
+    null       // 3 - VFD (replace with vfdRunner when available)
+  ]
+
+  readonly property var currentRunner:
+      cbDevice.currentIndex >= 0 && cbDevice.currentIndex < runners.length ?
+      runners[cbDevice.currentIndex] : null
+
+  readonly property var selectedDevice:
+    devProfModel.device(cbDevice.currentIndex)
+
+  function currentSocketConfig() {
+    const config = {
+      localAddress: laInput.text,
+      localPort: Number(lpInput.text),
+      peerAddress: paInput.text
+    }
+
+    if (root.selectedDevice.peerPort >= 0)
+      config.peerPort = Number(ppInput.text)
+
+    return config
+  }
 
   ColumnLayout {
     id: cl
@@ -129,10 +154,37 @@ Item  {
       QxButton {
         id: btnCon
 
-        text: "Connect"
+        readonly property var runner: root.currentRunner
+
+
         Layout.alignment: Qt.AlignBottom
         Layout.bottomMargin: 3
 
+        checked: runner && runner.isConnected
+
+        text: checked ? qsTr("Disconnect") : qsTr("Connect")
+
+        enabled: {
+          if (!runner) return false
+          // Disconnect must always remain available.
+          if (runner.isConnected) return true
+          // Don't allow another request during a transitional socket state.
+          if (!runner.isDisconnected) return false
+
+          return laInput.acceptableInput
+            && lpInput.acceptableInput
+            && paInput.acceptableInput
+            && (root.selectedDevice.peerPort < 0 || ppInput.acceptableInput)
+        }
+        onClicked: {
+          if (!runner) return
+
+          if (runner.isConnected) {
+            runner.invoke("disconnect")
+          } else {
+            runner.invoke("connect", root.currentSocketConfig())
+          }
+        }
       }
     }
 
@@ -148,6 +200,7 @@ Item  {
 
         Layout.fillWidth: true
         model: devProfModel
+        runners: root.runners
         selectedRow: cbDevice.currentIndex
       }
 

@@ -2,6 +2,7 @@
 	"devices": [
 		{
 			"name": "PLC AT332T",
+			"driver": "plc",
 			"protocol": "TCP",
 			"openMode": "R/W",
 			"localAddress": "192.168.1.100",
@@ -11,6 +12,7 @@
 		},
 		{
 			"name": "KUKA RSI 3.3.1",
+			"driver": "rsi",
 			"protocol": "XML/UDP",
 			"openMode": "R/W",
 			"localAddress": "192.168.1.100",
@@ -20,6 +22,7 @@
 		},
 		{	
 			"name": "Schunk FTS Delta-660-60-S",
+			"driver": "fts",
 			"protocol": "RDT/UDP",
 			"openMode": "R",
 			"localAddress": "192.168.1.100",
@@ -29,6 +32,7 @@
 		},
 		{
 			"name": "VFD ATV320U40N4C",
+			"driver": "vfd",
 			"protocol": "Modbus TCP",
 			"openMode": "R/W",
 			"localAddress": "192.168.1.100",

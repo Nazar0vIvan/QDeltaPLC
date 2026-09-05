@@ -147,11 +147,10 @@ Control {
         id: btnConnect
 
         enabled: plcRunner
-        checked: plcRunner && plcRunner.socketState === 3
+        checked: plcRunner && plcRunner.Try  === 3
         text: checked ? "Disconnect" : "Connect"
         onClicked: {
-          if (!plcRunner)
-            return
+          if (!plcRunner) return
           if (checked) {
             plcRunner.invoke("disconnectFromHost")
           } else {

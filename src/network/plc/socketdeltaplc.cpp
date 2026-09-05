@@ -4,35 +4,72 @@ SocketDeltaPLC::SocketDeltaPLC(const QString& name, QObject* parent) : QTcpSocke
 {
   this->setObjectName(name);
 
-  connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::onErrorOccurred);
-  connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::onStateChanged);
-  connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
-  connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
+  QObject::connect(this, &SocketDeltaPLC::errorOccurred, this, &SocketDeltaPLC::onErrorOccurred);
+  QObject::connect(this, &SocketDeltaPLC::stateChanged,  this, &SocketDeltaPLC::onStateChanged);
+  QObject::connect(this, &SocketDeltaPLC::connected,     this, &SocketDeltaPLC::onConnected);
+  QObject::connect(this, &SocketDeltaPLC::readyRead,     this, &SocketDeltaPLC::onReadyRead);
 
-  connect(this, &SocketDeltaPLC::logMessage, Logger::instance(), &Logger::push);
+  QObject::connect(this, &SocketDeltaPLC::logMessage, Logger::instance(), &Logger::push);
+}
+
+void SocketDeltaPLC::connect(const QVariantMap& config)
+{
+  if (!config.isEmpty()) {
+    const QHostAddress peerAddress(config.value("peerAddress").toString());
+    bool peerPortOk = false;
+    const uint peerPort = config.value("peerPort").toUInt(&peerPortOk);
+
+    if (peerAddress.isNull()
+      || !peerPortOk
+      || peerPort == 0
+      || peerPort > 65535) {
+
+      emit logMessage({
+        "Invalid socket configuration",
+        0,
+        objectName()
+      });
+
+      return;
+    }
+
+    m_pa = peerAddress;
+    m_pp = static_cast<quint16>(peerPort);
+  }
+
+  if (m_pa.isNull() || m_pp == 0) {
+    emit logMessage({
+      "Peer endpoint is not configured",
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  if (!tearDownToUnconnected()) {
+    emit logMessage({
+      "Failed to reset socket",
+      0,
+      objectName()
+    });
+
+    return;
+  }
+
+  // TCP: no local bind.
+  QTcpSocket::connectToHost(m_pa,m_pp, QIODevice::ReadWrite);
+}
+
+void SocketDeltaPLC::disconnect()
+{
+  QTcpSocket::disconnectFromHost();
 }
 
 SocketDeltaPLC::~SocketDeltaPLC() {}
 
 // Q_INVOKABLE
 
-void SocketDeltaPLC::connectToHost()
-{
-  if (m_pa.isNull()) {
-    emit logMessage({"Peer address is not set", 0, objectName()});
-    return;
-  }
-  if (!m_pp) {
-    emit logMessage({"Peer port is not set", 0, objectName()});
-    return;
-  }
-  QTcpSocket::connectToHost(m_pa, m_pp, QAbstractSocket::ReadWrite);
-}
-
-void SocketDeltaPLC::disconnectFromHost()
-{
-  QTcpSocket::disconnectFromHost();
-}
 
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
@@ -51,75 +88,6 @@ void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
   emit logMessage({ (n == -1 ? "No bytes were written" :
                     "TX: " + tosend.toHex(' ').toUpper() + " (" + QString::number(n) + " bytes)"),
                     (n == -1 ? 0 : 4), objectName()});
-}
-
-void SocketDeltaPLC::connectDevice(const QVariantMap &config)
-{
-  const QHostAddress localAddress(config.value("localAddress").toString());
-  const QHostAddress peerAddress(config.value("peerAddress").toString());
-  bool localPortOk = false;
-  bool peerPortOk = false;
-
-  const uint localPort = config.value("localPort").toUInt(&localPortOk);
-
-  const uint peerPort = config.value("peerPort").toUInt(&peerPortOk);
-
-  if (localAddress.isNull()
-      || peerAddress.isNull()
-      || !localPortOk
-      || !peerPortOk
-      || localPort > 65535
-      || peerPort == 0
-      || peerPort > 65535) {
-
-    emit logMessage({
-      "Invalid socket configuration",
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  // Reset an existing/unfinished connection before applying new config.
-  if (!tearDownToUnconnected()) {
-    emit logMessage({
-      "Failed to reset socket",
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  m_la = localAddress;
-  m_lp = static_cast<quint16>(localPort);
-  m_pa = peerAddress;
-  m_pp = static_cast<quint16>(peerPort);
-
-  if (!QTcpSocket::bind(m_la, m_lp)) {
-    emit logMessage({
-      QString("Bind failed: %1").arg(errorString()),
-      0,
-      objectName()
-    });
-
-    return;
-  }
-
-  emit logMessage({
-    QString("Socket configured:<br/>"
-            "&nbsp;&nbsp;Local: &nbsp;[%1] : [%2]<br/>"
-            "&nbsp;&nbsp;Peer: &nbsp;&nbsp;[%3] : [%4]")
-            .arg(m_la.toString())
-            .arg(m_lp)
-            .arg(m_pa.toString())
-            .arg(m_pp),
-    1,
-    objectName()
-  });
-
-  connectToHost();
 }
 
 // PUBLIC SLOTS
@@ -160,7 +128,7 @@ bool SocketDeltaPLC::tearDownToUnconnected(int ms)
   if (state() == QAbstractSocket::UnconnectedState)
     return true;
 
-  disconnectFromHost();
+  QTcpSocket::disconnectFromHost();
   if (state() == QAbstractSocket::UnconnectedState)
     return true;
 
