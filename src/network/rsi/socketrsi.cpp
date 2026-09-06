@@ -319,23 +319,6 @@ void SocketRSI::generateTrajectory()
 
 }
 
-/*
-QVariantMap SocketRSI::loadBladeJson(const QVariantMap &data)
-{
-  const BladeJsonLoader::LoadResult res = BladeJsonLoader::load(data);
-
-  if (!res.ok) {
-      emit logMessage({res.error, 0, objectName()});
-      return { {"path", ""}, {"parseResult", false} };
-    }
-
-  m_af = res.airfoil;
-
-  emit logMessage({"JSON file is loaded successfully", 1, objectName()});
-  return { {"path", res.path}, {"parseResult", true} };
-}
-*/
-
 void SocketRSI::startStreaming()
 {
   m_offsetIdx = 0;
@@ -363,7 +346,7 @@ void SocketRSI::onReadyRead()
 {
   while (hasPendingDatagrams()) {
       QNetworkDatagram dg = receiveDatagram();
-      pushRxLog(dg);
+			// pushRxLog(dg);
 
       if (m_isFirstRead) {
           handleFirstRead(dg);
@@ -374,7 +357,7 @@ void SocketRSI::onReadyRead()
       const RsiTxFrame tx = makeTxFrame(resp.ipoc);
 
       const QByteArray reply = subsXml(tx);
-      pushTxLog(reply);
+			// pushTxLog(reply);
 
       writeDatagram(reply, m_pa, m_pp);
     }

@@ -14,12 +14,12 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReq(const QVariantMap& re
   return { header + payload };
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray& resp, quint8 exp_tid) const
+PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray& resp) const
 {
   if (resp.size() < HEADER_SIZE)
     return { QVariantMap(), BAD_MLEN, resp.size() };
 
-  ParseResult hdrRes = parseHeader(resp.left(HEADER_SIZE), exp_tid);
+	ParseResult hdrRes = parseHeader(resp.left(HEADER_SIZE));
   if (!hdrRes.ok())
     return hdrRes;
 
@@ -28,16 +28,16 @@ PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray&
   if (resp.size() != RESP_SIZE)
     return { QVariantMap(), BAD_PLEN, resp.size()};
 
-  QByteArray payload = resp.mid(HEADER_SIZE, header.len);
-  switch (header.type) {
-    case Type::RESP_OK:
-      return parseRespOk(payload, exp_tid, header.len);
-    case Type::RESP_ERR:
-      return parseRespErr(payload);
-    case Type::CHG:
-      return parseStateChange(payload, header.len);
-    default:
-      return { QVariantMap(), BAD_RESP, header.type };
+	QByteArray payload = resp.mid(HEADER_SIZE, header.len);
+	switch (header.type) {
+		case Type::RESP_OK:
+			return parseRespOk(payload, header.tid, header.len);
+		case Type::RESP_ERR:
+			return parseRespErr(payload, header.tid);
+		case Type::CHG:
+			return parseStateChange(payload, header.len);
+		default:
+			return { QVariantMap(), BAD_RESP, header.type };
   }
 }
 
@@ -133,9 +133,9 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReqPayload(const QVariant
         return { QVariant(), BAD_VAR, {} };
       quint8 attr = static_cast<quint8>(req.value("attr").toUInt());
       ds << var << attr;
+			break;
     }
-    default:
-      break;
+		default: break;
   }
   return { payload };
 }
@@ -148,7 +148,7 @@ QByteArray PlcMessageManager::buildHeader(Type type, quint8 tid, quint8 len) con
   return out;
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& headerBytesIn, quint8 exp_tid) const
+PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& headerBytesIn) const
 {
   if (headerBytesIn.size() < HEADER_SIZE) {
     return { QVariant(), BAD_MLEN, headerBytesIn.size() };
@@ -169,9 +169,6 @@ PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& 
 
   if (!isValidType(h.type))
     return {QVariant::fromValue(h), BAD_TYPE, h.type};
-
-  if (h.type != Type::CHG && h.tid != exp_tid)
-    return { QVariant::fromValue(h), BAD_TID, h.tid };
 
   return { QVariant::fromValue(h) };
 }
@@ -254,24 +251,27 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
         return {QVariantMap(), BAD_VAR, var};
       out["var"]  = var;
       out["attr"] = attr;
+			return { out };
     }
     default:
       return { QVariant(), BAD_CMD, cmd };
   }
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray& payload) const
+PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray& payload, quint8 tid) const
 {
-  QDataStream ds(payload);
-  ds.setByteOrder(QDataStream::BigEndian);
-  quint8 cmd, err; quint16 code;
-  ds >> cmd >> err >> code;
+	QDataStream ds(payload);
+	ds.setByteOrder(QDataStream::BigEndian);
+	quint8 cmd, err; quint16 code;
+	ds >> cmd >> err >> code;
 
-  QVariantMap out;
-  out["cmd"]  = cmd;
-  out["err"]  = err;
-  out["code"] = code;
-  return { out };
+	QVariantMap out;
+	out["type"] = Type::RESP_ERR;
+	out["tid"]  = tid;
+	out["cmd"]  = cmd;
+	out["err"]  = err;
+	out["code"] = code;
+	return { out };
 }
 
 PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteArray& payload, quint8 paylen) const
@@ -301,7 +301,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
     case CELL_STATE: {
       quint8 state;
       ds >> state;
-      out["state"] = bool(state);
+			out["cellState"] = state;
       return { out };
     }
     default:

@@ -73,17 +73,19 @@ SocketDeltaPLC::~SocketDeltaPLC() {}
 
 void SocketDeltaPLC::writeMessage(const QVariantMap& msg)
 {
-  const PlcMessageManager::ParseResult buildReqResult = m_mgr.buildReq(msg, ++m_nextTid);
+	const quint8 tid = static_cast<quint8>(m_nextTid + 1);
+	const PlcMessageManager::ParseResult built = m_mgr.buildReq(msg, tid);
 
-  if (!buildReqResult.ok()) {
-    emit logMessage({ "WRITE ERROR: " + QString::number(buildReqResult.error), 0, objectName() });
-    return;
-  }
+	if (!built.ok()) {
+		emit logMessage({ "WRITE ERROR: " + QString::number(built.error), 0, objectName() });
+		return;
+	}
 
-  QByteArray tosend = buildReqResult.data.toByteArray();
+	m_nextTid = tid;
+	m_pend.insert(tid);
+
+	QByteArray tosend = built.data.toByteArray();
   const qint64 n = write(swapBytes(tosend));
-
-  qDebug() << "WRITE: " << tosend.toHex(' ').toUpper();
 
   emit logMessage({ (n == -1 ? "No bytes were written" :
                     "TX: " + tosend.toHex(' ').toUpper() + " (" + QString::number(n) + " bytes)"),
@@ -97,7 +99,11 @@ void SocketDeltaPLC::onErrorOccurred(QAbstractSocket::SocketError socketError) {
 }
 
 void SocketDeltaPLC::onStateChanged(QAbstractSocket::SocketState state) {
-  emit logMessage({stateToString(state), 2, objectName()});
+	if (state == QAbstractSocket::UnconnectedState) {
+		m_rx.clear();
+		m_pend.clear();
+	}
+	emit logMessage({stateToString(state), 2, objectName()});
 }
 
 void SocketDeltaPLC::onConnected()
@@ -108,17 +114,31 @@ void SocketDeltaPLC::onConnected()
 
 void SocketDeltaPLC::onReadyRead()
 {
-  const QByteArray toread = swapBytes(readAll());
-  qDebug() << "READ: " << toread.toHex(' ').toUpper();
+	m_rx.append(readAll());
 
-  PlcMessageManager::ParseResult parsedRespResult = m_mgr.parseMessage(toread, m_nextTid);
+	while (m_rx.size() >= PlcMessageManager::RESP_SIZE) {
+		const QByteArray frame = swapBytes(m_rx.left(PlcMessageManager::RESP_SIZE));
+		m_rx.remove(0, PlcMessageManager::RESP_SIZE);
 
-  if (!parsedRespResult.ok()) {
-    emit logMessage({ "READ ERROR: " + QString::number(parsedRespResult.error), 0, objectName() });
-    return;
-  }
+		const PlcMessageManager::ParseResult parsed = m_mgr.parseMessage(frame);
 
-  emit dataReady(parsedRespResult.data.toMap());
+		if (!parsed.ok()) {
+			emit logMessage({ "READ ERROR: " + QString::number(parsed.error), 0, objectName() });
+			continue;
+		}
+
+		const QVariantMap data = parsed.data.toMap();
+
+		if (data.contains("tid")) {
+			const quint8 tid = static_cast<quint8>(data.value("tid").toUInt());
+			if (!m_pend.remove(tid)) {
+				emit logMessage({ "Unexpected transaction id " + QString::number(tid), 0, objectName() });
+				continue;
+			}
+		}
+
+		emit dataReady(data);
+	}
 }
 
 // PRIVATE

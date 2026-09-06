@@ -1,5 +1,8 @@
 #include "logger.h"
 
+#include <QDateTime>
+#include <QMap>
+
 Logger::Logger(QObject *parent) : QObject(parent) {}
 
 void Logger::push(const LoggerMessage& msg)
@@ -12,7 +15,7 @@ void Logger::push(const LoggerMessage& msg)
     {4, "[WRITE] "}
   };
 
-  QString text;
+	QString text = "";
   text.append(QDateTime::currentDateTime().toString("[yyyy-MM-dd hh:mm:ss] "));
   text.append(type2string[msg.type] + msg.initiator + ": " + msg.text);
 

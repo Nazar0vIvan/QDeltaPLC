@@ -64,7 +64,7 @@ App {
 
         Dashboard { id: dashboard }
 
-        Options { id: options }
+        // Options { id: options }
 
         Network { id: network }
       }

@@ -10,7 +10,7 @@ Control {
   id: root
 
   property alias title: header.text
-  property var states;
+  property var ledStates: []
 
   topPadding: 40; bottomPadding: 10
   leftPadding: 10; rightPadding: 10
@@ -33,28 +33,30 @@ Control {
     implicitHeight: 2*cellHeight
 
     model: ListModel {
-      ListElement { label: "Mains";  color: "yellow"; }
-      ListElement { label: "RUN";    color: "green";  }
-      ListElement { label: "LEDG2";  color: "green";  }
-      ListElement { label: "LEDR1";  color: "red";    }
-      ListElement { label: "LEDR2";  color: "red";    }
-      ListElement { label: "LEDR3";  color: "red";    }
+      ListElement { label: "Mains";  ledColor: "yellow"; }
+      ListElement { label: "RUN";    ledColor: "green";  }
+      ListElement { label: "LEDG2";  ledColor: "green";  }
+      ListElement { label: "LEDR1";  ledColor: "red";    }
+      ListElement { label: "LEDR2";  ledColor: "red";    }
+      ListElement { label: "LEDR3";  ledColor: "red";    }
     }
 
     delegate: Item {
+      id: cell
+
+      required property int index
+      required property string label
+      required property color ledColor
+
       width: gv.cellWidth
       height: gv.cellHeight
 
-      property bool isOn: !!root.states[index]
-
       QxLed {
-        id: led
-
         anchors.centerIn: parent
-        ledColor: model.color
-        tag: model.label
+        ledColor: cell.ledColor
+        tag: cell.label
         size: gv.ledSize
-        isOn: parent.isOn
+        isOn: !!root.ledStates[cell.index]
       }
     }
   }

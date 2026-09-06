@@ -18,6 +18,8 @@ class PlcMessageManager : public QObject
 public:
   explicit PlcMessageManager(QObject* parent=nullptr);
 
+	static constexpr int RESP_SIZE = 32;
+
   enum MessageError : quint8 { // E, F
     BAD_MAGIC = 0xE0, // 224
     BAD_VER   = 0xE1, // 225
@@ -73,6 +75,12 @@ public:
   };
   Q_ENUM(CHG_TYPE)
 
+	enum CELL : quint8 {
+		IDLE = 0xD0,
+		RUN  = 0xD3,
+		FIN  = 0xDC
+	};
+
   enum DEV : quint16 {
     X = 0x0058,
     Y = 0x0059,
@@ -97,15 +105,15 @@ public:
   };
 
   ParseResult buildReq(const QVariantMap& req, quint8 tid) const;
-  ParseResult parseMessage(const QByteArray& message, quint8 exp_tid) const;
+	ParseResult parseMessage(const QByteArray& message) const;
 
 private:
   ParseResult buildReqPayload(const QVariantMap& req) const;
   QByteArray buildHeader(Type type, quint8 tid, quint8 len) const;
 
-  ParseResult parseHeader(const QByteArray& headerBytesIn, quint8 exp_tid) const;
-  ParseResult parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const;
-  ParseResult parseRespErr(const QByteArray& payload) const;
+	ParseResult parseHeader(const QByteArray& headerBytesIn) const;
+	ParseResult parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const;
+	ParseResult parseRespErr(const QByteArray& payload, quint8 tid) const;
   ParseResult parseStateChange(const QByteArray &payload, quint8 paylen) const;
 
   bool isValidType(quint8 type) const;
@@ -119,7 +127,6 @@ private:
   static constexpr quint16 MAGIC = 0xAA55;
   static constexpr quint8  VER   = 0x01;
   static constexpr int HEADER_SIZE = 6; // bytes actually written
-  static constexpr int RESP_SIZE = 32;  // resp size in bytes
 
   DEV str2dev(const QString& strDev) const {
     const QHash<QString, DEV> hash = {

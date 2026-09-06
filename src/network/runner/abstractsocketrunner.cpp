@@ -1,11 +1,46 @@
 #include "network/runner/abstractsocketrunner.h"
 
-#include <QMetaMethod>
-#include <QMetaObject>
 #include <QMetaType>
+#include <QStringList>
+#include <QThread>
 
 #include <algorithm>
 #include <utility>
+
+namespace {
+
+QHash<QString, QMetaMethod> ownInvokables(const QObject* sock)
+{
+	QHash<QString, QMetaMethod> api;
+	const QMetaObject* mo = sock->metaObject();
+
+	for (int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
+		const QMetaMethod mm = mo->method(i);
+
+		if (mm.methodType() != QMetaMethod::Method) continue;
+		if (mm.access() != QMetaMethod::Public) continue;
+
+		const int retId = mm.returnMetaType().id();
+		if (retId != QMetaType::Void && retId != QMetaType::QVariantMap) continue;
+
+		if (mm.parameterCount() > 1) continue;
+		if (mm.parameterCount() == 1
+				&& mm.parameterMetaType(0) != QMetaType::fromType<QVariantMap>()) continue;
+
+		api.insert(QString::fromLatin1(mm.name()), mm);
+	}
+
+	return api;
+}
+
+QString apiList(const QHash<QString, QMetaMethod>& api)
+{
+	QStringList names = api.keys();
+	std::sort(names.begin(), names.end());
+	return names.join(QStringLiteral(", "));
+}
+
+} // namespace
 
 AbstractSocketRunner::AbstractSocketRunner(QAbstractSocket* socket, QObject* parent) : QObject(parent)
 {
@@ -13,7 +48,6 @@ AbstractSocketRunner::AbstractSocketRunner(QAbstractSocket* socket, QObject* par
   m_thread->setObjectName(QStringLiteral("SocketRunnerThread"));
 
   attachSocket(socket);
-  m_api = invokableMethodNames();
 
   connect(this, &AbstractSocketRunner::logMessage, Logger::instance(), &Logger::push);
 }
@@ -25,22 +59,7 @@ AbstractSocketRunner::~AbstractSocketRunner()
   stop(); // this is a fallback in case if runner is destroyed manually (not by app closing)
 }
 
-
-bool AbstractSocketRunner::allowed(const QString& methodName) const
-{
-  return m_api.contains(methodName);
-}
-
-int AbstractSocketRunner::indexOfSignature(const QByteArray& sig) const
-{
-  if (!m_socket) return -1;
-  const QByteArray norm = QMetaObject::normalizedSignature(sig.constData());
-  for (auto* mo = m_socket->metaObject(); mo; mo = mo->superClass()) {
-    const int idx = mo->indexOfMethod(norm.constData());
-    if (idx >= 0) return idx;
-  }
-  return -1;
-}
+// PUBLIC
 
 void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args)
 {
@@ -49,96 +68,63 @@ void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args
     return;
   }
 
-  // Enforce allow-list (your m_api is built from the socket's own public invokables/slots)
-  if (!allowed(method)) {
-    emit logMessage({method + ": not allowed", 0, m_socket->objectName()});
-    return;
-  }
+	// Enforce allow-list (your m_api is built from the socket's own public invokables/slots)
+	const auto it = m_api.constFind(method);
+	if (it == m_api.cend()) {
+		emit logMessage({
+			QStringLiteral("invoke(\"%1\") is not exposed by %2. Exposed: %3")
+			.arg(method,
+					 QString::fromLatin1(m_socket->metaObject()->className()),
+					 apiList(m_api)),
+					 0,
+					m_socket->objectName()
+		});
+		return;
+	}
+
 
   // If somebody calls invoke() before start(), ensure thread is running.
-  if (m_thread && !m_thread->isRunning()) {
-    m_thread->start();
-  }
+	if (m_thread && !m_thread->isRunning()) m_thread->start();
 
-  const QByteArray name = method.toLatin1();
-  const bool haveArgs = !args.isEmpty();
+	const bool returnsMap = it->returnMetaType().id() == QMetaType::QVariantMap;
+	const bool sameThread = QThread::currentThread() == m_socket->thread();
 
-  // Find the method index (signature: () or (QVariantMap))
-  int idx = -1;
-  if (haveArgs) {
-    idx = indexOfSignature(name + "(QVariantMap)");
-  } else {
-    idx = indexOfSignature(name + "()");
-    if (idx < 0) {
-       // allow calling (QVariantMap) with empty args if that's the only signature
-      idx = indexOfSignature(name + "(QVariantMap)");
-    }
-  }
+	const Qt::ConnectionType ct = returnsMap
+		? (sameThread ? Qt::DirectConnection : Qt::BlockingQueuedConnection)
+		: (sameThread ? Qt::DirectConnection : Qt::QueuedConnection);
 
-  if (idx < 0) {
-    emit logMessage({method + ": no such invokable signature", 0, m_socket->objectName()});
-    return;
-  }
+	bool ok = false;
+	QVariantMap out;
 
-  const QMetaMethod mm = m_socket->metaObject()->method(idx);
-  const int retTypeId = mm.returnMetaType().id();
-  const bool returnsMap = retTypeId == QMetaType::QVariantMap;
-  const bool returnsVoid = retTypeId == QMetaType::Void;
+	if (returnsMap) {
+		ok = it->invoke(m_socket, ct, Q_RETURN_ARG(QVariantMap, out), Q_ARG(QVariantMap, args));
+	} else if (it->parameterCount() == 1) {
+		ok = it->invoke(m_socket, ct, Q_ARG(QVariantMap, args));
+	} else {
+		ok = it->invoke(m_socket, ct);
+	}
 
-  if (!returnsVoid && !returnsMap) {
-    emit logMessage({method + ": unsupported return type (only void/QVariantMap allowed)", 0, m_socket->objectName()});
-    return;
-  }
-
-  // if already on socket thread, do DirectConnection.
-  const bool sameThread = QThread::currentThread() == m_socket->thread();
-  const Qt::ConnectionType ct = returnsMap
-          ? (sameThread ? Qt::DirectConnection : Qt::BlockingQueuedConnection)
-          : (sameThread ? Qt::DirectConnection : Qt::QueuedConnection);
-
-  bool ok = false;
-  QVariantMap out;
-
-  if (returnsMap) {
-      ok = QMetaObject::invokeMethod(
-          m_socket,
-          name.constData(),
-          ct,
-          Q_RETURN_ARG(QVariantMap, out),
-          Q_ARG(QVariantMap, args)
-      );
-    } else {
-      if (mm.parameterCount() == 1) {
-          ok = QMetaObject::invokeMethod(
-              m_socket,
-              name.constData(),
-              ct,
-              Q_ARG(QVariantMap, args)
-          );
-        } else {
-          ok = QMetaObject::invokeMethod(m_socket, name.constData(), ct);
-        }
-    }
-
-  if (ok)  emit resultReady(method, out);
-  else emit logMessage({method + ": invoke failed", 0, m_socket->objectName()});
-}
-
-int AbstractSocketRunner::socketState() const
-{
-{ return m_socketState; }
+	if (ok) emit resultReady(method, out);
+	else emit logMessage({method + ": invoke failed", 0, m_socket->objectName()});
 }
 
 bool AbstractSocketRunner::isConnected() const
 {
-  return m_socketState == QAbstractSocket::ConnectedState
-      || m_socketState == QAbstractSocket::BoundState;
+	return m_socketState == QAbstractSocket::ConnectedState
+				 || m_socketState == QAbstractSocket::BoundState;
 }
 
 bool AbstractSocketRunner::isDisconnected() const
 {
-  return m_socketState == QAbstractSocket::UnconnectedState;
+	return m_socketState == QAbstractSocket::UnconnectedState;
 }
+
+int AbstractSocketRunner::socketState() const
+{
+	return m_socketState;
+}
+
+// SLOTS
 
 void AbstractSocketRunner::start()
 {
@@ -171,6 +157,8 @@ void AbstractSocketRunner::stop()
   }
 }
 
+// PRIVATE
+
 void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
 {
   Q_ASSERT(sock);
@@ -178,6 +166,7 @@ void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
   if (sock->parent()) sock->setParent(nullptr);
 
   m_socket = sock;
+	m_api = ownInvokables(sock);
 
   m_socketState = m_socket->state();
   emit socketStateChanged();
@@ -187,25 +176,6 @@ void AbstractSocketRunner::attachSocket(QAbstractSocket* sock)
   connect(m_thread, &QThread::started, this, &AbstractSocketRunner::onThreadStarted);
   connect(m_thread, &QThread::finished, this, &AbstractSocketRunner::onThreadFinished);
   connect(m_socket, &QAbstractSocket::stateChanged, this, &AbstractSocketRunner::onSocketStateChanged, Qt::QueuedConnection);
-}
-
-QStringList AbstractSocketRunner::invokableMethodNames() const
-{
-  QStringList out;
-  if (!m_socket) return out;
-
-  const QMetaObject* mo = m_socket->metaObject();
-
-  for (int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
-    const QMetaMethod mm = mo->method(i);
-    if (mm.methodType() == QMetaMethod::Method && mm.access() == QMetaMethod::Public) {
-      out << QString::fromLatin1(mm.name());
-    }
-  }
-
-  out.removeDuplicates();
-  std::sort(out.begin(), out.end());
-  return out;
 }
 
 // SLOTS

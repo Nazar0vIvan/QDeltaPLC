@@ -33,7 +33,7 @@ Item {
 
       Layout.preferredWidth: root.ledSize
       Layout.preferredHeight: root.ledSize
-      color: root.enabled ? Styles.foreground.disabled : root.isOn ? "green" : Styles.background.dp04
+      color: root.enabled ? (root.isOn ? "green" : Styles.background.dp04): Styles.foreground.disabled
       border{width: 1; color: Styles.background.dp12}
     }
     Text {

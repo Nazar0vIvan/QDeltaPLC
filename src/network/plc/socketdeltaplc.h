@@ -3,6 +3,7 @@
 #include <QTcpSocket>
 #include <QThread>
 #include <QVariant>
+#include <QSet>
 
 #include "logger.h"
 #include "plcmessagemanager.h"
@@ -12,13 +13,6 @@ class SocketDeltaPLC : public QTcpSocket
   Q_OBJECT
 
 public:
-  enum CELL_STATE : quint8 {
-    IDLE = 0xD0,
-    RUN  = 0xD3,
-    FIN  = 0xDC
-  };
-  Q_ENUM(CELL_STATE)
-
   SocketDeltaPLC(const QString& name, QObject *parent = nullptr);
   ~SocketDeltaPLC();
 
@@ -51,6 +45,7 @@ private:
   PlcMessageManager m_mgr;
   quint8 m_nextTid = 1;
 
-
+	QByteArray m_rx;
+	QSet<quint8> m_pend;
 };
 

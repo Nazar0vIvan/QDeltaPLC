@@ -1,12 +1,14 @@
 #pragma once
 
 #include <QAbstractSocket>
+#include <QHash>
+#include <QMetaMethod>
 #include <QObject>
-#include <QStringList>
-#include <QThread>
 #include <QVariantMap>
 
 #include "logger.h"
+
+class QThread;
 
 class AbstractSocketRunner : public QObject
 {
@@ -21,9 +23,9 @@ public:
   Q_PROPERTY(bool isConnected READ isConnected NOTIFY socketStateChanged)
   Q_PROPERTY(bool isDisconnected READ isDisconnected NOTIFY socketStateChanged)
 
-  int socketState() const;
   bool isConnected() const;
   bool isDisconnected() const;
+	int socketState() const;
 
 signals:
   void logMessage(const LoggerMessage& msg);
@@ -42,13 +44,10 @@ public slots:
 protected:
   QAbstractSocket* m_socket = nullptr;
   QThread* m_thread = nullptr;
-  QStringList m_api = {};
 
 private:
-  void attachSocket(QAbstractSocket* sock);
-  QStringList invokableMethodNames() const;
-  bool allowed(const QString& methodName) const;
-  int indexOfSignature(const QByteArray& sig) const;
+	void attachSocket(QAbstractSocket* sock);
 
-  int m_socketState = QAbstractSocket::UnconnectedState;
+	QHash<QString, QMetaMethod> m_api;
+	int m_socketState = QAbstractSocket::UnconnectedState;
 };

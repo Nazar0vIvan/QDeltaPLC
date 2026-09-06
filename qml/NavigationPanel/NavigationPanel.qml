@@ -17,7 +17,7 @@ Rectangle {
 
     model: ListModel {
       ListElement { iconPath: "qrc:/pics/dashboard.svg" }
-      ListElement { iconPath: "qrc:/pics/settings.svg" }
+      // ListElement { iconPath: "qrc:/pics/settings.svg" }
       ListElement { iconPath: "qrc:/pics/network.svg" }
     }
 
@@ -34,8 +34,8 @@ Rectangle {
     }
     highlight: Rectangle {
       y: lv.currentItem ? lv.currentItem.y : 0
-      width: lv.currentItem.width
-      height: lv.currentItem.height
+      width: lv.width
+      height: lv.width
       radius: 4
       color: Styles.primary.base
       opacity: 0.5

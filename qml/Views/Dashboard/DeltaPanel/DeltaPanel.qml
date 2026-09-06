@@ -19,7 +19,7 @@ QxGroupBox {
     function onDataReady(data) {
       console.log(Backend.PlcMessage.SNAPSHOT)
       if ((data.cmd && data.cmd === Backend.PlcMessage.SNAPSHOT) ||
-          (data.chg && data.chg === Backend.IOs)) {
+          (data.chg && data.chg === Backend.PlcMessage.IOs)) {
         moduleAP_P.refreshAll(data.x1, data.y1);
         moduleAP_T.refreshAll(data.x2, data.y2);
       }
@@ -49,7 +49,7 @@ QxGroupBox {
       Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
       title: "Door Panel"
 
-      states: [
+      ledStates: [
         plcRunner.socketState === 3,
         moduleAP_P.yStates[6],
         moduleAP_P.yStates[7],
@@ -95,13 +95,6 @@ QxGroupBox {
       yPlugged: [0, 0, 0, 0, 0, 1, 1, 1]
       moduleIndex: 2
     }
-
-    // DeltaNetwork {
-    //   id: deltaNetwork
-
-    //   Layout.alignment: Qt.AlignTop
-    //   title: "Network"
-    // }
 
     KukaAutExt {
       id: kukaAutExt

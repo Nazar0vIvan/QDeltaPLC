@@ -24,8 +24,6 @@ public:
   Q_INVOKABLE void bias();
   Q_INVOKABLE void connect(const QVariantMap& config);
   Q_INVOKABLE void disconnect();
-
-  Q_INVOKABLE void setLogRecordingEnabled(bool enabled);
   Q_INVOKABLE void startLogRecording();
   Q_INVOKABLE void stopLogRecording();
   Q_INVOKABLE void saveLogToDefaultFile();
@@ -55,6 +53,8 @@ private:
   void clearLog();
 
   void saveLogToFileImpl(const QString& filePath);
+
+	void setLogRecordingEnabled(bool enabled);
 
   QVector<RDTResponse> m_batch;
   QElapsedTimer m_emitTimer;

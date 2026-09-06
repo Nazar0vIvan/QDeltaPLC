@@ -114,12 +114,11 @@ private:
   bool m_isFirstRead = true;
 
   // --- bounded debug logs ---
-  static constexpr int MAX_LOG_FRAMES = 200;
-  QQueue<QNetworkDatagram> m_rxLog;
-  QQueue<QByteArray>       m_txXmlLog;
-
-  void pushRxLog(const QNetworkDatagram& dg);
-  void pushTxLog(const QByteArray& xml);
+	static constexpr int MAX_LOG_FRAMES = 200;
+	QQueue<QNetworkDatagram> m_rxLog;
+	QQueue<QByteArray>       m_txXmlLog;
+	void pushRxLog(const QNetworkDatagram& dg);
+	void pushTxLog(const QByteArray& xml);
 
   // --- timers ---
   QTimer m_cooldownTimer;

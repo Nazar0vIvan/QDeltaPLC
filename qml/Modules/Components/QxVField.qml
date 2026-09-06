@@ -12,7 +12,7 @@ Item {
   property alias spacing: cl.spacing
   default property alias content: slot.data
 
-  implicitWidth: cl.implicitWidth // Math.max(root.labelWidth, label.implicitWidth) + rl.spacing + slot.data.width
+  implicitWidth: cl.implicitWidth
   implicitHeight: cl.implicitHeight
 
   ColumnLayout {
@@ -23,7 +23,7 @@ Item {
     Label {
       id: label
 
-      Layout.preferredWidth: Math.max(root.labelWidth, implicitWidth)
+      Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
 
       color: Styles.foreground.medium

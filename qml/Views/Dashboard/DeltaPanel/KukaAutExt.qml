@@ -23,20 +23,20 @@ Control {
         root.isAutExt = !!data.x1[5];
       }
       if (data.chg && data.chg === Backend.PlcMessage.CELL_STATE) {
-        switch (data.state) {
-          case 0: {
+        switch (data.cellState) {
+          case Backend.PlcMessage.IDLE: {
             idle.color = "green";
             running.color = "red";
             done.color = "red";
             break;
           }
-          case 1: {
+          case Backend.PlcMessage.RUN: {
             idle.color = "red";
             running.color = "green";
             done.color = "red";
             break;
           }
-          case 2: {
+          case Backend.PlcMessage.FIN: {
             idle.color = "red";
             running.color = "red";
             done.color = "green";
@@ -45,6 +45,7 @@ Control {
         }
       }
     }
+
     function onSocketStateChanged() {
       if (plcRunner.socketState === 0) {
         root.isAutExt = false;
@@ -147,15 +148,11 @@ Control {
         id: btnConnect
 
         enabled: plcRunner
-        checked: plcRunner && plcRunner.Try  === 3
+        checked: plcRunner && plcRunner.isConnected
         text: checked ? "Disconnect" : "Connect"
         onClicked: {
           if (!plcRunner) return
-          if (checked) {
-            plcRunner.invoke("disconnectFromHost")
-          } else {
-            plcRunner.invoke("connectToHost")
-          }
+          plcRunner.invoke(checked ? "disconnect" : "connect")
         }
       }
 
