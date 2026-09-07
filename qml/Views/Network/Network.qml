@@ -15,10 +15,10 @@ Item  {
   }
 
   readonly property var runners: [
-    plcRunner, // 0 - PLC
-    rsiRunner, // 1 - RSI
-    ftsRunner, // 2 - FTS
-    null       // 3 - VFD (replace with vfdRunner when available)
+    Backend.Hub.device("plc"), // 0 - PLC
+    Backend.Hub.device("rsi"), // 1 - RSI
+    Backend.Hub.device("fts"), // 2 - FTS
+    null                       // 3 - VFD
   ]
 
   readonly property var currentRunner:

@@ -15,6 +15,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
   Charts
   Xml
 )
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 option(
   QDELTA_FAST_QML_BUILD
@@ -107,6 +108,7 @@ if(QDELTA_USE_HOT_RELOAD)
     URI qdeltaplc_qml_module
     VERSION 1.0
     ${QDELTA_QML_OPTIONS}
+
   )
 else()
   qt_add_qml_module(qdeltaplc
@@ -142,6 +144,7 @@ target_link_libraries(qdeltaplc PRIVATE
   Styles
   Components
 )
+target_link_libraries(qdeltaplc PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 

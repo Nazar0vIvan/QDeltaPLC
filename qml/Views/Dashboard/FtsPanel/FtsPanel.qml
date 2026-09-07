@@ -6,8 +6,12 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
+import QDelta.Backend 1.0 as Backend
+
 QxGroupBox {
   id: root
+
+  readonly property var fts: Backend.Hub.device("fts")
 
   implicitWidth: leftPadding + cl.implicitWidth + rightPadding
   implicitHeight: topPadding + cl.implicitHeight + bottomPadding
@@ -29,51 +33,33 @@ QxGroupBox {
       QxButton {
         id: btnStart
 
-        enabled: ftsRunner
-        checked: ftsRunner && ftsRunner.isStreaming
+        checked: root.fts.isStreaming
         text: checked ? "Stop" : "Start"
-        onClicked: {
-          if (!ftsRunner) return
-          if (checked) {
-            ftsRunner.invoke("stopStreaming");
-          } else {
-            ftsRunner.invoke("startStreaming");
-            console.log("start pressed")
-          }
-        }
+        onClicked: root.fts.invoke(checked ? "stopStreaming" : "startStreaming")
       }
 
       QxButton {
         id: btnBias
 
-        enabled: ftsRunner && ftsRunner.isStreaming
+        enabled: root.fts && root.fts.isStreaming
         text: "Bias"
-        onClicked: {
-          if (!ftsRunner) return;
-          ftsRunner.invoke("bias");
-        }
+        onClicked: root.fts.invoke("bias")
       }
 
       QxButton {
         id: btnLog
 
-        enabled: ftsRunner && ftsRunner.isStreaming
+        enabled: root.fts.isStreaming
         text: "Record"
-        onClicked: {
-          if (!ftsRunner) return;
-          ftsRunner.invoke("startLogRecording");
-        }
+        onClicked: root.fts.invoke("startLogRecording")
       }
 
       QxButton {
         id: btnSaveToFile
 
-        enabled: ftsRunner && !ftsRunner.isStreaming
+        enabled: !root.fts.isStreaming
         text: "Save"
-        onClicked: {
-          if (!ftsRunner) return;
-          ftsRunner.invoke("saveLogToDefaultFile");
-        }
+        onClicked: root.fts.invoke("saveLogToDefaultFile")
       }
     }
   }

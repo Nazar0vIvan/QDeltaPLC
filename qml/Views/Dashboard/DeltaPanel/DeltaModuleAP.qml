@@ -11,6 +11,7 @@ import QDelta.Backend 1.0 as Backend
 Control {
   id: root
 
+  readonly property var plc: Backend.Hub.device("plc")
   required property var xTags
   required property var yTags
   required property var xPlugged
@@ -151,7 +152,6 @@ Control {
         isOn: root.yStates[index]
 
         onClicked: {
-          if (!plcRunner) return;
           const desired = !isOn
           const { andMask, orMask} = root.buildMasks(index, desired);
           const args = {
@@ -160,7 +160,7 @@ Control {
              "andMask": andMask,
              "orMask": orMask
            };
-          plcRunner.invoke("writeMessage", args);
+          root.plc.invoke("writeMessage", args);
         }
       }
     }

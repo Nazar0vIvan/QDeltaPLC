@@ -6,10 +6,13 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
+import QDelta.Backend 1.0 as Backend
+
 Control {
   id: root
 
   property alias title: header.text
+  readonly property var fts: Backend.Hub.device("fts")
   readonly property real countFactor: 1000000
   readonly property int viewWidth: 240
   readonly property int rowHeight: 20
@@ -47,8 +50,8 @@ Control {
       color: Styles.secondary.base
 
       value: {
-        const _ = ftsRunner.sampleSeq;
-        const raw = ftsRunner.isStreaming ? ftsRunner.axisValue(model.tag) : 0;
+        const _ = root.fts.sampleSeq;
+        const raw = root.fts.isStreaming ? root.fts.axisValue(model.tag) : 0;
         return +(Number(raw) / root.countFactor).toFixed(3);
       }
     }

@@ -31,6 +31,8 @@ target_sources(qdeltaplc PRIVATE
 
   network/runner/abstractsocketrunner.h
   network/runner/abstractsocketrunner.cpp
+  network/runner/devicehub.h
+  network/runner/devicehub.cpp
   network/runner/ftsrunner.h
   network/runner/ftsrunner.cpp
   network/runner/plcrunner.h

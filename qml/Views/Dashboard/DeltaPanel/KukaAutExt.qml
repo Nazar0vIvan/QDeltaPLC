@@ -12,9 +12,10 @@ Control {
   id: root
 
   property bool isAutExt: false
+  readonly property var plc: Backend.Hub.device("plc")
 
   Connections {
-    target: plcRunner
+    target: root.plc
 
     function onDataReady(data) {
       if (data.cmd && data.cmd === Backend.PlcMessage.SNAPSHOT ||
@@ -47,7 +48,7 @@ Control {
     }
 
     function onSocketStateChanged() {
-      if (plcRunner.socketState === 0) {
+      if (root.plc.socketState === 0) {
         root.isAutExt = false;
         autExt.color = "red";
         idle.color = "red";
@@ -147,28 +148,23 @@ Control {
       QxButton {
         id: btnConnect
 
-        enabled: plcRunner
-        checked: plcRunner && plcRunner.isConnected
+        checked: root.plc.isConnected
         text: checked ? "Disconnect" : "Connect"
-        onClicked: {
-          if (!plcRunner) return
-          plcRunner.invoke(checked ? "disconnect" : "connect")
-        }
+        onClicked: root.plc.invoke(checked ? "disconnect" : "connect")
       }
 
       QxButton {
         id: btnStartCell
 
         text: "Start Program"
-        enabled: plcRunner && plcRunner.socketState === 3 && root.isAutExt
-
+        enabled: root.plc.socketState === 3 && root.isAutExt
         onClicked: {
           const args = {
             "cmd": Backend.PlcMessage.SET_VAR,
             "var": Backend.PlcMessage.START_CELL,
             "attr": 1 // PGNO
           }
-          plcRunner.invoke("writeMessage", args);
+          root.plc.invoke("writeMessage", args);
         }
       }
 
@@ -176,7 +172,7 @@ Control {
         id: btnSftOk
 
         text: "Safety Ok"
-        enabled: plcRunner && plcRunner.socketState === 3 && root.isAutExt
+        enabled: root.plc.socketState === 3 && root.isAutExt
       }
     }
   }

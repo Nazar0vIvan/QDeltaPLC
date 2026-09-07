@@ -10,14 +10,15 @@ import QDelta.Backend 1.0 as Backend
 QxGroupBox {
   id: root
 
+  readonly property var plc: Backend.Hub.device("plc")
+
   implicitWidth: leftPadding + rl.implicitWidth + rightPadding
   implicitHeight: topPadding + rl.implicitHeight + bottomPadding
 
   Connections {
-    target: plcRunner
+    target: root.plc
 
     function onDataReady(data) {
-      console.log(Backend.PlcMessage.SNAPSHOT)
       if ((data.cmd && data.cmd === Backend.PlcMessage.SNAPSHOT) ||
           (data.chg && data.chg === Backend.PlcMessage.IOs)) {
         moduleAP_P.refreshAll(data.x1, data.y1);
@@ -31,7 +32,7 @@ QxGroupBox {
       }
     }
     function onSocketStateChanged() {
-      if (plcRunner.socketState === 0) {
+      if (root.plc.socketState === 0) {
         moduleAP_P.refreshAll(Array(8).fill(false), Array(8).fill(false));
         moduleAP_T.refreshAll(Array(8).fill(false), Array(8).fill(false));
       }
@@ -50,7 +51,7 @@ QxGroupBox {
       title: "Door Panel"
 
       ledStates: [
-        plcRunner.socketState === 3,
+        root.plc.socketState === 3,
         moduleAP_P.yStates[6],
         moduleAP_P.yStates[7],
         moduleAP_T.yStates[5],
@@ -66,7 +67,7 @@ QxGroupBox {
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
 
-      enabled: plcRunner.socketState === 3
+      enabled: root.plc.socketState === 3
 
       xTags: ["RC_RDY1", "PERI_RDY", "STOPMESS", "PRO_ACT", "APPL_RUN", "EXT", "N/D", "N/D"]
       yTags: ["PGNO_0", "PGNO_1", "EXT_START", "CONF_MESS", "DRIVE_OFF", "DRIVES_ON", "RUN", "LEDG2"]
@@ -85,7 +86,7 @@ QxGroupBox {
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
 
-      enabled: plcRunner.socketState === 3
+      enabled: root.plc.socketState === 3
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
       yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDR1", "LEDR2", "LEDR3"]

@@ -22,6 +22,7 @@
 #include "network/plc/socketdeltaplc.h"
 #include "network/rsi/socketrsi.h"
 
+#include "network/runner/devicehub.h"
 #include "network/runner/abstractsocketrunner.h"
 #include "network/runner/ftsrunner.h"
 #include "network/runner/plcrunner.h"
@@ -44,22 +45,19 @@ int main(int argc, char* argv[])
   qRegisterMetaType<RDTResponse>("RDTResponse");
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
 
-  auto* socketDeltaPLC = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
-  PlcRunner plcRunner(socketDeltaPLC);
-  plcRunner.start();
+  auto* plcSock = new SocketDeltaPLC(QStringLiteral("PLC_AS332T"));
+  auto* ftsSock = new SocketFTS(QStringLiteral("FTS_Delta"));
+  auto* rsiSock = new SocketRSI(QStringLiteral("KRC4_RSI"));
 
-  auto* socketFTS = new SocketFTS(QStringLiteral("FTS_Delta"));
-  FtsRunner ftsRunner(socketFTS);
-  ftsRunner.start();
+  QObject::connect(ftsSock, &SocketFTS::dataSampleHFReady, rsiSock, &SocketRSI::setForce);
 
-  auto* socketRSI = new SocketRSI(QStringLiteral("KRC4_RSI"));
-  RsiRunner rsiRunner(socketRSI);
-  rsiRunner.start();
+  DeviceHub hub;
+  hub.add(QStringLiteral("plc"), new PlcRunner(plcSock));
+  hub.add(QStringLiteral("fts"), new FtsRunner(ftsSock));
+  hub.add(QStringLiteral("rsi"), new RsiRunner(rsiSock));
+  hub.startAll();
 
-  QObject::connect(&app, &QApplication::aboutToQuit, &plcRunner, &AbstractSocketRunner::stop);
-  QObject::connect(&app, &QApplication::aboutToQuit, &ftsRunner, &AbstractSocketRunner::stop);
-  QObject::connect(&app, &QApplication::aboutToQuit, &rsiRunner, &AbstractSocketRunner::stop);
-  QObject::connect(socketFTS, &SocketFTS::dataSampleHFReady, socketRSI, &SocketRSI::setForce);
+  QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);
 
   // QmlChartBridge chartBridge;
   // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
@@ -70,9 +68,6 @@ int main(int argc, char* argv[])
 
   QQmlContext* ctx = engine.rootContext();
   ctx->setContextProperty("logger", Logger::instance());
-  ctx->setContextProperty("plcRunner", &plcRunner);
-  ctx->setContextProperty("ftsRunner", &ftsRunner);
-  ctx->setContextProperty("rsiRunner", &rsiRunner);
   // ctx->setContextProperty("chartBridge", &chartBridge);
 
   qmlRegisterType<DeviceProfileModel>(
@@ -82,9 +77,12 @@ int main(int argc, char* argv[])
       "QDelta.Backend", 1, 0, "PlcMessage",
       "PlcMessage is not creatable from QML");
 
-  // engine.loadFromModule("qdeltaplc_qml_module", "Main");
-  // const QUrl mainQmlUrl = QUrl::fromLocalFile(QStringLiteral(QDELTA_QML_SOURCE_DIR "/Main.qml"));
-  // engine.load(mainQmlUrl);
+  qmlRegisterUncreatableType<AbstractSocketRunner>(
+      "QDelta.Backend", 1, 0, "SocketRunner",
+      "Get a runner from Hub.device()");
+
+  qmlRegisterSingletonInstance("QDelta.Backend", 1, 0, "Hub", &hub);
+
 
 #ifdef USE_FELGO_HOT_RELOAD
 

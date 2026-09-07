@@ -5,16 +5,19 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
+import QDelta.Backend 1.0 as Backend
+
 QxGroupBox {
   id: root
 
   property bool isValidBlade : false
+  readonly property var rsi: Backend.Hub.device("rsi")
 
   implicitWidth: leftPadding + cl.implicitWidth + rightPadding
   implicitHeight: topPadding + cl.implicitHeight + bottomPadding
 
   Connections {
-    target: rsiRunner
+    target: root.rsi
 
     function onTrajectoryReady() {
       btnStart.enabled = true;
@@ -62,38 +65,6 @@ QxGroupBox {
 
       spacing: 10
 
-      /*
-      QxHField {
-        id: uploadFileField
-
-        labelText: "Blade Json :"
-        height: 28
-        labelWidth: 70
-
-        QxUploadFile {
-          id: uploadFile
-
-          height: parent.height
-          fieldWidth: 245
-          imageSource: "qrc:/pics/open.svg"
-
-          onUploaded: path => {
-            rsiRunner.invoke("loadBladeJson", {"path": path})
-          }
-
-          Connections {
-            target: rsiRunner
-            function onResultReady(method, out) {
-              if (method === "loadBladeJson" && out) {
-                uploadFile.text = out.path
-                isValidBlade = out.parseResult
-              }
-            }
-          }
-        }
-      }
-      */
-
       RowLayout {
         id: rl2
 
@@ -103,26 +74,15 @@ QxGroupBox {
           id: genTraj
 
           text: "Generate Trajectory"
-          enabled: rsiRunner // && isValidBlade
-          onClicked: {
-            if (!rsiRunner) return;
-            rsiRunner.invoke("generateTrajectory");
-          }
+          onClicked: root.rsi.invoke("generateTrajectory")
         }
 
         QxButton {
           id: btnStart
 
           enabled: false
-          text: rsiRunner && rsiRunner.motionActive ? "Stop RSI" : "Start RSI"
-          onClicked: {
-            if (!rsiRunner) return;
-            if (rsiRunner.motionActive) {
-              rsiRunner.invoke("stopStreaming");
-            } else {
-              rsiRunner.invoke("startStreaming");
-            }
-          }
+          text: root.rsi.motionActive ? "Stop RSI" : "Start RSI"
+          onClicked: root.rsi.invoke(root.rsi.motionActive ? "stopStreaming" : "startStreaming")
         }
 
         Rectangle {
