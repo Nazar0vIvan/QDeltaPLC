@@ -31,7 +31,6 @@ signals:
   void logMessage(const LoggerMessage& msg);
   void bufferChanged();
   void socketStateChanged();
-  void resultReady(const QString& method, const QVariantMap& result);
 
 public slots:
   void start();
@@ -43,11 +42,11 @@ public slots:
 
 protected:
   QAbstractSocket* m_socket = nullptr;
-  QThread* m_thread = nullptr;
 
 private:
 	void attachSocket(QAbstractSocket* sock);
 
+	QThread* m_thread = nullptr;
 	QHash<QString, QMetaMethod> m_api;
 	int m_socketState = QAbstractSocket::UnconnectedState;
 };

@@ -21,7 +21,7 @@ QHash<QString, QMetaMethod> ownInvokables(const QObject* sock)
 		if (mm.access() != QMetaMethod::Public) continue;
 
 		const int retId = mm.returnMetaType().id();
-		if (retId != QMetaType::Void && retId != QMetaType::QVariantMap) continue;
+		if (retId != QMetaType::Void) continue;
 
 		if (mm.parameterCount() > 1) continue;
 		if (mm.parameterCount() == 1
@@ -71,47 +71,34 @@ void AbstractSocketRunner::invoke(const QString& method, const QVariantMap& args
 	// Enforce allow-list (your m_api is built from the socket's own public invokables/slots)
 	const auto it = m_api.constFind(method);
 	if (it == m_api.cend()) {
-		emit logMessage({
-			QStringLiteral("invoke(\"%1\") is not exposed by %2. Exposed: %3")
-			.arg(method,
-					 QString::fromLatin1(m_socket->metaObject()->className()),
-					 apiList(m_api)),
-					 0,
+		emit logMessage({QStringLiteral("invoke(\"%1\") is not exposed by %2. Exposed: %3").arg(
+					method,
+					QString::fromLatin1(m_socket->metaObject()->className()),
+					apiList(m_api)),
+					0,
 					m_socket->objectName()
 		});
 		return;
 	}
 
-
   // If somebody calls invoke() before start(), ensure thread is running.
 	if (m_thread && !m_thread->isRunning()) m_thread->start();
 
-	const bool returnsMap = it->returnMetaType().id() == QMetaType::QVariantMap;
-	const bool sameThread = QThread::currentThread() == m_socket->thread();
+	const Qt::ConnectionType ct = QThread::currentThread() == m_socket->thread()
+																? Qt::DirectConnection
+																: Qt::QueuedConnection;
 
-	const Qt::ConnectionType ct = returnsMap
-		? (sameThread ? Qt::DirectConnection : Qt::BlockingQueuedConnection)
-		: (sameThread ? Qt::DirectConnection : Qt::QueuedConnection);
+	const bool ok = it->parameterCount() == 1
+									? it->invoke(m_socket, ct, Q_ARG(QVariantMap, args))
+									: it->invoke(m_socket, ct);
 
-	bool ok = false;
-	QVariantMap out;
-
-	if (returnsMap) {
-		ok = it->invoke(m_socket, ct, Q_RETURN_ARG(QVariantMap, out), Q_ARG(QVariantMap, args));
-	} else if (it->parameterCount() == 1) {
-		ok = it->invoke(m_socket, ct, Q_ARG(QVariantMap, args));
-	} else {
-		ok = it->invoke(m_socket, ct);
-	}
-
-	if (ok) emit resultReady(method, out);
-	else emit logMessage({method + ": invoke failed", 0, m_socket->objectName()});
+	if (!ok) emit logMessage({method + ": invoke failed", 0, m_socket->objectName()});
 }
 
 bool AbstractSocketRunner::isConnected() const
 {
 	return m_socketState == QAbstractSocket::ConnectedState
-				 || m_socketState == QAbstractSocket::BoundState;
+			|| m_socketState == QAbstractSocket::BoundState;
 }
 
 bool AbstractSocketRunner::isDisconnected() const
@@ -129,8 +116,8 @@ int AbstractSocketRunner::socketState() const
 void AbstractSocketRunner::start()
 {
   if (m_thread && !m_thread->isRunning()) {
-      m_thread->start();
-    }
+		m_thread->start();
+	}
 }
 
 void AbstractSocketRunner::stop()
