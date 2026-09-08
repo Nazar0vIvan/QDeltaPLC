@@ -3,17 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Styles 1.0
-
-// Backend C++ types only. Must NOT be a URI that also contains QML files,
-// otherwise the compiled-in copies shadow the ones on disk and Felgo Hot
-// Reload has no effect on them.
 import QDelta.Backend 1.0 as Backend
 
 Item {
   id: root
 
-  required property var model
-  required property var runners
+  required property Backend.DeviceProfileModel model
+  required property list<Backend.DeviceRunner> runners
   property int selectedRow: -1
 
   implicitWidth: table.contentWidth
@@ -104,9 +100,10 @@ Item {
         required property int column
         required property var display
 
-        readonly property var runner:
+        readonly property Backend.DeviceRunner runner:
           cell.row >= 0 && cell.row < root.runners.length
-            ? root.runners[cell.row] : null
+            ? root.runners[cell.row]
+            : null
 
         readonly property bool connected:
           runner && runner.isConnected

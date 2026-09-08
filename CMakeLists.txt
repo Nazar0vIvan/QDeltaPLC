@@ -79,7 +79,6 @@ set(QML_FILES
   qml/Views/Dashboard/DeltaPanel/LedsPanel.qml
   qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
   qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
-  qml/Views/Dashboard/DeltaPanel/DeltaNetwork.qml
   qml/Views/Dashboard/DeltaPanel/KukaAutExt.qml
   qml/Views/Dashboard/FtsPanel/FtsPanel.qml
   qml/Views/Dashboard/FtsPanel/FtsBars.qml
@@ -88,9 +87,6 @@ set(QML_FILES
   qml/Views/Dashboard/KukaPanel/RsiCoordinate.qml
   qml/Views/Dashboard/KukaPanel/Counter.qml
   qml/Views/Dashboard/Dashboard.qml
-  qml/Views/Options/Options.qml
-  qml/Views/Options/OptionsSection.qml
-  qml/Views/Test/Test.qml
   qml/Views/Network/Network.qml
   qml/Views/Network/NetworkPanel.qml
   qml/Views/Network/ConnectionsTable.qml
@@ -108,7 +104,6 @@ if(QDELTA_USE_HOT_RELOAD)
     URI qdeltaplc_qml_module
     VERSION 1.0
     ${QDELTA_QML_OPTIONS}
-
   )
 else()
   qt_add_qml_module(qdeltaplc
@@ -123,9 +118,8 @@ else()
   )
 endif()
 
-target_compile_definitions(qdeltaplc
-  PRIVATE
-    QDELTA_QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
+target_compile_definitions(qdeltaplc PRIVATE
+  QDELTA_QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
 )
 
 target_sources(qdeltaplc PRIVATE
@@ -133,6 +127,8 @@ target_sources(qdeltaplc PRIVATE
 )
 
 target_link_libraries(qdeltaplc PRIVATE
+  QDeltaBackend
+  QDeltaBackendplugin
   Qt6::Core
   Qt6::Gui
   Qt6::Quick
@@ -143,8 +139,8 @@ target_link_libraries(qdeltaplc PRIVATE
   Felgo
   Styles
   Components
+
 )
-target_link_libraries(qdeltaplc PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 

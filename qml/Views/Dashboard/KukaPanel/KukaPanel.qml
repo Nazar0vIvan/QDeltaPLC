@@ -11,26 +11,10 @@ QxGroupBox {
   id: root
 
   property bool isValidBlade : false
-  readonly property var rsi: Backend.Hub.device("rsi")
+  readonly property Backend.DeviceRunner rsi: Backend.Hub.device("rsi")
 
   implicitWidth: leftPadding + cl.implicitWidth + rightPadding
   implicitHeight: topPadding + cl.implicitHeight + bottomPadding
-
-  Connections {
-    target: root.rsi
-
-    function onTrajectoryReady() {
-      btnStart.enabled = true;
-    }
-
-    function onMotionFinished() {
-      ledRsi.color = "red";
-    }
-
-    function onMotionStarted() {
-      ledRsi.color = "green";
-    }
-  }
 
   ColumnLayout {
     id: cl
@@ -80,9 +64,9 @@ QxGroupBox {
         QxButton {
           id: btnStart
 
-          enabled: false
-          text: root.rsi.motionActive ? "Stop RSI" : "Start RSI"
-          onClicked: root.rsi.invoke(root.rsi.motionActive ? "stopStreaming" : "startStreaming")
+          enabled: root.rsi?.data.trajectoryReady ?? false
+          text: root.rsi?.data.motionActive ? "Stop RSI" : "Start RSI"
+          onClicked: root.rsi.invoke(root.rsi.data.motionActive ? "stopStreaming" : "startStreaming")
         }
 
         Rectangle {
@@ -91,11 +75,9 @@ QxGroupBox {
           Layout.preferredWidth: 20
           Layout.preferredHeight: 20
           radius: 10
-          color: "red"
+          color: root.rsi?.data.motionActive ? "green" : "red"
         }
       }
     }
-
-
   }
 }

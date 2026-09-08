@@ -14,16 +14,17 @@ Item  {
     id: devProfModel
   }
 
-  readonly property var runners: [
-    Backend.Hub.device("plc"), // 0 - PLC
-    Backend.Hub.device("rsi"), // 1 - RSI
-    Backend.Hub.device("fts"), // 2 - FTS
-    null                       // 3 - VFD
+  readonly property list<Backend.DeviceRunner> runners: [
+    Backend.Hub.device("plc"),
+    Backend.Hub.device("rsi"),
+    Backend.Hub.device("fts"),
+    null
   ]
 
-  readonly property var currentRunner:
-      cbDevice.currentIndex >= 0 && cbDevice.currentIndex < runners.length ?
-      runners[cbDevice.currentIndex] : null
+  readonly property Backend.DeviceRunner currentRunner:
+      cbDevice.currentIndex >= 0 && cbDevice.currentIndex < runners.length
+      ? runners[cbDevice.currentIndex]
+      : null
 
   readonly property var selectedDevice:
     devProfModel.device(cbDevice.currentIndex)
@@ -154,8 +155,7 @@ Item  {
       QxButton {
         id: btnCon
 
-        readonly property var runner: root.currentRunner
-
+        readonly property Backend.DeviceRunner runner: root.currentRunner
 
         Layout.alignment: Qt.AlignBottom
         Layout.bottomMargin: 3

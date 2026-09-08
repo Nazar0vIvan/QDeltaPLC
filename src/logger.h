@@ -3,12 +3,15 @@
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+#include <QMetaType>
 
 struct LoggerMessage {
 	QString text = "";
 	int type = 0;
 	QString initiator = "";
 };
+
+Q_DECLARE_METATYPE(LoggerMessage)
 
 // Singleton
 class Logger : public QObject

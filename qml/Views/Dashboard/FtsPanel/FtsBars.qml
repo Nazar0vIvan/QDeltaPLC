@@ -11,9 +11,9 @@ import QDelta.Backend 1.0 as Backend
 Control {
   id: root
 
+  required property Backend.DeviceRunner fts
+
   property alias title: header.text
-  readonly property var fts: Backend.Hub.device("fts")
-  readonly property real countFactor: 1000000
   readonly property int viewWidth: 240
   readonly property int rowHeight: 20
   readonly property int barWidth: 160
@@ -29,12 +29,12 @@ Control {
     implicitHeight: contentItem.childrenRect.height
 
     model: ListModel {
-        ListElement { tag: "Fx"; from: -1980.0; to: 1980.0; idx: 3 }
-        ListElement { tag: "Fy"; from: -660.0;  to: 660.0;  idx: 4 }
-        ListElement { tag: "Fz"; from: -660.0;  to: 660.0;  idx: 5 }
-        ListElement { tag: "Tx"; from: -60.0;   to: 60.0;   idx: 6 }
-        ListElement { tag: "Ty"; from: -60.0;   to: 60.0;   idx: 7 }
-        ListElement { tag: "Tz"; from: -60.0;   to: 60.0;   idx: 8 }
+      ListElement { tag: "Fx"; axis: "fx"; from: -1980.0; to: 1980.0 }
+      ListElement { tag: "Fy"; axis: "fy"; from: -660.0;  to: 660.0 }
+      ListElement { tag: "Fz"; axis: "fz"; from: -660.0;  to: 660.0 }
+      ListElement { tag: "Tx"; axis: "tx"; from: -60.0;   to: 60.0 }
+      ListElement { tag: "Ty"; axis: "ty"; from: -60.0;   to: 60.0 }
+      ListElement { tag: "Tz"; axis: "tz"; from: -60.0;   to: 60.0 }
     }
 
     delegate: QxProgressBar {
@@ -49,11 +49,9 @@ Control {
       labelText: model.tag
       color: Styles.secondary.base
 
-      value: {
-        const _ = root.fts.sampleSeq;
-        const raw = root.fts.isStreaming ? root.fts.axisValue(model.tag) : 0;
-        return +(Number(raw) / root.countFactor).toFixed(3);
-      }
+      value: root.fts && root.fts.data.streaming
+             ? +Number(root.fts.data[model.axis]).toFixed(3)
+             : 0
     }
   }
 

@@ -11,52 +11,19 @@ import QDelta.Backend 1.0 as Backend
 Control {
   id: root
 
-  property bool isAutExt: false
-  readonly property var plc: Backend.Hub.device("plc")
+  required property Backend.DeviceRunner plc
 
-  Connections {
-    target: root.plc
+  readonly property bool isAutExt: root.plc
+                                   && root.plc.isConnected
+                                   && root.plc.data.x1
+                                   ? !!root.plc.data.x1[5]
+                                   : false
 
-    function onDataReady(data) {
-      if (data.cmd && data.cmd === Backend.PlcMessage.SNAPSHOT ||
-          data.chg && data.chg === Backend.PlcMessage.IOs) {
-        autExt.color = data.x1[5] ? "green" : "red"; // data.x1[5] - AutExt
-        root.isAutExt = !!data.x1[5];
-      }
-      if (data.chg && data.chg === Backend.PlcMessage.CELL_STATE) {
-        switch (data.cellState) {
-          case Backend.PlcMessage.IDLE: {
-            idle.color = "green";
-            running.color = "red";
-            done.color = "red";
-            break;
-          }
-          case Backend.PlcMessage.RUN: {
-            idle.color = "red";
-            running.color = "green";
-            done.color = "red";
-            break;
-          }
-          case Backend.PlcMessage.FIN: {
-            idle.color = "red";
-            running.color = "red";
-            done.color = "green";
-            break;
-          }
-        }
-      }
-    }
-
-    function onSocketStateChanged() {
-      if (root.plc.socketState === 0) {
-        root.isAutExt = false;
-        autExt.color = "red";
-        idle.color = "red";
-        running.color = "red";
-        done.color = "red";
-      }
-    }
-  }
+  readonly property int cellState: root.plc
+                                   && root.plc.isConnected
+                                   && root.plc.data.cellState !== undefined
+                                   ? root.plc.data.cellState
+                                   : -1
 
   property string title: ""
   property int labelWidth: 70
@@ -85,7 +52,7 @@ Control {
 
         anchors.verticalCenter: parent.verticalCenter
         width: root.ledSize; height: root.ledSize
-        color: "red"
+        color: root.isAutExt ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
       }
     }
@@ -101,7 +68,7 @@ Control {
 
         anchors.verticalCenter: parent.verticalCenter
         width: root.ledSize; height: root.ledSize
-        color: "red"
+        color: root.cellState === Backend.PlcMessage.IDLE ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
 
       }
@@ -118,7 +85,7 @@ Control {
 
         anchors.verticalCenter: parent.verticalCenter
         width: root.ledSize; height: root.ledSize
-        color: "red"
+        color: root.cellState === Backend.PlcMessage.RUN ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
 
       }
@@ -135,7 +102,7 @@ Control {
 
         anchors.verticalCenter: parent.verticalCenter
         width: root.ledSize; height: root.ledSize
-        color: "red"
+        color: root.cellState === Backend.PlcMessage.FIN ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
 
       }
@@ -157,7 +124,7 @@ Control {
         id: btnStartCell
 
         text: "Start Program"
-        enabled: root.plc.socketState === 3 && root.isAutExt
+        enabled: root.plc.isConnected && root.isAutExt
         onClicked: {
           const args = {
             "cmd": Backend.PlcMessage.SET_VAR,
@@ -172,7 +139,7 @@ Control {
         id: btnSftOk
 
         text: "Safety Ok"
-        enabled: root.plc.socketState === 3 && root.isAutExt
+        enabled: root.plc.isConnected && root.isAutExt
       }
     }
   }

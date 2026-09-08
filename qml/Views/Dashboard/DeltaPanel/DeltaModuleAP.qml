@@ -11,7 +11,8 @@ import QDelta.Backend 1.0 as Backend
 Control {
   id: root
 
-  readonly property var plc: Backend.Hub.device("plc")
+  required property Backend.DeviceRunner plc
+
   required property var xTags
   required property var yTags
   required property var xPlugged

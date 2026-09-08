@@ -11,7 +11,7 @@ import QDelta.Backend 1.0 as Backend
 QxGroupBox {
   id: root
 
-  readonly property var fts: Backend.Hub.device("fts")
+  readonly property Backend.DeviceRunner fts: Backend.Hub.device("fts")
 
   implicitWidth: leftPadding + cl.implicitWidth + rightPadding
   implicitHeight: topPadding + cl.implicitHeight + bottomPadding
@@ -24,6 +24,8 @@ QxGroupBox {
     FtsBars {
       id: bars
 
+      fts: root.fts
+
       title: qsTr("Monitoring")
     }
 
@@ -33,7 +35,7 @@ QxGroupBox {
       QxButton {
         id: btnStart
 
-        checked: root.fts.isStreaming
+        checked: root.fts?.data.streaming ?? false
         text: checked ? "Stop" : "Start"
         onClicked: root.fts.invoke(checked ? "stopStreaming" : "startStreaming")
       }
@@ -41,7 +43,7 @@ QxGroupBox {
       QxButton {
         id: btnBias
 
-        enabled: root.fts && root.fts.isStreaming
+        enabled: root.fts?.data.streaming ?? false
         text: "Bias"
         onClicked: root.fts.invoke("bias")
       }
@@ -49,7 +51,7 @@ QxGroupBox {
       QxButton {
         id: btnLog
 
-        enabled: root.fts.isStreaming
+        enabled: root.fts?.data.streaming ?? false
         text: "Record"
         onClicked: root.fts.invoke("startLogRecording")
       }
@@ -57,31 +59,10 @@ QxGroupBox {
       QxButton {
         id: btnSaveToFile
 
-        enabled: !root.fts.isStreaming
+        enabled: !(root.fts?.data.streaming ?? false)
         text: "Save"
         onClicked: root.fts.invoke("saveLogToDefaultFile")
       }
     }
   }
 }
-
-/*
-ChartView {
-    id: chart
-    width: 600; height: 300
-    legend.visible: false
-    antialiasing: true
-
-    ValueAxis { id: axX; min: 0; max: 10 }   // 5 sec window (for example)
-    ValueAxis { id: axY; min: -400; max: 400 } // adjust for your sensor
-
-    LineSeries {
-        id: series
-        axisX: axX
-        axisY: axY
-        color: "red"
-    }
-
-    Component.onCompleted: chartBridge.setSeries(series)
-}
-*/

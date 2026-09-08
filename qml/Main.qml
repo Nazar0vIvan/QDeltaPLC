@@ -5,9 +5,7 @@ import QtQuick.Controls.Basic
 import Felgo
 
 import "NavigationPanel"
-import "Views/Options"
 import "Views/Dashboard"
-import "Views/Test"
 import "Views/Network"
 
 import Styles 1.0

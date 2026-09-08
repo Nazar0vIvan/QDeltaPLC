@@ -4,16 +4,17 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QThread>
 
-class AbstractSocketRunner;
+class AbstractDevice;
+class DeviceRunner;
 
 // The only object QML needs in order to reach a device. QML asks for a runner
 // by key; adding a device requires no new QML registration and no new context
 // property.
 //
-// DeviceHub is the parent of every runner it holds. QQmlEngine gives an object
-// returned from a Q_INVOKABLE JavaScriptOwnership when that object has no
-// parent, which would let the QML garbage collector delete the runner.
+// DeviceHub is the parent of every DeviceRunner it holds. AbstractDevice
+// objects live in the shared I/O thread and are deleted in that thread.
 class DeviceHub : public QObject
 {
   Q_OBJECT
@@ -22,10 +23,11 @@ class DeviceHub : public QObject
 public:
   explicit DeviceHub(QObject* parent = nullptr);
 
-  // Takes ownership of runner.
-  void add(const QString& key, AbstractSocketRunner* runner);
+  ~DeviceHub() override;
 
-  Q_INVOKABLE AbstractSocketRunner* device(const QString& key) const;
+  void add(const QString& key, AbstractDevice* dev);
+
+  Q_INVOKABLE DeviceRunner* device(const QString& key) const;
 
   QStringList keys() const;
 
@@ -34,5 +36,11 @@ public slots:
   void stopAll();
 
 private:
-  QHash<QString, AbstractSocketRunner*> m_devs;
+  struct Entry {
+    AbstractDevice* dev = nullptr;
+    DeviceRunner* runner = nullptr;
+  };
+
+  QThread m_io;
+  QHash<QString, Entry> m_devs;
 };
