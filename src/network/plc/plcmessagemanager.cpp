@@ -1,5 +1,62 @@
 #include "plcmessagemanager.h"
 
+#include <cmath>
+#include <limits>
+#include <optional>
+
+namespace {
+
+template<typename T>
+std::optional<T> readUInt(const QVariantMap& req, const QString& key)
+{
+  const auto it = req.constFind(key);
+  if (it == req.cend() || it->isNull()) return std::nullopt;
+
+  const QMetaType type = it->metaType();
+  const int id = type.id();
+
+  const bool isNum =
+     type.flags().testFlag(QMetaType::IsEnumeration)
+     || id == QMetaType::Char
+     || id == QMetaType::SChar
+     || id == QMetaType::UChar
+     || id == QMetaType::Short
+     || id == QMetaType::UShort
+     || id == QMetaType::Int
+     || id == QMetaType::UInt
+     || id == QMetaType::Long
+     || id == QMetaType::ULong
+     || id == QMetaType::LongLong
+     || id == QMetaType::ULongLong
+     || id == QMetaType::Float
+     || id == QMetaType::Double;
+
+  if (!isNum) return std::nullopt;
+
+  bool ok = false;
+  const double val = it->toDouble(&ok);
+
+  if (!ok || !std::isfinite(val))
+    return std::nullopt;
+  if (val < 0.0 || std::trunc(val) != val)
+    return std::nullopt;
+  if (val > static_cast<double>(std::numeric_limits<T>::max()))
+    return std::nullopt;
+
+  return static_cast<T>(val);
+}
+
+std::optional<QByteArray> readBytes(const QVariantMap& req, const QString& key)
+{
+  const auto it = req.constFind(key);
+  if (it == req.cend() || it->isNull()) return std::nullopt;
+  if (!it->canConvert<QByteArray>()) return std::nullopt;
+
+  return it->toByteArray();
+}
+
+} // namespace
+
 PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {}
 
 // PUBLIC
@@ -49,90 +106,89 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReqPayload(const QVariant
   QDataStream ds(&payload, QIODevice::WriteOnly);
   ds.setByteOrder(QDataStream::BigEndian);
 
-  if(!req.value("cmd").canConvert<quint8>()) {
-    return { 0, BAD_CMD, {} };
-  }
+  const auto cmd = readUInt<quint8>(req, "cmd");
+  if (!cmd || !isValidCmd(*cmd))
+    return {QVariant(), BAD_CMD, req.value("cmd")};
 
-  quint8 cmd = req.value("cmd").toUInt();
-  if (!isValidCmd(cmd))
-    return {0, BAD_CMD, cmd};
+  constexpr quint8 flags = 0x00;
+  ds << *cmd << flags;
 
-  const quint8 FLAGS = 0x00; // reserved = 0
-  ds << cmd << FLAGS;
-
-  switch (cmd) {
+  switch (*cmd) {
     case CMD::READ_IO: {
-      if(!req.value("dev").isNull() && !req.value("dev").canConvert<quint16>())
-          return { QVariant(), BAD_DEV, {} };
-      quint16 dev = static_cast<quint16>(req.value("dev").toUInt());
-      if (!isValidDev(dev))
-        return { QVariant(), BAD_DEV, dev };
+      const auto dev = readUInt<quint16>(req, "dev");
+      if (!dev || !isValidDev(*dev))
+        return {QVariant(), BAD_DEV, req.value("dev")};
 
-      if(!req.value("module").isNull() && !req.value("module").canConvert<quint8>())
-        return { QVariant(), BAD_MOD, {} };
-      quint8 module = static_cast<quint8>(quint8(req.value("module").toUInt()));
-      if (!isValidMod(module))
-        return { QVariant(), BAD_MOD, module };
+      const auto module = readUInt<quint8>(req, "module");
+      if (!module || !isValidMod(*module))
+        return {QVariant(), BAD_MOD, req.value("module")};
 
-      ds << dev <<  quint8() << module;
+      ds << *dev << quint8() << *module;
       break;
     }
     case CMD::READ_REG: {
-      if(!req.value("addr").isNull() && !req.value("addr").canConvert<quint16>())
-          return { QVariant(), BAD_ADDR, {}} ;
-      quint16 addr = static_cast<quint16>(req.value("addr").toUInt());
+      const auto addr = readUInt<quint16>(req, "addr");
+      if (!addr)
+        return {QVariant(), BAD_ADDR, req.value("addr")};
 
-      ds << static_cast<quint16>(DEV::D) << addr;
+      ds << static_cast<quint16>(DEV::D) << *addr;
       break;
     }
     case CMD::WRITE_IO: {
-      if(!req.value("module").isNull() && !req.value("module").canConvert<quint8>())
-        return { QVariant(), BAD_MOD, {} };
-      quint8 module = static_cast<quint8>(req.value("module").toUInt());
-      if (!isValidMod(module))
-        return { QVariant(), BAD_MOD, module };
+      const auto module = readUInt<quint8>(req, "module");
+      if (!module || !isValidMod(*module))
+        return {QVariant(), BAD_MOD, req.value("module")};
 
-      if(!req.value("andMask").isNull() && !req.value("andMask").canConvert<quint8>())
-        return { QVariant(), BAD_AND, {} };
-      quint8 andMask = static_cast<quint8>(req.value("andMask").toUInt());
+      const auto andMask = readUInt<quint8>(req, "andMask");
+      if (!andMask)
+        return {QVariant(), BAD_AND, req.value("andMask")};
 
-      if(!req.value("orMask").isNull() && !req.value("orMask").canConvert<quint8>())
-        return { QVariant(), BAD_OR, {} };
-      quint8 orMask = static_cast<quint8>(req.value("orMask").toUInt());
+      const auto orMask = readUInt<quint8>(req, "orMask");
+      if (!orMask)
+        return {QVariant(), BAD_OR, req.value("orMask")};
 
-      ds << static_cast<quint16>(DEV::Y) << quint8() << module << andMask << orMask;
+      ds << static_cast<quint16>(DEV::Y)
+         << quint8()
+         << *module
+         << *andMask
+         << *orMask;
       break;
     }
     case CMD::WRITE_REG: {
-      if(!req.value("addr").isNull() && !req.value("addr").canConvert<quint16>())
-        return { QVariant(), BAD_ADDR, {} };
-      quint16 addr = static_cast<quint16>(req.value("addr").toUInt());
+      const auto addr = readUInt<quint16>(req, "addr");
+      if (!addr)
+        return {QVariant(), BAD_ADDR, req.value("addr")};
 
-      if(!req.value("value").isNull() && !req.value("value").canConvert<quint16>())
-        return { QVariant(), BAD_DATA, {} };
-      quint16 value = static_cast<quint16>(req.value("value").toUInt());
+      const auto value = readUInt<quint16>(req, "value");
+      if (!value)
+        return {QVariant(), BAD_DATA, req.value("value")};
 
-      ds << static_cast<quint16>(DEV::D) << addr << value;
+      ds << static_cast<quint16>(DEV::D)
+         << *addr
+         << *value;
       break;
     }
     case CMD::WRITE_RAW: {
-      if(!req.value("raw").isNull() && !req.value("raw").canConvert<QByteArray>())
-        return { QVariant(), BAD_RAW, {} };
-      QByteArray raw = req.value("raw").toByteArray();
-      ds.writeRawData(raw.constData(), raw.size());
+      const auto raw = readBytes(req, "raw");
+      if (!raw)
+        return {QVariant(), BAD_RAW, req.value("raw")};
+
+      ds.writeRawData(raw->constData(), raw->size());
       break;
     }
     case CMD::SNAPSHOT: {
       break;
     }
     case CMD::SET_VAR: {
-      if(!req.value("var").isNull() && !req.value("var").canConvert<quint8>())
-        return { QVariant(), BAD_VAR, {} };
-      quint8 var = static_cast<quint8>(req.value("var").toUInt());
-      if(!req.value("attr").isNull() && !req.value("attr").canConvert<quint8>())
-        return { QVariant(), BAD_VAR, {} };
-      quint8 attr = static_cast<quint8>(req.value("attr").toUInt());
-      ds << var << attr;
+      const auto var = readUInt<quint8>(req, "var");
+      if (!var || !isValidVar(*var))
+        return {QVariant(), BAD_VAR, req.value("var")};
+
+      const auto attr = readUInt<quint8>(req, "attr");
+      if (!attr)
+        return {QVariant(), BAD_ATTR, req.value("attr")};
+
+      ds << *var << *attr;
 			break;
     }
 		default: break;

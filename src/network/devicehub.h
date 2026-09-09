@@ -21,11 +21,16 @@ class DeviceHub : public QObject
   Q_PROPERTY(QStringList keys READ keys CONSTANT)
 
 public:
+  enum class DeviceGroup {
+    Control,
+    General
+  };
+
   explicit DeviceHub(QObject* parent = nullptr);
 
   ~DeviceHub() override;
 
-  void add(const QString& key, AbstractDevice* dev);
+  void add(const QString& key, AbstractDevice* dev, DeviceGroup group);
 
   Q_INVOKABLE DeviceRunner* device(const QString& key) const;
 
@@ -39,8 +44,10 @@ private:
   struct Entry {
     AbstractDevice* dev = nullptr;
     DeviceRunner* runner = nullptr;
+    QThread* io = nullptr;
   };
 
-  QThread m_io;
+  QThread m_controlIo;
+  QThread m_generalIo;
   QHash<QString, Entry> m_devs;
 };

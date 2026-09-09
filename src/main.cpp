@@ -47,9 +47,9 @@ int main(int argc, char* argv[])
 
   DeviceHub hub;
 
-  hub.add(QStringLiteral("plc"), plcDev);
-  hub.add(QStringLiteral("fts"), ftsDev);
-  hub.add(QStringLiteral("rsi"), rsiDev);
+  hub.add(QStringLiteral("plc"), plcDev, DeviceHub::DeviceGroup::General);
+  hub.add(QStringLiteral("fts"), ftsDev, DeviceHub::DeviceGroup::Control);
+  hub.add(QStringLiteral("rsi"), rsiDev, DeviceHub::DeviceGroup::Control);
 
   DeviceHubQml::s_inst = &hub;
 

@@ -6,10 +6,12 @@
 #include <QMetaObject>
 #include <utility>
 
-DeviceHub::DeviceHub(QObject* parent)
-  : QObject(parent) {
-  m_io.setObjectName(QStringLiteral("DeviceIO"));
-  m_io.start();
+DeviceHub::DeviceHub(QObject* parent) : QObject(parent) {
+  m_controlIo.setObjectName(QStringLiteral("ControlIO"));
+  m_generalIo.setObjectName(QStringLiteral("GeneralIO"));
+
+  m_controlIo.start();
+  m_generalIo.start();
 }
 
 DeviceHub::~DeviceHub()
@@ -17,7 +19,7 @@ DeviceHub::~DeviceHub()
   stopAll();
 }
 
-void DeviceHub::add(const QString& key, AbstractDevice* dev)
+void DeviceHub::add(const QString& key, AbstractDevice* dev, DeviceGroup group)
 {
   Q_ASSERT(dev);
   Q_ASSERT(!key.isEmpty());
@@ -25,17 +27,15 @@ void DeviceHub::add(const QString& key, AbstractDevice* dev)
   Q_ASSERT(!dev->parent());
   Q_ASSERT(dev->thread() == thread());
 
-  dev->moveToThread(&m_io);
+  QThread* io = group == DeviceGroup::Control ? &m_controlIo : &m_generalIo;
 
-  QObject::connect(
-      &m_io,
-      &QThread::finished,
-      dev,
-      &QObject::deleteLater);
+  dev->moveToThread(io);
+
+  QObject::connect(io, &QThread::finished, dev, &QObject::deleteLater);
 
   auto* runner = new DeviceRunner(dev, this);
 
-  m_devs.insert(key, {dev, runner});
+  m_devs.insert(key, {dev, runner, io});
 }
 
 DeviceRunner* DeviceHub::device(const QString& key) const
@@ -59,17 +59,21 @@ void DeviceHub::startAll()
 
 void DeviceHub::stopAll()
 {
-  if (!m_io.isRunning()) return;
+  {
+    if (!m_controlIo.isRunning() && !m_generalIo.isRunning()) return;
 
-  Q_ASSERT(QThread::currentThread() != &m_io);
+    Q_ASSERT(QThread::currentThread() != &m_controlIo);
+    Q_ASSERT(QThread::currentThread() != &m_generalIo);
 
-  for (const Entry& entry : std::as_const(m_devs)) {
-    QMetaObject::invokeMethod(
-        entry.dev,
-        &AbstractDevice::stop,
-        Qt::BlockingQueuedConnection);
+    for (const Entry& entry : std::as_const(m_devs)) {
+      if (!entry.io->isRunning()) continue;
+      QMetaObject::invokeMethod(entry.dev, &AbstractDevice::stop, Qt::BlockingQueuedConnection);
+    }
+
+    m_controlIo.quit();
+    m_generalIo.quit();
+
+    m_controlIo.wait();
+    m_generalIo.wait();
   }
-
-  m_io.quit();
-  m_io.wait();
 }

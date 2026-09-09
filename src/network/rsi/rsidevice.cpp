@@ -23,8 +23,7 @@ constexpr int kCooldownMs = 10'000;
 
 } // namespace
 
-RsiDevice::RsiDevice(const QString& name, QObject* parent)
-  : AbstractDevice(name, parent) {}
+RsiDevice::RsiDevice(const QString& name, QObject* parent): AbstractDevice(name, parent) {}
 
 void RsiDevice::startDevice()
 {
@@ -38,17 +37,8 @@ void RsiDevice::startDevice()
 
   attachSocket(m_sock);
 
-  QObject::connect(
-      m_sock,
-      &QUdpSocket::readyRead,
-      this,
-      &RsiDevice::onReadyRead);
-
-  QObject::connect(
-      m_cooldown,
-      &QTimer::timeout,
-      this,
-      &RsiDevice::onCooldownFinished);
+  QObject::connect(m_sock, &QUdpSocket::readyRead, this, &RsiDevice::onReadyRead);
+  QObject::connect( m_cooldown, &QTimer::timeout, this, &RsiDevice::onCooldownFinished);
 
   emit stateReady({
     {"motionActive", false},
@@ -157,10 +147,16 @@ void RsiDevice::disconnect()
 
 void RsiDevice::generateTrajectory()
 {
-  // A previously generated trajectory is no longer current.
-  emit stateReady({
-    {"trajectoryReady", false}
-  });
+  if (m_state == MotionState::Moving) {
+    emit logMessage({
+        "Cannot generate trajectory while RSI motion is active",
+        0,
+        objectName()
+    });
+    return;
+  }
+
+  emit stateReady({{"trajectoryReady", false}});
 
   m_offsets.clear();
   m_offIdx = 0;
@@ -218,15 +214,30 @@ void RsiDevice::generateTrajectory()
 
   writeOffsetsToJson(m_offsets, "offsets.json");
 
-  emit stateReady({
-    {"trajectoryReady", true}
-  });
+  emit stateReady({{"trajectoryReady", true}});
 }
 
 void RsiDevice::startStreaming()
 {
+  if (!m_sock || m_sock->state() != QAbstractSocket::BoundState) {
+    emit logMessage({
+        "Cannot start RSI motion: socket is not bound",
+        0,
+        objectName()
+    });
+    return;
+  }
+
+  if (m_offsets.isEmpty()) {
+    emit logMessage({
+        "Cannot start RSI motion: trajectory is empty",
+        0,
+        objectName()
+    });
+    return;
+  }
+
   m_offIdx = 0;
-  m_firstRead = true;
 
   if (m_cooldown) m_cooldown->stop();
 

@@ -64,7 +64,9 @@ QxGroupBox {
         QxButton {
           id: btnStart
 
-          enabled: root.rsi?.data.trajectoryReady ?? false
+          enabled: root.rsi
+                   && root.rsi.isConnected
+                   && (root.rsi.data.trajectoryReady ?? false)
           text: root.rsi?.data.motionActive ? "Stop RSI" : "Start RSI"
           onClicked: root.rsi.invoke(root.rsi.data.motionActive ? "stopStreaming" : "startStreaming")
         }

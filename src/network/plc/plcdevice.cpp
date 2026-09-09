@@ -2,8 +2,7 @@
 
 #include <QTcpSocket>
 
-PlcDevice::PlcDevice(const QString& name, QObject* parent)
-  : AbstractDevice(name, parent) {}
+PlcDevice::PlcDevice(const QString& name, QObject* parent) : AbstractDevice(name, parent) {}
 
 void PlcDevice::startDevice()
 {
@@ -15,23 +14,9 @@ void PlcDevice::startDevice()
 
   attachSocket(m_sock);
 
-  QObject::connect(
-      m_sock,
-      &QTcpSocket::connected,
-      this,
-      &PlcDevice::onConnected);
-
-  QObject::connect(
-      m_sock,
-      &QTcpSocket::readyRead,
-      this,
-      &PlcDevice::onReadyRead);
-
-  QObject::connect(
-      m_sock,
-      &QTcpSocket::stateChanged,
-      this,
-      &PlcDevice::onStateChanged);
+  QObject::connect(m_sock, &QTcpSocket::connected, this, &PlcDevice::onConnected);
+  QObject::connect(m_sock, &QTcpSocket::readyRead, this, &PlcDevice::onReadyRead);
+  QObject::connect(m_sock, &QTcpSocket::stateChanged, this, &PlcDevice::onStateChanged);
 }
 
 void PlcDevice::stopDevice()
@@ -67,10 +52,7 @@ void PlcDevice::connect(const QVariantMap& config)
     bool portOk = false;
     const uint port = config.value("peerPort").toUInt(&portOk);
 
-    if (addr.isNull()
-        || !portOk
-        || port == 0
-        || port > 65535) {
+    if (addr.isNull() || !portOk || port == 0 || port > 65535) {
       emit logMessage({
         "Invalid socket configuration",
         0,
@@ -140,8 +122,8 @@ void PlcDevice::writeMessage(const QVariantMap& msg)
     count == -1
         ? QStringLiteral("No bytes were written")
         : QString("TX: %1 (%2 bytes)")
-              .arg(QString(data.toHex(' ').toUpper()))
-              .arg(count),
+            .arg(QString(data.toHex(' ').toUpper()))
+            .arg(count),
     count == -1 ? 0 : 4,
     objectName()
   });
@@ -165,13 +147,11 @@ void PlcDevice::onReadyRead()
   m_rx.append(m_sock->readAll());
 
   while (m_rx.size() >= PlcMessageManager::RESP_SIZE) {
-    const QByteArray frame =
-        swapBytes(m_rx.left(PlcMessageManager::RESP_SIZE));
+    const QByteArray frame = swapBytes(m_rx.left(PlcMessageManager::RESP_SIZE));
 
     m_rx.remove(0, PlcMessageManager::RESP_SIZE);
 
-    const PlcMessageManager::ParseResult parsed =
-        m_mgr->parseMessage(frame);
+    const PlcMessageManager::ParseResult parsed = m_mgr->parseMessage(frame);
 
     if (!parsed.ok()) {
       emit logMessage({
@@ -185,8 +165,7 @@ void PlcDevice::onReadyRead()
     const QVariantMap data = parsed.data.toMap();
 
     if (data.contains("tid")) {
-      const quint8 tid =
-          static_cast<quint8>(data.value("tid").toUInt());
+      const quint8 tid = static_cast<quint8>(data.value("tid").toUInt());
 
       if (!m_pend.remove(tid)) {
         emit logMessage({
@@ -196,6 +175,19 @@ void PlcDevice::onReadyRead()
         });
         continue;
       }
+    }
+
+    if (data.value("type").toUInt() == PlcMessageManager::RESP_ERR) {
+      emit logMessage({
+        QString("PLC response error: cmd=%1, err=%2, code=%3")
+          .arg(data.value("cmd").toUInt())
+          .arg(data.value("err").toUInt())
+          .arg(data.value("code").toUInt()),
+          0,
+          objectName()
+      });
+
+      continue;
     }
 
     publishData(data);
@@ -220,38 +212,51 @@ void PlcDevice::onStateChanged(QAbstractSocket::SocketState state)
 
 void PlcDevice::publishData(const QVariantMap& data)
 {
-  if (data.value("cmd").toUInt() == PlcMessageManager::SNAPSHOT
-      || data.value("chg").toUInt() == PlcMessageManager::IOs) {
-    emit stateReady({
-      {"x1", data.value("x1")},
-      {"y1", data.value("y1")},
-      {"x2", data.value("x2")},
-      {"y2", data.value("y2")}
-    });
+  const quint8 type = static_cast<quint8>(data.value("type").toUInt());
 
-    return;
-  }
+  if (type == PlcMessageManager::RESP_OK) {
+    const quint8 cmd = static_cast<quint8>(data.value("cmd").toUInt());
 
-  if (data.value("cmd").toUInt() == PlcMessageManager::WRITE_IO) {
-    const int mod = data.value("module").toInt();
-
-    if (mod == 1) {
+    if (cmd == PlcMessageManager::SNAPSHOT) {
       emit stateReady({
-        {"y1", data.value("state")}
+        {"x1", data.value("x1")},
+        {"y1", data.value("y1")},
+        {"x2", data.value("x2")},
+        {"y2", data.value("y2")}
       });
-    } else if (mod == 2) {
-      emit stateReady({
-        {"y2", data.value("state")}
-      });
+
+      return;
     }
 
+    if (cmd == PlcMessageManager::WRITE_IO) {
+      const int mod = data.value("module").toInt();
+
+      if (mod == 1) {
+        emit stateReady({{"y1", data.value("state")}});
+      } else if (mod == 2) {
+        emit stateReady({{"y2", data.value("state")}
+        });
+      }
+      return;
+    }
     return;
   }
 
-  if (data.value("chg").toUInt() == PlcMessageManager::CELL_STATE) {
-    emit stateReady({
-      {"cellState", data.value("cellState")}
-    });
+  if (type == PlcMessageManager::CHG) {
+    const quint8 chg = static_cast<quint8>(data.value("chg").toUInt());
+    if (chg == PlcMessageManager::IOs) {
+      emit stateReady({
+        {"x1", data.value("x1")},
+        {"y1", data.value("y1")},
+        {"x2", data.value("x2")},
+        {"y2", data.value("y2")}
+      });
+      return;
+    }
+
+    if (chg == PlcMessageManager::CELL_STATE) {
+      emit stateReady({{"cellState", data.value("cellState")}});
+    }
   }
 }
 

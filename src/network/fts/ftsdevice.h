@@ -2,12 +2,10 @@
 
 #include "network/abstractdevice.h"
 #include "network/fts/rdtmessage.h"
-
 #include <QElapsedTimer>
 #include <QHostAddress>
 #include <QVector>
 
-class QNetworkDatagram;
 class QTimer;
 class QUdpSocket;
 
@@ -30,12 +28,8 @@ public:
 
 signals:
   void dataSampleHFReady(const RDTResponse& sample);
-  void dataSampleLFReady(const RDTResponse& sample);
   void dataBatchReady(const QVector<RDTResponse>& samples);
   void streamReset();
-
-  void logRecordingEnabledChanged(bool enabled);
-  void logRecordingReady(const QVector<RDTResponse>& samples);
 
 protected:
   void startDevice() override;
@@ -43,33 +37,29 @@ protected:
 
 private slots:
   void onReadyRead();
-  void onPulseTimeout();
+  void onBatchTick();
 
 private:
-  static QNetworkDatagram req2dtg(const RDTRequest& request);
-  static RDTResponse dtg2resp(const QNetworkDatagram& datagram);
-
   void appendLogSample(const RDTResponse& sample);
   void saveLogToFileImpl(const QString& filePath);
-  void setLogRecordingEnabled(bool enabled);
-  void setStreaming(bool enabled);
+  void setReceiving(bool enabled);
   void publishState(const RDTResponse& sample);
   void sendRequest(quint16 cmd, quint32 count = 0);
 
   QUdpSocket* m_sock = nullptr;
-  QTimer* m_pulse = nullptr;
+
+  QTimer* m_batchTimer = nullptr;
+  QElapsedTimer m_clock;
+  qint64 m_lastRxMs = 0;
 
   QVector<RDTResponse> m_batch;
-  QElapsedTimer m_emitTimer;
 
   RDTResponse m_lastPub{};
   bool m_hasPub = false;
-  double m_tol = 0.05;
 
   quint32 m_baseSeq = 0;
-  bool m_firstRead = false;
-  int m_emitMs = 16;
-  bool m_streaming = false;
+  bool m_needBase = true;
+  bool m_receiving = false;
 
   QHostAddress m_la;
   quint16 m_lp = 0;
@@ -77,7 +67,7 @@ private:
   quint16 m_pp = 0;
 
   bool m_logEnabled = false;
-  int m_logCap = 7500;
   QVector<RDTResponse> m_log;
-  QString m_logFile = QStringLiteral("record.json");
 };
+
+// CHANGE END

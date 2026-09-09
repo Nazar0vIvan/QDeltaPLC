@@ -39,6 +39,7 @@ public:
     BAD_RESP  = 0xEF, // 239
     BAD_CHG   = 0xF0, // 240
     BAD_VAR   = 0xF1, // 241
+    BAD_ATTR  = 0xF2,  // 242
     NOERR     = 0x00
   };
   Q_ENUM(MessageError)
@@ -80,6 +81,7 @@ public:
 		RUN  = 0xD3,
 		FIN  = 0xDC
 	};
+  Q_ENUM(CELL)
 
   enum DEV : quint16 {
     X = 0x0058,
