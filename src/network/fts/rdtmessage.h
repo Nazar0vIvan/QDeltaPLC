@@ -5,13 +5,6 @@
 #include <QMetaType>
 #include <QtQml/qqmlregistration.h>
 
-struct RDTRequest
-{
-  uint16_t header = 0;
-  uint16_t command = 0;
-  uint32_t sampleCount = 0;
-};
-
 struct RDTResponse
 {
   Q_GADGET
