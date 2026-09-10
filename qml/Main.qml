@@ -2,22 +2,22 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
-import Felgo
 
-import "NavigationPanel"
-import "Views/Dashboard"
-import "Views/Network"
+// import "NavigationPanel"
+// import "Views/Dashboard"
+// import "Views/Network"
 
 import Styles 1.0
 import Components 1.0
 
-App {
+ApplicationWindow {
   id: root
 
   property int navPanelWidth: 60
 
   width: 1000
   height: 800
+  visible: false
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
 

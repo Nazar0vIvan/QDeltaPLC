@@ -55,6 +55,13 @@ std::optional<QByteArray> readBytes(const QVariantMap& req, const QString& key)
   return it->toByteArray();
 }
 
+template<typename... T>
+bool readData(QDataStream& ds, T&... data)
+{
+  (ds >> ... >> data);
+  return ds.status() == QDataStream::Ok;
+}
+
 } // namespace
 
 PlcMessageManager::PlcMessageManager(QObject* parent) : QObject(parent) {}
@@ -85,16 +92,20 @@ PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray&
   if (resp.size() != RESP_SIZE)
     return { QVariantMap(), BAD_PLEN, resp.size()};
 
-	QByteArray payload = resp.mid(HEADER_SIZE, header.len);
-	switch (header.type) {
-		case Type::RESP_OK:
-			return parseRespOk(payload, header.tid, header.len);
-		case Type::RESP_ERR:
-			return parseRespErr(payload, header.tid);
-		case Type::CHG:
-			return parseStateChange(payload, header.len);
-		default:
-			return { QVariantMap(), BAD_RESP, header.type };
+  if (HEADER_SIZE + header.len > resp.size())
+    return {QVariantMap(), BAD_PLEN, header.len};
+
+  const QByteArray payload = resp.mid(HEADER_SIZE, header.len);
+
+  switch (header.type) {
+    case Type::RESP_OK:
+      return parseRespOk(payload, header.tid);
+    case Type::RESP_ERR:
+      return parseRespErr(payload, header.tid);
+    case Type::CHG:
+      return parseStateChange(payload);
+    default:
+      return {QVariantMap(), BAD_RESP, header.type};
   }
 }
 
@@ -229,140 +240,216 @@ PlcMessageManager::ParseResult PlcMessageManager::parseHeader(const QByteArray& 
   return { QVariant::fromValue(h) };
 }
 
-PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const
+PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& payload, quint8 tid) const
 {
   QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
-  quint8 cmd, status;
-  ds >> cmd >> status;
+
+  quint8 cmd = 0;
+  quint8 status = 0;
+
+  if (!readData(ds, cmd, status))
+    return {QVariant(), BAD_PLEN, payload.size()};
 
   if (!isValidCmd(cmd))
-    return { QVariant(), BAD_CMD, cmd };
+    return {QVariant(), BAD_CMD, cmd};
 
-  QVariantMap out;
-  out["type"]   = Type::RESP_OK;
-  out["tid"]    = tid;
-  out["cmd"]    = cmd;
-  out["status"] = status;
+  QVariantMap out{
+    {"type", Type::RESP_OK},
+    {"tid", tid},
+    {"cmd", cmd},
+    {"status", status}
+  };
 
   switch (cmd) {
     case CMD::READ_IO: {
-      quint16 dev; quint8 module, state;
-      ds >> dev >> module >> state;
+      if (payload.size() != 6)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint16 dev = 0;
+      quint8 module = 0;
+      quint8 state = 0;
+
+      if (!readData(ds, dev, module, state))
+        return {QVariant(), BAD_PLEN, payload.size()};
       if (!isValidDev(dev))
-        return {QVariantMap(), BAD_DEV, dev};
+        return {QVariant(), BAD_DEV, dev};
       if (!isValidMod(module))
-        return { QVariant(), BAD_MOD, module };
-      out["dev"]    = DEV::Y;
+        return {QVariant(), BAD_MOD, module};
+
+      out["dev"] = DEV::Y;
       out["module"] = module;
-      out["state"]  = byteToBits(state);
-      return { out };
+      out["state"] = byteToBits(state);
+      break;
     }
-    case CMD::READ_REG: {
-      quint16 dev, addr, value;
-      ds >> dev >> addr >> value;
-      if (!isValidDev(dev))
-        return {QVariantMap(), BAD_DEV, dev};
-      out["dev"]   = DEV::Y;
-      out["addr"]  = addr;
-      out["value"] = value;
-      return { out };
-    }
-    case CMD::WRITE_IO: {
-      quint16 dev; quint8 module, state;
-      ds >> dev >> module >> state;
-      if (!isValidDev(dev))
-        return {QVariantMap(), BAD_DEV, dev};
-      out["module"] = module;
-      out["state"]  = byteToBits(state);
-      return { out };
-    }
+
+    case CMD::READ_REG:
     case CMD::WRITE_REG: {
-      quint16 dev, addr, value;
-      ds >> dev >> addr >> value;
+      if (payload.size() != 8)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint16 dev = 0;
+      quint16 addr = 0;
+      quint16 value = 0;
+
+      if (!readData(ds, dev, addr, value))
+        return {QVariant(), BAD_PLEN, payload.size()};
+
       if (!isValidDev(dev))
-        return {QVariantMap(), BAD_DEV, dev};
-      out["dev"]   = DEV::Y;
-      out["addr"]  = addr;
+        return {QVariant(), BAD_DEV, dev};
+
+      out["dev"] = DEV::Y;
+      out["addr"] = addr;
       out["value"] = value;
-      return { out };
+      break;
     }
+
+    case CMD::WRITE_IO: {
+      if (payload.size() != 6)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint16 dev = 0;
+      quint8 module = 0;
+      quint8 state = 0;
+
+      if (!readData(ds, dev, module, state))
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      if (!isValidDev(dev))
+        return {QVariant(), BAD_DEV, dev};
+      if (!isValidMod(module))
+        return {QVariant(), BAD_MOD, module};
+
+      out["module"] = module;
+      out["state"] = byteToBits(state);
+      break;
+    }
+
     case CMD::WRITE_RAW: {
-      out["value"] = payload.mid(2, paylen-2);
-      return { out };
+      out["value"] = payload.mid(2);
+      break;
     }
+
     case CMD::SNAPSHOT: {
-      quint8 x1, y1, x2, y2;
-      ds >> x1 >> y1 >> x2 >> y2;
+      if (payload.size() != 6)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint8 x1 = 0;
+      quint8 y1 = 0;
+      quint8 x2 = 0;
+      quint8 y2 = 0;
+
+      if (!readData(ds, x1, y1, x2, y2))
+        return {QVariant(), BAD_PLEN, payload.size()};
+
       out["x1"] = byteToBits(x1);
       out["y1"] = byteToBits(y1);
       out["x2"] = byteToBits(x2);
       out["y2"] = byteToBits(y2);
-      return { out };
+      break;
     }
+
     case CMD::SET_VAR: {
-      quint8 var, attr;
-      ds >> var >> attr;
+      if (payload.size() != 4)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint8 var = 0;
+      quint8 attr = 0;
+
+      if (!readData(ds, var, attr))
+        return {QVariant(), BAD_PLEN, payload.size()};
+
       if (!isValidVar(var))
-        return {QVariantMap(), BAD_VAR, var};
-      out["var"]  = var;
+        return {QVariant(), BAD_VAR, var};
+
+      out["var"] = var;
       out["attr"] = attr;
-			return { out };
+      break;
     }
+
     default:
-      return { QVariant(), BAD_CMD, cmd };
+      return {QVariant(), BAD_CMD, cmd};
   }
+
+  return {out};
 }
 
 PlcMessageManager::ParseResult PlcMessageManager::parseRespErr(const QByteArray& payload, quint8 tid) const
 {
-	QDataStream ds(payload);
-	ds.setByteOrder(QDataStream::BigEndian);
-	quint8 cmd, err; quint16 code;
-	ds >> cmd >> err >> code;
-
-	QVariantMap out;
-	out["type"] = Type::RESP_ERR;
-	out["tid"]  = tid;
-	out["cmd"]  = cmd;
-	out["err"]  = err;
-	out["code"] = code;
-	return { out };
-}
-
-PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteArray& payload, quint8 paylen) const
-{
-  if (paylen != payload.size())
-    return { QVariant(), BAD_PLEN, paylen };
+  if (payload.size() != 4)
+    return {QVariant(), BAD_PLEN, payload.size()};
 
   QDataStream ds(payload);
   ds.setByteOrder(QDataStream::BigEndian);
 
-  quint8 chg;
-  ds >> chg;
+  quint8 cmd = 0;
+  quint8 err = 0;
+  quint16 code = 0;
 
-  QVariantMap out;
-  out["type"] = Type::CHG;
-  out["chg"] = chg;
+  if (!readData(ds, cmd, err, code))
+    return {QVariant(), BAD_PLEN, payload.size()};
+
+  return {QVariantMap{
+    {"type", Type::RESP_ERR},
+    {"tid", tid},
+    {"cmd", cmd},
+    {"err", err},
+    {"code", code}
+  }};
+}
+
+PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteArray& payload) const
+{
+  QDataStream ds(payload);
+  ds.setByteOrder(QDataStream::BigEndian);
+
+  quint8 chg = 0;
+  if (!readData(ds, chg))
+    return {QVariant(), BAD_PLEN, payload.size()};
+
+  QVariantMap out{
+    {"type", Type::CHG},
+    {"chg", chg}
+  };
+
   switch (chg) {
     case IOs: {
-      quint8 x1, y1, x2, y2;
-      ds >> x1 >> y1 >> x2 >> y2;
+      if (payload.size() != 5)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint8 x1 = 0;
+      quint8 y1 = 0;
+      quint8 x2 = 0;
+      quint8 y2 = 0;
+
+      if (!readData(ds, x1, y1, x2, y2))
+        return {QVariant(), BAD_PLEN, payload.size()};
+
       out["x1"] = byteToBits(x1);
       out["y1"] = byteToBits(y1);
       out["x2"] = byteToBits(x2);
       out["y2"] = byteToBits(y2);
-      return { out };
+      break;
     }
+
     case CELL_STATE: {
-      quint8 state;
-      ds >> state;
-			out["cellState"] = state;
-      return { out };
+      if (payload.size() != 2)
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      quint8 state = 0;
+
+      if (!readData(ds, state))
+        return {QVariant(), BAD_PLEN, payload.size()};
+
+      out["cellState"] = state;
+      break;
     }
+
     default:
-      return { QVariant(), BAD_CHG, chg };
+      return {QVariant(), BAD_CHG, chg};
   }
+
+  return {out};
 }
 
 bool PlcMessageManager::isValidType(quint8 type) const {

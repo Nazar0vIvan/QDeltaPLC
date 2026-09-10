@@ -86,7 +86,15 @@ void FtsDevice::startDevice()
 	QObject::connect(m_sock, &QUdpSocket::readyRead, this, &FtsDevice::onReadyRead);
 	QObject::connect(m_rxTimeout, &QTimer::timeout, this, &FtsDevice::onRxTimeout);
 
-	emit stateReady({{"streaming", false}});
+  emit stateReady({
+    {"streaming", false},
+    {"fx", 0.0},
+    {"fy", 0.0},
+    {"fz", 0.0},
+    {"tx", 0.0},
+    {"ty", 0.0},
+    {"tz", 0.0}
+  });
 }
 
 void FtsDevice::stopDevice()
@@ -323,7 +331,9 @@ void FtsDevice::processBatch()
 
 	const RDTResponse sample = m_batch.back();
 
-	appendLogSample(sample);
+  if (m_logEnabled)
+    appendLogSample(sample);
+
 	emit dataBatchReady(m_batch);
 	publishState(sample);
 
@@ -334,48 +344,54 @@ void FtsDevice::processBatch()
 
 void FtsDevice::startLogRecording()
 {
-	if (m_logEnabled) return;
+  if (m_logEnabled) return;
 
-	if (!m_rxTimeout->isActive()) {
-		emit logMessage({"Cannot record FTS log: no data is being received", 0, objectName()});
-		return;
-	}
+  if (!m_rxTimeout->isActive()) {
+    emit logMessage({
+      "Cannot record FTS log: no data is being received",
+      0,
+      objectName()
+    });
+    return;
+  }
 
-	m_logEnabled = true;
-	m_log.clear();
-	m_log.reserve(kLogCap);
+  m_log.clear();
+  m_log.reserve(kLogCap);
+  m_logEnabled = true;
 
-	emit logMessage({
-		QString("LF log recording started (capacity=%1 samples)").arg(kLogCap),
-		1,
-		objectName()
-	});
+  emit logMessage({
+    QString("LF log recording started (capacity=%1 samples)").arg(kLogCap),
+    1,
+    objectName()
+  });
 }
 
 void FtsDevice::stopLogRecording()
 {
-	if (!m_logEnabled) return;
+  if (!m_logEnabled) return;
 
-	m_logEnabled = false;
+  m_logEnabled = false;
 
-	emit logMessage({"LF log recording stopped", 1, objectName()});
+  emit logMessage({
+    "LF log recording stopped",
+    1,
+    objectName()
+  });
 }
 
 void FtsDevice::appendLogSample(const RDTResponse& sample)
 {
-	if (!m_logEnabled) return;
+  m_log.push_back(sample);
 
-	m_log.push_back(sample);
+  if (m_log.size() < kLogCap) return;
 
-	if (m_log.size() < kLogCap) return;
+  emit logMessage({
+      QString("LF log reached capacity (%1 samples), auto-stopping").arg(kLogCap),
+      2,
+      objectName()
+  });
 
-	emit logMessage({
-		QString("LF log reached capacity (%1 samples), auto-stopping").arg(kLogCap),
-		2,
-		objectName()
-	});
-
-	stopLogRecording();
+  stopLogRecording();
 }
 
 void FtsDevice::saveLogToDefaultFile()

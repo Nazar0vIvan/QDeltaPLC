@@ -114,9 +114,9 @@ private:
   QByteArray buildHeader(Type type, quint8 tid, quint8 len) const;
 
 	ParseResult parseHeader(const QByteArray& headerBytesIn) const;
-	ParseResult parseRespOk(const QByteArray& payload, quint8 tid, quint8 paylen) const;
-	ParseResult parseRespErr(const QByteArray& payload, quint8 tid) const;
-  ParseResult parseStateChange(const QByteArray &payload, quint8 paylen) const;
+  ParseResult parseRespOk(const QByteArray& payload, quint8 tid) const;
+  ParseResult parseRespErr(const QByteArray& payload, quint8 tid) const;
+  ParseResult parseStateChange(const QByteArray& payload) const;
 
   bool isValidType(quint8 type) const;
   bool isValidCmd(quint8 cmd) const;

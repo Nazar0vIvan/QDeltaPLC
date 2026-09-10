@@ -5,9 +5,9 @@ import QtQuick.Controls
 import Styles 1.0
 import Components 1.0
 
-import "DeltaPanel"
-import "FtsPanel"
-import "KukaPanel"
+// import "DeltaPanel"
+// import "FtsPanel"
+// import "KukaPanel"
 
 ScrollView {
   id: root

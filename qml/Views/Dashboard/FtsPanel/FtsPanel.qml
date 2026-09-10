@@ -35,6 +35,7 @@ QxGroupBox {
       QxButton {
         id: btnStart
 
+        enabled: root.fts?.isConnected ?? false
         checked: root.fts?.data.streaming ?? false
         text: checked ? "Stop" : "Start"
         onClicked: root.fts.invoke(checked ? "stopStreaming" : "startStreaming")

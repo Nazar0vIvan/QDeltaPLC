@@ -42,10 +42,17 @@ std::optional<V3d> projectedWorldAxis(const V3d& worldAxis, const V3d& normal, d
   return normalize(worldAxis - worldAxis.dot(normal) * normal, eps);
 }
 
+std::optional<V3d> projectedRef(const V3d& ref, const V3d& normal, double eps = GeomConst::Eps)
+{
+  const auto projected = projectedWorldAxis(ref, normal, eps);
+  if (projected) return projected;
+
+  return projectedWorldAxis(leastParallelUnit(normal), normal, eps);
+}
+
 std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis, double eps = GeomConst::Eps)
 {
   const auto u = normalize(axisDir, eps);
-
   if (!u) return std::nullopt;
 
   V3d e1, e2, e3;
@@ -53,25 +60,33 @@ std::optional<OrthoBasis> basisFromAxis(const V3d& axisDir, Axis axis, double ep
   switch (axis) {
     case Axis::X: {
       e1 = *u;
-      const auto y = projectedWorldAxis(V3d::UnitY(), e1, eps);
-      if (!y) return std::nullopt;
-      e2 = *y;
+
+      const auto ref = projectedRef(V3d::UnitY(), e1, eps);
+      if (!ref) return std::nullopt;
+
+      e2 = *ref;
       e3 = e1.cross(e2);
       break;
     }
+
     case Axis::Y: {
       e2 = *u;
-      const auto z = projectedWorldAxis(V3d::UnitZ(), e2, eps);
-      if (!z) return std::nullopt;
-      e3 = *z;
+
+      const auto ref = projectedRef(V3d::UnitZ(), e2, eps);
+      if (!ref) return std::nullopt;
+
+      e3 = *ref;
       e1 = e2.cross(e3);
       break;
     }
+
     case Axis::Z: {
       e3 = *u;
-      const auto x = projectedWorldAxis(V3d::UnitX(), e3, eps);
-      if (!x) return std::nullopt;
-      e1 = *x;
+
+      const auto ref = projectedRef(V3d::UnitX(), e3, eps);
+      if (!ref) return std::nullopt;
+
+      e1 = *ref;
       e2 = e3.cross(e1);
       break;
     }

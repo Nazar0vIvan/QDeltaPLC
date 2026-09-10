@@ -26,17 +26,19 @@ option(
 option(
   QDELTA_USE_HOT_RELOAD
   "Enable Felgo Hot Reload"
-ON)
+  OFF
+)
 
 if(QDELTA_USE_HOT_RELOAD)
   find_package(Felgo REQUIRED)
   find_package(FelgoHotReload CONFIG REQUIRED)
+
+  set(PRODUCT_IDENTIFIER "com.qdelta.qdeltaplc")
+  set(PRODUCT_VERSION_NAME "0.1.0")
+  set(PRODUCT_VERSION_CODE 1)
+  set(PRODUCT_STAGE "test")
 endif()
 
-set(PRODUCT_IDENTIFIER "com.qdelta.qdeltaplc")
-set(PRODUCT_VERSION_NAME "0.1.0")
-set(PRODUCT_VERSION_CODE 1)
-set(PRODUCT_STAGE "test")
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -53,14 +55,14 @@ qt_add_executable(qdeltaplc
   src/main.cpp
 )
 
-qt_add_resources(qdeltaplc "felgo_config"
-  PREFIX "/"
-  BASE "${CMAKE_CURRENT_SOURCE_DIR}"
-  FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/qml/config.json"
-)
-
 if(QDELTA_USE_HOT_RELOAD)
+  qt_add_resources(qdeltaplc "felgo_config"
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}"
+    FILES
+      "${CMAKE_CURRENT_SOURCE_DIR}/qml/config.json"
+  )
+
   felgo_configure_executable(qdeltaplc)
   felgohotreload_configure_executable(qdeltaplc)
 endif()
@@ -118,10 +120,6 @@ else()
   )
 endif()
 
-target_compile_definitions(qdeltaplc PRIVATE
-  QDELTA_QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
-)
-
 target_sources(qdeltaplc PRIVATE
   ${RESOURCE_FILES}
 )
@@ -136,11 +134,17 @@ target_link_libraries(qdeltaplc PRIVATE
   Qt6::Network
   Qt6::Charts
   Qt6::Xml
-  Felgo
   Styles
   Components
-
 )
+
+if(QDELTA_USE_HOT_RELOAD)
+  target_link_libraries(qdeltaplc PRIVATE Felgo)
+endif()
+
+if(NOT QDELTA_USE_HOT_RELOAD)
+  qt_import_qml_plugins(qdeltaplc)
+endif()
 
 include(GNUInstallDirs)
 
