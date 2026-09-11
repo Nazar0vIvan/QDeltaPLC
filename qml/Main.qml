@@ -3,9 +3,9 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
 
-// import "NavigationPanel"
-// import "Views/Dashboard"
-// import "Views/Network"
+import "NavigationPanel"
+import "Views/Dashboard"
+import "Views/Network"
 
 import Styles 1.0
 import Components 1.0
@@ -17,7 +17,7 @@ ApplicationWindow {
 
   width: 1000
   height: 800
-  visible: false
+  visible: true
   title: qsTr("QDeltaPLC")
   color: Styles.background.dp00
 

@@ -26,7 +26,7 @@ option(
 option(
   QDELTA_USE_HOT_RELOAD
   "Enable Felgo Hot Reload"
-  OFF
+  ON
 )
 
 if(QDELTA_USE_HOT_RELOAD)

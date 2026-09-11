@@ -11,13 +11,14 @@ Switch {
   property bool displayonly: false
   property alias imageSource: image.source
   property bool isOn: false
+  property int barWidth: 36
+  property int barHeight: 20
 
   checkable: false
+  padding: 0
+  spacing: 6
 
   contentItem: Text {
-    anchors.left: indicator.right
-    anchors.verticalCenter: indicator.verticalCenter
-    anchors.leftMargin: 6
     verticalAlignment: Text.AlignVCenter
     text: root.text
     color: Styles.foreground.high
@@ -25,14 +26,14 @@ Switch {
   }
 
   indicator: Rectangle {
-    width: root.width
-    height: root.height
-    radius: root.height / 2
+    implicitWidth: root.barWidth
+    implicitHeight: root.barHeight
+    radius: height / 2
     color: root.isOn ? Styles.secondary.base : Styles.background.dp06
 
     Rectangle {
-      width: root.height - 6
-      height: root.height - 6
+      width: parent.height - 6
+      height: parent.height - 6
       radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
       x: root.isOn ? parent.width - width - 2 : 2

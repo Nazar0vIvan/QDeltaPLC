@@ -37,8 +37,8 @@ Item {
     QxSwitch {
       id: sw
 
-      Layout.preferredWidth: root.switchWidth
-      Layout.preferredHeight: root.switchHeight
+      barWidth: root.switchWidth
+      barHeight: root.switchHeight
       imageSource: "qrc:/pics/lock.svg"
       enabled: root.enabled
       displayonly: root.displayonly

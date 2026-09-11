@@ -79,8 +79,10 @@ Control {
     ListView {
       id: x_lv
 
-      implicitWidth: contentItem.childrenRect.width
-      implicitHeight: contentItem.childrenRect.height
+      // implicitWidth: contentItem.childrenRect.width
+      // implicitHeight: contentItem.childrenRect.height
+      implicitWidth: 220
+      implicitHeight: 300
       spacing: 10
 
       interactive: false
@@ -117,8 +119,10 @@ Control {
     ListView {
       id: y_lv
 
-      implicitWidth: contentItem.childrenRect.width
-      implicitHeight: contentItem.childrenRect.height
+      // implicitWidth: contentItem.childrenRect.width
+      // implicitHeight: contentItem.childrenRect.height
+      implicitWidth: 220
+      implicitHeight: 300
       spacing: 10
 
       interactive: false
