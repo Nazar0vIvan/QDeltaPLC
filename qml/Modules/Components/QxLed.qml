@@ -1,50 +1,30 @@
 import QtQuick
-import QtQuick.Layouts
 
 import Styles 1.0
 
-Item {
+Rectangle {
   id: root
 
-  property color ledColor: "green"
-  property alias tag: tag.text
-  property int size: 20
   property bool isOn: false
+  property color ledColor: "green"
 
-  implicitWidth: cl.implicitWidth
-  implicitHeight: cl.implicitHeight
+  implicitWidth: UiMetrics.ledSize
+  implicitHeight: UiMetrics.ledSize
 
-  ColumnLayout {
-    id: cl
+  radius: width / 2
 
-    spacing: 10
+  color: root.isOn
+         ? Qt.lighter(root.ledColor, 1.6)
+         : Qt.darker(root.ledColor, 2.0)
 
-    Text {
-      id: tag
+  border {
+    width: 3
+    color: Qt.darker(root.ledColor, 1.8)
+  }
 
-      Layout.alignment: Qt.AlignHCenter
-      color: Styles.foreground.high
-      font: Styles.fonts.body
-    }
-
-    Rectangle {
-      id: led
-
-      Layout.preferredWidth: root.size
-      Layout.preferredHeight: root.size
-      radius: width / 2
-      color: root.isOn ? Qt.lighter(root.ledColor, 1.6) : Qt.darker(root.ledColor, 2.0)
-
-      border {
-        color: Qt.darker(root.ledColor, 1.8)
-        width: 3
-      }
-
-      Behavior on color {
-        ColorAnimation {
-          duration: 150
-        }
-      }
+  Behavior on color {
+    ColorAnimation {
+      duration: 150
     }
   }
 }

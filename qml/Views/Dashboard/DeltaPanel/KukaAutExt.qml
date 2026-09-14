@@ -44,14 +44,15 @@ Control {
       id: autExtField
 
       labelWidth: root.labelWidth
-      height: root.fieldHeight
+      Layout.preferredHeight: root.fieldHeight
       labelText: "AUT_EXT : "
 
       Rectangle {
         id: autExt
 
-        anchors.verticalCenter: parent.verticalCenter
-        width: root.ledSize; height: root.ledSize
+        implicitWidth: root.ledSize
+        implicitHeight: root.ledSize
+        Layout.alignment: Qt.AlignVCenter
         color: root.isAutExt ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
       }
@@ -60,14 +61,15 @@ Control {
       id: idleField
 
       labelWidth: root.labelWidth
-      height: root.fieldHeight
+      Layout.preferredHeight: root.fieldHeight
       labelText: "IDLE : "
 
       Rectangle {
         id: idle
 
-        anchors.verticalCenter: parent.verticalCenter
-        width: root.ledSize; height: root.ledSize
+        implicitWidth: root.ledSize
+        implicitHeight: root.ledSize
+        Layout.alignment: Qt.AlignVCenter
         color: root.cellState === Backend.PlcMessage.IDLE ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
 
@@ -77,14 +79,15 @@ Control {
       id: runningField
 
       labelWidth: root.labelWidth
-      height: root.fieldHeight
+      Layout.preferredHeight: root.fieldHeight
       labelText: "RUN : "
 
       Rectangle {
         id: running
 
-        anchors.verticalCenter: parent.verticalCenter
-        width: root.ledSize; height: root.ledSize
+        implicitWidth: root.ledSize
+        implicitHeight: root.ledSize
+        Layout.alignment: Qt.AlignVCenter
         color: root.cellState === Backend.PlcMessage.RUN ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
 
@@ -94,14 +97,15 @@ Control {
       id: doneField
 
       labelWidth: root.labelWidth
-      height: root.fieldHeight
+      Layout.preferredHeight: root.fieldHeight
       labelText: "DONE : "
 
       Rectangle {
         id: done
 
-        anchors.verticalCenter: parent.verticalCenter
-        width: root.ledSize; height: root.ledSize
+        implicitWidth: root.ledSize
+        implicitHeight: root.ledSize
+        Layout.alignment: Qt.AlignVCenter
         color: root.cellState === Backend.PlcMessage.FIN ? "green" : "red"
         border{width: 1; color: Styles.background.dp12}
 
