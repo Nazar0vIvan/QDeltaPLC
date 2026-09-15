@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(QDeltaPLC VERSION 0.1 LANGUAGES CXX)
+project(RoboCrap VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,22 +18,22 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
 option(
-  QDELTA_FAST_QML_BUILD
+  FAST_QML_BUILD
   "Disable QML cache generation for faster development builds"
   ON
 )
 
 option(
-  QDELTA_USE_HOT_RELOAD
+  USE_HOT_RELOAD
   "Enable Felgo Hot Reload"
   ON
 )
 
-if(QDELTA_USE_HOT_RELOAD)
+if(USE_HOT_RELOAD)
   find_package(Felgo REQUIRED)
   find_package(FelgoHotReload CONFIG REQUIRED)
 
-  set(PRODUCT_IDENTIFIER "com.qdelta.qdeltaplc")
+  set(PRODUCT_IDENTIFIER "com.robocrap.robocrap")
   set(PRODUCT_VERSION_NAME "0.1.0")
   set(PRODUCT_VERSION_CODE 1)
   set(PRODUCT_STAGE "test")
@@ -42,29 +42,29 @@ endif()
 
 qt_standard_project_setup(REQUIRES 6.8)
 
-set(QDELTA_QML_OPTIONS)
+set(QML_OPTIONS)
 
-if(QDELTA_FAST_QML_BUILD)
-  list(APPEND QDELTA_QML_OPTIONS NO_CACHEGEN)
+if(FAST_QML_BUILD)
+  list(APPEND QML_OPTIONS NO_CACHEGEN)
 endif()
 
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
 set(QML_IMPORT_PATH "${QT_QML_OUTPUT_DIRECTORY}" CACHE STRING "QML import paths for Qt Creator" FORCE)
 
-qt_add_executable(qdeltaplc
+qt_add_executable(robocrap
   src/main.cpp
 )
 
-if(QDELTA_USE_HOT_RELOAD)
-  qt_add_resources(qdeltaplc "felgo_config"
+if(USE_HOT_RELOAD)
+  qt_add_resources(robocrap "felgo_config"
     PREFIX "/"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}"
     FILES
       "${CMAKE_CURRENT_SOURCE_DIR}/qml/config.json"
   )
 
-  felgo_configure_executable(qdeltaplc)
-  felgohotreload_configure_executable(qdeltaplc)
+  felgo_configure_executable(robocrap)
+  felgohotreload_configure_executable(robocrap)
 endif()
 
 add_subdirectory(src)
@@ -101,17 +101,17 @@ set(RESOURCE_FILES
   resources/json.qrc
 )
 
-if(QDELTA_USE_HOT_RELOAD)
-  qt_add_qml_module(qdeltaplc
-    URI qdeltaplc_qml_module
+if(USE_HOT_RELOAD)
+  qt_add_qml_module(robocrap
+    URI robocrap_qml_module
     VERSION 1.0
-    ${QDELTA_QML_OPTIONS}
+    ${QML_OPTIONS}
   )
 else()
-  qt_add_qml_module(qdeltaplc
-    URI qdeltaplc_qml_module
+  qt_add_qml_module(robocrap
+    URI robocrap_qml_module
     VERSION 1.0
-    ${QDELTA_QML_OPTIONS}
+    ${QML_OPTIONS}
     IMPORTS
       Styles
       Components
@@ -120,13 +120,13 @@ else()
   )
 endif()
 
-target_sources(qdeltaplc PRIVATE
+target_sources(robocrap PRIVATE
   ${RESOURCE_FILES}
 )
 
-target_link_libraries(qdeltaplc PRIVATE
-  QDeltaBackend
-  QDeltaBackendplugin
+target_link_libraries(robocrap PRIVATE
+  RoboCrapBackend
+  RoboCrapBackendplugin
   Qt6::Core
   Qt6::Gui
   Qt6::Quick
@@ -138,17 +138,17 @@ target_link_libraries(qdeltaplc PRIVATE
   Components
 )
 
-if(QDELTA_USE_HOT_RELOAD)
-  target_link_libraries(qdeltaplc PRIVATE Felgo)
+if(USE_HOT_RELOAD)
+  target_link_libraries(robocrap PRIVATE Felgo)
 endif()
 
-if(NOT QDELTA_USE_HOT_RELOAD)
-  qt_import_qml_plugins(qdeltaplc)
+if(NOT USE_HOT_RELOAD)
+  qt_import_qml_plugins(robocrap)
 endif()
 
 include(GNUInstallDirs)
 
-install(TARGETS qdeltaplc
+install(TARGETS robocrap
   BUNDLE DESTINATION .
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

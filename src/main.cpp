@@ -29,22 +29,10 @@
 
 #include <QWindow>
 #include <QDebug>
-#include <QFile>
 
 int main(int argc, char* argv[])
 {
-  QFile trace("qdeltaplc-startup.txt");
-  trace.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
-
-  auto mark = [&trace](const char* text) {
-    trace.write(text);
-    trace.write("\n");
-    trace.flush();
-  };
-
   QApplication app(argc, argv);
-
-  mark("1 QApplication created");
 
 #ifdef USE_FELGO_HOT_RELOAD
   FelgoApplication felgo;
@@ -72,15 +60,11 @@ int main(int argc, char* argv[])
   hub.add(QStringLiteral("fts"), ftsDev, DeviceHub::DeviceGroup::Control);
   hub.add(QStringLiteral("rsi"), rsiDev, DeviceHub::DeviceGroup::Control);
 
-  mark("2 devices created");
-
   DeviceHubQml::s_inst = &hub;
 
   QObject::connect(ftsDev, &FtsDevice::dataSampleHFReady, rsiDev, &RsiDevice::setForce);
 
   hub.startAll();
-
-  mark("3 hub started");
 
   QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);
 
@@ -89,8 +73,6 @@ int main(int argc, char* argv[])
   // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
 
   QQmlApplicationEngine engine;
-
-  mark("4 engine created");
 
 #ifdef USE_FELGO_HOT_RELOAD
   felgo.initialize(&engine);
@@ -121,18 +103,10 @@ int main(int argc, char* argv[])
 
 #else
 
-  mark("5 before loadFromModule");
-
-  engine.loadFromModule("qdeltaplc_qml_module", "Main");
-
-  mark("6 after loadFromModule");
-
-  mark("7 root checked");
+  engine.loadFromModule("robocrap_qml_module", "Main");
 
   if (engine.rootObjects().isEmpty())
     return 77;
-
-  mark("8 before app.exec");
 
   qDebug() << "Root objects:" << engine.rootObjects().size();
   qDebug() << "Windows:" << QGuiApplication::allWindows().size();

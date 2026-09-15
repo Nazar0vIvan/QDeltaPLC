@@ -18,7 +18,7 @@ ApplicationWindow {
   width: 1000
   height: 800
   visible: true
-  title: qsTr("QDeltaPLC")
+  title: qsTr("RoboCrap")
   color: Styles.background.dp00
 
   RowLayout {

@@ -1,9 +1,9 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(EIGEN5_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/libs/eigen-5.0.0)
 
-qt_add_qml_module(QDeltaBackend
+qt_add_qml_module(RoboCrapBackend
   STATIC
-  URI QDelta.Backend
+  URI RoboCrap.Backend
   VERSION 1.0
 
   DEPENDENCIES
@@ -31,20 +31,20 @@ qt_add_qml_module(QDeltaBackend
     logger.cpp
 )
 
-target_include_directories(QDeltaBackend PUBLIC
+target_include_directories(RoboCrapBackend PUBLIC
   ${SRC_DIR}
   ${SRC_DIR}/network
   ${SRC_DIR}/network/common
   ${SRC_DIR}/network/plc
 )
 
-target_link_libraries(QDeltaBackend PUBLIC
+target_link_libraries(RoboCrapBackend PUBLIC
   Qt6::Core
   Qt6::Qml
   Qt6::Network
 )
 
-target_sources(qdeltaplc PRIVATE
+target_sources(robocrap PRIVATE
   geometry/cylinder.h
   geometry/cylinder.cpp
   geometry/mathtypes.h
@@ -80,7 +80,7 @@ target_sources(qdeltaplc PRIVATE
   qmlchartbridge.cpp
 )
 
-target_include_directories(qdeltaplc PRIVATE
+target_include_directories(robocrap PRIVATE
   ${SRC_DIR}
 
   ${SRC_DIR}/geometry

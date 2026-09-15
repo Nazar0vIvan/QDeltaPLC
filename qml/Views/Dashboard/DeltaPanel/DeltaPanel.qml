@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import Styles 1.0
 import Components 1.0
 
-import QDelta.Backend 1.0 as Backend
+import RoboCrap.Backend 1.0 as Backend
 
 QxGroupBox {
   id: root

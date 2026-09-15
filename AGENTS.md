@@ -1,4 +1,4 @@
-# QDeltaPLC — agent instructions
+# RoboCrap — agent instructions
 
 ## Scope and workflow
 
@@ -24,12 +24,12 @@
 - This is a Windows Qt Quick application: C++17, Qt 6.8 minimum, CMake 3.16 minimum, bundled Eigen.
   Root and module CMakeLists.txt files are authoritative for requirements, sources, and options.
   Keep compatibility with those minimums; local SDK versions do not authorize raising them.
-- Root CMakeLists.txt owns qdeltaplc, application QML, and resource lists. src/CMakeLists.txt owns
-  QDeltaBackend and also adds geometry, path generation, and concrete devices directly to qdeltaplc.
+- Root CMakeLists.txt owns robocrap, application QML, and resource lists. src/CMakeLists.txt owns
+  RoboCrapBackend and also adds geometry, path generation, and concrete devices directly to robocrap.
   A successful backend-only build does not validate those application sources.
-- QDELTA_USE_HOT_RELOAD=ON requires Felgo/FelgoHotReload. OFF embeds application QML using
+- USE_HOT_RELOAD=ON requires Felgo/FelgoHotReload. OFF embeds application QML using
   qt_add_qml_module(). Preserve both paths; use OFF for verification when Felgo is unavailable.
-- QDELTA_FAST_QML_BUILD=ON applies NO_CACHEGEN to the application and UI modules. Check OFF too
+- FAST_QML_BUILD=ON applies NO_CACHEGEN to the application and UI modules. Check OFF too
   when changing cache-generation behavior; a fast build does not validate that compilation path.
 - old_imp/ is outside the active CMake build; python/ contains analysis scripts and data.
   Do not treat either as the current application implementation or an automated test suite.
@@ -40,7 +40,7 @@ Apply these contracts when changing devices or their UI integration, unless the 
 redesigns the mechanism. Start with src/network/{devicehub,devicerunner,abstractdevice}.{h,cpp}
 and src/main.cpp.
 
-- QML reaches devices through QDelta.Backend's Hub singleton: Backend.Hub.device(key) returns
+- QML reaches devices through RoboCrap.Backend's Hub singleton: Backend.Hub.device(key) returns
   a DeviceRunner on the application/QML thread. Keep its QQmlPropertyMap on that thread too.
 - DeviceHub::add() takes a parentless AbstractDevice and moves it to its I/O thread. Currently
   FTS and RSI share ControlIO; PLC uses GeneralIO. The FTS-to-RSI signal in main.cpp relies on
@@ -87,7 +87,7 @@ and src/main.cpp.
 
 ## CMake, modules, and resources
 
-- Preserve module URIs: qdeltaplc_qml_module, QDelta.Backend, Components, Styles.
+- Preserve module URIs: robocrap_qml_module, RoboCrap.Backend, Components, Styles.
   When a file/type moves or changes name, update its owning CMake source list and all affected imports.
 - For Components/Styles exports, update both the module CMakeLists.txt and source qmldir.
   These two qmldir files are maintained hot-reload inputs, not disposable generated files.
@@ -118,15 +118,15 @@ and src/main.cpp.
   compiler environment first; the configure command is unnecessary for an existing valid build.
 
 ```powershell
-cmake -S . -B "$buildDir" -G Ninja "-DCMAKE_PREFIX_PATH=$qtPrefix" -DQDELTA_USE_HOT_RELOAD=OFF -DCMAKE_BUILD_TYPE=Debug
-cmake --build "$buildDir" --target qdeltaplc --parallel
+cmake -S . -B "$buildDir" -G Ninja "-DCMAKE_PREFIX_PATH=$qtPrefix" -DUSE_HOT_RELOAD=OFF -DCMAKE_BUILD_TYPE=Debug
+cmake --build "$buildDir" --target robocrap --parallel
 cmake --build "$buildDir" --target Components_qmllint
 ```
 
 - Select checks by the change: C++/CMake/resource changes require the owning target build;
-  application integration and concrete-device/geometry/path changes require qdeltaplc.
+  application integration and concrete-device/geometry/path changes require robocrap.
   QML changes require the owning *_qmllint target: Components_qmllint, Styles_qmllint, or
-  qdeltaplc_qmllint (hot reload OFF for application QML). Verify targets in the selected build;
+  robocrap_qmllint (hot reload OFF for application QML). Verify targets in the selected build;
   use all_qmllint for multiple modules. QML registration/resource changes also require a build.
 - No application test suite is currently registered in the project CMake files. Do not count
   vendored Eigen tests, old_imp/Test, or a zero-test CTest run as application coverage. For behavior
