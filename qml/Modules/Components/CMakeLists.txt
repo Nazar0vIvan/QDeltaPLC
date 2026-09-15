@@ -14,7 +14,9 @@ qt_add_qml_module(Components
     QxGroupBox.qml
     QxHField.qml
     QxLed.qml
+    QxPanel.qml
     QxProgressBar.qml
+    QxScrollPage.qml
     QxStepButton.qml
     QxSwitch.qml
     QxTextInput.qml

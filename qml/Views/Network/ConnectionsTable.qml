@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -27,18 +29,23 @@ Item {
       syncView: table
 
       delegate: Rectangle {
-        required property var display
+        id: headerCell
 
-        implicitHeight: 34
+        required property var display
+        required property int column
+
+        implicitHeight: UiMetrics.controlHeight
         color: "transparent"
 
         Text {
           anchors {
             fill: parent
-            leftMargin: column === Backend.DeviceProfileModel.DeviceColumn ? 16 : 0
+            leftMargin: headerCell.column === Backend.DeviceProfileModel.DeviceColumn
+                        ? UiMetrics.spacingLarge
+                        : 0
           }
 
-          text: display
+          text: headerCell.display
           font: Styles.fonts.body
           color: Styles.foreground.medium
 
@@ -52,7 +59,7 @@ Item {
             bottom: parent.bottom
           }
 
-          height: 1
+          height: UiMetrics.borderWidth
           color: Styles.background.dp24
         }
       }
@@ -74,7 +81,7 @@ Item {
         150  // Status
       ]
 
-      property int rowHeight: 36
+      property int rowHeight: UiMetrics.controlHeight
 
       onColumnWidthsChanged: forceLayout()
       onRowHeightChanged: forceLayout()
@@ -108,7 +115,9 @@ Item {
         readonly property bool connected:
           runner && runner.isConnected
 
-        color: row === root.selectedRow ? Styles.background.dp12 : "transparent"
+        color: cell.row === root.selectedRow
+               ? Styles.background.dp12
+               : "transparent"
 
         TextInput {
           visible:
@@ -116,7 +125,9 @@ Item {
 
           anchors {
             fill: parent
-            leftMargin: column === Backend.DeviceProfileModel.DeviceColumn ? 16 : 0
+            leftMargin: cell.column === Backend.DeviceProfileModel.DeviceColumn
+                        ? UiMetrics.spacingLarge
+                        : 0
           }
 
           text: cell.display ?? ""
@@ -142,13 +153,13 @@ Item {
             verticalCenter: parent.verticalCenter
           }
 
-          spacing: 8
+          spacing: UiMetrics.spacingSmall
 
           Rectangle {
             anchors.verticalCenter: parent.verticalCenter
 
-            width: 12
-            height: 12
+            width: UiMetrics.indicatorSizeSmall
+            height: width
             radius: width / 2
 
             color: cell.connected ? Styles.minColor : Styles.maxColor
@@ -180,7 +191,7 @@ Item {
             bottom: parent.bottom
           }
 
-          height: 1
+          height: UiMetrics.borderWidth
           color: Styles.background.dp24
         }
       }

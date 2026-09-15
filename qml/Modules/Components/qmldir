@@ -4,7 +4,9 @@ QxComboBox    1.0 QxComboBox.qml
 QxGroupBox    1.0 QxGroupBox.qml
 QxHField      1.0 QxHField.qml
 QxLed         1.0 QxLed.qml
+QxPanel       1.0 QxPanel.qml
 QxProgressBar 1.0 QxProgressBar.qml
+QxScrollPage   1.0 QxScrollPage.qml
 QxStepButton  1.0 QxStepButton.qml
 QxSwitch      1.0 QxSwitch.qml
 QxTextInput   1.0 QxTextInput.qml

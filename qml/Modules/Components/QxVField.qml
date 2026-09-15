@@ -9,6 +9,7 @@ Item {
 
   property alias labelText: label.text
   property alias color: label.color
+  property alias labelColor: label.color
   property alias spacing: cl.spacing
   default property alias content: slot.data
 
@@ -18,23 +19,20 @@ Item {
   ColumnLayout {
     id: cl
 
-    spacing: 8
+    spacing: UiMetrics.spacingSmall
 
     Label {
       id: label
-
-      Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: implicitHeight
 
       color: Styles.foreground.medium
       font: Styles.fonts.body
     }
 
-    Item {
+    RowLayout {
       id: slot
 
-      Layout.preferredWidth: childrenRect.width
-      Layout.preferredHeight: childrenRect.height
+      Layout.alignment: Qt.AlignHCenter
+      spacing: 0
     }
   }
 }

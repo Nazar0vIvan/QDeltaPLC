@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic
-import QtQuick.Layouts
-
 import Styles 1.0
 
 ScrollView {
@@ -23,11 +21,17 @@ ScrollView {
     textFormat: TextEdit.RichText
     background: Rectangle {
       color: Styles.background.dp04
-      border{ color: Styles.foreground.high; width: 1 }
+      border {
+        color: Styles.foreground.high
+        width: UiMetrics.borderWidth
+      }
     }
 
     Connections {
+      // logger is the intentional context property registered in main.cpp.
+      // qmllint disable unqualified
       target: logger
+      // qmllint enable unqualified
       function onLogAdded(message){
         const colors = {
             0: "#ff3a31",

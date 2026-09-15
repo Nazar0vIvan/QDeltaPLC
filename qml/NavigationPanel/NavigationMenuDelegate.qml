@@ -12,19 +12,22 @@ Item {
   Image {
     id: image
 
-    anchors{fill: parent; margins: 8}
+    anchors {
+      fill: parent
+      margins: UiMetrics.spacingSmall
+    }
     fillMode: Image.PreserveAspectFit
     smooth: true
     mipmap: true
   }
 
   MultiEffect {
-  id: effect
+    id: effect
 
-  visible: root.selected
-  anchors.fill: image
-  source: image
-  colorization: 1.0
-  colorizationColor: Styles.primary.base
+    visible: root.selected
+    anchors.fill: image
+    source: image
+    colorization: 1.0
+    colorizationColor: Styles.primary.base
   }
 }

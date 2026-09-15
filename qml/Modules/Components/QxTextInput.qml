@@ -9,12 +9,14 @@ TextField {
 
   property bool confirmed: false
   property alias placeholder: defaultTxt.text
-  property int radius: 4
+  property int radius: UiMetrics.radiusSmall
 
-  leftPadding: 8
+  leftPadding: UiMetrics.controlHorizontalPadding
+  rightPadding: UiMetrics.controlHorizontalPadding
+  topPadding: UiMetrics.controlVerticalPadding
+  bottomPadding: UiMetrics.controlVerticalPadding
   color: Styles.foreground.high
   font: Styles.fonts.body
-
 
   selectionColor: Styles.primary.highlight
   selectedTextColor: Styles.foreground.high
@@ -27,7 +29,7 @@ TextField {
     color: "transparent"
     radius: control.radius
     border {
-      width: control.readOnly ? 0 : 1
+      width: control.readOnly ? 0 : UiMetrics.borderWidth
       color: control.activeFocus ? Styles.primary.base : control.confirmed ? "green" : Styles.background.dp12
     }
   }

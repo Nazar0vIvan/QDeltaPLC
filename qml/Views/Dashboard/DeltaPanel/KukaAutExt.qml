@@ -1,6 +1,6 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import Components 1.0
@@ -8,7 +8,7 @@ import Styles 1.0
 
 import QDelta.Backend 1.0 as Backend
 
-Control {
+QxPanel {
   id: root
 
   required property Backend.DeviceRunner plc
@@ -25,160 +25,66 @@ Control {
                                    ? root.plc.data.cellState
                                    : -1
 
-  property string title: ""
-  property int labelWidth: 70
-  property int fieldHeight: 28
-  property int fieldWidth: 50
-  property int ledSize: 12
+  readonly property var indicators: [
+    { label: "AUT_EXT", isOn: root.isAutExt },
+    { label: "IDLE", isOn: root.cellState === Backend.PlcMessage.IDLE },
+    { label: "RUN", isOn: root.cellState === Backend.PlcMessage.RUN },
+    { label: "DONE", isOn: root.cellState === Backend.PlcMessage.FIN }
+  ]
 
-  topPadding: 40
-  bottomPadding: 10
-  leftPadding: 10
-  rightPadding: 10
+  spacing: UiMetrics.spacingSmall
 
-  contentItem: ColumnLayout {
+  Repeater {
+    model: root.indicators
 
-    spacing: 6
+    delegate: QxHField {
+      id: field
 
-    QxHField {
-      id: autExtField
+      required property var modelData
 
-      labelWidth: root.labelWidth
-      Layout.preferredHeight: root.fieldHeight
-      labelText: "AUT_EXT : "
+      labelWidth: UiMetrics.fieldWidthSmall
+      labelText: field.modelData.label
 
-      Rectangle {
-        id: autExt
-
-        implicitWidth: root.ledSize
-        implicitHeight: root.ledSize
+      QxLed {
         Layout.alignment: Qt.AlignVCenter
-        color: root.isAutExt ? "green" : "red"
-        border{width: 1; color: Styles.background.dp12}
+        diameter: UiMetrics.indicatorSizeSmall
+        ledColor: Styles.minColor
+        isOn: field.modelData.isOn
       }
     }
-    QxHField {
-      id: idleField
+  }
 
-      labelWidth: root.labelWidth
-      Layout.preferredHeight: root.fieldHeight
-      labelText: "IDLE : "
+  RowLayout {
+    spacing: UiMetrics.spacingSmall
 
-      Rectangle {
-        id: idle
+    QxButton {
+      id: btnConnect
 
-        implicitWidth: root.ledSize
-        implicitHeight: root.ledSize
-        Layout.alignment: Qt.AlignVCenter
-        color: root.cellState === Backend.PlcMessage.IDLE ? "green" : "red"
-        border{width: 1; color: Styles.background.dp12}
-
-      }
-    }
-    QxHField {
-      id: runningField
-
-      labelWidth: root.labelWidth
-      Layout.preferredHeight: root.fieldHeight
-      labelText: "RUN : "
-
-      Rectangle {
-        id: running
-
-        implicitWidth: root.ledSize
-        implicitHeight: root.ledSize
-        Layout.alignment: Qt.AlignVCenter
-        color: root.cellState === Backend.PlcMessage.RUN ? "green" : "red"
-        border{width: 1; color: Styles.background.dp12}
-
-      }
-    }
-    QxHField {
-      id: doneField
-
-      labelWidth: root.labelWidth
-      Layout.preferredHeight: root.fieldHeight
-      labelText: "DONE : "
-
-      Rectangle {
-        id: done
-
-        implicitWidth: root.ledSize
-        implicitHeight: root.ledSize
-        Layout.alignment: Qt.AlignVCenter
-        color: root.cellState === Backend.PlcMessage.FIN ? "green" : "red"
-        border{width: 1; color: Styles.background.dp12}
-
-      }
+      checked: root.plc.isConnected
+      text: checked ? "Disconnect" : "Connect"
+      onClicked: root.plc.invoke(checked ? "disconnect" : "connect")
     }
 
-    RowLayout {
-      id: rl
+    QxButton {
+      id: btnStartCell
 
-
-      QxButton {
-        id: btnConnect
-
-        checked: root.plc.isConnected
-        text: checked ? "Disconnect" : "Connect"
-        onClicked: root.plc.invoke(checked ? "disconnect" : "connect")
-      }
-
-      QxButton {
-        id: btnStartCell
-
-        text: "Start Program"
-        enabled: root.plc.isConnected && root.isAutExt
-        onClicked: {
-          const args = {
-            "cmd": Backend.PlcMessage.SET_VAR,
-            "var": Backend.PlcMessage.START_CELL,
-            "attr": 1 // PGNO
-          }
-          root.plc.invoke("writeMessage", args);
+      text: "Start Program"
+      enabled: root.plc.isConnected && root.isAutExt
+      onClicked: {
+        const args = {
+          "cmd": Backend.PlcMessage.SET_VAR,
+          "var": Backend.PlcMessage.START_CELL,
+          "attr": 1
         }
-      }
-
-      QxButton {
-        id: btnSftOk
-
-        text: "Safety Ok"
-        enabled: root.plc.isConnected && root.isAutExt
+        root.plc.invoke("writeMessage", args)
       }
     }
-  }
 
-  background: Rectangle {
-    color: "transparent"
-    border {
-      width: 1
-      color: Styles.background.dp12
-    }
-  }
+    QxButton {
+      id: btnSftOk
 
-  Label {
-    id: header
-
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: parent.top
-
-    leftPadding: 10
-    rightPadding: 10
-    topPadding: 6
-    bottomPadding: 6
-
-    font: Styles.fonts.body
-    textFormat: Text.RichText
-    color: Styles.foreground.medium
-    text: root.title
-
-    background: Rectangle {
-      color: Styles.background.dp01
-      border {
-        width: 1
-        color: Styles.background.dp12
-      }
+      text: "Safety Ok"
+      enabled: root.plc.isConnected && root.isAutExt
     }
   }
 }

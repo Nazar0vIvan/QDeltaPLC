@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 
 import Styles 1.0
 import Components 1.0
@@ -9,95 +8,59 @@ import "DeltaPanel"
 import "FtsPanel"
 import "KukaPanel"
 
-ScrollView {
+QxScrollPage {
   id: root
 
-  clip: true
+  pageTopPadding: UiMetrics.controlHeightLarge
+  spacing: UiMetrics.spacingLarge
 
-  contentWidth: availableWidth
-  contentHeight: content.implicitHeight
+  RowLayout {
+    Layout.fillWidth: true
 
-  ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-  ScrollBar.vertical.policy: ScrollBar.AsNeeded
+    DeltaPanel {
+      id: deltaPanel
 
-  Item {
-    id: content
+      title: "PLC AS332T-A"
+    }
+  }
 
-    width: root.availableWidth
-    implicitHeight: cl1.implicitHeight + 40 + 20
+  Rectangle {
+    Layout.fillWidth: true
+    Layout.preferredHeight: UiMetrics.borderWidth
 
-    ColumnLayout {
-      id: cl1
+    gradient: Gradient {
+      orientation: Gradient.Horizontal
 
-      anchors {
-        top: parent.top
-        left: parent.left
-        right: parent.right
-        topMargin: 40
-        leftMargin: 20
-        rightMargin: 20
+      GradientStop {
+        position: 0.0
+        color: Styles.secondary.dark
       }
 
-      spacing: 20
-
-      RowLayout {
-        id: rl1
-
-        Layout.fillWidth: true
-        spacing: 20
-
-        DeltaPanel {
-          id: deltaPanel
-
-          title: "PLC AS332T-A"
-        }
+      GradientStop {
+        position: 1.0
+        color: Styles.background.dp00
       }
+    }
+  }
 
-      Rectangle {
-        id: separator2
+  RowLayout {
+    Layout.fillWidth: true
+    spacing: UiMetrics.spacingLarge
 
-        Layout.fillWidth: true
-        Layout.preferredHeight: 1
+    KukaPanel {
+      id: kukaPanel
 
-        gradient: Gradient {
-          orientation: Gradient.Horizontal
+      title: qsTr("Robot Sensor Interface")
+      Layout.alignment: Qt.AlignTop
+      Layout.topMargin: UiMetrics.spacingMedium
+    }
 
-          GradientStop {
-            position: 0.0
-            color: Styles.secondary.dark
-          }
+    FtsPanel {
+      id: ftsPanel
 
-          GradientStop {
-            position: 1.0
-            color: Styles.background.dp00
-          }
-        }
-      }
-
-      RowLayout {
-        id: rl2
-
-        Layout.fillWidth: true
-        spacing: 20
-
-        KukaPanel {
-          id: kukaPanel
-
-          title: qsTr("Robot Sensor Interface")
-
-          Layout.alignment: Qt.AlignTop
-          Layout.topMargin: 14
-        }
-
-        FtsPanel {
-          id: ftsPanel
-
-          title: qsTr("FTS Delta-IP68-SI-660-60")
-
-          Layout.alignment: Qt.AlignTop
-          Layout.topMargin: 14
-        }
-      }
+      title: qsTr("FTS Delta-IP68-SI-660-60")
+      Layout.alignment: Qt.AlignTop
+      Layout.topMargin: UiMetrics.spacingMedium
     }
   }
 }

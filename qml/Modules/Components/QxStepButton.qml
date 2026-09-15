@@ -8,8 +8,10 @@ import Styles 1.0
 Control {
   id: root
 
-  property int imageSize: 10
-  property int fieldWidth: 50
+  property int imageSize: UiMetrics.iconSizeSmall
+  property int fieldWidth: UiMetrics.fieldWidthSmall
+  property alias text: valueField.text
+  property alias validator: valueField.validator
 
   signal increment()
   signal decrement()
@@ -18,8 +20,8 @@ Control {
 
   background: Rectangle {
     color: "transparent"
-    border{width: 1; color: Styles.background.dp04}
-    radius: 4
+    border{width: UiMetrics.borderWidth; color: Styles.background.dp04}
+    radius: UiMetrics.radiusSmall
   }
 
   contentItem: RowLayout {
@@ -30,49 +32,52 @@ Control {
     Button {
       id: btnDecrement
 
-      leftPadding: 6; rightPadding: 6
-      topPadding: 10; bottomPadding: 10
+      padding: UiMetrics.spacingSmall
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
-        width: root.imageSize
+        sourceSize.width: root.imageSize
+        sourceSize.height: root.imageSize
         mipmap: true
         smooth: true
-        source: "minus.svg"
+        source: "qrc:/pics/minus.svg"
       }
 
       background: Rectangle {
         color: btnDecrement.hovered ? Styles.background.dp04 : "transparent"
-        topLeftRadius: 4
-        bottomLeftRadius: 4
+        topLeftRadius: UiMetrics.radiusSmall
+        bottomLeftRadius: UiMetrics.radiusSmall
       }
+
+      onClicked: root.decrement()
     }
 
     QxTextInput {
-      id: separator
+      id: valueField
 
       Layout.preferredWidth: root.fieldWidth
-      Layout.preferredHeight: btnDecrement.implicitHeight
     }
 
     Button {
       id: btnIncrement
 
-      leftPadding: 6; rightPadding: 6
-      topPadding: 5; bottomPadding: 5
+      padding: UiMetrics.spacingSmall
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
-        width: root.imageSize
+        sourceSize.width: root.imageSize
+        sourceSize.height: root.imageSize
         mipmap: true
         smooth: true
-        source: "plus.svg"
+        source: "qrc:/pics/plus.svg"
       }
       background: Rectangle {
         color: btnIncrement.hovered ? Styles.background.dp04 : "transparent"
-        topRightRadius: 4
-        bottomRightRadius: 4
+        topRightRadius: UiMetrics.radiusSmall
+        bottomRightRadius: UiMetrics.radiusSmall
       }
+
+      onClicked: root.increment()
     }
   }
 }

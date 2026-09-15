@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import Styles 1.0
@@ -17,13 +16,10 @@ QxGroupBox {
   readonly property var x2: root.plc?.data.x2 ?? [false, false, false, false, false, false, false, false]
   readonly property var y2: root.plc?.data.y2 ?? [false, false, false, false, false, false, false, false]
 
-  implicitWidth: leftPadding + rl.implicitWidth + rightPadding
-  implicitHeight: topPadding + rl.implicitHeight + bottomPadding
-
   RowLayout {
     id: rl
 
-    spacing: 20
+    spacing: UiMetrics.spacingLarge
 
     LedsPanel {
       id: ledPanel
@@ -47,9 +43,6 @@ QxGroupBox {
       plc: root.plc
 
       title: 'AS16AP11<font color="red">P</font>-A'
-      Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: implicitHeight
-
       enabled: root.plc.isConnected
       xStates: root.x1
       yStates: root.y1
@@ -70,9 +63,6 @@ QxGroupBox {
       plc: root.plc
 
       title: 'AS16AP11<font color="#509dfd">T</font>-A'
-      Layout.preferredWidth: implicitWidth
-      Layout.preferredHeight: implicitHeight
-
       enabled: root.plc.isConnected
       xStates: root.x2
       yStates: root.y2

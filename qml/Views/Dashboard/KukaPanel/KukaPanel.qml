@@ -1,9 +1,8 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
-import Styles 1.0
 import Components 1.0
+import Styles 1.0
 
 import QDelta.Backend 1.0 as Backend
 
@@ -13,18 +12,15 @@ QxGroupBox {
   property bool isValidBlade : false
   readonly property Backend.DeviceRunner rsi: Backend.Hub.device("rsi")
 
-  implicitWidth: leftPadding + cl.implicitWidth + rightPadding
-  implicitHeight: topPadding + cl.implicitHeight + bottomPadding
-
   ColumnLayout {
     id: cl
 
-    spacing: 14
+    spacing: UiMetrics.spacingMedium
 
     RowLayout {
       id: rl
 
-      spacing: 20
+      spacing: UiMetrics.spacingLarge
 
       RsiPosition {
         id: cartesianPosition
@@ -47,12 +43,12 @@ QxGroupBox {
     ColumnLayout {
       id: cl2
 
-      spacing: 10
+      spacing: UiMetrics.spacingSmall
 
       RowLayout {
         id: rl2
 
-        spacing: 10
+        spacing: UiMetrics.spacingSmall
 
         QxButton {
           id: genTraj
@@ -71,13 +67,13 @@ QxGroupBox {
           onClicked: root.rsi.invoke(root.rsi.data.motionActive ? "stopStreaming" : "startStreaming")
         }
 
-        Rectangle {
+        QxLed {
           id: ledRsi
 
-          Layout.preferredWidth: 20
-          Layout.preferredHeight: 20
-          radius: 10
-          color: root.rsi?.data.motionActive ? "green" : "red"
+          Layout.alignment: Qt.AlignVCenter
+          diameter: UiMetrics.indicatorSizeMedium
+          ledColor: Styles.minColor
+          isOn: root.rsi?.data.motionActive ?? false
         }
       }
     }

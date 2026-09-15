@@ -7,24 +7,25 @@ Rectangle {
 
   property bool isOn: false
   property color ledColor: "green"
+  property real diameter: UiMetrics.indicatorSizeMedium
 
-  implicitWidth: UiMetrics.ledSize
-  implicitHeight: UiMetrics.ledSize
+  implicitWidth: root.diameter
+  implicitHeight: root.diameter
 
-  radius: width / 2
+  radius: Math.min(width, height) / 2
 
   color: root.isOn
          ? Qt.lighter(root.ledColor, 1.6)
          : Qt.darker(root.ledColor, 2.0)
 
   border {
-    width: 3
+    width: UiMetrics.borderWidth
     color: Qt.darker(root.ledColor, 1.8)
   }
 
   Behavior on color {
     ColorAnimation {
-      duration: 150
+      duration: UiMetrics.animationFast
     }
   }
 }

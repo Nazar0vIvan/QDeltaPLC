@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import Styles 1.0
@@ -9,116 +7,40 @@ import Components 1.0
 Item {
   id: root
 
-  property int imageSize: 6
-  property int fieldWidth: 50
-  property int fieldHeight: 24
+  property int fieldWidth: UiMetrics.fieldWidthSmall
   property alias dimension: dimension.text
   property real value: 0.000
 
-  implicitWidth: rl.implicitWidth
-  implicitHeight: rl.implicitHeight
+  implicitWidth: row.implicitWidth
+  implicitHeight: row.implicitHeight
 
   RowLayout {
-    id: rl
+    id: row
 
-    spacing: 0
+    spacing: UiMetrics.spacingSmall
 
     Image {
-      id: imgStep
-
-      Layout.preferredHeight: root.fieldHeight
-      Layout.rightMargin: 14
+      Layout.preferredWidth: UiMetrics.iconSizeLarge
+      Layout.preferredHeight: UiMetrics.iconSizeLarge
       fillMode: Image.PreserveAspectFit
       source: "qrc:/pics/step.svg"
+      mipmap: true
+      smooth: true
     }
 
-    Button {
-      // left arrow
-      id: btnDecrement
-
-      Layout.preferredWidth: 14
-      Layout.preferredHeight: root.fieldHeight
-      topPadding: 6
-      bottomPadding: 6
-      rightPadding: 4
-      leftPadding: 4
-
-      contentItem: Image {
-        source: "qrc:/pics/arrow_left.svg"
-        mipmap: true
-        smooth: true
-      }
-      background: Rectangle {
-        topLeftRadius: 4
-        bottomLeftRadius: 4
-        color: Styles.background.dp04
-        border {
-          width: 1
-          color: Styles.background.dp24
-        }
-        opacity: btnDecrement.pressed ? 0.7 : btnDecrement.hovered ? 1.0 : 0.7
-      }
-
-      onClicked: {
-        root.value = root.value - 0.001
-      }
-    }
-
-    TextField {
-      id: valueField
-
-      Layout.preferredHeight: root.fieldHeight
-      Layout.preferredWidth: root.fieldWidth
+    QxStepButton {
+      fieldWidth: root.fieldWidth
       text: root.value.toFixed(3)
-      color: Styles.foreground.high
-      font: Styles.fonts.body
 
-      background: Rectangle {
-        color: "transparent"
-        border {
-          width: 1
-          color: Styles.background.dp04
-        }
-      }
-    }
-
-    Button {
-      // right arrow
-      id: btnIncrement
-
-      Layout.preferredWidth: 14
-      Layout.preferredHeight: root.fieldHeight
-      topPadding: 6
-      bottomPadding: 6
-      rightPadding: 4
-      leftPadding: 4
-
-      contentItem: Image {
-        source: "qrc:/pics/arrow_right.svg"
-        mipmap: true
-        smooth: true
-      }
-      background: Rectangle {
-        topRightRadius: 4
-        bottomRightRadius: 4
-        color: Styles.background.dp04
-        border {
-          width: 1
-          color: Styles.background.dp24
-        }
-        opacity: btnIncrement.pressed ? 0.7 : btnIncrement.hovered ? 1.0 : 0.7
-      }
-
-      onClicked: {
-        root.value = root.value + 0.001
-      }
+      onDecrement: root.value -= 0.001
+      onIncrement: root.value += 0.001
     }
 
     Text {
       id: dimension
 
       color: Styles.foreground.high
-      Layout.leftMargin: 8
+      font: Styles.fonts.body
     }
   }
 }

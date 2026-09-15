@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Controls.Basic
 
 import Styles 1.0
@@ -9,12 +8,12 @@ GroupBox {
   id: control
 
   label: Label {
-    x: 20
+    x: UiMetrics.spacingXLarge
     y: -height / 2
-    leftPadding: 10
-    rightPadding: 10
-    topPadding: 6
-    bottomPadding: 6
+    leftPadding: UiMetrics.panelPadding
+    rightPadding: UiMetrics.panelPadding
+    topPadding: UiMetrics.spacingXSmall
+    bottomPadding: UiMetrics.spacingXSmall
     textFormat: Text.RichText
     text: control.title
     color: Styles.foreground.high
@@ -22,14 +21,14 @@ GroupBox {
     background: Rectangle {
       color: Styles.background.dp04
       border {
-        width: 1
+        width: UiMetrics.borderWidth
         color: Styles.foreground.high
       }
     }
   }
   background: Rectangle {
     border {
-      width: 1
+      width: UiMetrics.borderWidth
       color: Styles.foreground.high
     }
     color: Styles.background.dp00

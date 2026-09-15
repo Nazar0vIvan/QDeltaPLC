@@ -39,7 +39,7 @@ ApplicationWindow {
     Rectangle {
       id: separator
 
-      Layout.preferredWidth: 2
+      Layout.preferredWidth: UiMetrics.separatorWidth
       Layout.fillHeight: true
       color: Styles.background.dp04
     }

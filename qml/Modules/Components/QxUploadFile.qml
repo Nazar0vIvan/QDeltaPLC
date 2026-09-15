@@ -3,20 +3,19 @@ import QtQuick.Controls
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Dialogs
-import QtCore
-
 import Styles 1.0
 
 Item {
   id: root
 
-  property int fieldWidth: 0
+  property int fieldWidth: UiMetrics.fieldWidthLarge
   property string imageSource: ""
   property alias text: textField.text
 
   signal uploaded(string path)
 
-  implicitWidth: fieldWidth + rl.spacing + height
+  implicitWidth: rl.implicitWidth
+  implicitHeight: rl.implicitHeight
 
   FileDialog {
     id: openFile
@@ -24,22 +23,23 @@ Item {
     nameFilters: ["All files (*)", "XML (*.xml)"]
 
     onAccepted: {
-      uploaded(openFile.currentFile)
+      root.uploaded(openFile.currentFile)
     }
   }
 
   RowLayout {
     id: rl
 
-    anchors.fill: parent
+    spacing: UiMetrics.spacingSmall
 
     TextField {
       id: textField
 
       Layout.preferredWidth: root.fieldWidth
-      Layout.preferredHeight: root.height
-
-      leftPadding: 5
+      leftPadding: UiMetrics.controlHorizontalPadding
+      rightPadding: UiMetrics.controlHorizontalPadding
+      topPadding: UiMetrics.controlVerticalPadding
+      bottomPadding: UiMetrics.controlVerticalPadding
       color: Styles.foreground.high
       selectionColor: Styles.primary.highlight
       selectByMouse: true
@@ -48,9 +48,15 @@ Item {
 
       background: Rectangle {
         color: textField.readOnly ? "transparent" : Styles.background.dp04
-        radius: 4
+        radius: UiMetrics.radiusSmall
         border {
-          width: textField.readOnly ? 0 : textField.activeFocus ? 2 : textField.hovered ? 0 : 1
+          width: textField.readOnly
+                 ? 0
+                 : textField.activeFocus
+                   ? UiMetrics.separatorWidth
+                   : textField.hovered
+                     ? 0
+                     : UiMetrics.borderWidth
           color: textField.activeFocus ? Styles.primary.base : Styles.background.dp12
         }
       }
@@ -59,9 +65,8 @@ Item {
     Button {
       id: btnBrowse
 
-      Layout.preferredHeight: root.height
-      Layout.preferredWidth: root.height
-      padding: 3
+      Layout.preferredWidth: implicitHeight
+      padding: UiMetrics.spacingXSmall
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
@@ -72,9 +77,9 @@ Item {
       }
       background: Rectangle {
         color: "transparent"
-        radius: 4
+        radius: UiMetrics.radiusSmall
         border {
-          width: btnBrowse.hovered ? 1 : 0
+          width: btnBrowse.hovered ? UiMetrics.borderWidth : 0
           color: Styles.background.dp04
         }
       }

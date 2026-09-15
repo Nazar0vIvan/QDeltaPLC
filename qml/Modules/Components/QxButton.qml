@@ -9,8 +9,13 @@ Button {
 
   checkable: false
 
+  leftPadding: UiMetrics.controlHorizontalPadding
+  rightPadding: UiMetrics.controlHorizontalPadding
+  topPadding: UiMetrics.controlVerticalPadding
+  bottomPadding: UiMetrics.controlVerticalPadding
+
   background: Rectangle {
-    radius: 6
+    radius: UiMetrics.radiusMedium
     color: control.checked ? Styles.background.dp04 : Styles.secondary.base
     border.color: control.checked ? Styles.foreground.high : Styles.secondary.dark
     opacity: enabled ? (control.pressed ? 0.9 : control.hovered ? 1.0 : 0.9) : 0.4

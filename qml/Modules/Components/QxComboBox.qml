@@ -1,135 +1,100 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 
 import Styles 1.0
 
-FocusScope {
+ComboBox {
   id: root
 
-  property string label: ""
+  leftPadding: UiMetrics.controlHorizontalPadding
+  rightPadding: UiMetrics.spacingXXLarge
+  topPadding: UiMetrics.controlVerticalPadding
+  bottomPadding: UiMetrics.controlVerticalPadding
 
-  property alias model: comboBox.model
-  property alias textRole: comboBox.textRole
-  property alias valueRole: comboBox.valueRole
-  property alias currentIndex: comboBox.currentIndex
-
-  readonly property string currentText: comboBox.currentText
-  readonly property var currentValue: comboBox.currentValue
-
-  signal activated(int index)
-
-  implicitWidth: 200
-  implicitHeight: labelItem.implicitHeight + 8 + comboBox.implicitHeight
-
-  Label {
-    id: labelItem
-
-    width: root.width
-    text: root.label
+  contentItem: Text {
+    text: root.displayText
     font: Styles.fonts.body
-    color: Styles.foreground.medium
+    color: Styles.foreground.high
+    verticalAlignment: Text.AlignVCenter
   }
 
-  ComboBox {
-    id: comboBox
+  indicator: Image {
+    anchors {
+      right: parent.right
+      rightMargin: UiMetrics.spacingMedium
+      verticalCenter: parent.verticalCenter
+    }
 
-    y: labelItem.implicitHeight + 8
-    width: root.width
-    focus: true
+    width: UiMetrics.iconSizeSmall
+    height: width
+    source: "qrc:/pics/arrow_dropdown.svg"
+    fillMode: Image.PreserveAspectFit
+    rotation: root.popup.visible ? -90 : 0
+    smooth: true
+    mipmap: true
 
-    onActivated: index => root.activated(index)
+    Behavior on rotation {
+      NumberAnimation {
+        duration: UiMetrics.animationNormal
+        easing.type: Easing.OutCubic
+      }
+    }
+  }
+
+  background: Rectangle {
+    color: Styles.background.dp00
+    border.width: UiMetrics.borderWidth
+    border.color: Styles.background.dp24
+    radius: UiMetrics.radiusSmall
+  }
+
+  delegate: ItemDelegate {
+    id: delegate
+
+    required property int index
+
+    width: root.width - UiMetrics.spacingMedium
+    padding: UiMetrics.spacingSmall
+    text: root.textAt(delegate.index)
+    highlighted: root.highlightedIndex === delegate.index
 
     contentItem: Text {
-      text: comboBox.displayText
-      padding: 8
-
+      text: delegate.text
       font: Styles.fonts.body
       color: Styles.foreground.high
-
       verticalAlignment: Text.AlignVCenter
     }
 
-    indicator: Image {
-      anchors.right: parent.right
-      anchors.rightMargin: 16
-      anchors.verticalCenter: parent.verticalCenter
+    background: Rectangle {
+      color: delegate.highlighted ? Styles.primary.highlight : "transparent"
+      radius: UiMetrics.radiusSmall
+    }
+  }
 
-      width: 12
-      source: "qrc:/pics/arrow_dropdown.svg"
-      fillMode: Image.PreserveAspectFit
+  popup: Popup {
+    id: popup
 
-      rotation: comboBox.popup.visible ? -90 : 0
+    y: root.height + UiMetrics.spacingXSmall
+    width: root.width
+    implicitHeight: contentItem.implicitHeight + 2 * padding
+    padding: UiMetrics.spacingSmall
 
-      smooth: true
-      mipmap: true
-
-      Behavior on rotation {
-        NumberAnimation {
-          duration: 220
-          easing.type: Easing.OutCubic
-        }
-      }
+    contentItem: ListView {
+      clip: true
+      implicitHeight: contentHeight
+      model: root.popup.visible ? root.delegateModel : null
+      currentIndex: root.highlightedIndex
+      ScrollIndicator.vertical: ScrollIndicator { }
     }
 
     background: Rectangle {
-      color: Styles.background.dp00
-      border.width: 1
-      border.color: Styles.background.dp24
-      radius: 4
-    }
-
-    delegate: ItemDelegate {
-      id: delegate
-
-      required property int index
-
-      width: comboBox.width - 12
-
-      padding: 6
-
-      text: comboBox.textAt(index)
-
-      highlighted: comboBox.highlightedIndex === index
-
-      contentItem: Text {
-        text: delegate.text
-
-        font: Styles.fonts.body
-        color: Styles.foreground.high
-
-        verticalAlignment: Text.AlignVCenter
-      }
-
-      background: Rectangle {
-        color: delegate.highlighted ? Styles.primary.highlight : "transparent"
-        radius: 4
-      }
-    }
-
-    popup: Popup {
-      id: popup
-
-      y: comboBox.height + 6
-      width: comboBox.width
-
-      implicitHeight: contentItem.implicitHeight + 16
-
-      padding: 6
-
-      contentItem: ListView {
-        clip: true
-        implicitHeight: contentHeight
-        model: comboBox.popup.visible
-               ? comboBox.delegateModel
-               : null
-        currentIndex: comboBox.highlightedIndex
-        ScrollIndicator.vertical: ScrollIndicator { }
-      }
-
-      background: Rectangle {
-        radius: 4
-        color: Styles.background.dp01
-        border{width: 1; color: Styles.background.dp24}
+      radius: UiMetrics.radiusSmall
+      color: Styles.background.dp01
+      border {
+        width: UiMetrics.borderWidth
+        color: Styles.background.dp24
       }
     }
   }

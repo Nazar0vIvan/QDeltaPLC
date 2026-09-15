@@ -1,7 +1,5 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-// import QtCharts
 
 import Styles 1.0
 import Components 1.0
@@ -13,13 +11,10 @@ QxGroupBox {
 
   readonly property Backend.DeviceRunner fts: Backend.Hub.device("fts")
 
-  implicitWidth: leftPadding + cl.implicitWidth + rightPadding
-  implicitHeight: topPadding + cl.implicitHeight + bottomPadding
-
   ColumnLayout {
     id: cl
 
-    spacing: 14
+    spacing: UiMetrics.spacingMedium
 
     FtsBars {
       id: bars
@@ -31,6 +26,8 @@ QxGroupBox {
 
     RowLayout {
       id: rl
+
+      spacing: UiMetrics.spacingSmall
 
       QxButton {
         id: btnStart

@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
 
@@ -8,15 +7,19 @@ import Styles 1.0
 Switch {
   id: root
 
-  property bool displayonly: false
+  implicitWidth: implicitIndicatorWidth
+  implicitHeight: implicitIndicatorHeight
+
+  property bool displayOnly: false
+  property alias displayonly: root.displayOnly
   property alias imageSource: image.source
   property bool isOn: false
-  property int barWidth: 36
-  property int barHeight: 20
+  property int barWidth: UiMetrics.indicatorSizeLarge
+  property int barHeight: UiMetrics.indicatorSizeMedium
 
   checkable: false
   padding: 0
-  spacing: 6
+  spacing: UiMetrics.spacingSmall
 
   contentItem: Text {
     verticalAlignment: Text.AlignVCenter
@@ -32,15 +35,16 @@ Switch {
     color: root.isOn ? Styles.secondary.base : Styles.background.dp06
 
     Rectangle {
-      width: parent.height - 6
-      height: parent.height - 6
+      width: parent.height - 4 * UiMetrics.borderWidth
+      height: width
       radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
-      x: root.isOn ? parent.width - width - 2 : 2
+      x: root.isOn ? parent.width - width - UiMetrics.borderWidth
+                   : 2 * UiMetrics.borderWidth
       color: Styles.foreground.high
       Behavior on x {
         NumberAnimation {
-          duration: 150
+          duration: UiMetrics.animationFast
         }
       }
 
@@ -48,9 +52,9 @@ Switch {
         id: image
 
         anchors.centerIn: parent
-        width: parent.width - 8
+        width: parent.width - 6
         fillMode: Image.PreserveAspectFit
-        visible: root.displayonly
+        visible: root.displayOnly
       }
     }
   }

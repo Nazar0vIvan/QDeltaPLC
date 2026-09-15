@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick 2.12
 
 QtObject {
-  readonly property QtObject background: QtObject {
+  component BackgroundPalette: QtObject {
     readonly property color dp00: "#121212"
     readonly property color dp01: "#1E1E1E"
     readonly property color dp02: "#232323"
@@ -16,17 +16,20 @@ QtObject {
     readonly property color dp24: "#383838"
   }
 
-  readonly property QtObject foreground: QtObject {
+  component ForegroundPalette: QtObject {
     readonly property color high: "#e0e0e0"
     readonly property color medium: "#A0A0A0"
     readonly property color disabled: "#6C6C6C"
   }
 
+  readonly property BackgroundPalette background: BackgroundPalette { }
+  readonly property ForegroundPalette foreground: ForegroundPalette { }
+
   readonly property color minColor: "#4ed964"
   readonly property color midColor: "#ffff00"
   readonly property color maxColor: "#ff3a31"
 
-  readonly property QtObject primary: QtObject {
+  component PrimaryPalette: QtObject {
     readonly property color base: "#509dfd"
     readonly property color light: "#b5d5fe"
     readonly property color dark: "#0367e4"
@@ -34,19 +37,19 @@ QtObject {
     readonly property color highlight: "#80509dfd"
   }
 
-  readonly property QtObject secondary: QtObject {
+  component SecondaryPalette: QtObject {
     readonly property color base: "#fdb050"
     readonly property color light: "#ffc174"
     readonly property color dark: "#ff920b"
   }
 
-  readonly property QtObject overlays: QtObject {
+  component OverlayPalette: QtObject {
     readonly property real hovered: 0.08
     readonly property real pressed: 0.32
     readonly property real disabled: 0.38
   }
 
-  readonly property QtObject fonts: QtObject {
+  component FontPalette: QtObject {
     readonly property font title:
       Qt.font({
         "family": "Roboto",
@@ -68,6 +71,11 @@ QtObject {
       Qt.font({
         "family": "Roboto",
         "pixelSize": 12
-      })
+       })
   }
+
+  readonly property PrimaryPalette primary: PrimaryPalette { }
+  readonly property SecondaryPalette secondary: SecondaryPalette { }
+  readonly property OverlayPalette overlays: OverlayPalette { }
+  readonly property FontPalette fonts: FontPalette { }
 }

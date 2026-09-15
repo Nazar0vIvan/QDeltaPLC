@@ -8,19 +8,19 @@ import Styles 1.0
 Item {
   id: root
   property alias labelText: label.text
-  property int barWidth: 100
+  property int barWidth: UiMetrics.fieldWidthMedium
   property alias from: pb.from
   property alias to: pb.to
   property alias color: fill.color
   property alias value: pb.value
 
   implicitWidth: rl.implicitWidth
+  implicitHeight: rl.implicitHeight
 
   RowLayout {
     id: rl
-    height: parent.height
 
-    spacing: 10
+    spacing: UiMetrics.spacingSmall
 
     Label {
       id: label
@@ -33,12 +33,12 @@ Item {
     ProgressBar {
       id: pb
       Layout.preferredWidth: root.barWidth
-      Layout.preferredHeight: parent.height
+      Layout.preferredHeight: UiMetrics.controlHeightCompact
       Layout.alignment: Qt.AlignVCenter
       background: Rectangle {
         color: Styles.background.dp04
         border {
-          width: 1
+          width: UiMetrics.borderWidth
           color: Styles.background.dp12
         }
       }

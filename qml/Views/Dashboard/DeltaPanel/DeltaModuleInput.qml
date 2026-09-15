@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import Styles 1.0
@@ -11,7 +9,7 @@ Item {
 
   property alias labelText: label.text
   property alias tag: tag.text
-  property int ledSize: 10
+  property int ledSize: UiMetrics.indicatorSizeSmall
   property bool isOn: false
 
   implicitWidth: rl.implicitWidth
@@ -22,24 +20,27 @@ Item {
   RowLayout {
     id: rl
 
+    spacing: UiMetrics.spacingSmall
+
     Text {
       id: label
 
       color: Styles.foreground.high
-
+      font: Styles.fonts.body
     }
-    Rectangle {
+    QxLed {
       id: led
 
-      Layout.preferredWidth: root.ledSize
-      Layout.preferredHeight: root.ledSize
-      color: root.enabled ? (root.isOn ? "green" : Styles.background.dp04): Styles.foreground.disabled
-      border{width: 1; color: Styles.background.dp12}
+      Layout.alignment: Qt.AlignVCenter
+      diameter: root.ledSize
+      ledColor: Styles.minColor
+      isOn: root.enabled && root.isOn
     }
     Text {
       id: tag
 
       color: Styles.foreground.high
+      font: Styles.fonts.body
     }
   }
 }

@@ -4,85 +4,61 @@ import QtQuick.Layouts
 
 import Styles 1.0
 
-Item {
-    id: root
+Control {
+  id: root
 
-    required property string title
-    default property alias content: contentLayout.children
-    property alias spacing: contentLayout.spacing
+  required property string title
+  default property alias panelContent: contentLayout.data
 
-    property double contentHorizontalMargin: 0
-    property double contentVerticalMargin: 0
+  property double contentHorizontalMargin: 0
+  property double contentVerticalMargin: 0
+  property int radius: UiMetrics.radiusLarge
 
-    property int radius: 10
+  spacing: UiMetrics.spacingSmall
 
-    implicitWidth: Math.max(
-      header.implicitWidth,
-      contentLayout.implicitWidth + 2 * contentHorizontalMargin)
+  topPadding: header.implicitHeight + root.contentVerticalMargin
+  bottomPadding: root.contentVerticalMargin
+  leftPadding: root.contentHorizontalMargin
+  rightPadding: root.contentHorizontalMargin
 
-    implicitHeight: layout.implicitHeight
+  contentItem: RowLayout {
+    id: contentLayout
 
-    Rectangle {
-      anchors.fill: parent
+    spacing: root.spacing
+  }
 
-      color: "transparent"
-      radius: root.radius
+  background: Rectangle {
+    implicitWidth: header.implicitWidth
+    color: "transparent"
+    radius: root.radius
+    border {
+      width: UiMetrics.borderWidth
+      color: Styles.background.dp24
+    }
+  }
+
+  Label {
+    id: header
+
+    anchors {
+      left: parent.left
+      right: parent.right
+      top: parent.top
     }
 
-    ColumnLayout {
-      id: layout
+    leftPadding: UiMetrics.spacingLarge
+    rightPadding: UiMetrics.spacingLarge
+    topPadding: UiMetrics.panelPadding
+    bottomPadding: UiMetrics.panelPadding
 
-      anchors.fill: parent
-      spacing: 0
+    text: root.title
+    color: Styles.foreground.high
+    font: Styles.fonts.subtitle
 
-      Label {
-        id: header
-
-        Layout.fillWidth: true
-        Layout.preferredHeight: implicitHeight
-
-        leftPadding: 16
-        rightPadding: 16
-        topPadding: 10
-        bottomPadding: 10
-
-        text: root.title
-        color: Styles.foreground.high
-        font: Styles.fonts.subtitle
-
-        background: Rectangle {
-          color: Styles.background.dp03
-
-          topLeftRadius: root.radius
-          topRightRadius: root.radius
-        }
-      }
-
-      RowLayout {
-        id: contentLayout
-
-        spacing: 10
-
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-
-        Layout.leftMargin: root.contentHorizontalMargin
-        Layout.rightMargin: root.contentHorizontalMargin
-        Layout.topMargin: root.contentVerticalMargin
-        Layout.bottomMargin: root.contentVerticalMargin
-      }
+    background: Rectangle {
+      color: Styles.background.dp03
+      topLeftRadius: root.radius
+      topRightRadius: root.radius
     }
-
-    // border
-    Rectangle {
-      anchors.fill: parent
-
-      color: "transparent"
-      radius: root.radius
-
-      border {
-        width: 1
-        color: Styles.background.dp24
-      }
-    }
+  }
 }

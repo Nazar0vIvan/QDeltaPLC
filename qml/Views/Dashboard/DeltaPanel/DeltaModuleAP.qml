@@ -1,6 +1,6 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import Styles 1.0
@@ -8,32 +8,25 @@ import Components 1.0
 
 import QDelta.Backend 1.0 as Backend
 
-Control {
+QxPanel {
   id: root
 
   required property Backend.DeviceRunner plc
-
   required property var xTags
   required property var yTags
   required property var xPlugged
   required property var yPlugged
+
   property var yDisplayOnly: []
   property string xLabel: "Undefined"
   property string yLabel: "Undefined"
   property int moduleIndex: 1
-
   property var xStates: new Array(8).fill(false)
   property var yStates: new Array(8).fill(false)
 
-  readonly property int rowHeight: 22
-  readonly property int labelWidth: 28
-  readonly property int switchWidth: 36
-
-  property string title: ""
-
   function refreshAll(xstates, ystates) {
-    refreshX(xstates);
-    refreshY(ystates);
+    refreshX(xstates)
+    refreshY(ystates)
   }
 
   function refreshX(xstates) {
@@ -45,157 +38,87 @@ Control {
   }
 
   function buildMasks(index, desiredOn, width = 8) {
-    const full = (1 << width) - 1;
-    const bit  = (1 << index) & full;
+    const full = (1 << width) - 1
+    const bit = (1 << index) & full
 
     return {
       andMask: full ^ bit,
-      orMask:  desiredOn ? bit : 0x00
-    };
+      orMask: desiredOn ? bit : 0x00
+    }
   }
 
   function byteToBitString(n) {
-    n = n & 0xFF;                // keep only 8 bits
-    return n.toString(2).padStart(8, '0');
+    n = n & 0xFF
+    return n.toString(2).padStart(8, "0")
   }
 
-  topPadding: 40
-  bottomPadding: 10
-  leftPadding: 10
-  rightPadding: 10
+  RowLayout {
+    spacing: UiMetrics.spacingXLarge
 
-  background: Rectangle {
-    color: "transparent"
-    border {
-      width: 1
-      color: Styles.background.dp12
-    }
-  }
+    ColumnLayout {
+      spacing: UiMetrics.spacingSmall
 
-  contentItem: RowLayout {
-
-    spacing: 30
-
-    ListView {
-      id: x_lv
-
-      // implicitWidth: contentItem.childrenRect.width
-      // implicitHeight: contentItem.childrenRect.height
-      implicitWidth: 220
-      implicitHeight: 300
-      spacing: 10
-
-      interactive: false
-      boundsBehavior: Flickable.StopAtBounds
-      clip: true
-
-      opacity: root.enabled ? 1.0 : 0.5
-
-      header: Text {
-        height: 26
-        textFormat: Text.RichText
+      Text {
         text: root.xLabel
-        font.weight: 600
-        font.pixelSize: 11
-        color: Styles.foreground.high
-      }
-
-      model: 8
-
-      delegate: DeltaModuleInput {
-        id: x_field
-
-        required property int index
-
-        enabled: root.xPlugged[index]
-        ledSize: root.rowHeight
-        labelText: "X" + root.moduleIndex + "." + index
-        tag: root.xTags[index]
-
-        isOn: root.xStates[index]
-      }
-    }
-
-    ListView {
-      id: y_lv
-
-      // implicitWidth: contentItem.childrenRect.width
-      // implicitHeight: contentItem.childrenRect.height
-      implicitWidth: 220
-      implicitHeight: 300
-      spacing: 10
-
-      interactive: false
-      boundsBehavior: Flickable.StopAtBounds
-      clip: true
-
-      opacity: root.enabled ? 1.0 : 0.5
-
-      header: Text {
-        height: 26
         textFormat: Text.RichText
-        text: root.yLabel
-        font.weight: 600
-        font.pixelSize: 12
+        font: Styles.fonts.caption
         color: Styles.foreground.high
       }
 
-      model: 8
+      Repeater {
+        model: 8
 
-      delegate: DeltaModuleOutput {
-        id: y_field
+        delegate: DeltaModuleInput {
+          required property int index
 
-        required property int index
-
-        switchHeight: root.rowHeight
-        switchWidth: root.switchWidth
-        plugged: root.yPlugged[index]
-        displayonly: yDisplayOnly.includes(index)
-        labelText: "Y" + root.moduleIndex + "." + index
-        tag: root.yTags[index]
-
-        isOn: root.yStates[index]
-
-        onClicked: {
-          const desired = !isOn
-          const { andMask, orMask} = root.buildMasks(index, desired);
-          const args = {
-             "cmd": Backend.PlcMessage.WRITE_IO,
-             "module": root.moduleIndex,
-             "andMask": andMask,
-             "orMask": orMask
-           };
-          root.plc.invoke("writeMessage", args);
+          enabled: root.xPlugged[index]
+          ledSize: UiMetrics.indicatorSizeMedium
+          labelText: "X" + root.moduleIndex + "." + index
+          tag: root.xTags[index]
+          isOn: root.xStates[index]
         }
       }
     }
-  }
 
-  Label {
-    id: header
+    ColumnLayout {
+      spacing: UiMetrics.spacingSmall
 
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: parent.top
-    leftPadding: 10
-    rightPadding: 10
-    topPadding: 6
-    bottomPadding: 6
-
-    background: Rectangle {
-      color: Styles.background.dp01
-      border {
-        width: 1
-        color: Styles.background.dp12
+      Text {
+        text: root.yLabel
+        textFormat: Text.RichText
+        font: Styles.fonts.caption
+        color: Styles.foreground.high
       }
-    }
 
-    textFormat: Text.RichText
-    text: root.title
+      Repeater {
+        model: 8
 
-    color: Styles.foreground.medium
-    font {
-      pixelSize: 12
+        delegate: DeltaModuleOutput {
+          id: output
+
+          required property int index
+
+          switchHeight: UiMetrics.indicatorSizeMedium
+          switchWidth: UiMetrics.indicatorSizeLarge
+          plugged: root.yPlugged[output.index]
+          displayOnly: root.yDisplayOnly.includes(output.index)
+          labelText: "Y" + root.moduleIndex + "." + output.index
+          tag: root.yTags[output.index]
+          isOn: root.yStates[output.index]
+
+          onClicked: {
+            const desired = !output.isOn
+            const masks = root.buildMasks(output.index, desired)
+            const args = {
+              "cmd": Backend.PlcMessage.WRITE_IO,
+              "module": root.moduleIndex,
+              "andMask": masks.andMask,
+              "orMask": masks.orMask
+            }
+            root.plc.invoke("writeMessage", args)
+          }
+        }
+      }
     }
   }
 }

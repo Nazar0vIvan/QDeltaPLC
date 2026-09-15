@@ -8,9 +8,9 @@ ToolButton {
   id: root
 
   required property string imageSource
-  property int radius: 4
+  property int radius: UiMetrics.radiusSmall
 
-  padding: 5
+  padding: UiMetrics.spacingXSmall
   opacity: enabled ? (pressed ? 0.9 : hovered ? 1.0 : 0.9) : 0.4
 
   contentItem: Image {
@@ -23,7 +23,7 @@ ToolButton {
     color: Styles.background.dp04
     radius: root.radius
     border {
-      width: 1
+      width: UiMetrics.borderWidth
       color: Styles.background.dp12
     }
   }
