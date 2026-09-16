@@ -14,7 +14,7 @@ QxPanel {
 
   readonly property int barWidth: 160
 
-  spacing: UiMetrics.spacingSmall
+  spacing: Metrics.spacingSmall
 
   Repeater {
     model: ListModel {
@@ -38,7 +38,7 @@ QxPanel {
       from: bar.minValue
       to: bar.maxValue
       labelText: bar.tag
-      color: Styles.secondary.base
+      color: Colors.secondary.base
       value: root.fts && root.fts.data.streaming
              ? +Number(root.fts.data[bar.axis]).toFixed(3)
              : 0

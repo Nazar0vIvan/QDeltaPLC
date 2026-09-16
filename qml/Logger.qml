@@ -13,17 +13,17 @@ ScrollView {
 
     width: root.availableWidth
     height: root.availableHeight
-    color: Styles.foreground.high
+    color: Colors.foreground.high
     readOnly: true
     selectByMouse: true
-    selectionColor: Styles.primary.transparent
-    placeholderTextColor: Styles.foreground.high
+    selectionColor: Colors.primary.transparent
+    placeholderTextColor: Colors.foreground.high
     textFormat: TextEdit.RichText
     background: Rectangle {
-      color: Styles.background.dp04
+      color: Colors.background.dp04
       border {
-        color: Styles.foreground.high
-        width: UiMetrics.borderWidth
+        color: Colors.foreground.high
+        width: Metrics.borderWidth
       }
     }
 
@@ -40,7 +40,7 @@ ScrollView {
             3: "#fdb050",
             4: "pink",
         }
-        const col = colors[Number(message.type)] || Styles.foreground.high
+        const col = colors[Number(message.type)] || Colors.foreground.high
         textArea.insert(textArea.length, `<span style="color:${col}">${message.text}</span><br/>`)
         root.ScrollBar.vertical.position = 1.0 - root.ScrollBar.vertical.size
       }

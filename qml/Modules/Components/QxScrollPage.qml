@@ -7,13 +7,13 @@ import Styles 1.0
 ScrollView {
   id: root
 
-  property int pageLeftPadding: UiMetrics.pageMargin
-  property int pageRightPadding: UiMetrics.pageMargin
-  property int pageTopPadding: UiMetrics.pageMargin
-  property int pageBottomPadding: UiMetrics.pageMargin
+  property int pageLeftPadding: Metrics.pageMargin
+  property int pageRightPadding: Metrics.pageMargin
+  property int pageTopPadding: Metrics.pageMargin
+  property int pageBottomPadding: Metrics.pageMargin
   default property alias pageContent: layout.data
 
-  spacing: UiMetrics.spacingMedium
+  spacing: Metrics.spacingMedium
 
   clip: true
   contentWidth: page.implicitWidth

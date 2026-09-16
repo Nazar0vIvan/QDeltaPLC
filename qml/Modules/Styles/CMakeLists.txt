@@ -1,8 +1,9 @@
 qt_add_library(Styles STATIC)
 
 set_source_files_properties(
-  Styles.qml
-  UiMetrics.qml
+  Colors.qml
+  Fonts.qml
+  Metrics.qml
   PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
@@ -14,8 +15,9 @@ qt_add_qml_module(Styles
   OUTPUT_DIRECTORY "${QT_QML_OUTPUT_DIRECTORY}/Styles"
   NO_PLUGIN
   QML_FILES
-    Styles.qml
-    UiMetrics.qml
+    Colors.qml
+    Fonts.qml
+    Metrics.qml
 )
 
 target_link_libraries(Styles

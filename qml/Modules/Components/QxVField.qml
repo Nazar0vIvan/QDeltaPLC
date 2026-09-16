@@ -19,13 +19,13 @@ Item {
   ColumnLayout {
     id: cl
 
-    spacing: UiMetrics.spacingSmall
+    spacing: Metrics.spacingSmall
 
     Label {
       id: label
 
-      color: Styles.foreground.medium
-      font: Styles.fonts.body
+      color: Colors.foreground.medium
+      font: Fonts.body
     }
 
     RowLayout {

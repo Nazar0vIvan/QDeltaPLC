@@ -13,8 +13,8 @@ QxPanel {
 
   GridLayout {
     columns: 3
-    rowSpacing: UiMetrics.spacingLarge
-    columnSpacing: UiMetrics.spacingLarge
+    rowSpacing: Metrics.spacingLarge
+    columnSpacing: Metrics.spacingLarge
 
     Repeater {
       model: ListModel {
@@ -36,7 +36,7 @@ QxPanel {
         labelText: field.label
 
         QxLed {
-          diameter: UiMetrics.indicatorSizeLarge
+          diameter: Metrics.indicatorSizeLarge
           ledColor: field.ledColor
           isOn: !!root.ledStates[field.index]
         }

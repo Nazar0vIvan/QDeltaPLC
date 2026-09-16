@@ -7,7 +7,7 @@ import Components 1.0
 Item {
   id: root
 
-  property int fieldWidth: UiMetrics.fieldWidthSmall
+  property int fieldWidth: Metrics.fieldWidthSmall
   property alias dimension: dimension.text
   property real value: 0.000
 
@@ -17,11 +17,11 @@ Item {
   RowLayout {
     id: row
 
-    spacing: UiMetrics.spacingSmall
+    spacing: Metrics.spacingSmall
 
     Image {
-      Layout.preferredWidth: UiMetrics.iconSizeLarge
-      Layout.preferredHeight: UiMetrics.iconSizeLarge
+      Layout.preferredWidth: Metrics.iconSizeLarge
+      Layout.preferredHeight: Metrics.iconSizeLarge
       fillMode: Image.PreserveAspectFit
       source: "qrc:/pics/step.svg"
       mipmap: true
@@ -39,8 +39,8 @@ Item {
     Text {
       id: dimension
 
-      color: Styles.foreground.high
-      font: Styles.fonts.body
+      color: Colors.foreground.high
+      font: Fonts.body
     }
   }
 }

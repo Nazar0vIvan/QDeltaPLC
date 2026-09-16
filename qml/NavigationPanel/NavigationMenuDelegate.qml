@@ -14,7 +14,7 @@ Item {
 
     anchors {
       fill: parent
-      margins: UiMetrics.spacingSmall
+      margins: Metrics.spacingSmall
     }
     fillMode: Image.PreserveAspectFit
     smooth: true
@@ -28,6 +28,6 @@ Item {
     anchors.fill: image
     source: image
     colorization: 1.0
-    colorizationColor: Styles.primary.base
+    colorizationColor: Colors.primary.base
   }
 }

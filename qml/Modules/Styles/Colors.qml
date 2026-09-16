@@ -49,33 +49,7 @@ QtObject {
     readonly property real disabled: 0.38
   }
 
-  component FontPalette: QtObject {
-    readonly property font title:
-      Qt.font({
-        "family": "Roboto",
-        "pixelSize": 16,
-        "bold": true
-      })
-    readonly property font subtitle:
-      Qt.font({
-        "family": "Roboto",
-        "pixelSize": 14,
-        "bold": true
-      })
-    readonly property font body:
-      Qt.font({
-         "family": "Roboto",
-         "pixelSize": 13
-       })
-    readonly property font caption:
-      Qt.font({
-        "family": "Roboto",
-        "pixelSize": 12
-       })
-  }
-
   readonly property PrimaryPalette primary: PrimaryPalette { }
   readonly property SecondaryPalette secondary: SecondaryPalette { }
   readonly property OverlayPalette overlays: OverlayPalette { }
-  readonly property FontPalette fonts: FontPalette { }
 }

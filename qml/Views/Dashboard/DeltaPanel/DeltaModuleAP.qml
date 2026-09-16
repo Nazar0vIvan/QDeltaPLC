@@ -53,16 +53,16 @@ QxPanel {
   }
 
   RowLayout {
-    spacing: UiMetrics.spacingXLarge
+    spacing: Metrics.spacingXLarge
 
     ColumnLayout {
-      spacing: UiMetrics.spacingSmall
+      spacing: Metrics.spacingSmall
 
       Text {
         text: root.xLabel
         textFormat: Text.RichText
-        font: Styles.fonts.caption
-        color: Styles.foreground.high
+        font: Fonts.caption
+        color: Colors.foreground.high
       }
 
       Repeater {
@@ -72,7 +72,7 @@ QxPanel {
           required property int index
 
           enabled: root.xPlugged[index]
-          ledSize: UiMetrics.indicatorSizeMedium
+          ledSize: Metrics.indicatorSizeMedium
           labelText: "X" + root.moduleIndex + "." + index
           tag: root.xTags[index]
           isOn: root.xStates[index]
@@ -81,13 +81,13 @@ QxPanel {
     }
 
     ColumnLayout {
-      spacing: UiMetrics.spacingSmall
+      spacing: Metrics.spacingSmall
 
       Text {
         text: root.yLabel
         textFormat: Text.RichText
-        font: Styles.fonts.caption
-        color: Styles.foreground.high
+        font: Fonts.caption
+        color: Colors.foreground.high
       }
 
       Repeater {
@@ -98,8 +98,8 @@ QxPanel {
 
           required property int index
 
-          switchHeight: UiMetrics.indicatorSizeMedium
-          switchWidth: UiMetrics.indicatorSizeLarge
+          switchHeight: Metrics.indicatorSizeMedium
+          switchWidth: Metrics.indicatorSizeLarge
           plugged: root.yPlugged[output.index]
           displayOnly: root.yDisplayOnly.includes(output.index)
           labelText: "Y" + root.moduleIndex + "." + output.index

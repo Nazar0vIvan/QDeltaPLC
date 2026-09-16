@@ -9,17 +9,17 @@ TextField {
 
   property bool confirmed: false
   property alias placeholder: defaultTxt.text
-  property int radius: UiMetrics.radiusSmall
+  property int radius: Metrics.radiusSmall
 
-  leftPadding: UiMetrics.controlHorizontalPadding
-  rightPadding: UiMetrics.controlHorizontalPadding
-  topPadding: UiMetrics.controlVerticalPadding
-  bottomPadding: UiMetrics.controlVerticalPadding
-  color: Styles.foreground.high
-  font: Styles.fonts.body
+  leftPadding: Metrics.controlHorizontalPadding
+  rightPadding: Metrics.controlHorizontalPadding
+  topPadding: Metrics.controlVerticalPadding
+  bottomPadding: Metrics.controlVerticalPadding
+  color: Colors.foreground.high
+  font: Fonts.body
 
-  selectionColor: Styles.primary.highlight
-  selectedTextColor: Styles.foreground.high
+  selectionColor: Colors.primary.highlight
+  selectedTextColor: Colors.foreground.high
   selectByMouse: true
 
   readOnly: false
@@ -29,8 +29,8 @@ TextField {
     color: "transparent"
     radius: control.radius
     border {
-      width: control.readOnly ? 0 : UiMetrics.borderWidth
-      color: control.activeFocus ? Styles.primary.base : control.confirmed ? "green" : Styles.background.dp12
+      width: control.readOnly ? 0 : Metrics.borderWidth
+      color: control.activeFocus ? Colors.primary.base : control.confirmed ? "green" : Colors.background.dp12
     }
   }
 
@@ -44,8 +44,8 @@ TextField {
 
     anchors.fill: parent
     verticalAlignment: Text.AlignVCenter
-    color: Styles.foreground.medium
-    font: Styles.fonts.body
+    color: Colors.foreground.medium
+    font: Fonts.body
     visible: !(control.activeFocus || control.text)
   }
 }

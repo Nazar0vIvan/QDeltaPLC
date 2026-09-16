@@ -11,8 +11,8 @@ import "KukaPanel"
 QxScrollPage {
   id: root
 
-  pageTopPadding: UiMetrics.controlHeightLarge
-  spacing: UiMetrics.spacingLarge
+  pageTopPadding: Metrics.controlHeightLarge
+  spacing: Metrics.spacingLarge
 
   RowLayout {
     Layout.fillWidth: true
@@ -26,33 +26,33 @@ QxScrollPage {
 
   Rectangle {
     Layout.fillWidth: true
-    Layout.preferredHeight: UiMetrics.borderWidth
+    Layout.preferredHeight: Metrics.borderWidth
 
     gradient: Gradient {
       orientation: Gradient.Horizontal
 
       GradientStop {
         position: 0.0
-        color: Styles.secondary.dark
+        color: Colors.secondary.dark
       }
 
       GradientStop {
         position: 1.0
-        color: Styles.background.dp00
+        color: Colors.background.dp00
       }
     }
   }
 
   RowLayout {
     Layout.fillWidth: true
-    spacing: UiMetrics.spacingLarge
+    spacing: Metrics.spacingLarge
 
     KukaPanel {
       id: kukaPanel
 
       title: qsTr("Robot Sensor Interface")
       Layout.alignment: Qt.AlignTop
-      Layout.topMargin: UiMetrics.spacingMedium
+      Layout.topMargin: Metrics.spacingMedium
     }
 
     FtsPanel {
@@ -60,7 +60,7 @@ QxScrollPage {
 
       title: qsTr("FTS Delta-IP68-SI-660-60")
       Layout.alignment: Qt.AlignTop
-      Layout.topMargin: UiMetrics.spacingMedium
+      Layout.topMargin: Metrics.spacingMedium
     }
   }
 }

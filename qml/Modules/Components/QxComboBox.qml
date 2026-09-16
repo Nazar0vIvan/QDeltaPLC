@@ -8,26 +8,26 @@ import Styles 1.0
 ComboBox {
   id: root
 
-  leftPadding: UiMetrics.controlHorizontalPadding
-  rightPadding: UiMetrics.spacingXXLarge
-  topPadding: UiMetrics.controlVerticalPadding
-  bottomPadding: UiMetrics.controlVerticalPadding
+  leftPadding: Metrics.controlHorizontalPadding
+  rightPadding: Metrics.spacingXXLarge
+  topPadding: Metrics.controlVerticalPadding
+  bottomPadding: Metrics.controlVerticalPadding
 
   contentItem: Text {
     text: root.displayText
-    font: Styles.fonts.body
-    color: Styles.foreground.high
+    font: Fonts.body
+    color: Colors.foreground.high
     verticalAlignment: Text.AlignVCenter
   }
 
   indicator: Image {
     anchors {
       right: parent.right
-      rightMargin: UiMetrics.spacingMedium
+      rightMargin: Metrics.spacingMedium
       verticalCenter: parent.verticalCenter
     }
 
-    width: UiMetrics.iconSizeSmall
+    width: Metrics.iconSizeSmall
     height: width
     source: "qrc:/pics/arrow_dropdown.svg"
     fillMode: Image.PreserveAspectFit
@@ -37,17 +37,17 @@ ComboBox {
 
     Behavior on rotation {
       NumberAnimation {
-        duration: UiMetrics.animationNormal
+        duration: Metrics.animationNormal
         easing.type: Easing.OutCubic
       }
     }
   }
 
   background: Rectangle {
-    color: Styles.background.dp00
-    border.width: UiMetrics.borderWidth
-    border.color: Styles.background.dp24
-    radius: UiMetrics.radiusSmall
+    color: Colors.background.dp00
+    border.width: Metrics.borderWidth
+    border.color: Colors.background.dp24
+    radius: Metrics.radiusSmall
   }
 
   delegate: ItemDelegate {
@@ -55,31 +55,31 @@ ComboBox {
 
     required property int index
 
-    width: root.width - UiMetrics.spacingMedium
-    padding: UiMetrics.spacingSmall
+    width: root.width - Metrics.spacingMedium
+    padding: Metrics.spacingSmall
     text: root.textAt(delegate.index)
     highlighted: root.highlightedIndex === delegate.index
 
     contentItem: Text {
       text: delegate.text
-      font: Styles.fonts.body
-      color: Styles.foreground.high
+      font: Fonts.body
+      color: Colors.foreground.high
       verticalAlignment: Text.AlignVCenter
     }
 
     background: Rectangle {
-      color: delegate.highlighted ? Styles.primary.highlight : "transparent"
-      radius: UiMetrics.radiusSmall
+      color: delegate.highlighted ? Colors.primary.highlight : "transparent"
+      radius: Metrics.radiusSmall
     }
   }
 
   popup: Popup {
     id: popup
 
-    y: root.height + UiMetrics.spacingXSmall
+    y: root.height + Metrics.spacingXSmall
     width: root.width
     implicitHeight: contentItem.implicitHeight + 2 * padding
-    padding: UiMetrics.spacingSmall
+    padding: Metrics.spacingSmall
 
     contentItem: ListView {
       clip: true
@@ -90,11 +90,11 @@ ComboBox {
     }
 
     background: Rectangle {
-      radius: UiMetrics.radiusSmall
-      color: Styles.background.dp01
+      radius: Metrics.radiusSmall
+      color: Colors.background.dp01
       border {
-        width: UiMetrics.borderWidth
-        color: Styles.background.dp24
+        width: Metrics.borderWidth
+        color: Colors.background.dp24
       }
     }
   }

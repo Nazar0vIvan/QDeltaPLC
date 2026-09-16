@@ -19,7 +19,7 @@ QxGroupBox {
   RowLayout {
     id: rl
 
-    spacing: UiMetrics.spacingLarge
+    spacing: Metrics.spacingLarge
 
     LedsPanel {
       id: ledPanel

@@ -11,12 +11,12 @@ Control {
   property string title: ""
   default property alias panelContent: body.data
 
-  spacing: UiMetrics.spacingMedium
+  spacing: Metrics.spacingMedium
 
-  topPadding: header.implicitHeight + UiMetrics.spacingMedium
-  bottomPadding: UiMetrics.panelPadding
-  leftPadding: UiMetrics.panelPadding
-  rightPadding: UiMetrics.panelPadding
+  topPadding: header.implicitHeight + Metrics.spacingMedium
+  bottomPadding: Metrics.panelPadding
+  leftPadding: Metrics.panelPadding
+  rightPadding: Metrics.panelPadding
 
   contentItem: ColumnLayout {
     id: body
@@ -28,8 +28,8 @@ Control {
     implicitWidth: header.implicitWidth
     color: "transparent"
     border {
-      width: UiMetrics.borderWidth
-      color: Styles.background.dp12
+      width: Metrics.borderWidth
+      color: Colors.background.dp12
     }
   }
 
@@ -42,21 +42,21 @@ Control {
       top: parent.top
     }
 
-    leftPadding: UiMetrics.panelPadding
-    rightPadding: UiMetrics.panelPadding
-    topPadding: UiMetrics.spacingXSmall
-    bottomPadding: UiMetrics.spacingXSmall
+    leftPadding: Metrics.panelPadding
+    rightPadding: Metrics.panelPadding
+    topPadding: Metrics.spacingXSmall
+    bottomPadding: Metrics.spacingXSmall
 
     text: root.title
     textFormat: Text.RichText
-    color: Styles.foreground.medium
-    font: Styles.fonts.body
+    color: Colors.foreground.medium
+    font: Fonts.body
 
     background: Rectangle {
-      color: Styles.background.dp01
+      color: Colors.background.dp01
       border {
-        width: UiMetrics.borderWidth
-        color: Styles.background.dp12
+        width: Metrics.borderWidth
+        color: Colors.background.dp12
       }
     }
   }

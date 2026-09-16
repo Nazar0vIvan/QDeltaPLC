@@ -8,8 +8,8 @@ import Styles 1.0
 Control {
   id: root
 
-  property int imageSize: UiMetrics.iconSizeSmall
-  property int fieldWidth: UiMetrics.fieldWidthSmall
+  property int imageSize: Metrics.iconSizeSmall
+  property int fieldWidth: Metrics.fieldWidthSmall
   property alias text: valueField.text
   property alias validator: valueField.validator
 
@@ -20,8 +20,8 @@ Control {
 
   background: Rectangle {
     color: "transparent"
-    border{width: UiMetrics.borderWidth; color: Styles.background.dp04}
-    radius: UiMetrics.radiusSmall
+    border{width: Metrics.borderWidth; color: Colors.background.dp04}
+    radius: Metrics.radiusSmall
   }
 
   contentItem: RowLayout {
@@ -32,7 +32,7 @@ Control {
     Button {
       id: btnDecrement
 
-      padding: UiMetrics.spacingSmall
+      padding: Metrics.spacingSmall
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
@@ -44,9 +44,9 @@ Control {
       }
 
       background: Rectangle {
-        color: btnDecrement.hovered ? Styles.background.dp04 : "transparent"
-        topLeftRadius: UiMetrics.radiusSmall
-        bottomLeftRadius: UiMetrics.radiusSmall
+        color: btnDecrement.hovered ? Colors.background.dp04 : "transparent"
+        topLeftRadius: Metrics.radiusSmall
+        bottomLeftRadius: Metrics.radiusSmall
       }
 
       onClicked: root.decrement()
@@ -61,7 +61,7 @@ Control {
     Button {
       id: btnIncrement
 
-      padding: UiMetrics.spacingSmall
+      padding: Metrics.spacingSmall
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
@@ -72,9 +72,9 @@ Control {
         source: "qrc:/pics/plus.svg"
       }
       background: Rectangle {
-        color: btnIncrement.hovered ? Styles.background.dp04 : "transparent"
-        topRightRadius: UiMetrics.radiusSmall
-        bottomRightRadius: UiMetrics.radiusSmall
+        color: btnIncrement.hovered ? Colors.background.dp04 : "transparent"
+        topRightRadius: Metrics.radiusSmall
+        bottomRightRadius: Metrics.radiusSmall
       }
 
       onClicked: root.increment()

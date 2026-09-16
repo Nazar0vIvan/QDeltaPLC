@@ -32,7 +32,7 @@ QxPanel {
     { label: "DONE", isOn: root.cellState === Backend.PlcMessage.FIN }
   ]
 
-  spacing: UiMetrics.spacingSmall
+  spacing: Metrics.spacingSmall
 
   Repeater {
     model: root.indicators
@@ -42,20 +42,20 @@ QxPanel {
 
       required property var modelData
 
-      labelWidth: UiMetrics.fieldWidthSmall
+      labelWidth: Metrics.fieldWidthSmall
       labelText: field.modelData.label
 
       QxLed {
         Layout.alignment: Qt.AlignVCenter
-        diameter: UiMetrics.indicatorSizeSmall
-        ledColor: Styles.minColor
+        diameter: Metrics.indicatorSizeSmall
+        ledColor: Colors.minColor
         isOn: field.modelData.isOn
       }
     }
   }
 
   RowLayout {
-    spacing: UiMetrics.spacingSmall
+    spacing: Metrics.spacingSmall
 
     QxButton {
       id: btnConnect

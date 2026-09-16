@@ -12,9 +12,9 @@ Control {
 
   property double contentHorizontalMargin: 0
   property double contentVerticalMargin: 0
-  property int radius: UiMetrics.radiusLarge
+  property int radius: Metrics.radiusLarge
 
-  spacing: UiMetrics.spacingSmall
+  spacing: Metrics.spacingSmall
 
   topPadding: header.implicitHeight + root.contentVerticalMargin
   bottomPadding: root.contentVerticalMargin
@@ -32,8 +32,8 @@ Control {
     color: "transparent"
     radius: root.radius
     border {
-      width: UiMetrics.borderWidth
-      color: Styles.background.dp24
+      width: Metrics.borderWidth
+      color: Colors.background.dp24
     }
   }
 
@@ -46,17 +46,17 @@ Control {
       top: parent.top
     }
 
-    leftPadding: UiMetrics.spacingLarge
-    rightPadding: UiMetrics.spacingLarge
-    topPadding: UiMetrics.panelPadding
-    bottomPadding: UiMetrics.panelPadding
+    leftPadding: Metrics.spacingLarge
+    rightPadding: Metrics.spacingLarge
+    topPadding: Metrics.panelPadding
+    bottomPadding: Metrics.panelPadding
 
     text: root.title
-    color: Styles.foreground.high
-    font: Styles.fonts.subtitle
+    color: Colors.foreground.high
+    font: Fonts.subtitle
 
     background: Rectangle {
-      color: Styles.background.dp03
+      color: Colors.background.dp03
       topLeftRadius: root.radius
       topRightRadius: root.radius
     }

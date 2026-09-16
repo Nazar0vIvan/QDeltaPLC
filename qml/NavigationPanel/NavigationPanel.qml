@@ -13,7 +13,7 @@ Rectangle {
 
     anchors {
       fill: parent
-      margins: UiMetrics.spacingSmall
+      margins: Metrics.spacingSmall
     }
     spacing: 0
 
@@ -43,11 +43,11 @@ Rectangle {
       y: lv.currentItem ? lv.currentItem.y : 0
       width: lv.width
       height: lv.width
-      radius: UiMetrics.radiusSmall
-      color: Styles.primary.base
+      radius: Metrics.radiusSmall
+      color: Colors.primary.base
       opacity: 0.5
       Behavior on y {
-        NumberAnimation { duration: UiMetrics.animationFast }
+        NumberAnimation { duration: Metrics.animationFast }
       }
     }
   }

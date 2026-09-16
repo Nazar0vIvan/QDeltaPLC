@@ -9,22 +9,22 @@ Button {
 
   checkable: false
 
-  leftPadding: UiMetrics.controlHorizontalPadding
-  rightPadding: UiMetrics.controlHorizontalPadding
-  topPadding: UiMetrics.controlVerticalPadding
-  bottomPadding: UiMetrics.controlVerticalPadding
+  leftPadding: Metrics.controlHorizontalPadding
+  rightPadding: Metrics.controlHorizontalPadding
+  topPadding: Metrics.controlVerticalPadding
+  bottomPadding: Metrics.controlVerticalPadding
 
   background: Rectangle {
-    radius: UiMetrics.radiusMedium
-    color: control.checked ? Styles.background.dp04 : Styles.secondary.base
-    border.color: control.checked ? Styles.foreground.high : Styles.secondary.dark
+    radius: Metrics.radiusMedium
+    color: control.checked ? Colors.background.dp04 : Colors.secondary.base
+    border.color: control.checked ? Colors.foreground.high : Colors.secondary.dark
     opacity: enabled ? (control.pressed ? 0.9 : control.hovered ? 1.0 : 0.9) : 0.4
   }
   contentItem: Text {
     text: control.text
-    color: control.checked ? Styles.foreground.high : Styles.background.dp00
+    color: control.checked ? Colors.foreground.high : Colors.background.dp00
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
-    font: Styles.fonts.body
+    font: Fonts.body
   }
 }

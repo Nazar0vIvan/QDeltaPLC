@@ -42,12 +42,12 @@ QxScrollPage {
     return config
   }
 
-  spacing: UiMetrics.spacingLarge
+  spacing: Metrics.spacingLarge
 
   Label {
     text: qsTr("Network")
-    font: Styles.fonts.title
-    color: Styles.foreground.high
+    font: Fonts.title
+    color: Colors.foreground.high
   }
 
   NetworkPanel {
@@ -55,9 +55,9 @@ QxScrollPage {
 
     Layout.fillWidth: true
     title: "Configuration"
-    contentHorizontalMargin: UiMetrics.spacingMedium
-    contentVerticalMargin: UiMetrics.spacingLarge
-    spacing: UiMetrics.spacingSmall
+    contentHorizontalMargin: Metrics.spacingMedium
+    contentVerticalMargin: Metrics.spacingLarge
+    spacing: Metrics.spacingSmall
 
     QxVField {
       labelText: qsTr("Device")
@@ -65,7 +65,7 @@ QxScrollPage {
       QxComboBox {
         id: cbDevice
 
-        Layout.preferredWidth: UiMetrics.fieldWidthLarge
+        Layout.preferredWidth: Metrics.fieldWidthLarge
         model: devProfModel.names
       }
     }
@@ -76,7 +76,7 @@ QxScrollPage {
       QxTextInput {
         id: laInput
 
-        Layout.preferredWidth: UiMetrics.fieldWidthMedium
+        Layout.preferredWidth: Metrics.fieldWidthMedium
         text: root.selectedDevice.localAddress ?? ""
         validator: RegularExpressionValidator {
           regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
@@ -90,7 +90,7 @@ QxScrollPage {
       QxTextInput {
         id: lpInput
 
-        Layout.preferredWidth: UiMetrics.fieldWidthSmall
+        Layout.preferredWidth: Metrics.fieldWidthSmall
         text: root.selectedDevice.localPort >= 0
               ? String(root.selectedDevice.localPort)
               : "N/D"
@@ -107,7 +107,7 @@ QxScrollPage {
       QxTextInput {
         id: paInput
 
-        Layout.preferredWidth: UiMetrics.fieldWidthMedium
+        Layout.preferredWidth: Metrics.fieldWidthMedium
         text: root.selectedDevice.peerAddress ?? ""
         validator: RegularExpressionValidator {
           regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
@@ -121,7 +121,7 @@ QxScrollPage {
       QxTextInput {
         id: ppInput
 
-        Layout.preferredWidth: UiMetrics.fieldWidthSmall
+        Layout.preferredWidth: Metrics.fieldWidthSmall
         text: root.selectedDevice.peerPort >= 0
               ? String(root.selectedDevice.peerPort)
               : "N/D"
@@ -172,7 +172,7 @@ QxScrollPage {
 
     Layout.fillWidth: true
     title: "Connections"
-    contentVerticalMargin: UiMetrics.spacingMedium
+    contentVerticalMargin: Metrics.spacingMedium
 
     ConnectionsTable {
       id: conTable

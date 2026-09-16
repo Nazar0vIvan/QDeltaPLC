@@ -8,7 +8,7 @@ import Styles 1.0
 Item {
   id: root
 
-  property int fieldWidth: UiMetrics.fieldWidthLarge
+  property int fieldWidth: Metrics.fieldWidthLarge
   property string imageSource: ""
   property alias text: textField.text
 
@@ -30,34 +30,34 @@ Item {
   RowLayout {
     id: rl
 
-    spacing: UiMetrics.spacingSmall
+    spacing: Metrics.spacingSmall
 
     TextField {
       id: textField
 
       Layout.preferredWidth: root.fieldWidth
-      leftPadding: UiMetrics.controlHorizontalPadding
-      rightPadding: UiMetrics.controlHorizontalPadding
-      topPadding: UiMetrics.controlVerticalPadding
-      bottomPadding: UiMetrics.controlVerticalPadding
-      color: Styles.foreground.high
-      selectionColor: Styles.primary.highlight
+      leftPadding: Metrics.controlHorizontalPadding
+      rightPadding: Metrics.controlHorizontalPadding
+      topPadding: Metrics.controlVerticalPadding
+      bottomPadding: Metrics.controlVerticalPadding
+      color: Colors.foreground.high
+      selectionColor: Colors.primary.highlight
       selectByMouse: true
       readOnly: false
-      font: Styles.fonts.body
+      font: Fonts.body
 
       background: Rectangle {
-        color: textField.readOnly ? "transparent" : Styles.background.dp04
-        radius: UiMetrics.radiusSmall
+        color: textField.readOnly ? "transparent" : Colors.background.dp04
+        radius: Metrics.radiusSmall
         border {
           width: textField.readOnly
                  ? 0
                  : textField.activeFocus
-                   ? UiMetrics.separatorWidth
+                   ? Metrics.separatorWidth
                    : textField.hovered
                      ? 0
-                     : UiMetrics.borderWidth
-          color: textField.activeFocus ? Styles.primary.base : Styles.background.dp12
+                     : Metrics.borderWidth
+          color: textField.activeFocus ? Colors.primary.base : Colors.background.dp12
         }
       }
     }
@@ -66,7 +66,7 @@ Item {
       id: btnBrowse
 
       Layout.preferredWidth: implicitHeight
-      padding: UiMetrics.spacingXSmall
+      padding: Metrics.spacingXSmall
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
@@ -77,10 +77,10 @@ Item {
       }
       background: Rectangle {
         color: "transparent"
-        radius: UiMetrics.radiusSmall
+        radius: Metrics.radiusSmall
         border {
-          width: btnBrowse.hovered ? UiMetrics.borderWidth : 0
-          color: Styles.background.dp04
+          width: btnBrowse.hovered ? Metrics.borderWidth : 0
+          color: Colors.background.dp04
         }
       }
       onClicked: openFile.open()

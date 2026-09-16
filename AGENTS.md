@@ -30,7 +30,8 @@
 - USE_HOT_RELOAD=ON requires Felgo/FelgoHotReload. OFF embeds application QML using
   qt_add_qml_module(). Preserve both paths; use OFF for verification when Felgo is unavailable.
 - FAST_QML_BUILD=ON applies NO_CACHEGEN to the application and UI modules. Check OFF too
-  when changing cache-generation behavior; a fast build does not validate that compilation path.
+  when build verification is requested for cache-generation behavior; a fast build does not
+  validate that compilation path.
 - old_imp/ is outside the active CMake build; python/ contains analysis scripts and data.
   Do not treat either as the current application implementation or an automated test suite.
 
@@ -67,7 +68,8 @@ and src/main.cpp.
 
 ## QML components and geometry
 
-- Reuse compatible controls from qml/Modules/Components and values from Styles/UiMetrics.
+- Reuse compatible controls from qml/Modules/Components and values from the Styles module's
+  Colors, Fonts, and Metrics singletons.
   Check input, output, sizing, and interaction contracts before reusing or extending a component.
 - Express a component's natural preferred size with implicitWidth/implicitHeight. Preserve useful
   inherited implicit sizing; for styled Controls, check contentItem/background sizes, padding, and
@@ -93,7 +95,8 @@ and src/main.cpp.
   These two qmldir files are maintained hot-reload inputs, not disposable generated files.
   For QML singletons, keep pragma Singleton, QT_QML_SINGLETON_TYPE, and qmldir declarations consistent.
 - Update the owning .qrc (or qt_add_resources declaration) and affected resource URLs when assets move.
-  Validate application QML packaging with hot reload OFF; the ON path omits the root QML_FILES list.
+  When build verification is requested, validate application QML packaging with hot reload OFF;
+  the ON path omits the root QML_FILES list.
 
 ## Numerical and device behavior
 
@@ -110,9 +113,12 @@ and src/main.cpp.
 
 - Inspect git status and the final diff, including newly created/untracked files. Run git diff --check;
   check new files separately because an ordinary diff does not include untracked contents.
+- Run CMake configure/build commands and build-backed QML lint targets only when the user
+  explicitly requests build verification. Do not run them by default after code changes.
 - Reuse a build directory only after checking CMAKE_HOME_DIRECTORY and compiler/Qt paths in its
-  CMakeCache.txt. Discover the installed matching Qt/compiler kit; do not invent absolute SDK paths
-  or reconfigure the user's build to a different mode. Use a separate build directory when needed.
+  CMakeCache.txt when build verification is requested. Discover the installed matching Qt/compiler
+  kit; do not invent absolute SDK paths or reconfigure the user's build to a different mode.
+  Use a separate build directory when needed.
 - Commands below run from the repository root in PowerShell. Set $buildDir to the selected build.
   To configure a new Ninja build, also set $qtPrefix to the installed Qt kit and activate its matching
   compiler environment first; the configure command is unnecessary for an existing valid build.
@@ -123,17 +129,17 @@ cmake --build "$buildDir" --target robocrap --parallel
 cmake --build "$buildDir" --target Components_qmllint
 ```
 
-- Select checks by the change: C++/CMake/resource changes require the owning target build;
-  application integration and concrete-device/geometry/path changes require robocrap.
-  QML changes require the owning *_qmllint target: Components_qmllint, Styles_qmllint, or
+- When build verification is requested, select checks by the change: build the owning target for
+  C++/CMake/resource changes, and robocrap for application integration and concrete-device/geometry/path
+  changes. For QML changes, run the owning *_qmllint target: Components_qmllint, Styles_qmllint, or
   robocrap_qmllint (hot reload OFF for application QML). Verify targets in the selected build;
-  use all_qmllint for multiple modules. QML registration/resource changes also require a build.
+  use all_qmllint for multiple modules. Build for QML registration/resource changes too.
 - No application test suite is currently registered in the project CMake files. Do not count
   vendored Eigen tests, old_imp/Test, or a zero-test CTest run as application coverage. For behavior
   changes, run a focused offline regression check where feasible; report gaps when no harness exists.
 - For UI changes, check affected states, resizing, and binding/import warnings in a disconnected
   runtime when available. Build/lint success does not establish visual or hardware correctness.
-  Documentation-only changes need content/diff checks, not application builds.
+  Documentation-only changes need content/diff checks.
 - Fix failures introduced by the task. Report pre-existing failures separately; change them only
   when necessary to unblock relevant validation. State checks actually run, results, and skipped
   checks with reasons. For reviews, give verified findings with file/line, impact, and correction.

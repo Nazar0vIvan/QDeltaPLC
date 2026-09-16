@@ -11,7 +11,7 @@ RowLayout {
   property alias labelText: label.text
   property alias color: label.color
 
-  spacing: UiMetrics.spacingSmall
+  spacing: Metrics.spacingSmall
 
   Label {
     id: label
@@ -20,7 +20,7 @@ RowLayout {
     Layout.alignment: Qt.AlignVCenter
 
     verticalAlignment: Text.AlignVCenter
-    color: Styles.foreground.high
-    font: Styles.fonts.body
+    color: Colors.foreground.high
+    font: Fonts.body
   }
 }

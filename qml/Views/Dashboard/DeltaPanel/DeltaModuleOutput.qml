@@ -8,8 +8,8 @@ Item {
   id: root
 
 
-  property int switchWidth: UiMetrics.indicatorSizeLarge
-  property int switchHeight: UiMetrics.indicatorSizeMedium
+  property int switchWidth: Metrics.indicatorSizeLarge
+  property int switchHeight: Metrics.indicatorSizeMedium
   property bool plugged: false
   property bool displayOnly: false
   property alias labelText: label.text
@@ -27,13 +27,13 @@ Item {
   RowLayout {
     id: rl
 
-    spacing: UiMetrics.spacingSmall
+    spacing: Metrics.spacingSmall
 
     Text {
       id: label
 
-      color: Styles.foreground.high
-      font: Styles.fonts.body
+      color: Colors.foreground.high
+      font: Fonts.body
     }
     QxSwitch {
       id: sw
@@ -49,8 +49,8 @@ Item {
     Text {
       id: tag
 
-      color: Styles.foreground.high
-      font: Styles.fonts.body
+      color: Colors.foreground.high
+      font: Fonts.body
     }
   }
 }

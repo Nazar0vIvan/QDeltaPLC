@@ -15,12 +15,12 @@ QxGroupBox {
   ColumnLayout {
     id: cl
 
-    spacing: UiMetrics.spacingMedium
+    spacing: Metrics.spacingMedium
 
     RowLayout {
       id: rl
 
-      spacing: UiMetrics.spacingLarge
+      spacing: Metrics.spacingLarge
 
       RsiPosition {
         id: cartesianPosition
@@ -43,12 +43,12 @@ QxGroupBox {
     ColumnLayout {
       id: cl2
 
-      spacing: UiMetrics.spacingSmall
+      spacing: Metrics.spacingSmall
 
       RowLayout {
         id: rl2
 
-        spacing: UiMetrics.spacingSmall
+        spacing: Metrics.spacingSmall
 
         QxButton {
           id: genTraj
@@ -71,8 +71,8 @@ QxGroupBox {
           id: ledRsi
 
           Layout.alignment: Qt.AlignVCenter
-          diameter: UiMetrics.indicatorSizeMedium
-          ledColor: Styles.minColor
+          diameter: Metrics.indicatorSizeMedium
+          ledColor: Colors.minColor
           isOn: root.rsi?.data.motionActive ?? false
         }
       }

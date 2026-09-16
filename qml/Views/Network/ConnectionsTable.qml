@@ -34,20 +34,20 @@ Item {
         required property var display
         required property int column
 
-        implicitHeight: UiMetrics.controlHeight
+        implicitHeight: Metrics.controlHeight
         color: "transparent"
 
         Text {
           anchors {
             fill: parent
             leftMargin: headerCell.column === Backend.DeviceProfileModel.DeviceColumn
-                        ? UiMetrics.spacingLarge
+                        ? Metrics.spacingLarge
                         : 0
           }
 
           text: headerCell.display
-          font: Styles.fonts.body
-          color: Styles.foreground.medium
+          font: Fonts.body
+          color: Colors.foreground.medium
 
           verticalAlignment: Text.AlignVCenter
         }
@@ -59,8 +59,8 @@ Item {
             bottom: parent.bottom
           }
 
-          height: UiMetrics.borderWidth
-          color: Styles.background.dp24
+          height: Metrics.borderWidth
+          color: Colors.background.dp24
         }
       }
     }
@@ -81,7 +81,7 @@ Item {
         150  // Status
       ]
 
-      property int rowHeight: UiMetrics.controlHeight
+      property int rowHeight: Metrics.controlHeight
 
       onColumnWidthsChanged: forceLayout()
       onRowHeightChanged: forceLayout()
@@ -116,7 +116,7 @@ Item {
           runner && runner.isConnected
 
         color: cell.row === root.selectedRow
-               ? Styles.background.dp12
+               ? Colors.background.dp12
                : "transparent"
 
         TextInput {
@@ -126,7 +126,7 @@ Item {
           anchors {
             fill: parent
             leftMargin: cell.column === Backend.DeviceProfileModel.DeviceColumn
-                        ? UiMetrics.spacingLarge
+                        ? Metrics.spacingLarge
                         : 0
           }
 
@@ -136,11 +136,11 @@ Item {
           selectByMouse: true
           clip: true
 
-          font: Styles.fonts.body
-          color: Styles.foreground.high
+          font: Fonts.body
+          color: Colors.foreground.high
 
-          selectionColor: Styles.primary.highlight
-          selectedTextColor: Styles.foreground.high
+          selectionColor: Colors.primary.highlight
+          selectedTextColor: Colors.foreground.high
 
           verticalAlignment: TextInput.AlignVCenter
         }
@@ -153,16 +153,16 @@ Item {
             verticalCenter: parent.verticalCenter
           }
 
-          spacing: UiMetrics.spacingSmall
+          spacing: Metrics.spacingSmall
 
           Rectangle {
             anchors.verticalCenter: parent.verticalCenter
 
-            width: UiMetrics.indicatorSizeSmall
+            width: Metrics.indicatorSizeSmall
             height: width
             radius: width / 2
 
-            color: cell.connected ? Styles.minColor : Styles.maxColor
+            color: cell.connected ? Colors.minColor : Colors.maxColor
           }
 
           TextInput {
@@ -174,11 +174,11 @@ Item {
             readOnly: true
             selectByMouse: true
 
-            font: Styles.fonts.body
-            color: Styles.foreground.high
+            font: Fonts.body
+            color: Colors.foreground.high
 
-            selectionColor: Styles.primary.highlight
-            selectedTextColor: Styles.foreground.high
+            selectionColor: Colors.primary.highlight
+            selectedTextColor: Colors.foreground.high
 
             verticalAlignment: TextInput.AlignVCenter
           }
@@ -191,8 +191,8 @@ Item {
             bottom: parent.bottom
           }
 
-          height: UiMetrics.borderWidth
-          color: Styles.background.dp24
+          height: Metrics.borderWidth
+          color: Colors.background.dp24
         }
       }
     }

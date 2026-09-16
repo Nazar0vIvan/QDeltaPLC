@@ -8,29 +8,29 @@ GroupBox {
   id: control
 
   label: Label {
-    x: UiMetrics.spacingXLarge
+    x: Metrics.spacingXLarge
     y: -height / 2
-    leftPadding: UiMetrics.panelPadding
-    rightPadding: UiMetrics.panelPadding
-    topPadding: UiMetrics.spacingXSmall
-    bottomPadding: UiMetrics.spacingXSmall
+    leftPadding: Metrics.panelPadding
+    rightPadding: Metrics.panelPadding
+    topPadding: Metrics.spacingXSmall
+    bottomPadding: Metrics.spacingXSmall
     textFormat: Text.RichText
     text: control.title
-    color: Styles.foreground.high
-    font: Styles.fonts.body
+    color: Colors.foreground.high
+    font: Fonts.body
     background: Rectangle {
-      color: Styles.background.dp04
+      color: Colors.background.dp04
       border {
-        width: UiMetrics.borderWidth
-        color: Styles.foreground.high
+        width: Metrics.borderWidth
+        color: Colors.foreground.high
       }
     }
   }
   background: Rectangle {
     border {
-      width: UiMetrics.borderWidth
-      color: Styles.foreground.high
+      width: Metrics.borderWidth
+      color: Colors.foreground.high
     }
-    color: Styles.background.dp00
+    color: Colors.background.dp00
   }
 }

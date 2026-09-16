@@ -19,7 +19,7 @@ ApplicationWindow {
   height: 800
   visible: true
   title: qsTr("RoboCrap")
-  color: Styles.background.dp00
+  color: Colors.background.dp00
 
   RowLayout {
     id: rl
@@ -33,15 +33,15 @@ ApplicationWindow {
       Layout.fillHeight: true
       Layout.preferredWidth: root.navPanelWidth
 
-      color: Styles.background.dp00
+      color: Colors.background.dp00
     }
 
     Rectangle {
       id: separator
 
-      Layout.preferredWidth: UiMetrics.separatorWidth
+      Layout.preferredWidth: Metrics.separatorWidth
       Layout.fillHeight: true
-      color: Styles.background.dp04
+      color: Colors.background.dp04
     }
 
     SplitView {

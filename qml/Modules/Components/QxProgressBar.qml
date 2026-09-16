@@ -8,7 +8,7 @@ import Styles 1.0
 Item {
   id: root
   property alias labelText: label.text
-  property int barWidth: UiMetrics.fieldWidthMedium
+  property int barWidth: Metrics.fieldWidthMedium
   property alias from: pb.from
   property alias to: pb.to
   property alias color: fill.color
@@ -20,26 +20,26 @@ Item {
   RowLayout {
     id: rl
 
-    spacing: UiMetrics.spacingSmall
+    spacing: Metrics.spacingSmall
 
     Label {
       id: label
       verticalAlignment: Text.AlignVCenter
       Layout.alignment: Qt.AlignVCenter
-      color: Styles.foreground.high
-      font: Styles.fonts.body
+      color: Colors.foreground.high
+      font: Fonts.body
     }
 
     ProgressBar {
       id: pb
       Layout.preferredWidth: root.barWidth
-      Layout.preferredHeight: UiMetrics.controlHeightCompact
+      Layout.preferredHeight: Metrics.controlHeightCompact
       Layout.alignment: Qt.AlignVCenter
       background: Rectangle {
-        color: Styles.background.dp04
+        color: Colors.background.dp04
         border {
-          width: UiMetrics.borderWidth
-          color: Styles.background.dp12
+          width: Metrics.borderWidth
+          color: Colors.background.dp12
         }
       }
 
@@ -66,8 +66,8 @@ Item {
 
       Layout.alignment: Qt.AlignVCenter
       text: pb.value.toFixed(3)
-      color: Styles.foreground.high
-      font: Styles.fonts.body
+      color: Colors.foreground.high
+      font: Fonts.body
     }
   }
 }

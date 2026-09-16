@@ -8,7 +8,7 @@ Item {
   id: root
 
   property alias tag: tag.text
-  property int fieldWidth: UiMetrics.fieldWidthSmall
+  property int fieldWidth: Metrics.fieldWidthSmall
   property real value: 0.00
 
   signal increment()
@@ -20,14 +20,14 @@ Item {
   RowLayout {
     id: row
 
-    spacing: UiMetrics.spacingXSmall
+    spacing: Metrics.spacingXSmall
 
     Text {
       id: tag
 
-      Layout.preferredWidth: UiMetrics.controlHeightCompact
-      color: Styles.foreground.high
-      font: Styles.fonts.body
+      Layout.preferredWidth: Metrics.controlHeightCompact
+      color: Colors.foreground.high
+      font: Fonts.body
     }
 
     QxStepButton {

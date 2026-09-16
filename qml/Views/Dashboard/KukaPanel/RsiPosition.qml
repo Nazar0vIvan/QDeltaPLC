@@ -12,7 +12,7 @@ QxPanel {
   property string dimension: ""
 
   opacity: enabled ? 1.0 : 0.5
-  spacing: UiMetrics.spacingMedium
+  spacing: Metrics.spacingMedium
 
   Repeater {
     model: root.tags.length

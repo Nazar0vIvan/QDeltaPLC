@@ -14,37 +14,37 @@ Switch {
   property alias displayonly: root.displayOnly
   property alias imageSource: image.source
   property bool isOn: false
-  property int barWidth: UiMetrics.indicatorSizeLarge
-  property int barHeight: UiMetrics.indicatorSizeMedium
+  property int barWidth: Metrics.indicatorSizeLarge
+  property int barHeight: Metrics.indicatorSizeMedium
 
   checkable: false
   padding: 0
-  spacing: UiMetrics.spacingSmall
+  spacing: Metrics.spacingSmall
 
   contentItem: Text {
     verticalAlignment: Text.AlignVCenter
     text: root.text
-    color: Styles.foreground.high
-    font: Styles.fonts.body
+    color: Colors.foreground.high
+    font: Fonts.body
   }
 
   indicator: Rectangle {
     implicitWidth: root.barWidth
     implicitHeight: root.barHeight
     radius: height / 2
-    color: root.isOn ? Styles.secondary.base : Styles.background.dp06
+    color: root.isOn ? Colors.secondary.base : Colors.background.dp06
 
     Rectangle {
-      width: parent.height - 4 * UiMetrics.borderWidth
+      width: parent.height - 4 * Metrics.borderWidth
       height: width
       radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
-      x: root.isOn ? parent.width - width - UiMetrics.borderWidth
-                   : 2 * UiMetrics.borderWidth
-      color: Styles.foreground.high
+      x: root.isOn ? parent.width - width - Metrics.borderWidth
+                   : 2 * Metrics.borderWidth
+      color: Colors.foreground.high
       Behavior on x {
         NumberAnimation {
-          duration: UiMetrics.animationFast
+          duration: Metrics.animationFast
         }
       }
 
