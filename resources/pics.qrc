@@ -16,5 +16,6 @@
         <file>pics/settings.svg</file>
         <file>pics/test.svg</file>
         <file>pics/network.svg</file>
+        <file>pics/logo.svg</file>
     </qresource>
 </RCC>

@@ -74,6 +74,7 @@ add_subdirectory(qml/Modules/Components)
 set(QML_FILES
   qml/Main.qml
   qml/Logger.qml
+  qml/MenuBar/MainMenuBar.qml
   qml/NavigationPanel/NavigationPanel.qml
   qml/NavigationPanel/NavigationMenuDelegate.qml
   qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml

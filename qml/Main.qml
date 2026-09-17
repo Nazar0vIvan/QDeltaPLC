@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Basic
 
 import "NavigationPanel"
+import "MenuBar"
 import "Views/Dashboard"
 import "Views/Network"
 
@@ -20,6 +21,10 @@ ApplicationWindow {
   visible: true
   title: qsTr("RoboCrap")
   color: Colors.background.dp00
+
+  menuBar: MainMenuBar {
+    id: mainMenuBar
+  }
 
   RowLayout {
     id: rl
