@@ -13,7 +13,7 @@ import Components 1.0
 ApplicationWindow {
   id: root
 
-  property int navPanelWidth: 60
+  property int navPanelWidth: 40
 
   width: 1000
   height: 800
@@ -62,7 +62,7 @@ ApplicationWindow {
 
         Dashboard { id: dashboard }
 
-        // Options { id: options }
+        Item { id: cam }
 
         Network { id: network }
       }

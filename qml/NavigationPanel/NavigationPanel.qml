@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+
 import Styles 1.0
 
 Rectangle {
@@ -11,15 +12,17 @@ Rectangle {
   ListView {
     id: lv
 
+    highlightMoveDuration: 0
+
     anchors {
       fill: parent
-      margins: Metrics.spacingSmall
+      margins: Metrics.spacingXSmall
     }
-    spacing: 0
+    spacing: Metrics.spacingSmall
 
     model: ListModel {
       ListElement { sourcePath: "qrc:/pics/dashboard.svg" }
-      // ListElement { sourcePath: "qrc:/pics/settings.svg" }
+      ListElement { sourcePath: "qrc:/pics/3d.svg" }
       ListElement { sourcePath: "qrc:/pics/network.svg" }
     }
 
@@ -31,24 +34,11 @@ Rectangle {
 
       width: ListView.view.width
       height: width
+
       iconPath: delegate.sourcePath
       selected: ListView.isCurrentItem
 
-      MouseArea {
-        anchors.fill: parent
-        onClicked: lv.currentIndex = delegate.index
-      }
-    }
-    highlight: Rectangle {
-      y: lv.currentItem ? lv.currentItem.y : 0
-      width: lv.width
-      height: lv.width
-      radius: Metrics.radiusSmall
-      color: Colors.primary.base
-      opacity: 0.5
-      Behavior on y {
-        NumberAnimation { duration: Metrics.animationFast }
-      }
+      onClicked: lv.currentIndex = delegate.index
     }
   }
 }
