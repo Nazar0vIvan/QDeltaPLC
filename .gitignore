@@ -1,2 +1,4 @@
-build*/
 .qtcreator/
+build*/
+libs/
+*.user*

@@ -1,5 +1,11 @@
-import QtQuick 2.15
+import QtQuick
 
-Item {
+import Components 1.0
+import Styles 1.0
+
+QxScrollView {
+  id: root
+
+
 
 }

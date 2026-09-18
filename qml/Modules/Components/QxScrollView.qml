@@ -7,10 +7,6 @@ import Styles 1.0
 ScrollView {
   id: root
 
-  property int pageLeftPadding: Metrics.sp20
-  property int pageRightPadding: Metrics.sp20
-  property int pageTopPadding: Metrics.sp20
-  property int pageBottomPadding: Metrics.sp20
   default property alias pageContent: layout.data
 
   spacing: Metrics.sp12
@@ -32,18 +28,14 @@ ScrollView {
     id: page
 
     width: root.contentWidth
-    implicitWidth: layout.implicitWidth
-                   + root.pageLeftPadding
-                   + root.pageRightPadding
-    implicitHeight: layout.implicitHeight
-                    + root.pageTopPadding
-                    + root.pageBottomPadding
+    implicitWidth: layout.implicitWidth + 2 * Metrics.sp20
+    implicitHeight: layout.implicitHeight + 2 * Metrics.sp20
 
     ColumnLayout {
       id: layout
 
-      x: root.pageLeftPadding
-      y: root.pageTopPadding
+      x: Metrics.sp20
+      y: Metrics.sp20
       spacing: root.spacing
     }
   }

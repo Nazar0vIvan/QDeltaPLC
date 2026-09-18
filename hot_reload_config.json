@@ -11,5 +11,10 @@
       "target_path": "Styles"
     }
   ],
+  "ignored_directories": [
+    "/libs/*",
+    "/python/*",
+    "/old_imp/*"
+  ],
 	"use_local_plugins": true
 }

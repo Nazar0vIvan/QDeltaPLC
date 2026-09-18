@@ -11,7 +11,6 @@ import "KukaPanel"
 QxScrollView {
   id: root
 
-  pageTopPadding: Metrics.controlHeightLarge
   spacing: Metrics.sp16
 
   RowLayout {
