@@ -11,10 +11,10 @@ TextField {
   property alias placeholder: defaultTxt.text
   property int radius: Metrics.radiusSmall
 
-  leftPadding: Metrics.controlHorizontalPadding
-  rightPadding: Metrics.controlHorizontalPadding
-  topPadding: Metrics.controlVerticalPadding
-  bottomPadding: Metrics.controlVerticalPadding
+  leftPadding: Metrics.sp12
+  rightPadding: Metrics.sp12
+  topPadding: Metrics.sp8
+  bottomPadding: Metrics.sp8
   color: Colors.foreground.high
   font: Fonts.body
 

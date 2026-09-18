@@ -14,7 +14,7 @@ Control {
   property double contentVerticalMargin: 0
   property int radius: Metrics.radiusLarge
 
-  spacing: Metrics.spacingSmall
+  spacing: Metrics.sp8
 
   topPadding: header.implicitHeight + root.contentVerticalMargin
   bottomPadding: root.contentVerticalMargin
@@ -46,10 +46,10 @@ Control {
       top: parent.top
     }
 
-    leftPadding: Metrics.spacingLarge
-    rightPadding: Metrics.spacingLarge
-    topPadding: Metrics.panelPadding
-    bottomPadding: Metrics.panelPadding
+    leftPadding: Metrics.sp16
+    rightPadding: Metrics.sp16
+    topPadding: Metrics.sp10
+    bottomPadding: Metrics.sp10
 
     text: root.title
     color: Colors.foreground.high

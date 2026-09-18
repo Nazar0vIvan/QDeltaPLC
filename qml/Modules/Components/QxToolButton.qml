@@ -10,7 +10,7 @@ ToolButton {
   required property string imageSource
   property int radius: Metrics.radiusSmall
 
-  padding: Metrics.spacingXSmall
+  padding: Metrics.sp4
   opacity: enabled ? (pressed ? 0.9 : hovered ? 1.0 : 0.9) : 0.4
 
   contentItem: Image {

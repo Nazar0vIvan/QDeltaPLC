@@ -7,7 +7,7 @@ import Styles 1.0
 
 import RoboCrap.Backend 1.0 as Backend
 
-QxScrollPage {
+QxScrollView {
   id: root
 
   Backend.DeviceProfileModel {
@@ -42,7 +42,7 @@ QxScrollPage {
     return config
   }
 
-  spacing: Metrics.spacingLarge
+  spacing: Metrics.sp16
 
   Label {
     text: qsTr("Network")
@@ -55,9 +55,9 @@ QxScrollPage {
 
     Layout.fillWidth: true
     title: "Configuration"
-    contentHorizontalMargin: Metrics.spacingMedium
-    contentVerticalMargin: Metrics.spacingLarge
-    spacing: Metrics.spacingSmall
+    contentHorizontalMargin: Metrics.sp12
+    contentVerticalMargin: Metrics.sp16
+    spacing: Metrics.sp8
 
     QxVField {
       labelText: qsTr("Device")
@@ -172,7 +172,7 @@ QxScrollPage {
 
     Layout.fillWidth: true
     title: "Connections"
-    contentVerticalMargin: Metrics.spacingMedium
+    contentVerticalMargin: Metrics.sp12
 
     ConnectionsTable {
       id: conTable

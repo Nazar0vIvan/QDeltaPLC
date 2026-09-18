@@ -8,12 +8,12 @@ GroupBox {
   id: control
 
   label: Label {
-    x: Metrics.spacingXLarge
+    x: Metrics.sp24
     y: -height / 2
-    leftPadding: Metrics.panelPadding
-    rightPadding: Metrics.panelPadding
-    topPadding: Metrics.spacingXSmall
-    bottomPadding: Metrics.spacingXSmall
+    leftPadding: Metrics.sp10
+    rightPadding: Metrics.sp10
+    topPadding: Metrics.sp4
+    bottomPadding: Metrics.sp4
     textFormat: Text.RichText
     text: control.title
     color: Colors.foreground.high

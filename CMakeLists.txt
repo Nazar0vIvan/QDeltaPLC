@@ -93,6 +93,7 @@ set(QML_FILES
   qml/Views/Network/Network.qml
   qml/Views/Network/NetworkPanel.qml
   qml/Views/Network/ConnectionsTable.qml
+  qml/Views/Viewport3D/Viewport3D.qml
 )
 
 set(RESOURCE_FILES

@@ -14,7 +14,7 @@ QxPanel {
 
   readonly property int barWidth: 160
 
-  spacing: Metrics.spacingSmall
+  spacing: Metrics.sp8
 
   Repeater {
     model: ListModel {

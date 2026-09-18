@@ -19,7 +19,7 @@ QxGroupBox {
   RowLayout {
     id: rl
 
-    spacing: Metrics.spacingLarge
+    spacing: Metrics.sp16
 
     LedsPanel {
       id: ledPanel

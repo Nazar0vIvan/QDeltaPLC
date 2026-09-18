@@ -8,11 +8,11 @@ import "DeltaPanel"
 import "FtsPanel"
 import "KukaPanel"
 
-QxScrollPage {
+QxScrollView {
   id: root
 
   pageTopPadding: Metrics.controlHeightLarge
-  spacing: Metrics.spacingLarge
+  spacing: Metrics.sp16
 
   RowLayout {
     Layout.fillWidth: true
@@ -45,14 +45,14 @@ QxScrollPage {
 
   RowLayout {
     Layout.fillWidth: true
-    spacing: Metrics.spacingLarge
+    spacing: Metrics.sp16
 
     KukaPanel {
       id: kukaPanel
 
       title: qsTr("Robot Sensor Interface")
       Layout.alignment: Qt.AlignTop
-      Layout.topMargin: Metrics.spacingMedium
+      Layout.topMargin: Metrics.sp12
     }
 
     FtsPanel {
@@ -60,7 +60,7 @@ QxScrollPage {
 
       title: qsTr("FTS Delta-IP68-SI-660-60")
       Layout.alignment: Qt.AlignTop
-      Layout.topMargin: Metrics.spacingMedium
+      Layout.topMargin: Metrics.sp12
     }
   }
 }

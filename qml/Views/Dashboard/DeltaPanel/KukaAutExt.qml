@@ -32,7 +32,7 @@ QxPanel {
     { label: "DONE", isOn: root.cellState === Backend.PlcMessage.FIN }
   ]
 
-  spacing: Metrics.spacingSmall
+  spacing: Metrics.sp8
 
   Repeater {
     model: root.indicators
@@ -55,7 +55,7 @@ QxPanel {
   }
 
   RowLayout {
-    spacing: Metrics.spacingSmall
+    spacing: Metrics.sp8
 
     QxButton {
       id: btnConnect

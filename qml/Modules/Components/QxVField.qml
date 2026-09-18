@@ -19,7 +19,7 @@ Item {
   ColumnLayout {
     id: cl
 
-    spacing: Metrics.spacingSmall
+    spacing: Metrics.sp8
 
     Label {
       id: label

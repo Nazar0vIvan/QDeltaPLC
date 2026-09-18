@@ -30,16 +30,16 @@ Item {
   RowLayout {
     id: rl
 
-    spacing: Metrics.spacingSmall
+    spacing: Metrics.sp8
 
     TextField {
       id: textField
 
       Layout.preferredWidth: root.fieldWidth
-      leftPadding: Metrics.controlHorizontalPadding
-      rightPadding: Metrics.controlHorizontalPadding
-      topPadding: Metrics.controlVerticalPadding
-      bottomPadding: Metrics.controlVerticalPadding
+      leftPadding: Metrics.sp12
+      rightPadding: Metrics.sp12
+      topPadding: Metrics.sp8
+      bottomPadding: Metrics.sp8
       color: Colors.foreground.high
       selectionColor: Colors.primary.highlight
       selectByMouse: true
@@ -66,7 +66,7 @@ Item {
       id: btnBrowse
 
       Layout.preferredWidth: implicitHeight
-      padding: Metrics.spacingXSmall
+      padding: Metrics.sp4
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit

@@ -15,12 +15,12 @@ QxGroupBox {
   ColumnLayout {
     id: cl
 
-    spacing: Metrics.spacingMedium
+    spacing: Metrics.sp12
 
     RowLayout {
       id: rl
 
-      spacing: Metrics.spacingLarge
+      spacing: Metrics.sp16
 
       RsiPosition {
         id: cartesianPosition
@@ -43,12 +43,12 @@ QxGroupBox {
     ColumnLayout {
       id: cl2
 
-      spacing: Metrics.spacingSmall
+      spacing: Metrics.sp8
 
       RowLayout {
         id: rl2
 
-        spacing: Metrics.spacingSmall
+        spacing: Metrics.sp8
 
         QxButton {
           id: genTraj

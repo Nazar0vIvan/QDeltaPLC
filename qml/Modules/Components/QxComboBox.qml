@@ -8,10 +8,10 @@ import Styles 1.0
 ComboBox {
   id: root
 
-  leftPadding: Metrics.controlHorizontalPadding
-  rightPadding: Metrics.spacingXXLarge
-  topPadding: Metrics.controlVerticalPadding
-  bottomPadding: Metrics.controlVerticalPadding
+  leftPadding: Metrics.sp12
+  rightPadding: Metrics.sp32
+  topPadding: Metrics.sp8
+  bottomPadding: Metrics.sp8
 
   contentItem: Text {
     text: root.displayText
@@ -23,7 +23,7 @@ ComboBox {
   indicator: Image {
     anchors {
       right: parent.right
-      rightMargin: Metrics.spacingMedium
+      rightMargin: Metrics.sp12
       verticalCenter: parent.verticalCenter
     }
 
@@ -55,8 +55,9 @@ ComboBox {
 
     required property int index
 
-    width: root.width - Metrics.spacingMedium
-    padding: Metrics.spacingSmall
+    width: ListView.view.width
+    padding: Metrics.sp8
+
     text: root.textAt(delegate.index)
     highlighted: root.highlightedIndex === delegate.index
 
@@ -76,10 +77,10 @@ ComboBox {
   popup: Popup {
     id: popup
 
-    y: root.height + Metrics.spacingXSmall
+    y: root.height + Metrics.sp4
     width: root.width
     implicitHeight: contentItem.implicitHeight + 2 * padding
-    padding: Metrics.spacingSmall
+    padding: Metrics.sp8
 
     contentItem: ListView {
       clip: true

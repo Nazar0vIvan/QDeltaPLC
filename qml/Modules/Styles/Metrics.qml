@@ -11,17 +11,27 @@ QtObject {
   readonly property int fieldWidthMedium: 120
   readonly property int fieldWidthLarge: 200
 
-  readonly property int spacingXSmall: 4
-  readonly property int spacingSmall: 8
-  readonly property int spacingMedium: 12
-  readonly property int spacingLarge: 16
-  readonly property int spacingXLarge: 24
-  readonly property int spacingXXLarge: 32
+  readonly property int sp0: 0
+  readonly property int sp4: 4
+  readonly property int sp6: 6
+  readonly property int sp8: 8
+  readonly property int sp10: 10
+  readonly property int sp12: 12
+  readonly property int sp16: 16
+  readonly property int sp20: 20
+  readonly property int sp24: 24
+  readonly property int sp32: 32
+  readonly property int sp36: 36
+  readonly property int sp40: 40
 
-  readonly property int controlHorizontalPadding: 12
-  readonly property int controlVerticalPadding: 8
-  readonly property int panelPadding: 10
-  readonly property int pageMargin: 20
+  readonly property int spacingXSmall: sp4
+  readonly property int spacingSmall: sp8
+  readonly property int spacingMedium: sp12
+  readonly property int spacingLarge: sp16
+  readonly property int spacingXXLarge: sp32
+  readonly property int controlHorizontalPadding: sp12
+  readonly property int controlVerticalPadding: sp8
+  readonly property int panelPadding: sp10
 
   readonly property int indicatorSizeSmall: 12
   readonly property int indicatorSizeMedium: 20

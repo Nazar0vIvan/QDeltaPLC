@@ -41,7 +41,7 @@ Item {
           anchors {
             fill: parent
             leftMargin: headerCell.column === Backend.DeviceProfileModel.DeviceColumn
-                        ? Metrics.spacingLarge
+                        ? Metrics.sp16
                         : 0
           }
 
@@ -126,7 +126,7 @@ Item {
           anchors {
             fill: parent
             leftMargin: cell.column === Backend.DeviceProfileModel.DeviceColumn
-                        ? Metrics.spacingLarge
+                        ? Metrics.sp16
                         : 0
           }
 
@@ -153,7 +153,7 @@ Item {
             verticalCenter: parent.verticalCenter
           }
 
-          spacing: Metrics.spacingSmall
+          spacing: Metrics.sp8
 
           Rectangle {
             anchors.verticalCenter: parent.verticalCenter

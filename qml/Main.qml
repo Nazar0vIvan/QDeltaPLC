@@ -7,6 +7,7 @@ import "NavigationPanel"
 import "MenuBar"
 import "Views/Dashboard"
 import "Views/Network"
+import "Views/Viewport3D"
 
 import Styles 1.0
 import Components 1.0
@@ -14,7 +15,7 @@ import Components 1.0
 ApplicationWindow {
   id: root
 
-  property int navPanelWidth: 40
+  property int navPanelWidth: 44
 
   width: 1000
   height: 800
@@ -37,16 +38,10 @@ ApplicationWindow {
 
       Layout.fillHeight: true
       Layout.preferredWidth: root.navPanelWidth
-
-      color: Colors.background.dp00
-    }
-
-    Rectangle {
-      id: separator
-
-      Layout.preferredWidth: Metrics.separatorWidth
-      Layout.fillHeight: true
-      color: Colors.background.dp04
+      Layout.leftMargin: Metrics.sp4
+      Layout.rightMargin: Metrics.sp0
+      Layout.topMargin: Metrics.sp4
+      Layout.bottomMargin: Metrics.sp4
     }
 
     SplitView {
@@ -54,6 +49,7 @@ ApplicationWindow {
 
       Layout.fillWidth: true;
       Layout.fillHeight: true
+      Layout.margins: Metrics.sp4
 
       orientation: Qt.Vertical
 
@@ -65,9 +61,9 @@ ApplicationWindow {
 
         currentIndex: navPanel.currentIndex
 
-        Dashboard { id: dashboard }
+        Viewport3D { id: cam }
 
-        Item { id: cam }
+        Dashboard { id: dashboard }
 
         Network { id: network }
       }

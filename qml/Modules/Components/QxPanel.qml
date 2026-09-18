@@ -11,12 +11,12 @@ Control {
   property string title: ""
   default property alias panelContent: body.data
 
-  spacing: Metrics.spacingMedium
+  spacing: Metrics.sp12
 
-  topPadding: header.implicitHeight + Metrics.spacingMedium
-  bottomPadding: Metrics.panelPadding
-  leftPadding: Metrics.panelPadding
-  rightPadding: Metrics.panelPadding
+  topPadding: header.implicitHeight + Metrics.sp12
+  bottomPadding: Metrics.sp10
+  leftPadding: Metrics.sp10
+  rightPadding: Metrics.sp10
 
   contentItem: ColumnLayout {
     id: body
@@ -42,10 +42,10 @@ Control {
       top: parent.top
     }
 
-    leftPadding: Metrics.panelPadding
-    rightPadding: Metrics.panelPadding
-    topPadding: Metrics.spacingXSmall
-    bottomPadding: Metrics.spacingXSmall
+    leftPadding: Metrics.sp10
+    rightPadding: Metrics.sp10
+    topPadding: Metrics.sp4
+    bottomPadding: Metrics.sp4
 
     text: root.title
     textFormat: Text.RichText

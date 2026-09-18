@@ -53,10 +53,10 @@ QxPanel {
   }
 
   RowLayout {
-    spacing: Metrics.spacingXLarge
+    spacing: Metrics.sp24
 
     ColumnLayout {
-      spacing: Metrics.spacingSmall
+      spacing: Metrics.sp8
 
       Text {
         text: root.xLabel
@@ -81,7 +81,7 @@ QxPanel {
     }
 
     ColumnLayout {
-      spacing: Metrics.spacingSmall
+      spacing: Metrics.sp8
 
       Text {
         text: root.yLabel

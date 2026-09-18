@@ -9,6 +9,10 @@ Rectangle {
 
   property int currentIndex: lv.currentIndex
 
+  border{width: 1; color: Colors.background.dp04}
+  color: Colors.background.dp01
+  radius: 4
+
   ListView {
     id: lv
 
@@ -16,13 +20,13 @@ Rectangle {
 
     anchors {
       fill: parent
-      margins: Metrics.spacingXSmall
+      margins: Metrics.sp6
     }
-    spacing: Metrics.spacingSmall
+    spacing: Metrics.sp8
 
     model: ListModel {
-      ListElement { sourcePath: "qrc:/pics/dashboard.svg" }
       ListElement { sourcePath: "qrc:/pics/3d.svg" }
+      ListElement { sourcePath: "qrc:/pics/dashboard.svg" }
       ListElement { sourcePath: "qrc:/pics/network.svg" }
     }
 

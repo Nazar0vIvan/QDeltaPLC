@@ -7,8 +7,35 @@ import Styles 1.0
 MenuBar {
   id: root
 
-  leftPadding: 40
-  implicitHeight: 34
+  leftPadding: Metrics.sp36
+  spacing: 6
+  padding: Metrics.sp4
+  background: Rectangle {
+    color: Colors.background.dp00
+  }
+
+  delegate: MenuBarItem {
+    id: menuBarItem
+
+    padding: Metrics.sp4
+    leftPadding: Metrics.sp8
+    rightPadding: Metrics.sp8
+
+    contentItem: Text {
+      verticalAlignment: Text.AlignVCenter
+
+      text: menuBarItem.text
+      font: Fonts.caption
+      color: menuBarItem.hovered ? Colors.foreground.high : Colors.foreground.medium
+    }
+
+    background: Rectangle {
+      color: Colors.foreground.high
+      radius: 4
+      opacity: 0.2
+      visible: menuBarItem.hovered
+    }
+  }
 
   Image {
     id: logoImage
@@ -17,7 +44,9 @@ MenuBar {
 
     anchors {
       left: parent.left
-      leftMargin: 6
+      top: parent.top
+
+      leftMargin: Metrics.sp8
       verticalCenter: parent.verticalCenter
     }
 
@@ -68,27 +97,5 @@ MenuBar {
       text: qsTr("About ...")
       onTriggered: root.about()
     }
-  }
-
-  delegate: MenuBarItem {
-    id: menuBarItem
-
-    contentItem: Text {
-      verticalAlignment: Text.AlignVCenter
-
-      text: menuBarItem.text
-      font: Fonts.body
-      color: Colors.foreground.high
-    }
-
-    background: Rectangle {
-      color: menuBarItem.hovered
-             ? Colors.primary.transparent
-             : "transparent"
-    }
-  }
-
-  background: Rectangle {
-    color: Colors.background.dp04
   }
 }

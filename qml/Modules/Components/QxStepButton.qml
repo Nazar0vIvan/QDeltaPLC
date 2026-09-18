@@ -16,7 +16,7 @@ Control {
   signal increment()
   signal decrement()
 
-  padding: 0
+  padding: Metrics.sp0
 
   background: Rectangle {
     color: "transparent"
@@ -32,11 +32,10 @@ Control {
     Button {
       id: btnDecrement
 
-      padding: Metrics.spacingSmall
+      padding: Metrics.sp8
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit
-        sourceSize.width: root.imageSize
         sourceSize.height: root.imageSize
         mipmap: true
         smooth: true
@@ -61,7 +60,7 @@ Control {
     Button {
       id: btnIncrement
 
-      padding: Metrics.spacingSmall
+      padding: Metrics.sp8
 
       contentItem: Image {
         fillMode: Image.PreserveAspectFit

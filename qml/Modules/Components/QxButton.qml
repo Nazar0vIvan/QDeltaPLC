@@ -9,10 +9,10 @@ Button {
 
   checkable: false
 
-  leftPadding: Metrics.controlHorizontalPadding
-  rightPadding: Metrics.controlHorizontalPadding
-  topPadding: Metrics.controlVerticalPadding
-  bottomPadding: Metrics.controlVerticalPadding
+  leftPadding: Metrics.sp12
+  rightPadding: Metrics.sp12
+  topPadding: Metrics.sp8
+  bottomPadding: Metrics.sp8
 
   background: Rectangle {
     radius: Metrics.radiusMedium

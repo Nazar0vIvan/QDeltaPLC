@@ -7,6 +7,8 @@
   verify properties, signals, default content, and sizing instead of inferring them from examples.
 - Keep changes within the requested task. Preserve unrelated user edits and local formatting.
   Reuse suitable project/Qt helpers; add abstractions only for a current requirement.
+- Exclude directories named build and directories whose names start with old (such as old_imp)
+  from routine searches and inspections, unless the task explicitly targets them.
 - Preserve public/protected C++ APIs, QML APIs/module URIs, dependencies, and version requirements
   unless the task requests or requires a change. Explain necessary changes and update affected callers.
   If the requested design cannot work, explain the verified conflict and a concrete alternative.

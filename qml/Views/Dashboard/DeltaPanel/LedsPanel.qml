@@ -13,8 +13,8 @@ QxPanel {
 
   GridLayout {
     columns: 3
-    rowSpacing: Metrics.spacingLarge
-    columnSpacing: Metrics.spacingLarge
+    rowSpacing: Metrics.sp16
+    columnSpacing: Metrics.sp16
 
     Repeater {
       model: ListModel {

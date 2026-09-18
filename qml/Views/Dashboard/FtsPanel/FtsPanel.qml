@@ -14,7 +14,7 @@ QxGroupBox {
   ColumnLayout {
     id: cl
 
-    spacing: Metrics.spacingMedium
+    spacing: Metrics.sp12
 
     FtsBars {
       id: bars
@@ -27,7 +27,7 @@ QxGroupBox {
     RowLayout {
       id: rl
 
-      spacing: Metrics.spacingSmall
+      spacing: Metrics.sp8
 
       QxButton {
         id: btnStart

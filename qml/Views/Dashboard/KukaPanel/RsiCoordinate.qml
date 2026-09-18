@@ -20,7 +20,7 @@ Item {
   RowLayout {
     id: row
 
-    spacing: Metrics.spacingXSmall
+    spacing: Metrics.sp4
 
     Text {
       id: tag

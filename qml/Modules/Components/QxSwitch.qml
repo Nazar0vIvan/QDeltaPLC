@@ -18,8 +18,8 @@ Switch {
   property int barHeight: Metrics.indicatorSizeMedium
 
   checkable: false
-  padding: 0
-  spacing: Metrics.spacingSmall
+  padding: Metrics.sp0
+  spacing: Metrics.sp8
 
   contentItem: Text {
     verticalAlignment: Text.AlignVCenter

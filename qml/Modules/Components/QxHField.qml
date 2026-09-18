@@ -11,7 +11,7 @@ RowLayout {
   property alias labelText: label.text
   property alias color: label.color
 
-  spacing: Metrics.spacingSmall
+  spacing: Metrics.sp8
 
   Label {
     id: label

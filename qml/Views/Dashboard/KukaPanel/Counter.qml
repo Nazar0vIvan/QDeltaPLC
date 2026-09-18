@@ -17,7 +17,7 @@ Item {
   RowLayout {
     id: row
 
-    spacing: Metrics.spacingSmall
+    spacing: Metrics.sp8
 
     Image {
       Layout.preferredWidth: Metrics.iconSizeLarge
