@@ -72,7 +72,7 @@ QxPanel {
           required property int index
 
           enabled: root.xPlugged[index]
-          ledSize: Metrics.indicatorSizeMedium
+          ledSize: Metrics.sz20
           labelText: "X" + root.moduleIndex + "." + index
           tag: root.xTags[index]
           isOn: root.xStates[index]
@@ -98,8 +98,8 @@ QxPanel {
 
           required property int index
 
-          switchHeight: Metrics.indicatorSizeMedium
-          switchWidth: Metrics.indicatorSizeLarge
+          switchHeight: Metrics.sz20
+          switchWidth: Metrics.sz36
           plugged: root.yPlugged[output.index]
           displayOnly: root.yDisplayOnly.includes(output.index)
           labelText: "Y" + root.moduleIndex + "." + output.index

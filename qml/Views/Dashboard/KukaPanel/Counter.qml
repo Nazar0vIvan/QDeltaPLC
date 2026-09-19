@@ -7,7 +7,7 @@ import Components 1.0
 Item {
   id: root
 
-  property int fieldWidth: Metrics.fieldWidthSmall
+  property int fieldWidth: Metrics.w80
   property alias dimension: dimension.text
   property real value: 0.000
 
@@ -20,8 +20,8 @@ Item {
     spacing: Metrics.sp8
 
     Image {
-      Layout.preferredWidth: Metrics.iconSizeLarge
-      Layout.preferredHeight: Metrics.iconSizeLarge
+      Layout.preferredWidth: Metrics.sz24
+      Layout.preferredHeight: Metrics.sz24
       fillMode: Image.PreserveAspectFit
       source: "qrc:/pics/step.svg"
       mipmap: true

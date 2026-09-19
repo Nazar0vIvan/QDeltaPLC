@@ -8,12 +8,16 @@ ToolButton {
   id: root
 
   required property string imageSource
-  property int radius: Metrics.radiusSmall
+
+  property int imageSize: Metrics.sz16
+  property int radius: Metrics.r4
 
   padding: Metrics.sp4
   opacity: enabled ? (pressed ? 0.9 : hovered ? 1.0 : 0.9) : 0.4
 
   contentItem: Image {
+    sourceSize.width: root.imageSize
+    sourceSize.height: root.imageSize
     fillMode: Image.PreserveAspectFit
     source: root.imageSource
     mipmap: true
@@ -23,7 +27,7 @@ ToolButton {
     color: Colors.background.dp04
     radius: root.radius
     border {
-      width: Metrics.borderWidth
+      width: Metrics.w1
       color: Colors.background.dp12
     }
   }

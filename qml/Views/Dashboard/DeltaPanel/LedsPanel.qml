@@ -36,7 +36,7 @@ QxPanel {
         labelText: field.label
 
         QxLed {
-          diameter: Metrics.indicatorSizeLarge
+          diameter: Metrics.sz36
           ledColor: field.ledColor
           isOn: !!root.ledStates[field.index]
         }

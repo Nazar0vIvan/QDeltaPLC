@@ -34,7 +34,7 @@ Item {
         required property var display
         required property int column
 
-        implicitHeight: Metrics.controlHeight
+        implicitHeight: Metrics.h32
         color: "transparent"
 
         Text {
@@ -59,7 +59,7 @@ Item {
             bottom: parent.bottom
           }
 
-          height: Metrics.borderWidth
+          height: Metrics.w1
           color: Colors.background.dp24
         }
       }
@@ -81,7 +81,7 @@ Item {
         150  // Status
       ]
 
-      property int rowHeight: Metrics.controlHeight
+      property int rowHeight: Metrics.h32
 
       onColumnWidthsChanged: forceLayout()
       onRowHeightChanged: forceLayout()
@@ -158,7 +158,7 @@ Item {
           Rectangle {
             anchors.verticalCenter: parent.verticalCenter
 
-            width: Metrics.indicatorSizeSmall
+            width: Metrics.sz12
             height: width
             radius: width / 2
 
@@ -191,7 +191,7 @@ Item {
             bottom: parent.bottom
           }
 
-          height: Metrics.borderWidth
+          height: Metrics.w1
           color: Colors.background.dp24
         }
       }

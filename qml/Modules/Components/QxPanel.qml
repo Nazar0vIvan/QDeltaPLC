@@ -28,7 +28,7 @@ Control {
     implicitWidth: header.implicitWidth
     color: "transparent"
     border {
-      width: Metrics.borderWidth
+      width: Metrics.w1
       color: Colors.background.dp12
     }
   }
@@ -55,7 +55,7 @@ Control {
     background: Rectangle {
       color: Colors.background.dp01
       border {
-        width: Metrics.borderWidth
+        width: Metrics.w1
         color: Colors.background.dp12
       }
     }

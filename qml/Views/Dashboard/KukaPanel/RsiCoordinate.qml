@@ -8,7 +8,7 @@ Item {
   id: root
 
   property alias tag: tag.text
-  property int fieldWidth: Metrics.fieldWidthSmall
+  property int fieldWidth: Metrics.w80
   property real value: 0.00
 
   signal increment()
@@ -25,7 +25,7 @@ Item {
     Text {
       id: tag
 
-      Layout.preferredWidth: Metrics.controlHeightCompact
+      Layout.preferredWidth: Metrics.w24
       color: Colors.foreground.high
       font: Fonts.body
     }

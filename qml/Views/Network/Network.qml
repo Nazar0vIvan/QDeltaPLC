@@ -65,7 +65,7 @@ QxScrollView {
       QxComboBox {
         id: cbDevice
 
-        Layout.preferredWidth: Metrics.fieldWidthLarge
+        Layout.preferredWidth: Metrics.w200
         model: devProfModel.names
       }
     }
@@ -76,7 +76,7 @@ QxScrollView {
       QxTextInput {
         id: laInput
 
-        Layout.preferredWidth: Metrics.fieldWidthMedium
+        Layout.preferredWidth: Metrics.w120
         text: root.selectedDevice.localAddress ?? ""
         validator: RegularExpressionValidator {
           regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
@@ -90,7 +90,7 @@ QxScrollView {
       QxTextInput {
         id: lpInput
 
-        Layout.preferredWidth: Metrics.fieldWidthSmall
+        Layout.preferredWidth: Metrics.w80
         text: root.selectedDevice.localPort >= 0
               ? String(root.selectedDevice.localPort)
               : "N/D"
@@ -107,7 +107,7 @@ QxScrollView {
       QxTextInput {
         id: paInput
 
-        Layout.preferredWidth: Metrics.fieldWidthMedium
+        Layout.preferredWidth: Metrics.w120
         text: root.selectedDevice.peerAddress ?? ""
         validator: RegularExpressionValidator {
           regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
@@ -121,7 +121,7 @@ QxScrollView {
       QxTextInput {
         id: ppInput
 
-        Layout.preferredWidth: Metrics.fieldWidthSmall
+        Layout.preferredWidth: Metrics.w80
         text: root.selectedDevice.peerPort >= 0
               ? String(root.selectedDevice.peerPort)
               : "N/D"

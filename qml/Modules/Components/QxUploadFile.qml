@@ -8,7 +8,7 @@ import Styles 1.0
 Item {
   id: root
 
-  property int fieldWidth: Metrics.fieldWidthLarge
+  property int fieldWidth: Metrics.w200
   property string imageSource: ""
   property alias text: textField.text
 
@@ -48,15 +48,15 @@ Item {
 
       background: Rectangle {
         color: textField.readOnly ? "transparent" : Colors.background.dp04
-        radius: Metrics.radiusSmall
+        radius: Metrics.r4
         border {
           width: textField.readOnly
                  ? 0
                  : textField.activeFocus
-                   ? Metrics.separatorWidth
+                   ? Metrics.w2
                    : textField.hovered
                      ? 0
-                     : Metrics.borderWidth
+                     : Metrics.w1
           color: textField.activeFocus ? Colors.primary.base : Colors.background.dp12
         }
       }
@@ -77,9 +77,9 @@ Item {
       }
       background: Rectangle {
         color: "transparent"
-        radius: Metrics.radiusSmall
+        radius: Metrics.r4
         border {
-          width: btnBrowse.hovered ? Metrics.borderWidth : 0
+          width: btnBrowse.hovered ? Metrics.w1 : 0
           color: Colors.background.dp04
         }
       }

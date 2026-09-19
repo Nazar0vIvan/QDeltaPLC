@@ -61,7 +61,7 @@ ApplicationWindow {
 
         currentIndex: navPanel.currentIndex
 
-        Viewport3D { id: viewport }
+        RobotViewport { id: viewport }
 
         Dashboard { id: dashboard }
 

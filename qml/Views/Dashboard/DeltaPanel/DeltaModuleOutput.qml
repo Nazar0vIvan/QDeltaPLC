@@ -8,8 +8,8 @@ Item {
   id: root
 
 
-  property int switchWidth: Metrics.indicatorSizeLarge
-  property int switchHeight: Metrics.indicatorSizeMedium
+  property int switchWidth: Metrics.sz36
+  property int switchHeight: Metrics.sz20
   property bool plugged: false
   property bool displayOnly: false
   property alias labelText: label.text

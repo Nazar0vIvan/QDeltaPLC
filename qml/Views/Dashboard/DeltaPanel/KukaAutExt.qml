@@ -42,12 +42,12 @@ QxPanel {
 
       required property var modelData
 
-      labelWidth: Metrics.fieldWidthSmall
+      labelWidth: Metrics.w80
       labelText: field.modelData.label
 
       QxLed {
         Layout.alignment: Qt.AlignVCenter
-        diameter: Metrics.indicatorSizeSmall
+        diameter: Metrics.sz12
         ledColor: Colors.minColor
         isOn: field.modelData.isOn
       }

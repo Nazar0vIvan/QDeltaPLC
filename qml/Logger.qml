@@ -23,7 +23,7 @@ ScrollView {
       color: Colors.background.dp04
       border {
         color: Colors.foreground.high
-        width: Metrics.borderWidth
+        width: Metrics.w1
       }
     }
 

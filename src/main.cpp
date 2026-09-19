@@ -18,6 +18,7 @@
 #include <QStandardPaths>
 
 #include "logger.h"
+#include "3d/viewportqmltypes.h"
 
 #include "network/backendqmltypes.h"
 #include "network/devicehub.h"
@@ -71,6 +72,13 @@ int main(int argc, char* argv[])
   // QmlChartBridge chartBridge;
   // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
   // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
+
+  RoboCrap3D::OccController viewportController;
+  OccControllerQml::s_inst = &viewportController;
+  QObject::connect(&viewportController, &RoboCrap3D::OccController::message,
+                   Logger::instance(), [](const QString& text, bool error) {
+    Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
+  });
 
   QQmlApplicationEngine engine;
 

@@ -14,6 +14,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
   Network
   Charts
   Xml
+  Widgets
 )
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
@@ -93,7 +94,9 @@ set(QML_FILES
   qml/Views/Network/Network.qml
   qml/Views/Network/NetworkPanel.qml
   qml/Views/Network/ConnectionsTable.qml
-  qml/Views/Viewport3D/Viewport3D.qml
+  qml/Views/Viewport3D/RobotViewport.qml
+  qml/Views/Viewport3D/RobotKinematicsPanel.qml
+  qml/Views/Viewport3D/SixValueEditor.qml
 )
 
 set(RESOURCE_FILES
@@ -117,6 +120,7 @@ else()
     IMPORTS
       Styles
       Components
+      RoboCrap.Viewport3D
     QML_FILES
       ${QML_FILES}
   )
@@ -129,6 +133,8 @@ target_sources(robocrap PRIVATE
 target_link_libraries(robocrap PRIVATE
   RoboCrapBackend
   RoboCrapBackendplugin
+  RoboCrap3D
+  RoboCrap3Dplugin
   Qt6::Core
   Qt6::Gui
   Qt6::Quick
@@ -136,6 +142,7 @@ target_link_libraries(robocrap PRIVATE
   Qt6::Network
   Qt6::Charts
   Qt6::Xml
+  Qt6::Widgets
   Styles
   Components
 )
@@ -149,6 +156,9 @@ if(NOT USE_HOT_RELOAD)
 endif()
 
 include(GNUInstallDirs)
+
+include(cmake/DeployOcct.cmake)
+robocrap_deploy_occt(robocrap "${ROBOCRAP_OCCT_PREFIX}")
 
 install(TARGETS robocrap
   BUNDLE DESTINATION .

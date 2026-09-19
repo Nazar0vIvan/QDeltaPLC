@@ -15,7 +15,7 @@ Button {
   bottomPadding: Metrics.sp8
 
   background: Rectangle {
-    radius: Metrics.radiusMedium
+    radius: Metrics.r6
     color: control.checked ? Colors.background.dp04 : Colors.secondary.base
     border.color: control.checked ? Colors.foreground.high : Colors.secondary.dark
     opacity: enabled ? (control.pressed ? 0.9 : control.hovered ? 1.0 : 0.9) : 0.4

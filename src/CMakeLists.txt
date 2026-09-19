@@ -1,6 +1,9 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(EIGEN5_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/libs/eigen-5.0.0)
 
+add_subdirectory(3d)
+set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
+
 qt_add_qml_module(RoboCrapBackend
   STATIC
   URI RoboCrap.Backend

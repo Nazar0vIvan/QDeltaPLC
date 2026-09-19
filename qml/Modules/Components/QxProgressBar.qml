@@ -8,7 +8,7 @@ import Styles 1.0
 Item {
   id: root
   property alias labelText: label.text
-  property int barWidth: Metrics.fieldWidthMedium
+  property int barWidth: Metrics.w120
   property alias from: pb.from
   property alias to: pb.to
   property alias color: fill.color
@@ -33,12 +33,12 @@ Item {
     ProgressBar {
       id: pb
       Layout.preferredWidth: root.barWidth
-      Layout.preferredHeight: Metrics.controlHeightCompact
+      Layout.preferredHeight: Metrics.h24
       Layout.alignment: Qt.AlignVCenter
       background: Rectangle {
         color: Colors.background.dp04
         border {
-          width: Metrics.borderWidth
+          width: Metrics.w1
           color: Colors.background.dp12
         }
       }

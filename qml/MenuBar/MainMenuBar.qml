@@ -60,6 +60,7 @@ MenuBar {
 
   Menu {
     title: qsTr("File")
+    popupType: Popup.Window
 
     Action {
       text: qsTr("Quit")
@@ -70,6 +71,7 @@ MenuBar {
 
   Menu {
     title: qsTr("Edit")
+    popupType: Popup.Window
 
     Action {
       text: qsTr("Cut")
@@ -92,6 +94,7 @@ MenuBar {
 
   Menu {
     title: qsTr("Help")
+    popupType: Popup.Window
 
     Action {
       text: qsTr("About ...")

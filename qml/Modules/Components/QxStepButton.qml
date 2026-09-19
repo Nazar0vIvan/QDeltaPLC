@@ -8,8 +8,8 @@ import Styles 1.0
 Control {
   id: root
 
-  property int imageSize: Metrics.iconSizeSmall
-  property int fieldWidth: Metrics.fieldWidthSmall
+  property int imageSize: Metrics.sz12
+  property int fieldWidth: Metrics.w80
   property alias text: valueField.text
   property alias validator: valueField.validator
 
@@ -20,8 +20,8 @@ Control {
 
   background: Rectangle {
     color: "transparent"
-    border{width: Metrics.borderWidth; color: Colors.background.dp04}
-    radius: Metrics.radiusSmall
+    border{width: Metrics.w1; color: Colors.background.dp04}
+    radius: Metrics.r4
   }
 
   contentItem: RowLayout {
@@ -44,8 +44,8 @@ Control {
 
       background: Rectangle {
         color: btnDecrement.hovered ? Colors.background.dp04 : "transparent"
-        topLeftRadius: Metrics.radiusSmall
-        bottomLeftRadius: Metrics.radiusSmall
+        topLeftRadius: Metrics.r4
+        bottomLeftRadius: Metrics.r4
       }
 
       onClicked: root.decrement()
@@ -72,8 +72,8 @@ Control {
       }
       background: Rectangle {
         color: btnIncrement.hovered ? Colors.background.dp04 : "transparent"
-        topRightRadius: Metrics.radiusSmall
-        bottomRightRadius: Metrics.radiusSmall
+        topRightRadius: Metrics.r4
+        bottomRightRadius: Metrics.r4
       }
 
       onClicked: root.increment()

@@ -29,9 +29,17 @@
 - Root CMakeLists.txt owns robocrap, application QML, and resource lists. src/CMakeLists.txt owns
   RoboCrapBackend and also adds geometry, path generation, and concrete devices directly to robocrap.
   A successful backend-only build does not validate those application sources.
+- src/3d/CMakeLists.txt owns RoboCrap3D (URI RoboCrap.Viewport3D), the independent OCCT preview.
+  It requires the bundled OCCT 8.0.0 SDK and a Windows 64-bit MinGW Qt kit. Its public controller
+  header does not expose OCCT math types; internal OCCT code uses namespace RoboCrap3D.
+  RobotViewport.qml hosts its native QWindow; CAD parsing runs on a dedicated worker, while
+  robot state, QML properties, and OCCT presentation remain on the GUI thread.
+  resources/json/kr10.json is embedded by json.qrc. cmake/DeployOcct.cmake stages OCCT DLLs,
+  runtime resources, and resources/cad/kr10 beside the executable and during installation.
+  Generated BREP caches belong under QStandardPaths::CacheLocation, not beside source CAD.
 - USE_HOT_RELOAD=ON requires Felgo/FelgoHotReload. OFF embeds application QML using
   qt_add_qml_module(). Preserve both paths; use OFF for verification when Felgo is unavailable.
-- FAST_QML_BUILD=ON applies NO_CACHEGEN to the application and UI modules. Check OFF too
+- FAST_QML_BUILD=ON applies NO_CACHEGEN to the application, UI, and viewport modules. Check OFF too
   when build verification is requested for cache-generation behavior; a fast build does not
   validate that compilation path.
 - old_imp/ is outside the active CMake build; python/ contains analysis scripts and data.
@@ -91,7 +99,7 @@ and src/main.cpp.
 
 ## CMake, modules, and resources
 
-- Preserve module URIs: robocrap_qml_module, RoboCrap.Backend, Components, Styles.
+- Preserve module URIs: robocrap_qml_module, RoboCrap.Backend, RoboCrap.Viewport3D, Components, Styles.
   When a file/type moves or changes name, update its owning CMake source list and all affected imports.
 - For Components/Styles exports, update both the module CMakeLists.txt and source qmldir.
   These two qmldir files are maintained hot-reload inputs, not disposable generated files.

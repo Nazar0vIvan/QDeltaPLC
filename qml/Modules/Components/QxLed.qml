@@ -7,7 +7,7 @@ Rectangle {
 
   property bool isOn: false
   property color ledColor: "green"
-  property real diameter: Metrics.indicatorSizeMedium
+  property real diameter: Metrics.sz20
 
   implicitWidth: root.diameter
   implicitHeight: root.diameter
@@ -19,7 +19,7 @@ Rectangle {
          : Qt.darker(root.ledColor, 2.0)
 
   border {
-    width: Metrics.borderWidth
+    width: Metrics.w1
     color: Qt.darker(root.ledColor, 1.8)
   }
 

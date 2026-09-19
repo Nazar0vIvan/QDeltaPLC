@@ -16,7 +16,7 @@ Item {
   Rectangle {
     anchors.fill: parent
 
-    radius: Metrics.radiusSmall
+    radius: Metrics.r4
     color: Colors.foreground.high
     opacity: 0.2
     visible: root.selected || mouseArea.containsMouse

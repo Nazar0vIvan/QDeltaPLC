@@ -21,14 +21,14 @@ GroupBox {
     background: Rectangle {
       color: Colors.background.dp04
       border {
-        width: Metrics.borderWidth
+        width: Metrics.w1
         color: Colors.foreground.high
       }
     }
   }
   background: Rectangle {
     border {
-      width: Metrics.borderWidth
+      width: Metrics.w1
       color: Colors.foreground.high
     }
     color: Colors.background.dp00

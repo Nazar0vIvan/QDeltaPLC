@@ -14,8 +14,8 @@ Switch {
   property alias displayonly: root.displayOnly
   property alias imageSource: image.source
   property bool isOn: false
-  property int barWidth: Metrics.indicatorSizeLarge
-  property int barHeight: Metrics.indicatorSizeMedium
+  property int barWidth: Metrics.sz36
+  property int barHeight: Metrics.sz20
 
   checkable: false
   padding: Metrics.sp0
@@ -35,12 +35,12 @@ Switch {
     color: root.isOn ? Colors.secondary.base : Colors.background.dp06
 
     Rectangle {
-      width: parent.height - 4 * Metrics.borderWidth
+      width: parent.height - 4 * Metrics.w1
       height: width
       radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
-      x: root.isOn ? parent.width - width - Metrics.borderWidth
-                   : 2 * Metrics.borderWidth
+      x: root.isOn ? parent.width - width - Metrics.w1
+                   : 2 * Metrics.w1
       color: Colors.foreground.high
       Behavior on x {
         NumberAnimation {

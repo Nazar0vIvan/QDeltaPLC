@@ -27,7 +27,7 @@ ComboBox {
       verticalCenter: parent.verticalCenter
     }
 
-    width: Metrics.iconSizeSmall
+    width: Metrics.sz12
     height: width
     source: "qrc:/pics/arrow_dropdown.svg"
     fillMode: Image.PreserveAspectFit
@@ -45,9 +45,9 @@ ComboBox {
 
   background: Rectangle {
     color: Colors.background.dp00
-    border.width: Metrics.borderWidth
+    border.width: Metrics.w1
     border.color: Colors.background.dp24
-    radius: Metrics.radiusSmall
+    radius: Metrics.r4
   }
 
   delegate: ItemDelegate {
@@ -70,7 +70,7 @@ ComboBox {
 
     background: Rectangle {
       color: delegate.highlighted ? Colors.primary.highlight : "transparent"
-      radius: Metrics.radiusSmall
+      radius: Metrics.r4
     }
   }
 
@@ -91,10 +91,10 @@ ComboBox {
     }
 
     background: Rectangle {
-      radius: Metrics.radiusSmall
+      radius: Metrics.r4
       color: Colors.background.dp01
       border {
-        width: Metrics.borderWidth
+        width: Metrics.w1
         color: Colors.background.dp24
       }
     }

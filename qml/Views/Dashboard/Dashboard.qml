@@ -25,7 +25,7 @@ QxScrollView {
 
   Rectangle {
     Layout.fillWidth: true
-    Layout.preferredHeight: Metrics.borderWidth
+    Layout.preferredHeight: Metrics.w1
 
     gradient: Gradient {
       orientation: Gradient.Horizontal

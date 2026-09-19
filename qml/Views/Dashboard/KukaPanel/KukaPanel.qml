@@ -71,7 +71,7 @@ QxGroupBox {
           id: ledRsi
 
           Layout.alignment: Qt.AlignVCenter
-          diameter: Metrics.indicatorSizeMedium
+          diameter: Metrics.sz20
           ledColor: Colors.minColor
           isOn: root.rsi?.data.motionActive ?? false
         }

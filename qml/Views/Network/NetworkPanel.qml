@@ -12,7 +12,7 @@ Control {
 
   property double contentHorizontalMargin: 0
   property double contentVerticalMargin: 0
-  property int radius: Metrics.radiusLarge
+  property int radius: Metrics.r10
 
   spacing: Metrics.sp8
 
@@ -32,7 +32,7 @@ Control {
     color: "transparent"
     radius: root.radius
     border {
-      width: Metrics.borderWidth
+      width: Metrics.w1
       color: Colors.background.dp24
     }
   }

@@ -9,7 +9,7 @@ TextField {
 
   property bool confirmed: false
   property alias placeholder: defaultTxt.text
-  property int radius: Metrics.radiusSmall
+  property int radius: Metrics.r4
 
   leftPadding: Metrics.sp12
   rightPadding: Metrics.sp12
@@ -29,7 +29,7 @@ TextField {
     color: "transparent"
     radius: control.radius
     border {
-      width: control.readOnly ? 0 : Metrics.borderWidth
+      width: control.readOnly ? 0 : Metrics.w1
       color: control.activeFocus ? Colors.primary.base : control.confirmed ? "green" : Colors.background.dp12
     }
   }
