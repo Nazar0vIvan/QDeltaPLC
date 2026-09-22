@@ -39,6 +39,10 @@ public:
 
   [[nodiscard]] std::optional<PartId> addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props = {});
   [[nodiscard]] bool setPartTransform(PartId id, const M4d& transform);
+  [[nodiscard]] bool setPartVisible(PartId id, bool visible);
+  [[nodiscard]] bool removePart(PartId id);
+  [[nodiscard]] Handle(AIS_Shape) partHandle(PartId id) const;
+  void selectParts(const std::vector<PartId>& ids);
 
   void updateViewer();
   void updateCameraDependentObjects();
@@ -56,7 +60,9 @@ private:
 private:
   Handle(AIS_InteractiveContext) m_context;
   Handle(V3d_View) m_view;
-  std::vector<OccPart> m_parts;
+  // Slots are never reused during this scene's lifetime. A removed part leaves
+  // a tombstone so a stale PartId cannot address a later presentation.
+  std::vector<std::optional<OccPart>> m_parts;
   OccWorldAxes m_worldAxes;
   OccViewCube m_viewCube;
   bool m_worldAxesDisplayed = false;

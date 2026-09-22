@@ -73,13 +73,6 @@ int main(int argc, char* argv[])
   // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
   // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
 
-  RoboCrap3D::OccController viewportController;
-  OccControllerQml::s_inst = &viewportController;
-  QObject::connect(&viewportController, &RoboCrap3D::OccController::message,
-                   Logger::instance(), [](const QString& text, bool error) {
-    Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
-  });
-
   // The scene outlives the QML engine and survives workspace recreation.
   ApplicationScene scene;
   ApplicationSceneQml::s_inst = &scene;
@@ -93,6 +86,14 @@ int main(int argc, char* argv[])
   scene.addObject(QStringLiteral("edge-2"), QStringLiteral("Edge E2"), SceneObject::Edge, SceneObject::Unclassified);
   scene.addObject(QStringLiteral("scan-1"), QStringLiteral("Scan S1"), SceneObject::ScanPath, SceneObject::Unclassified);
   scene.addObject(QStringLiteral("path-1"), QStringLiteral("Path P1"), SceneObject::MachiningPath, SceneObject::Unclassified);
+
+  RoboCrap3D::OccController viewportController;
+  viewportController.setApplicationScene(&scene);
+  OccControllerQml::s_inst = &viewportController;
+
+	QObject::connect(&viewportController, &RoboCrap3D::OccController::message, Logger::instance(), [](const QString& text, bool error) {
+    Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
+  });
 
   QQmlApplicationEngine engine;
 

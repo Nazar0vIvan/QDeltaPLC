@@ -1,9 +1,6 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(EIGEN5_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/libs/eigen-5.0.0)
 
-add_subdirectory(3d)
-set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
-
 qt_add_qml_module(RoboCrapBackend
   STATIC
   URI RoboCrap.Backend
@@ -21,10 +18,13 @@ qt_add_qml_module(RoboCrapBackend
     scene/sceneobject.h
     scene/sceneobject.cpp
     scene/planegeometry.h
+    scene/cylindergeometry.h
 
     geometry/planeimporter.h
     geometry/boundedplane.h
     geometry/boundedplane.cpp
+    geometry/boundedcylinder.h
+    geometry/boundedcylinder.cpp
     geometry/planeimporter.cpp
     geometry/plane.h
     geometry/plane.cpp
@@ -65,6 +65,9 @@ target_link_libraries(RoboCrapBackend PUBLIC
 )
 
 target_include_directories(RoboCrapBackend PRIVATE ${EIGEN5_INCLUDE_DIR})
+
+add_subdirectory(3d)
+set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
 
 target_sources(robocrap PRIVATE
   geometry/cylinder.h

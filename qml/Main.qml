@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs as Dialogs
 import RoboCrap.Backend 1.0 as Backend
+import RoboCrap.Viewport3D 1.0 as Viewport3D
 
 import "MenuBar"
 import "Views/Viewport3D"
@@ -18,7 +19,7 @@ ApplicationWindow {
   property int workflowMode: WorkflowPanel.Measuring
   property int measurementSubmode: WorkflowPanel.Rough
 
-  // UI display preferences; scene visibility will be connected in a later step.
+  // UI display preferences for the imported rough-surface presentations.
   property bool showPoints: false
   property bool showNormals: false
   property bool showScanPath: false
@@ -42,8 +43,47 @@ ApplicationWindow {
     root.selectedObjectIds = selected
   }
 
+  function syncViewportSelection() {
+    Viewport3D.OccController.setSelectedObjects(root.selectedObjectIds)
+  }
+
+  function syncViewportOverlays() {
+    Viewport3D.OccController.setDiagnosticOverlays(root.showPoints, root.showNormals)
+  }
+
+  function setSceneObjectVisible(object, visible) {
+    if (root.sceneModel.setObjectVisible(object, visible))
+      root.syncViewportSelection()
+  }
+
+  onSelectedObjectIdsChanged: root.syncViewportSelection()
+  onShowPointsChanged: root.syncViewportOverlays()
+  onShowNormalsChanged: root.syncViewportOverlays()
+  Component.onCompleted: {
+    root.syncViewportSelection()
+    root.syncViewportOverlays()
+  }
+
+  Connections {
+    target: Viewport3D.OccController
+
+    function onReadyChanged() {
+      if (Viewport3D.OccController.ready) {
+        root.syncViewportSelection()
+        root.syncViewportOverlays()
+      }
+    }
+
+    function onApplicationSelectionRequested(objectId, additive) {
+      if (objectId.length === 0)
+        root.selectedObjectIds = []
+      else
+        root.selectSceneObject(objectId, additive)
+    }
+  }
+
   Backend.PlaneImporter {
-    id: planeImporter
+    id: surfaceImporter
 
     onLoaded: object => root.selectedObjectIds = [object.objectId]
     onFailed: message => {
@@ -57,12 +97,20 @@ ApplicationWindow {
     title: qsTr("Import rough plane")
     fileMode: Dialogs.FileDialog.OpenFile
     nameFilters: [qsTr("JSON point files (*.json)")]
-    onAccepted: planeImporter.load(planeFileDialog.selectedFile, root.sceneModel)
+    onAccepted: surfaceImporter.load(planeFileDialog.selectedFile, root.sceneModel)
+  }
+
+  Dialogs.FileDialog {
+    id: cylinderFileDialog
+    title: qsTr("Import rough cylinder")
+    fileMode: Dialogs.FileDialog.OpenFile
+    nameFilters: [qsTr("JSON point files (*.json)")]
+    onAccepted: surfaceImporter.loadCylinder(cylinderFileDialog.selectedFile, root.sceneModel)
   }
 
   Dialogs.MessageDialog {
     id: importError
-    title: qsTr("Plane import failed")
+    title: qsTr("Surface import failed")
     buttons: Dialogs.MessageDialog.Ok
   }
 
@@ -90,7 +138,7 @@ ApplicationWindow {
     }
 
     contentItem: Label {
-      text: planeImporter.busy ? qsTr("Importing plane…")
+      text: surfaceImporter.busy ? qsTr("Importing surface…")
             : root.workflowMode === WorkflowPanel.Machining
             ? qsTr("Mode: Machining")
             : qsTr("Mode: Measuring / %1").arg(
@@ -140,7 +188,7 @@ ApplicationWindow {
         sceneModel: root.sceneModel
         selectedObjectIds: root.selectedObjectIds
         onSelectionRequested: (objectId, additive) => root.selectSceneObject(objectId, additive)
-        onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
+        onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
       }
     }
@@ -162,8 +210,10 @@ ApplicationWindow {
         showNormals: root.showNormals
         showScanPath: root.showScanPath
         showMachiningPath: root.showMachiningPath
-        planeImportAvailable: !planeImporter.busy && !planeFileDialog.visible
+        planeImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible && !cylinderFileDialog.visible
+        cylinderImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible && !cylinderFileDialog.visible
         onPlaneImportRequested: planeFileDialog.open()
+        onCylinderImportRequested: cylinderFileDialog.open()
         onPointsToggled: checked => root.showPoints = checked
         onNormalsToggled: checked => root.showNormals = checked
         onScanPathToggled: checked => root.showScanPath = checked
@@ -187,7 +237,7 @@ ApplicationWindow {
       selectionCount: root.selectedObjectIds.length
       selectedObject: root.selectedSceneObject
       onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
-      onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
+      onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
     }
   }
 }

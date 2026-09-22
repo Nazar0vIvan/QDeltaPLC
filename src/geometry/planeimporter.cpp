@@ -1,6 +1,7 @@
 #include "planeimporter.h"
 
 #include "boundedplane.h"
+#include "boundedcylinder.h"
 
 #include <QFileInfo>
 #include <QThread>
@@ -15,6 +16,7 @@ namespace {
 struct ImportResult
 {
   std::shared_ptr<const BoundedPlane> plane;
+  std::shared_ptr<const BoundedCylinder> cylinder;
   QString error;
 };
 
@@ -31,8 +33,21 @@ PlaneImporter::~PlaneImporter()
 
 void PlaneImporter::load(const QUrl& sourceUrl, SceneModel* scene)
 {
+  startImport(sourceUrl, scene, Surface::Plane);
+}
+
+void PlaneImporter::loadCylinder(const QUrl& sourceUrl, SceneModel* scene)
+{
+  startImport(sourceUrl, scene, Surface::Cylinder);
+}
+
+void PlaneImporter::startImport(const QUrl& sourceUrl, SceneModel* scene, Surface surface)
+{
   Q_ASSERT(QThread::currentThread() == thread());
-  if (busy()) return;
+  if (busy()) {
+    emit failed(tr("Another surface import is already in progress."));
+    return;
+  }
   if (!scene || scene->thread() != thread()) {
     emit failed(tr("Choose a scene on the application thread."));
     return;
@@ -50,40 +65,57 @@ void PlaneImporter::load(const QUrl& sourceUrl, SceneModel* scene)
   }
 
   auto result = std::make_shared<ImportResult>();
-  m_worker = QThread::create([path, result]() {
+  m_worker = QThread::create([path, result, surface]() {
     try {
       const QFileInfo file(path);
       if (!file.isFile() || !file.isReadable()) {
         result->error = tr("Cannot read the selected JSON file: %1").arg(path);
         return;
       }
-      auto plane = BoundedPlane::fromJsonFile(path);
-      if (!plane) {
-        result->error = tr("Could not fit a plane from this file. Expected a JSON array of at least "
-                           "three finite [x, y, z] points with non-collinear XY coordinates. "
-                           "Projected bounds must have nonzero width and height. "
-                           "The current fitter does not support vertical planes.");
-        return;
+      if (surface == Surface::Plane) {
+        auto plane = BoundedPlane::fromJsonFile(path);
+        if (!plane) {
+          result->error = tr("Could not fit a plane from this file. Expected a JSON array of at least "
+                             "three finite [x, y, z] points with non-collinear XY coordinates. "
+                             "Projected bounds must have nonzero width and height. "
+                             "The current fitter does not support vertical planes.");
+          return;
+        }
+        result->plane = std::make_shared<const BoundedPlane>(std::move(*plane));
+      } else {
+        auto cylinder = BoundedCylinder::fromJsonFile(path);
+        if (!cylinder) {
+          result->error = tr("Could not fit a cylinder from this file. Expected a JSON array of at least "
+                             "six finite [x, y, z] surface points spanning the curved side and axis. "
+                             "The fit must have a positive radius and length with a low radial error.");
+          return;
+        }
+        result->cylinder = std::make_shared<const BoundedCylinder>(std::move(*cylinder));
       }
-      result->plane = std::make_shared<const BoundedPlane>(std::move(*plane));
     } catch (const std::exception&) {
-      result->error = tr("Plane import failed while reading or fitting the point data.");
+      result->error = surface == Surface::Plane
+          ? tr("Plane import failed while reading or fitting the point data.")
+          : tr("Cylinder import failed while reading or fitting the point data.");
     }
   });
   m_worker->setParent(this);
   const QPointer<SceneModel> destination(scene);
-  connect(m_worker, &QThread::finished, this, [this, result, sourceUrl, path, destination]() {
+  connect(m_worker, &QThread::finished, this, [this, result, sourceUrl, path, destination, surface]() {
     m_worker->wait();
     if (!result->error.isEmpty()) {
       emit failed(result->error);
     } else if (!destination) {
       emit failed(tr("The destination scene was closed before import finished."));
     } else {
-      auto* object = destination->addBoundedPlane(sourceUrl, QFileInfo(path).completeBaseName(), result->plane);
+      SceneObject* object = surface == Surface::Plane
+          ? destination->addBoundedPlane(sourceUrl, QFileInfo(path).completeBaseName(), result->plane)
+          : destination->addBoundedCylinder(sourceUrl, QFileInfo(path).completeBaseName(), result->cylinder);
       if (object)
         emit loaded(object);
       else
-        emit failed(tr("Could not add the imported plane to the scene."));
+        emit failed(surface == Surface::Plane
+                    ? tr("Could not add the imported plane to the scene.")
+                    : tr("Could not add the imported cylinder to the scene."));
     }
     m_worker->deleteLater();
     m_worker = nullptr;

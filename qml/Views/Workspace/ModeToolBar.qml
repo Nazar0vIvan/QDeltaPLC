@@ -13,8 +13,10 @@ ToolBar {
   required property bool showScanPath
   required property bool showMachiningPath
   property bool planeImportAvailable: false
+  property bool cylinderImportAvailable: false
 
   signal planeImportRequested()
+  signal cylinderImportRequested()
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
   signal scanPathToggled(bool checked)
@@ -123,6 +125,8 @@ ToolBar {
         Tool {
           text: qsTr("Cylinder from JSON")
           iconSource: "qrc:/pics/cylinder.svg"
+          available: root.cylinderImportAvailable
+          onTriggered: root.cylinderImportRequested()
         }
 
         Tool {

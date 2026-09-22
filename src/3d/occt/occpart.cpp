@@ -4,6 +4,7 @@
 #include <AIS_Trihedron.hxx>
 
 #include <Aspect_TypeOfLine.hxx>
+#include <Aspect_TypeOfMarker.hxx>
 
 #include <Geom_Axis2Placement.hxx>
 
@@ -13,6 +14,7 @@
 #include <Prs3d_DatumParts.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>
+#include <Prs3d_PointAspect.hxx>
 
 #include <Quantity_NameOfColor.hxx>
 
@@ -27,7 +29,11 @@ namespace RoboCrap3D {
 OccPart::OccPart(const TopoDS_Shape& shape, const OccPartProps& props)
     : m_color(props.color),
       m_transform(props.transform),
-      m_selectionMode(props.selectionMode)
+      m_selectionMode(props.selectionMode),
+      m_wireframe(props.wireframe),
+      m_topmost(props.topmost),
+      m_markerSize(props.markerSize),
+      m_lineWidth(props.lineWidth)
 {
   if (shape.IsNull()) return;
 
@@ -118,8 +124,19 @@ void OccPart::configureBasePresentation()
 {
   if (m_handle.IsNull()) return;
 
-  m_handle->SetDisplayMode(AIS_Shaded);
+  m_handle->SetDisplayMode(m_wireframe ? AIS_WireFrame : AIS_Shaded);
   m_handle->SetMaterial(Graphic3d_NOM_SATIN);
+  if (m_markerSize > 0.0 || m_lineWidth > 0.0) {
+    Handle(Prs3d_Drawer) drawer = m_handle->Attributes();
+    if (drawer.IsNull()) {
+      drawer = new Prs3d_Drawer();
+      m_handle->SetAttributes(drawer);
+    }
+    if (m_markerSize > 0.0)
+      drawer->SetPointAspect(new Prs3d_PointAspect(Aspect_TOM_BALL, m_color, m_markerSize));
+    if (m_lineWidth > 0.0)
+      drawer->SetLineAspect(new Prs3d_LineAspect(m_color, Aspect_TOL_SOLID, m_lineWidth));
+  }
 }
 
 void OccPart::configureFaceBoundary()

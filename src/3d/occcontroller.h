@@ -1,11 +1,16 @@
 #pragma once
 
 #include <QObject>
+#include <QMetaObject>
 #include <QPointer>
+#include <QStringList>
 #include <QVariantList>
 #include <QWindow>
 
 #include <memory>
+#include <vector>
+
+class SceneModel;
 
 namespace RoboCrap3D {
 
@@ -38,6 +43,9 @@ public:
   QString warningString() const { return m_warning; }
   QVariantList jointAngles() const;
   QVariantList flangePose() const;
+  void setApplicationScene(SceneModel* scene);
+  Q_INVOKABLE void setSelectedObjects(const QStringList& ids);
+  Q_INVOKABLE void setDiagnosticOverlays(bool showPoints, bool showNormals);
 
   Q_INVOKABLE void loadRobot();
   Q_INVOKABLE void detachViewWindow(QWindow* window);
@@ -52,9 +60,12 @@ signals:
   void warningStringChanged();
   void poseChanged();
   void message(const QString& text, bool error);
+  void applicationSelectionRequested(const QString& objectId, bool additive);
 
 private:
   void createWindow();
+  void connectApplicationObjects();
+  void synchronizeApplicationScene();
   void setError(const QString& error);
   bool applyPose(const RobotPose& pose);
   QVariantList solve(const QVariantList& values, bool inverse);
@@ -63,6 +74,9 @@ private:
   std::shared_ptr<const CadLoadResult> m_shapes;
   std::unique_ptr<CadLoadWorker> m_worker;
   QPointer<OccViewWindow> m_window;
+  QPointer<SceneModel> m_applicationScene;
+  QMetaObject::Connection m_sceneCollectionConnection;
+  std::vector<QMetaObject::Connection> m_objectConnections;
   QString m_error;
   QString m_warning;
   quint64 m_generation = 0;

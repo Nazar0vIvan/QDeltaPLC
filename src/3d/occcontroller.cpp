@@ -3,6 +3,8 @@
 #include "occt/cadloadworker.h"
 #include "occt/occviewwindow.h"
 #include "robot/robotpreviewstate.h"
+#include "scene/scenemodel.h"
+#include "scene/sceneobject.h"
 #include "viewportassets.h"
 
 #include <QJSEngine>
@@ -83,12 +85,66 @@ QVariantList OccController::flangePose() const
   return m_state ? toList(m_state->pose().flange) : QVariantList{};
 }
 
+void OccController::setApplicationScene(SceneModel* scene)
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  if (m_applicationScene == scene) return;
+
+  QObject::disconnect(m_sceneCollectionConnection);
+  for (const auto& connection : m_objectConnections) QObject::disconnect(connection);
+  m_objectConnections.clear();
+  m_applicationScene = scene;
+
+  if (m_applicationScene) {
+    m_sceneCollectionConnection = QObject::connect(
+        m_applicationScene, &SceneModel::objectsChanged, this, [this]() {
+          connectApplicationObjects();
+          synchronizeApplicationScene();
+        });
+    connectApplicationObjects();
+  }
+  if (m_window) m_window->setApplicationScene(m_applicationScene);
+}
+
+void OccController::connectApplicationObjects()
+{
+  for (const auto& connection : m_objectConnections) QObject::disconnect(connection);
+  m_objectConnections.clear();
+  if (!m_applicationScene) return;
+
+  m_objectConnections.reserve(static_cast<std::size_t>(m_applicationScene->objectList().size()));
+  for (SceneObject* object : m_applicationScene->objectList()) {
+    m_objectConnections.push_back(QObject::connect(
+        object, &SceneObject::visibleChanged, this,
+        &OccController::synchronizeApplicationScene));
+  }
+}
+
+void OccController::synchronizeApplicationScene()
+{
+  if (m_window) m_window->synchronizeApplicationScene();
+}
+
+void OccController::setSelectedObjects(const QStringList& ids)
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  if (m_window) m_window->setSelectedObjects(ids);
+}
+
+void OccController::setDiagnosticOverlays(bool showPoints, bool showNormals)
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  if (m_window) m_window->setDiagnosticOverlays(showPoints, showNormals);
+}
+
 void OccController::createWindow()
 {
   if (m_window || m_shuttingDown) return;
   m_window = new OccViewWindow();
   QJSEngine::setObjectOwnership(m_window, QJSEngine::CppOwnership);
   QObject::connect(m_window, &OccViewWindow::readyChanged, this, &OccController::readyChanged);
+  QObject::connect(m_window, &OccViewWindow::applicationSelectionRequested,
+                   this, &OccController::applicationSelectionRequested);
   QObject::connect(m_window, &OccViewWindow::errorOccurred, this, &OccController::setError);
   QObject::connect(m_window, &QObject::destroyed, this, [this]() {
     if (m_shuttingDown) return;
@@ -97,6 +153,7 @@ void OccController::createWindow()
     // QPointer prevents double deletion; the persistent robot state is retained.
     QTimer::singleShot(0, this, [this]() { createWindow(); });
   });
+  m_window->setApplicationScene(m_applicationScene);
   if (m_state && m_shapes) m_window->setScene(m_state, m_shapes);
   emit viewWindowChanged();
 }

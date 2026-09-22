@@ -1,6 +1,7 @@
 #include "occviewwindow.h"
 
 #include "occviewport.h"
+#include "scene/scenemodel.h"
 
 #include <QExposeEvent>
 #include <QMouseEvent>
@@ -36,6 +37,27 @@ void OccViewWindow::setScene(std::shared_ptr<RobotPreviewState> state,
   m_shapes = std::move(shapes);
   m_initializationFailed = false;
   if (isExposed()) initializeViewport();
+}
+
+void OccViewWindow::setApplicationScene(SceneModel* scene)
+{
+  m_applicationScene = scene;
+  synchronizeApplicationScene();
+}
+
+void OccViewWindow::synchronizeApplicationScene()
+{
+  if (m_viewport) m_viewport->synchronizeApplicationScene(m_applicationScene);
+}
+
+void OccViewWindow::setSelectedObjects(const QStringList& ids)
+{
+  if (m_viewport) m_viewport->setSelectedObjects(ids);
+}
+
+void OccViewWindow::setDiagnosticOverlays(bool showPoints, bool showNormals)
+{
+  if (m_viewport) m_viewport->setDiagnosticOverlays(showPoints, showNormals, m_applicationScene);
 }
 
 bool OccViewWindow::applyPose(const RobotPose& pose)
@@ -97,7 +119,9 @@ void OccViewWindow::resizeEvent(QResizeEvent*)
 void OccViewWindow::mousePressEvent(QMouseEvent* event)
 {
   if (!isReady()) return;
-  m_viewport->mousePress(nativePosition(event->position()), event->button());
+  const auto picked = m_viewport->mousePress(nativePosition(event->position()), event->button());
+  if (picked) emit applicationSelectionRequested(*picked,
+                                                  (event->modifiers() & Qt::ControlModifier) != 0);
   event->accept();
 }
 
@@ -128,7 +152,8 @@ void OccViewWindow::initializeViewport()
 {
   if (m_viewport || m_initializationFailed || !m_state || !m_shapes || !isExposed()) return;
   try {
-    auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()), *m_state, *m_shapes);
+    auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()),
+                                                  *m_state, *m_shapes, m_applicationScene);
     if (!viewport->isValid()) {
       m_initializationFailed = true;
       emit errorOccurred(QStringLiteral("Cannot create the OCCT robot presentation."));

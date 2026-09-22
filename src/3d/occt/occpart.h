@@ -39,6 +39,7 @@ public:
   void setTransform(const gp_Trsf& transform);
 
   [[nodiscard]] OccSelectionMode selectionMode() const;
+  [[nodiscard]] bool topmost() const { return m_topmost; }
   void setSelectionMode(OccSelectionMode selectionMode);
 
   [[nodiscard]] bool hasTrihedron() const;
@@ -64,6 +65,10 @@ private:
   gp_Trsf m_transform;
 
   OccSelectionMode m_selectionMode;
+  bool m_wireframe = false;
+  bool m_topmost = false;
+  double m_markerSize = 0.0;
+  double m_lineWidth = 0.0;
 
   bool m_trihedronEnabled = false;
   double m_trihedronSize = 20.0;

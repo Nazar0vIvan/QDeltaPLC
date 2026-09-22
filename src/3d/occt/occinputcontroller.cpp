@@ -1,7 +1,6 @@
 #include "occinputcontroller.h"
 
 #include <AIS_InteractiveContext.hxx>
-#include <AIS_SelectionScheme.hxx>
 #include <AIS_ViewCube.hxx>
 
 #include <V3d_View.hxx>
@@ -189,14 +188,11 @@ OccInputResult OccInputController::handleCube(const Handle(AIS_ViewCubeOwner)& o
 
 OccInputResult OccInputController::handleDetectedSelectable()
 {
-  m_context->SelectDetected(AIS_SelectionScheme_Replace);
-
   OccInputResult result;
   result.accepted          = true;
   result.needsRedraw       = true;
   result.needsViewerUpdate = true;
-  result.cameraChanged     = true;
-  result.cameraScaleChanged = true;
+  result.selectionChanged  = true;
 
   return result;
 }

@@ -110,7 +110,9 @@ bool OccScene::displayPart(OccPart& part)
 
   const int selectionMode = part.selectionMode() == OccSelectionMode::None ? -1 : 0;
 
-  m_context->Display(part.handle(), AIS_Shaded, selectionMode, false);
+  m_context->Display(part.handle(), part.handle()->DisplayMode(), selectionMode, false);
+
+  if (part.topmost()) m_context->SetZLayer(part.handle(), Graphic3d_ZLayerId_Topmost);
 
   if (part.selectionMode() == OccSelectionMode::All) {
     activateAllSelectionModes(part);
@@ -189,20 +191,75 @@ std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape&
 
   const PartId id = m_parts.size();
   m_parts.emplace_back(std::move(part));
-  if (!displayPart(m_parts.back())) return std::nullopt;
+  try {
+    if (!displayPart(*m_parts.back())) {
+      (void)removePart(id);
+      return std::nullopt;
+    }
+  } catch (...) {
+    (void)removePart(id);
+    throw;
+  }
 
   return id;
 }
 
 bool OccScene::setPartTransform(const PartId id, const M4d& transform)
 {
-  if (id >= m_parts.size()) {
+  if (id >= m_parts.size() || !m_parts[id]) {
     qWarning() << "Invalid OCCT scene part id:" << id;
     return false;
   }
 
-  m_parts[id].setTransform(transform);
+  m_parts[id]->setTransform(transform);
   return true;
+}
+
+bool OccScene::setPartVisible(const PartId id, const bool visible)
+{
+  if (!isValid() || id >= m_parts.size() || !m_parts[id]) {
+    qWarning() << "Invalid OCCT scene part id:" << id;
+    return false;
+  }
+
+  OccPart& part = *m_parts[id];
+  if (visible) {
+    return displayPart(part);
+  }
+
+  m_context->Erase(part.handle(), false);
+  if (part.hasTrihedron()) m_context->Erase(part.trihedron(), false);
+  return true;
+}
+
+bool OccScene::removePart(const PartId id)
+{
+  if (!isValid() || id >= m_parts.size() || !m_parts[id]) {
+    qWarning() << "Invalid OCCT scene part id:" << id;
+    return false;
+  }
+
+  const OccPart& part = *m_parts[id];
+  m_context->Remove(part.handle(), false);
+  if (part.hasTrihedron()) m_context->Remove(part.trihedron(), false);
+  m_parts[id].reset();
+  return true;
+}
+
+Handle(AIS_Shape) OccScene::partHandle(const PartId id) const
+{
+  return id < m_parts.size() && m_parts[id] ? m_parts[id]->handle() : Handle(AIS_Shape){};
+}
+
+void OccScene::selectParts(const std::vector<PartId>& ids)
+{
+  if (!isValid()) return;
+  m_context->ClearSelected(false);
+  for (const PartId id : ids) {
+    const Handle(AIS_Shape) handle = partHandle(id);
+    if (!handle.IsNull() && m_context->IsDisplayed(handle))
+      m_context->AddOrRemoveSelected(handle, false);
+  }
 }
 
 void OccScene::updateViewer()
@@ -214,11 +271,13 @@ void OccScene::updateViewer()
 
 void OccScene::clearParts()
 {
-  for (const OccPart& part : m_parts) {
-    m_context->Remove(part.handle(), false);
-    if (part.hasTrihedron()) m_context->Remove(part.trihedron(), false);
+  if (!isValid()) return;
+  for (auto& part : m_parts) {
+    if (!part) continue;
+    m_context->Remove(part->handle(), false);
+    if (part->hasTrihedron()) m_context->Remove(part->trihedron(), false);
+    part.reset();
   }
-  m_parts.clear();
 }
 
 } // namespace RoboCrap3D

@@ -13,6 +13,8 @@ QxPanel {
   required property Backend.SceneObject selectedObject
   readonly property Backend.PlaneGeometry planeGeometry: root.selectedObject
                                                          ? root.selectedObject.geometry as Backend.PlaneGeometry : null
+  readonly property Backend.CylinderGeometry cylinderGeometry: root.selectedObject
+                                                               ? root.selectedObject.geometry as Backend.CylinderGeometry : null
 
   signal renameRequested(Backend.SceneObject object, string name)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
@@ -187,7 +189,7 @@ QxPanel {
       Label {
         Layout.fillWidth: true
         Layout.topMargin: Metrics.sp8
-        visible: root.planeGeometry !== null
+        visible: root.planeGeometry !== null || root.cylinderGeometry !== null
         text: qsTr("Geometry")
         color: Colors.foreground.medium
         font: Fonts.body
@@ -302,6 +304,92 @@ QxPanel {
         wrapMode: Text.WordWrap
         color: Colors.foreground.medium
         font: Fonts.caption
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.cylinderGeometry !== null
+        labelWidth: Metrics.w80
+        labelText: qsTr("Origin")
+
+        Label {
+          objectName: "cylinderOriginValue"
+          Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          text: root.cylinderGeometry
+                ? [root.cylinderGeometry.originX, root.cylinderGeometry.originY,
+                   root.cylinderGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
+          wrapMode: Text.WrapAnywhere
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.cylinderGeometry !== null
+        labelWidth: Metrics.w80
+        labelText: qsTr("Axis")
+
+        Label {
+          objectName: "cylinderAxisValue"
+          Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          text: root.cylinderGeometry
+                ? [root.cylinderGeometry.axisX, root.cylinderGeometry.axisY,
+                   root.cylinderGeometry.axisZ].map(value => value.toPrecision(6)).join(", ") : ""
+          wrapMode: Text.WrapAnywhere
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.cylinderGeometry !== null
+        labelWidth: Metrics.w80
+        labelText: qsTr("Radius")
+
+        Label {
+          objectName: "cylinderRadiusValue"
+          Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          text: root.cylinderGeometry ? root.cylinderGeometry.radius.toPrecision(6) : ""
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.cylinderGeometry !== null
+        labelWidth: Metrics.w80
+        labelText: qsTr("Length")
+
+        Label {
+          objectName: "cylinderLengthValue"
+          Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          text: root.cylinderGeometry ? root.cylinderGeometry.length.toPrecision(6) : ""
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.cylinderGeometry !== null
+        labelWidth: Metrics.w80
+        labelText: qsTr("Points")
+
+        Label {
+          objectName: "cylinderPointCountValue"
+          Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          text: root.cylinderGeometry ? String(root.cylinderGeometry.pointCount) : ""
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
       }
     }
   }

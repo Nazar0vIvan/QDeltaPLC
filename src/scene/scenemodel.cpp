@@ -1,6 +1,7 @@
 #include "scenemodel.h"
 
 #include "planegeometry.h"
+#include "cylindergeometry.h"
 
 #include <QJSEngine>
 #include <QThread>
@@ -83,6 +84,25 @@ SceneObject* SceneModel::addBoundedPlane(const QUrl& sourceUrl, const QString& n
   Q_ASSERT(QThread::currentThread() == thread());
   if (!plane || sourceUrl.isEmpty() || !sourceUrl.isValid()) return nullptr;
   return createPlane(sourceUrl, name, plane->coefficients, plane);
+}
+
+SceneObject* SceneModel::addBoundedCylinder(const QUrl& sourceUrl, const QString& name,
+                                           std::shared_ptr<const BoundedCylinder> cylinder)
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  if (!cylinder || sourceUrl.isEmpty() || !sourceUrl.isValid()) return nullptr;
+  QString objectId;
+  do {
+    objectId = QStringLiteral("imported-cylinder-%1").arg(m_nextCylinderId++);
+  } while (findObject(objectId));
+
+  const QString trimmedName = name.trimmed();
+  auto* object = new SceneObject(objectId, trimmedName.isEmpty() ? tr("Cylinder") : trimmedName,
+                                 SceneObject::Cylinder, SceneObject::Rough, sourceUrl, this);
+  object->m_geometry = new CylinderGeometry(std::move(cylinder), object);
+  QJSEngine::setObjectOwnership(object->m_geometry, QJSEngine::CppOwnership);
+  appendObject(object);
+  return object;
 }
 
 SceneObject* SceneModel::createPlane(const QUrl& sourceUrl, const QString& name,

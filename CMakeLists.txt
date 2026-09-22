@@ -179,6 +179,11 @@ if(ROBOCRAP_BUILD_SCENE_TESTS)
   qt_import_qml_plugins(sceneobjecttests)
   qt_add_executable(boundedplanetests tests/qml/boundedplanetests.cpp)
   target_link_libraries(boundedplanetests PRIVATE RoboCrapBackend)
+  qt_add_executable(boundedcylindertests tests/qml/boundedcylindertests.cpp)
+  target_compile_definitions(boundedcylindertests PRIVATE
+    ROBOCRAP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+  target_link_libraries(boundedcylindertests PRIVATE RoboCrapBackend)
 endif()
 
 include(GNUInstallDirs)

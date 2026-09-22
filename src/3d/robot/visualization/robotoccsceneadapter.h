@@ -14,9 +14,12 @@ public:
   bool applyTransforms(const std::array<M4d, LinkCount>& transforms);
 
 private:
+  void removeRobotParts();
+
   OccScene& m_scene;
   std::array<OccScene::PartId, LinkCount> m_linkIds{};
   std::optional<OccScene::PartId> m_effPartId;
+  std::size_t m_linkCount = 0;
   bool m_loaded = false;
 };
 

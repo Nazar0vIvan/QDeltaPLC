@@ -78,7 +78,7 @@ qt_add_qml_module(RoboCrap3D
 target_include_directories(RoboCrap3D PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(RoboCrap3D
   PUBLIC Qt6::Core Qt6::Gui Qt6::Qml
-  PRIVATE TKernel TKMath TKG3d TKBRep TKService TKV3d TKOpenGl TKDESTEP
+  PRIVATE RoboCrapBackend TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP
 )
 
 set(ROBOCRAP_OCCT_PREFIX "${OpenCASCADE_INSTALL_PREFIX}" PARENT_SCOPE)

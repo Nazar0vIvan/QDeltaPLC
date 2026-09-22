@@ -17,6 +17,7 @@ public:
 
   bool busy() const { return m_worker != nullptr; }
   Q_INVOKABLE void load(const QUrl& sourceUrl, SceneModel* scene);
+  Q_INVOKABLE void loadCylinder(const QUrl& sourceUrl, SceneModel* scene);
 
 signals:
   void busyChanged();
@@ -24,5 +25,7 @@ signals:
   void failed(const QString& message);
 
 private:
+  enum class Surface { Plane, Cylinder };
+  void startImport(const QUrl& sourceUrl, SceneModel* scene, Surface surface);
   QThread* m_worker = nullptr;
 };

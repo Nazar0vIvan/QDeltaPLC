@@ -3,8 +3,12 @@
 #include "3d/robot/robotpreviewstate.h"
 #include "cadloadworker.h"
 
+#include <QPointer>
+#include <QStringList>
 #include <QWindow>
 #include <memory>
+
+class SceneModel;
 
 namespace RoboCrap3D {
 
@@ -19,6 +23,10 @@ public:
   ~OccViewWindow() override;
 
   void setScene(std::shared_ptr<RobotPreviewState> state, std::shared_ptr<const CadLoadResult> shapes);
+  void setApplicationScene(SceneModel* scene);
+  void synchronizeApplicationScene();
+  void setSelectedObjects(const QStringList& ids);
+  void setDiagnosticOverlays(bool showPoints, bool showNormals);
   bool applyPose(const RobotPose& pose);
   bool isReady() const;
   void releaseSurface();
@@ -26,6 +34,7 @@ public:
 signals:
   void readyChanged();
   void errorOccurred(const QString& error);
+  void applicationSelectionRequested(const QString& objectId, bool additive);
 
 protected:
   bool event(QEvent* event) override;
@@ -42,6 +51,7 @@ private:
 
   std::shared_ptr<RobotPreviewState> m_state;
   std::shared_ptr<const CadLoadResult> m_shapes;
+  QPointer<SceneModel> m_applicationScene;
   std::unique_ptr<OccViewport> m_viewport;
   bool m_initializationFailed = false;
 };

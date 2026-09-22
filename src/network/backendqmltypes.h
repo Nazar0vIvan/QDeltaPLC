@@ -7,6 +7,7 @@
 #include "network/plc/plcmessagemanager.h"
 #include "scene/applicationscene.h"
 #include "scene/planegeometry.h"
+#include "scene/cylindergeometry.h"
 
 #include <QJSEngine>
 #include <QQmlEngine>
@@ -26,6 +27,14 @@ struct PlaneGeometryQml
   QML_FOREIGN(PlaneGeometry)
   QML_NAMED_ELEMENT(PlaneGeometry)
   QML_UNCREATABLE("Plane geometry is owned by its scene object")
+};
+
+struct CylinderGeometryQml
+{
+  Q_GADGET
+  QML_FOREIGN(CylinderGeometry)
+  QML_NAMED_ELEMENT(CylinderGeometry)
+  QML_UNCREATABLE("Cylinder geometry is owned by its scene object")
 };
 
 struct SceneModelQml

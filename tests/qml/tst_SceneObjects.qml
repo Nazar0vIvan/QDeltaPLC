@@ -321,4 +321,56 @@ TestCase {
     verify(testCase.importedResult.objectId !== imported.objectId)
     compare(firstGeometry.width, testCase.importedResult.geometry.width)
   }
+
+  function test_cylinderJsonThroughSharedImporter() {
+    loadedSpy.clear()
+    failedSpy.clear()
+    const source = Qt.resolvedUrl("../../resources/json/rough-cylinder-sample.json")
+    importer.loadCylinder(source, testCase.scene)
+    tryCompare(importer, "busy", false, 10000)
+    compare(failedSpy.count, 0)
+    compare(loadedSpy.count, 1)
+    const imported = testCase.importedResult
+    verify(imported !== null)
+    compare(imported.kind, Backend.SceneObject.Cylinder)
+    compare(imported.classification, Backend.SceneObject.Rough)
+    compare(imported.sourceUrl.toString(), source.toString())
+    compare(imported.geometry.pointCount, 9)
+    verify(Math.abs(imported.geometry.radius - 20.043646) < 0.1)
+    testCase.selectedIds = [imported.objectId]
+    waitForPolish(panel)
+    compare(panel.cylinderGeometry, imported.geometry)
+    compare(findChild(browser, "sceneObject-" + imported.objectId).modelData, imported)
+    compare(findChild(panel, "cylinderPointCountValue").text, "9")
+    compare(findChild(panel, "cylinderRadiusValue").text,
+            imported.geometry.radius.toPrecision(6))
+    compare(findChild(panel, "cylinderLengthValue").text,
+            imported.geometry.length.toPrecision(6))
+    compare(findChild(panel, "cylinderAxisValue").visible, true)
+    compare(findChild(panel, "planeNormalValue").visible, false)
+    panel.width = 220
+    waitForPolish(panel)
+    verify(findChild(panel, "cylinderPointCountValue").width > 0)
+
+    loadedSpy.clear()
+    importer.loadCylinder(source, testCase.scene)
+    tryCompare(importer, "busy", false, 10000)
+    compare(loadedSpy.count, 1)
+    verify(testCase.importedResult.objectId !== imported.objectId)
+    verify(testCase.importedResult.geometry !== imported.geometry)
+    compare(panel.selectedObject, imported)
+    verify(scene.setObjectVisible(imported, false))
+    compare(testCase.importedResult.visible, true)
+    compare(findChild(panel, "objectVisibilityCheckBox").checked, false)
+  }
+
+  function test_invalidCylinderJsonLeavesSceneUnchanged() {
+    loadedSpy.clear()
+    failedSpy.clear()
+    importer.loadCylinder(Qt.resolvedUrl("../../resources/json/rough-cylinder-invalid.json"), testCase.scene)
+    tryCompare(importer, "busy", false, 10000)
+    compare(loadedSpy.count, 0)
+    compare(failedSpy.count, 1)
+    compare(scene.objects.length, 2)
+  }
 }

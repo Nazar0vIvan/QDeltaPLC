@@ -2,6 +2,7 @@
 
 #include "sceneobject.h"
 #include "planegeometry.h"
+#include "geometry/boundedcylinder.h"
 
 #include <QList>
 #include <QQmlListProperty>
@@ -16,11 +17,14 @@ public:
   explicit SceneModel(QObject* parent = nullptr);
 
   QQmlListProperty<SceneObject> objects();
+  const QList<SceneObject*>& objectList() const { return m_objects; }
   Q_INVOKABLE SceneObject* findObject(const QString& objectId) const;
   Q_INVOKABLE SceneObject* addPlane(const QUrl& sourceUrl, const QString& name,
                                    const QVariantList& coefficients);
   SceneObject* addBoundedPlane(const QUrl& sourceUrl, const QString& name,
                                std::shared_ptr<const BoundedPlane> plane);
+  SceneObject* addBoundedCylinder(const QUrl& sourceUrl, const QString& name,
+                                  std::shared_ptr<const BoundedCylinder> cylinder);
   // Metadata-only objects preserve the current sample scene until producers exist.
   Q_INVOKABLE SceneObject* addObject(const QString& objectId, const QString& name,
                                     SceneObject::Kind kind, SceneObject::Classification classification);
@@ -38,4 +42,5 @@ private:
 
   QList<SceneObject*> m_objects;
   quint64 m_nextPlaneId = 1;
+  quint64 m_nextCylinderId = 1;
 };

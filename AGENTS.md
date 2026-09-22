@@ -29,8 +29,9 @@
 - Root CMakeLists.txt owns robocrap, application QML, and resource lists. src/CMakeLists.txt owns
   RoboCrapBackend and also adds geometry, path generation, and concrete devices directly to robocrap.
   A successful backend-only build does not validate those application sources.
-  The plane importer and existing geometry/plane.cpp and geometry/utils.cpp compile in RoboCrapBackend;
-  other geometry and concrete-device sources still compile in robocrap.
+  The plane importer, bounded plane/cylinder numerical data, and existing geometry/plane.cpp
+  and geometry/utils.cpp compile in RoboCrapBackend; the trajectory Cylinder and other
+  geometry and concrete-device sources still compile in robocrap.
 - src/3d/CMakeLists.txt owns RoboCrap3D (URI RoboCrap.Viewport3D), the independent OCCT preview.
   It requires the bundled OCCT 8.0.0 SDK and a Windows 64-bit MinGW Qt kit. Its public controller
   header does not expose OCCT math types; internal OCCT code uses namespace RoboCrap3D.
@@ -81,15 +82,26 @@ and src/main.cpp.
 ## QML components and geometry
 
 - Scene data is owned in C++ by src/scene. main.cpp owns ApplicationScene and exposes it as
-  RoboCrap.Backend's Scene singleton; SceneModel owns SceneObject children and their PlaneGeometry.
+  RoboCrap.Backend's Scene singleton; SceneModel owns SceneObject children and their
+  PlaneGeometry or CylinderGeometry.
   QML receives a read-only object list and edits names/visibility through model methods. Preserve
-  stable IDs, shared object references, and GUI-thread mutations. Fitting remains in src/geometry;
-  scene objects are not yet connected to OCCT rendering or trajectory generation.
+  stable IDs, shared object references, and GUI-thread mutations. Fitting remains in src/geometry.
+  OccController observes the application scene directly in C++ and carries it through viewport
+  recreation; viewport-local presentation handles are keyed by stable object IDs. Bounded imported
+  planes and cylinders render as finite OCCT faces from their authoritative frames and bounds.
+  Other scene geometry is not rendered yet, and scene objects are not connected to trajectory generation.
   Imported planes retain immutable BoundedPlane data (original points, centered rectangle,
-  tangent axes and bounds) computed on the importer worker. PlaneImporter.load(url, scene)
-  inserts the numerical result directly into the destination scene on the GUI thread and emits
-  loaded(SceneObject*); QML never forwards geometry. The coefficient-only addPlane
-  API remains unbounded. Properties displays bounds only when PlaneGeometry.hasBounds is true.
+  tangent axes and bounds). Imported cylinders retain immutable BoundedCylinder data (original
+  points, fitted axis, midpoint origin, radius and finite length). PlaneImporter.load(url, scene)
+  and loadCylinder(url, scene) fit on the same worker lifecycle, insert directly into the
+  destination scene on the GUI thread, and emit loaded(SceneObject*); QML never forwards geometry.
+  The coefficient-only addPlane API remains unbounded. Properties displays plane bounds only
+  when PlaneGeometry.hasBounds is true. CylinderGeometry is shown only for fitted cylinders;
+  metadata-only cylinder rows have no OCCT presentation.
+  Main.qml owns the selected application IDs and the Show Points/Show Normals preferences.
+  OccController forwards them to each viewport; CAD picks return stable application IDs to QML.
+  Point and normal overlays use original samples, are bounded display-only OCCT parts, and do
+  not participate in picking. Parent visibility controls overlays.
 
 - Reuse compatible controls from qml/Modules/Components and values from the Styles module's
   Colors, Fonts, and Metrics singletons.
@@ -157,7 +169,8 @@ cmake --build "$buildDir" --target Components_qmllint
   changes. For QML changes, run the owning *_qmllint target: Components_qmllint, Styles_qmllint, or
   robocrap_qmllint (hot reload OFF for application QML). Verify targets in the selected build;
   use all_qmllint for multiple modules. Build for QML registration/resource changes too.
-- ROBOCRAP_BUILD_SCENE_TESTS=ON optionally builds boundedplanetests and the offline sceneobjecttests Qt Quick Test runner;
+- ROBOCRAP_BUILD_SCENE_TESTS=ON optionally builds boundedplanetests, boundedcylindertests,
+  and the offline sceneobjecttests Qt Quick Test runner;
   see tests/qml/README.md. It is not registered with CTest. Do not count vendored Eigen tests,
   old_imp/Test, or a zero-test CTest run as application coverage. For behavior
   changes, run a focused offline regression check where feasible; report gaps when no harness exists.

@@ -11,25 +11,38 @@ bool RobotOccSceneAdapter::load(const Kr10Model& model, const CadLoadResult& sha
     for (std::size_t i = 0; i < LinkCount; ++i) {
       const auto id = m_scene.addShapePartWithId(shapes.links[i], model.links[i].props);
       if (!id) {
-        m_scene.clearParts();
+        removeRobotParts();
         return false;
       }
       m_linkIds[i] = *id;
+      ++m_linkCount;
     }
     if (!shapes.endEffector.IsNull()) {
       m_effPartId = m_scene.addShapePartWithId(shapes.endEffector, model.endEffector.props);
       if (!m_effPartId) {
-        m_scene.clearParts();
+        removeRobotParts();
         return false;
       }
     }
     m_loaded = true;
     return true;
   } catch (const Standard_Failure&) {
-    m_scene.clearParts();
-    m_effPartId.reset();
+    removeRobotParts();
     return false;
   }
+}
+
+void RobotOccSceneAdapter::removeRobotParts()
+{
+  if (m_effPartId) {
+    (void)m_scene.removePart(*m_effPartId);
+    m_effPartId.reset();
+  }
+  while (m_linkCount > 0) {
+    --m_linkCount;
+    (void)m_scene.removePart(m_linkIds[m_linkCount]);
+  }
+  m_loaded = false;
 }
 
 bool RobotOccSceneAdapter::applyTransforms(const std::array<M4d, LinkCount>& transforms)
