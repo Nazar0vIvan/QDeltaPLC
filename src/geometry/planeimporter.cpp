@@ -1,18 +1,20 @@
 #include "planeimporter.h"
 
-#include "plane.h"
+#include "boundedplane.h"
 
 #include <QFileInfo>
 #include <QThread>
+#include <QPointer>
 
 #include <exception>
 #include <memory>
+#include <utility>
 
 namespace {
 
 struct ImportResult
 {
-  QVariantList coefficients;
+  std::shared_ptr<const BoundedPlane> plane;
   QString error;
 };
 
@@ -27,10 +29,14 @@ PlaneImporter::~PlaneImporter()
   if (m_worker) m_worker->wait();
 }
 
-void PlaneImporter::load(const QUrl& sourceUrl)
+void PlaneImporter::load(const QUrl& sourceUrl, SceneModel* scene)
 {
   Q_ASSERT(QThread::currentThread() == thread());
   if (busy()) return;
+  if (!scene || scene->thread() != thread()) {
+    emit failed(tr("Choose a scene on the application thread."));
+    return;
+  }
 
   QString path;
   if (sourceUrl.isLocalFile()) {
@@ -51,29 +57,37 @@ void PlaneImporter::load(const QUrl& sourceUrl)
         result->error = tr("Cannot read the selected JSON file: %1").arg(path);
         return;
       }
-      const auto plane = Plane::fromJsonFile(path);
+      auto plane = BoundedPlane::fromJsonFile(path);
       if (!plane) {
         result->error = tr("Could not fit a plane from this file. Expected a JSON array of at least "
                            "three finite [x, y, z] points with non-collinear XY coordinates. "
+                           "Projected bounds must have nonzero width and height. "
                            "The current fitter does not support vertical planes.");
         return;
       }
-      for (int i = 0; i < 4; ++i) result->coefficients.append(plane->coeffs[i]);
+      result->plane = std::make_shared<const BoundedPlane>(std::move(*plane));
     } catch (const std::exception&) {
       result->error = tr("Plane import failed while reading or fitting the point data.");
     }
   });
   m_worker->setParent(this);
-  connect(m_worker, &QThread::finished, this, [this, result, sourceUrl, path]() {
+  const QPointer<SceneModel> destination(scene);
+  connect(m_worker, &QThread::finished, this, [this, result, sourceUrl, path, destination]() {
     m_worker->wait();
+    if (!result->error.isEmpty()) {
+      emit failed(result->error);
+    } else if (!destination) {
+      emit failed(tr("The destination scene was closed before import finished."));
+    } else {
+      auto* object = destination->addBoundedPlane(sourceUrl, QFileInfo(path).completeBaseName(), result->plane);
+      if (object)
+        emit loaded(object);
+      else
+        emit failed(tr("Could not add the imported plane to the scene."));
+    }
     m_worker->deleteLater();
     m_worker = nullptr;
     emit busyChanged();
-    if (!result->error.isEmpty()) {
-      emit failed(result->error);
-    } else {
-      emit loaded(sourceUrl, QFileInfo(path).completeBaseName(), result->coefficients);
-    }
   }, Qt::QueuedConnection);
   m_worker->start();
   emit busyChanged();

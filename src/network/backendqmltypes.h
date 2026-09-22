@@ -5,10 +5,61 @@
 #include "network/devicehub.h"
 #include "network/devicerunner.h"
 #include "network/plc/plcmessagemanager.h"
+#include "scene/applicationscene.h"
+#include "scene/planegeometry.h"
 
 #include <QJSEngine>
 #include <QQmlEngine>
 #include <QtQml/qqmlregistration.h>
+
+struct SceneObjectQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneObject)
+  QML_NAMED_ELEMENT(SceneObject)
+  QML_UNCREATABLE("Scene objects are owned by SceneModel")
+};
+
+struct PlaneGeometryQml
+{
+  Q_GADGET
+  QML_FOREIGN(PlaneGeometry)
+  QML_NAMED_ELEMENT(PlaneGeometry)
+  QML_UNCREATABLE("Plane geometry is owned by its scene object")
+};
+
+struct SceneModelQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneModel)
+  QML_NAMED_ELEMENT(SceneModel)
+};
+
+struct ApplicationSceneQml
+{
+  Q_GADGET
+  QML_FOREIGN(ApplicationScene)
+  QML_NAMED_ELEMENT(Scene)
+  QML_SINGLETON
+
+public:
+  inline static ApplicationScene* s_inst = nullptr;
+
+  static ApplicationScene* create(QQmlEngine*, QJSEngine* engine)
+  {
+    Q_ASSERT(s_inst);
+    Q_ASSERT(engine->thread() == s_inst->thread());
+    if (s_engine)
+      Q_ASSERT(engine == s_engine);
+    else
+      s_engine = engine;
+    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
+    return s_inst;
+  }
+
+private:
+  inline static QJSEngine* s_engine = nullptr;
+};
 
 struct PlaneImporterQml
 {

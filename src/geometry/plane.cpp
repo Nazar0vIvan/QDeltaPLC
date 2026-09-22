@@ -69,34 +69,8 @@ std::optional<Plane> Plane::fromPoints(const QVector<V3d>& points, double eps)
 
 std::optional<Plane> Plane::fromJsonFile(const QString &jsonFilePath, double eps)
 {
-  if (jsonFilePath.isEmpty()) {
-    return std::nullopt;
-  }
-
-  QFile file(jsonFilePath);
-  if (!file.open(QIODevice::ReadOnly)) {
-    return std::nullopt;
-  }
-
-  const QByteArray bytes = file.readAll();
-  if (bytes.isEmpty()) {
-    return std::nullopt;
-  }
-
-  QJsonParseError parseError;
-  const QJsonDocument document = QJsonDocument::fromJson(bytes, &parseError);
-  if (parseError.error != QJsonParseError::NoError) {
-    return std::nullopt;
-  }
-  if (!document.isArray()) {
-    return std::nullopt;
-  }
-
-  const auto points = jsonArrayToPoints(document.array());
-  if (!points) {
-    return std::nullopt;
-  }
-
+  const auto points = readJsonPoints(jsonFilePath);
+  if (!points) return std::nullopt;
   return Plane::fromPoints(*points, eps);
 }
 

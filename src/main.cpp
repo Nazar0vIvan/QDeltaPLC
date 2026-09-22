@@ -80,6 +80,20 @@ int main(int argc, char* argv[])
     Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
   });
 
+  // The scene outlives the QML engine and survives workspace recreation.
+  ApplicationScene scene;
+  ApplicationSceneQml::s_inst = &scene;
+  // Preserve the existing metadata-only sample rows until their producers exist.
+  scene.addObject(QStringLiteral("rough-plane"), QStringLiteral("Plane P1"), SceneObject::Plane, SceneObject::Rough);
+  scene.addObject(QStringLiteral("rough-cylinder"), QStringLiteral("Cylinder C1"), SceneObject::Cylinder, SceneObject::Rough);
+  scene.addObject(QStringLiteral("rough-cone"), QStringLiteral("Cone K1"), SceneObject::Cone, SceneObject::Rough);
+  scene.addObject(QStringLiteral("precise-plane"), QStringLiteral("Plane P1"), SceneObject::Plane, SceneObject::Precise);
+  scene.addObject(QStringLiteral("precise-cylinder"), QStringLiteral("Cylinder C1"), SceneObject::Cylinder, SceneObject::Precise);
+  scene.addObject(QStringLiteral("edge-1"), QStringLiteral("Edge E1"), SceneObject::Edge, SceneObject::Unclassified);
+  scene.addObject(QStringLiteral("edge-2"), QStringLiteral("Edge E2"), SceneObject::Edge, SceneObject::Unclassified);
+  scene.addObject(QStringLiteral("scan-1"), QStringLiteral("Scan S1"), SceneObject::ScanPath, SceneObject::Unclassified);
+  scene.addObject(QStringLiteral("path-1"), QStringLiteral("Path P1"), SceneObject::MachiningPath, SceneObject::Unclassified);
+
   QQmlApplicationEngine engine;
 
 #ifdef USE_FELGO_HOT_RELOAD

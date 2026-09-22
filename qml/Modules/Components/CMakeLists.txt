@@ -10,6 +10,7 @@ qt_add_qml_module(Components
   NO_PLUGIN
   QML_FILES
     QxButton.qml
+    QxCheckBox.qml
     QxComboBox.qml
     QxGroupBox.qml
     QxHField.qml

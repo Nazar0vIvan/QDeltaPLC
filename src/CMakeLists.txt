@@ -15,7 +15,16 @@ qt_add_qml_module(RoboCrapBackend
   SOURCES
     network/backendqmltypes.h
 
+    scene/applicationscene.h
+    scene/scenemodel.h
+    scene/scenemodel.cpp
+    scene/sceneobject.h
+    scene/sceneobject.cpp
+    scene/planegeometry.h
+
     geometry/planeimporter.h
+    geometry/boundedplane.h
+    geometry/boundedplane.cpp
     geometry/planeimporter.cpp
     geometry/plane.h
     geometry/plane.cpp

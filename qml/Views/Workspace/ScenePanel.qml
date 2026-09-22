@@ -7,17 +7,17 @@ import QtQml.Models
 
 import Components 1.0
 import Styles 1.0
-import "../../Models"
+import RoboCrap.Backend 1.0 as Backend
 
 QxPanel {
   id: root
 
-  required property SceneModel sceneModel
+  required property Backend.SceneModel sceneModel
   required property list<string> selectedObjectIds
 
   signal selectionRequested(string objectId, bool additive)
-  signal visibilityRequested(SceneObject object, bool visible)
-  signal renameRequested(SceneObject object, string name)
+  signal visibilityRequested(Backend.SceneObject object, bool visible)
+  signal renameRequested(Backend.SceneObject object, string name)
 
   // Groups and expansion are browser state, not properties of scene objects.
   ListModel {
@@ -32,11 +32,11 @@ QxPanel {
   function objectsForGroup(kind: string): var {
     return root.sceneModel.objects.filter(object => {
       switch (kind) {
-      case "rough": return object.classification === SceneObject.Rough
-      case "precise": return object.classification === SceneObject.Precise
-      case "edges": return object.kind === SceneObject.Edge
-      case "scanPaths": return object.kind === SceneObject.ScanPath
-      case "machiningPaths": return object.kind === SceneObject.MachiningPath
+      case "rough": return object.classification === Backend.SceneObject.Rough
+      case "precise": return object.classification === Backend.SceneObject.Precise
+      case "edges": return object.kind === Backend.SceneObject.Edge
+      case "scanPaths": return object.kind === Backend.SceneObject.ScanPath
+      case "machiningPaths": return object.kind === Backend.SceneObject.MachiningPath
       default: return false
       }
     })
@@ -44,12 +44,12 @@ QxPanel {
 
   function objectIcon(kind: int): url {
     switch (kind) {
-    case SceneObject.Plane: return "qrc:/pics/plane.svg"
-    case SceneObject.Cylinder: return "qrc:/pics/cylinder.svg"
-    case SceneObject.Cone: return "qrc:/pics/cone.svg"
-    case SceneObject.Edge: return "qrc:/pics/edge.svg"
-    case SceneObject.ScanPath:
-    case SceneObject.MachiningPath: return "qrc:/pics/path.svg"
+    case Backend.SceneObject.Plane: return "qrc:/pics/plane.svg"
+    case Backend.SceneObject.Cylinder: return "qrc:/pics/cylinder.svg"
+    case Backend.SceneObject.Cone: return "qrc:/pics/cone.svg"
+    case Backend.SceneObject.Edge: return "qrc:/pics/edge.svg"
+    case Backend.SceneObject.ScanPath:
+    case Backend.SceneObject.MachiningPath: return "qrc:/pics/path.svg"
     default: return ""
     }
   }
@@ -84,7 +84,7 @@ QxPanel {
           required property string kind
           required property bool expanded
           required property string badge
-          readonly property list<SceneObject> objects: root.objectsForGroup(group.kind)
+          readonly property list<Backend.SceneObject> objects: root.objectsForGroup(group.kind)
 
           readonly property color objectColor: group.kind === "rough" ? Colors.secondary.base
                                               : group.kind === "precise" ? Colors.primary.base
@@ -147,7 +147,7 @@ QxPanel {
               delegate: Rectangle {
                 id: objectRow
 
-                required property SceneObject modelData
+                required property Backend.SceneObject modelData
                 objectName: "sceneObject-" + objectRow.modelData.objectId
 
                 property bool editing: false

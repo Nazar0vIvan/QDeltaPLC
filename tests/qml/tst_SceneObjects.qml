@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import "../../qml/Models"
+import RoboCrap.Backend 1.0 as Backend
 import "../../qml/Views/Workspace"
 
 TestCase {
@@ -12,20 +12,33 @@ TestCase {
   width: 700
   height: 440
 
-  property list<string> selectedIds: ["plane"]
-  readonly property SceneObject selectedObject: testCase.selectedIds.length === 1
-                                                ? scene.findObject(testCase.selectedIds[0]) : null
+  property list<string> selectedIds: []
+  readonly property Backend.SceneObject selectedObject: testCase.scene && testCase.selectedIds.length === 1
+                                                        ? testCase.scene.findObject(testCase.selectedIds[0]) : null
   // A second consumer of the same instance, independent of PropertiesPanel.
-  readonly property string browserName: plane.name
-  readonly property bool browserVisible: plane.visible
+  readonly property string browserName: testCase.plane ? testCase.plane.name : ""
+  readonly property bool browserVisible: testCase.plane ? testCase.plane.visible : false
 
-  SceneModel {
-    id: scene
-    SceneObject { id: plane; objectId: "plane"; name: "Plane P1"; kind: SceneObject.Plane; classification: SceneObject.Rough }
-    SceneObject { id: cylinder; objectId: "cylinder"; name: "Cylinder C1"; kind: SceneObject.Cylinder; classification: SceneObject.Precise }
+  // Exercise the separate coefficient-only insertion API.
+  signal planeLoaded(url sourceUrl, string name, list<var> coefficients)
+  property Backend.SceneObject importedResult: null
+  onPlaneLoaded: (sourceUrl, name, coefficients) => {
+    testCase.importedResult = scene.addPlane(sourceUrl, name, coefficients)
   }
 
-  SceneObject { id: foreign; objectId: "plane"; name: "Foreign"; kind: SceneObject.Plane }
+  Backend.SceneModel { id: emptyScene }
+  Component { id: sceneFactory; Backend.SceneModel {} }
+  property Backend.SceneModel scene: emptyScene
+  property Backend.SceneObject plane: null
+  property Backend.SceneObject cylinder: null
+  property Backend.SceneObject foreign: null
+
+  Backend.PlaneImporter {
+    id: importer
+    onLoaded: object => testCase.importedResult = object
+  }
+  SignalSpy { id: loadedSpy; target: importer; signalName: "loaded" }
+  SignalSpy { id: failedSpy; target: importer; signalName: "failed" }
 
   PropertiesPanel {
     id: panel
@@ -56,10 +69,12 @@ TestCase {
     failOnWarning(/TypeError|ReferenceError|invalid nullptr|coerced to void/)
     editor().modified = false
     editor().focus = false
-    scene.objects = [plane, cylinder]
-    scene.renameObject(plane, "Plane P1")
-    scene.renameObject(cylinder, "Cylinder C1")
-    scene.setObjectVisible(plane, true)
+    testCase.scene = createTemporaryObject(sceneFactory, testCase)
+    verify(testCase.scene !== null)
+    testCase.plane = scene.addObject("plane", "Plane P1", Backend.SceneObject.Plane, Backend.SceneObject.Rough)
+    testCase.cylinder = scene.addObject("cylinder", "Cylinder C1", Backend.SceneObject.Cylinder, Backend.SceneObject.Precise)
+    const otherScene = createTemporaryObject(sceneFactory, testCase)
+    testCase.foreign = otherScene.addObject("plane", "Foreign", Backend.SceneObject.Plane, Backend.SceneObject.Unclassified)
     testCase.selectedIds = ["plane"]
     panel.width = 272
     waitForPolish(panel)
@@ -79,6 +94,18 @@ TestCase {
     compare(findChild(panel, "objectVisibilityCheckBox").checked, false)
   }
 
+  function cleanup() {
+    editor().modified = false
+    editor().focus = false
+    testCase.selectedIds = []
+    testCase.scene = emptyScene
+    testCase.plane = null
+    testCase.cylinder = null
+    testCase.foreign = null
+    testCase.importedResult = null
+    // Qt Quick Test destroys each temporary model and its C++-owned children.
+  }
+
   function test_validationAndForeignObjects() {
     verify(!scene.renameObject(plane, "   "))
     compare(plane.name, "Plane P1")
@@ -88,9 +115,9 @@ TestCase {
     compare(scene.findObject("unknown"), null)
   }
 
-  function test_selectionSurvivesRenameAndReorder() {
+  function test_selectionSurvivesRenameAndInsertion() {
     verify(scene.renameObject(plane, "Other name"))
-    scene.objects = [cylinder, plane]
+    verify(scene.addObject("edge", "Edge", Backend.SceneObject.Edge, Backend.SceneObject.Unclassified) !== null)
     compare(testCase.selectedObject, plane)
     compare(panel.selectedObject.objectId, "plane")
     testCase.selectedIds = ["plane", "cylinder"]
@@ -158,8 +185,8 @@ TestCase {
     const imported = scene.addPlane(source, "Sample plane", coefficients)
     verify(imported !== null)
     compare(scene.objects.length, 3)
-    compare(imported.kind, SceneObject.Plane)
-    compare(imported.classification, SceneObject.Rough)
+    compare(imported.kind, Backend.SceneObject.Plane)
+    compare(imported.classification, Backend.SceneObject.Rough)
     compare(imported.sourceUrl.toString(), source)
     compare(imported.geometry.normalX, coefficients[0])
     compare(imported.geometry.normalY, coefficients[1])
@@ -192,9 +219,6 @@ TestCase {
     compare(panel.planeGeometry, null)
     compare(findChild(panel, "planeOffsetValue").visible, false)
 
-    scene.objects = [plane, cylinder]
-    imported.destroy()
-    repeated.destroy()
   }
 
   function test_invalidPlaneResultDoesNotChangeScene() {
@@ -202,7 +226,99 @@ TestCase {
     compare(scene.addPlane("file:///bad.json", "Bad", [0, 0, 0, 0]), null)
     compare(scene.addPlane("file:///bad.json", "Bad", [0, 0, 1, NaN]), null)
     compare(scene.addPlane("", "Bad", [0, 0, 1, 0]), null)
+    compare(scene.addPlane("file:///bad.json", "Bad", [0, 0, 1, Infinity]), null)
+    compare(scene.addPlane("file:///bad.json", "Bad", [0, 0, 1, "0"]), null)
     compare(scene.objects.length, 2)
     compare(testCase.selectedObject, plane)
+  }
+
+  function test_duplicateIdentityRejected() {
+    compare(scene.addObject("plane", "Duplicate", Backend.SceneObject.Plane, Backend.SceneObject.Rough), null)
+    compare(scene.objects.length, 2)
+    compare(scene.findObject("plane"), plane)
+  }
+
+  function test_importSkipsExistingIdentity() {
+    verify(scene.addObject("imported-plane-1", "Existing", Backend.SceneObject.Edge,
+                           Backend.SceneObject.Unclassified) !== null)
+    const imported = scene.addPlane("file:///plane.json", "  ", [0, 0, 1, 0])
+    verify(imported !== null)
+    compare(imported.objectId, "imported-plane-2")
+    verify(imported.name.length > 0)
+    compare(scene.findObject(imported.objectId), imported)
+  }
+
+  function test_importerVariantListBoundary() {
+    const scale = Math.sqrt(21)
+    const coefficients = [-2 / scale, 1 / scale, 4 / scale, -40 / scale]
+    testCase.planeLoaded("file:///rough-plane-sample.json", "Sample plane", coefficients)
+    const imported = testCase.importedResult
+    verify(imported !== null)
+    compare(scene.objects.length, 3)
+    compare(imported.geometry.normalX, coefficients[0])
+    compare(imported.geometry.normalY, coefficients[1])
+    compare(imported.geometry.normalZ, coefficients[2])
+    compare(imported.geometry.offset, coefficients[3])
+    testCase.importedResult = null
+  }
+
+  function test_failedImportLeavesSceneUnchanged() {
+    loadedSpy.clear()
+    failedSpy.clear()
+    importer.load(Qt.resolvedUrl("missing-plane-file.json"), testCase.scene)
+    tryCompare(importer, "busy", false, 10000)
+    compare(loadedSpy.count, 0)
+    compare(failedSpy.count, 1)
+    compare(scene.objects.length, 2)
+    compare(testCase.importedResult, null)
+  }
+
+  function test_missingDestinationRejected() {
+    loadedSpy.clear()
+    failedSpy.clear()
+    importer.load(Qt.resolvedUrl("../../resources/json/rough-plane-sample.json"), null)
+    compare(importer.busy, false)
+    compare(loadedSpy.count, 0)
+    compare(failedSpy.count, 1)
+    compare(scene.objects.length, 2)
+  }
+
+  function test_sampleJsonThroughCppImporter() {
+    loadedSpy.clear()
+    failedSpy.clear()
+    importer.load(Qt.resolvedUrl("../../resources/json/rough-plane-sample.json"), testCase.scene)
+    tryCompare(importer, "busy", false, 10000)
+    compare(failedSpy.count, 0)
+    compare(loadedSpy.count, 1)
+    const imported = testCase.importedResult
+    verify(imported !== null)
+    compare(scene.objects.length, 3)
+    const scale = Math.sqrt(21)
+    verify(Math.abs(imported.geometry.normalX + 2 / scale) < 1e-10)
+    verify(Math.abs(imported.geometry.normalY - 1 / scale) < 1e-10)
+    verify(Math.abs(imported.geometry.normalZ - 4 / scale) < 1e-10)
+    verify(Math.abs(imported.geometry.offset + 40 / scale) < 1e-10)
+    testCase.selectedIds = [imported.objectId]
+    waitForPolish(panel)
+    compare(panel.selectedObject, imported)
+    compare(findChild(browser, "sceneObject-" + imported.objectId).modelData, imported)
+    verify(imported.geometry.hasBounds)
+    compare(imported.geometry.pointCount, 5)
+    verify(Math.abs(imported.geometry.originX) < 1e-10)
+    verify(Math.abs(imported.geometry.originY) < 1e-10)
+    verify(Math.abs(imported.geometry.originZ - 10) < 1e-10)
+    verify(imported.geometry.width > 0 && imported.geometry.height > 0)
+    compare(findChild(panel, "planePointCountValue").text, "5")
+    compare(findChild(panel, "planeWidthValue").text, imported.geometry.width.toPrecision(6))
+    compare(findChild(panel, "planeHeightValue").text, imported.geometry.height.toPrecision(6))
+    const firstGeometry = imported.geometry
+    loadedSpy.clear()
+    importer.load(Qt.resolvedUrl("../../resources/json/rough-plane-sample.json"), testCase.scene)
+    tryCompare(importer, "busy", false, 10000)
+    compare(loadedSpy.count, 1)
+    compare(imported.geometry, firstGeometry)
+    compare(firstGeometry.pointCount, 5)
+    verify(testCase.importedResult.objectId !== imported.objectId)
+    compare(firstGeometry.width, testCase.importedResult.geometry.width)
   }
 }

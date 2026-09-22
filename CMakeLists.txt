@@ -101,9 +101,6 @@ set(QML_FILES
   qml/Views/Workspace/ModeToolBar.qml
   qml/Views/Workspace/ScenePanel.qml
   qml/Views/Workspace/PropertiesPanel.qml
-  qml/Models/SceneObject.qml
-  qml/Models/SceneModel.qml
-  qml/Models/PlaneGeometry.qml
 )
 
 set(RESOURCE_FILES
@@ -160,6 +157,28 @@ endif()
 
 if(NOT USE_HOT_RELOAD)
   qt_import_qml_plugins(robocrap)
+endif()
+
+option(ROBOCRAP_BUILD_SCENE_TESTS "Build the offline scene ownership and QML interaction tests" OFF)
+if(ROBOCRAP_BUILD_SCENE_TESTS)
+  find_package(Qt6 6.8 REQUIRED COMPONENTS QuickTest)
+  qt_add_executable(sceneobjecttests
+    tests/qml/runner.cpp
+    resources/pics.qrc
+  )
+  target_compile_definitions(sceneobjecttests PRIVATE
+    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml"
+  )
+  target_link_libraries(sceneobjecttests PRIVATE
+    Qt6::QuickTest
+    RoboCrapBackend
+    RoboCrapBackendplugin
+    Styles
+    Components
+  )
+  qt_import_qml_plugins(sceneobjecttests)
+  qt_add_executable(boundedplanetests tests/qml/boundedplanetests.cpp)
+  target_link_libraries(boundedplanetests PRIVATE RoboCrapBackend)
 endif()
 
 include(GNUInstallDirs)

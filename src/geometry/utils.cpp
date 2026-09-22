@@ -1,6 +1,8 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <QFile>
+#include <QJsonDocument>
 
 std::optional<V3d> jsonValueToPoint(const QJsonValue &value)
 {
@@ -29,6 +31,16 @@ std::optional<QVector<V3d>> jsonArrayToPoints(const QJsonArray &array)
   }
 
   return points;
+}
+
+std::optional<QVector<V3d>> readJsonPoints(const QString& path)
+{
+  QFile file(path);
+  if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) return std::nullopt;
+  QJsonParseError error;
+  const auto document = QJsonDocument::fromJson(file.readAll(), &error);
+  if (error.error != QJsonParseError::NoError || !document.isArray()) return std::nullopt;
+  return jsonArrayToPoints(document.array());
 }
 
 bool nearlyEqual(double lhs, double rhs, double eps)

@@ -80,6 +80,17 @@ and src/main.cpp.
 
 ## QML components and geometry
 
+- Scene data is owned in C++ by src/scene. main.cpp owns ApplicationScene and exposes it as
+  RoboCrap.Backend's Scene singleton; SceneModel owns SceneObject children and their PlaneGeometry.
+  QML receives a read-only object list and edits names/visibility through model methods. Preserve
+  stable IDs, shared object references, and GUI-thread mutations. Fitting remains in src/geometry;
+  scene objects are not yet connected to OCCT rendering or trajectory generation.
+  Imported planes retain immutable BoundedPlane data (original points, centered rectangle,
+  tangent axes and bounds) computed on the importer worker. PlaneImporter.load(url, scene)
+  inserts the numerical result directly into the destination scene on the GUI thread and emits
+  loaded(SceneObject*); QML never forwards geometry. The coefficient-only addPlane
+  API remains unbounded. Properties displays bounds only when PlaneGeometry.hasBounds is true.
+
 - Reuse compatible controls from qml/Modules/Components and values from the Styles module's
   Colors, Fonts, and Metrics singletons.
   Check input, output, sizing, and interaction contracts before reusing or extending a component.
@@ -146,8 +157,9 @@ cmake --build "$buildDir" --target Components_qmllint
   changes. For QML changes, run the owning *_qmllint target: Components_qmllint, Styles_qmllint, or
   robocrap_qmllint (hot reload OFF for application QML). Verify targets in the selected build;
   use all_qmllint for multiple modules. Build for QML registration/resource changes too.
-- No application test suite is currently registered in the project CMake files. Do not count
-  vendored Eigen tests, old_imp/Test, or a zero-test CTest run as application coverage. For behavior
+- ROBOCRAP_BUILD_SCENE_TESTS=ON optionally builds boundedplanetests and the offline sceneobjecttests Qt Quick Test runner;
+  see tests/qml/README.md. It is not registered with CTest. Do not count vendored Eigen tests,
+  old_imp/Test, or a zero-test CTest run as application coverage. For behavior
   changes, run a focused offline regression check where feasible; report gaps when no harness exists.
 - For UI changes, check affected states, resizing, and binding/import warnings in a disconnected
   runtime when available. Build/lint success does not establish visual or hardware correctness.

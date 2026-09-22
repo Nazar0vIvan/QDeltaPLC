@@ -1,5 +1,6 @@
 module Components
 QxButton      1.0 QxButton.qml
+QxCheckBox    1.0 QxCheckBox.qml
 QxComboBox    1.0 QxComboBox.qml
 QxGroupBox    1.0 QxGroupBox.qml
 QxHField      1.0 QxHField.qml

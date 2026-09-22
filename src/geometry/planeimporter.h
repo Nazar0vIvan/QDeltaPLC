@@ -2,7 +2,7 @@
 
 #include <QObject>
 #include <QUrl>
-#include <QVariantList>
+#include "scene/scenemodel.h"
 
 class QThread;
 
@@ -16,11 +16,11 @@ public:
   ~PlaneImporter() override;
 
   bool busy() const { return m_worker != nullptr; }
-  Q_INVOKABLE void load(const QUrl& sourceUrl);
+  Q_INVOKABLE void load(const QUrl& sourceUrl, SceneModel* scene);
 
 signals:
   void busyChanged();
-  void loaded(const QUrl& sourceUrl, const QString& name, const QVariantList& coefficients);
+  void loaded(SceneObject* object);
   void failed(const QString& message);
 
 private:

@@ -5,7 +5,6 @@ import QtQuick.Controls.Basic
 import QtQuick.Dialogs as Dialogs
 import RoboCrap.Backend 1.0 as Backend
 
-import "Models"
 import "MenuBar"
 import "Views/Viewport3D"
 import "Views/Workspace"
@@ -26,8 +25,8 @@ ApplicationWindow {
   property bool showMachiningPath: false
   property list<string> selectedObjectIds: []
 
-  readonly property SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
-                                                    ? sampleScene.findObject(root.selectedObjectIds[0]) : null
+  readonly property Backend.SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
+                                                            ? root.sceneModel.findObject(root.selectedObjectIds[0]) : null
 
   function selectSceneObject(objectId, additive) {
     if (!additive) {
@@ -46,15 +45,7 @@ ApplicationWindow {
   Backend.PlaneImporter {
     id: planeImporter
 
-    onLoaded: (sourceUrl, name, coefficients) => {
-      const object = sampleScene.addPlane(sourceUrl, name, coefficients)
-      if (object) {
-        root.selectedObjectIds = [object.objectId]
-      } else {
-        importError.text = qsTr("Could not add the imported plane to the scene.")
-        importError.open()
-      }
-    }
+    onLoaded: object => root.selectedObjectIds = [object.objectId]
     onFailed: message => {
       importError.text = message
       importError.open()
@@ -66,7 +57,7 @@ ApplicationWindow {
     title: qsTr("Import rough plane")
     fileMode: Dialogs.FileDialog.OpenFile
     nameFilters: [qsTr("JSON point files (*.json)")]
-    onAccepted: planeImporter.load(planeFileDialog.selectedFile)
+    onAccepted: planeImporter.load(planeFileDialog.selectedFile, root.sceneModel)
   }
 
   Dialogs.MessageDialog {
@@ -75,20 +66,7 @@ ApplicationWindow {
     buttons: Dialogs.MessageDialog.Ok
   }
 
-  // Sample objects remain alongside imports; neither is rendered in 3D yet.
-  SceneModel {
-    id: sampleScene
-
-    SceneObject { objectId: "rough-plane"; name: "Plane P1"; kind: SceneObject.Plane; classification: SceneObject.Rough }
-    SceneObject { objectId: "rough-cylinder"; name: "Cylinder C1"; kind: SceneObject.Cylinder; classification: SceneObject.Rough }
-    SceneObject { objectId: "rough-cone"; name: "Cone K1"; kind: SceneObject.Cone; classification: SceneObject.Rough }
-    SceneObject { objectId: "precise-plane"; name: "Plane P1"; kind: SceneObject.Plane; classification: SceneObject.Precise }
-    SceneObject { objectId: "precise-cylinder"; name: "Cylinder C1"; kind: SceneObject.Cylinder; classification: SceneObject.Precise }
-    SceneObject { objectId: "edge-1"; name: "Edge E1"; kind: SceneObject.Edge }
-    SceneObject { objectId: "edge-2"; name: "Edge E2"; kind: SceneObject.Edge }
-    SceneObject { objectId: "scan-1"; name: "Scan S1"; kind: SceneObject.ScanPath }
-    SceneObject { objectId: "path-1"; name: "Path P1"; kind: SceneObject.MachiningPath }
-  }
+  readonly property Backend.SceneModel sceneModel: Backend.Scene
 
   width: 1366
   height: 768
@@ -159,11 +137,11 @@ ApplicationWindow {
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        sceneModel: sampleScene
+        sceneModel: root.sceneModel
         selectedObjectIds: root.selectedObjectIds
         onSelectionRequested: (objectId, additive) => root.selectSceneObject(objectId, additive)
-        onVisibilityRequested: (object, visible) => sampleScene.setObjectVisible(object, visible)
-        onRenameRequested: (object, name) => sampleScene.renameObject(object, name)
+        onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
+        onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
       }
     }
 
@@ -208,8 +186,8 @@ ApplicationWindow {
 
       selectionCount: root.selectedObjectIds.length
       selectedObject: root.selectedSceneObject
-      onRenameRequested: (object, name) => sampleScene.renameObject(object, name)
-      onVisibilityRequested: (object, visible) => sampleScene.setObjectVisible(object, visible)
+      onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
+      onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
     }
   }
 }
