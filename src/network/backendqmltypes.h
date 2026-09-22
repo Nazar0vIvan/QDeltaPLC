@@ -1,5 +1,6 @@
 #pragma once
 
+#include "geometry/planeimporter.h"
 #include "network/common/deviceprofilemodel.h"
 #include "network/devicehub.h"
 #include "network/devicerunner.h"
@@ -8,6 +9,13 @@
 #include <QJSEngine>
 #include <QQmlEngine>
 #include <QtQml/qqmlregistration.h>
+
+struct PlaneImporterQml
+{
+  Q_GADGET
+  QML_FOREIGN(PlaneImporter)
+  QML_NAMED_ELEMENT(PlaneImporter)
+};
 
 struct DeviceRunnerQml
 {

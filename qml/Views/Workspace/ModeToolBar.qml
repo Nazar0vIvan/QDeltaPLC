@@ -12,7 +12,9 @@ ToolBar {
   required property bool showNormals
   required property bool showScanPath
   required property bool showMachiningPath
+  property bool planeImportAvailable: false
 
+  signal planeImportRequested()
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
   signal scanPathToggled(bool checked)
@@ -45,6 +47,7 @@ ToolBar {
     property bool available: false
 
     signal toggled(bool checked)
+    signal triggered()
 
     implicitWidth: Math.max(100, button.implicitWidth)
     implicitHeight: 60
@@ -80,7 +83,10 @@ ToolBar {
                       : button.checked ? Colors.secondary.dark : Colors.background.dp12
       }
 
-      onClicked: tool.toggled(button.checked)
+      onClicked: {
+        tool.triggered()
+        tool.toggled(button.checked)
+      }
     }
   }
 
@@ -110,6 +116,8 @@ ToolBar {
         Tool {
           text: qsTr("Plane from JSON")
           iconSource: "qrc:/pics/plane.svg"
+          available: root.planeImportAvailable
+          onTriggered: root.planeImportRequested()
         }
 
         Tool {

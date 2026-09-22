@@ -4,24 +4,35 @@ import QtQuick.Layouts
 
 import Components 1.0
 import Styles 1.0
+import "../../Models"
 
 QxPanel {
   id: root
 
   required property int selectionCount
-  required property string objectId
-  required property string selectedName
-  required property string objectType
-  required property string classification
-  required property bool objectVisible
+  required property SceneObject selectedObject
+  readonly property PlaneGeometry planeGeometry: root.selectedObject
+                                                  ? root.selectedObject.geometry as PlaneGeometry : null
 
-  signal renameRequested(string objectId, string name)
-  signal visibilityRequested(string objectId, bool objectVisible)
+  signal renameRequested(SceneObject object, string name)
+  signal visibilityRequested(SceneObject object, bool visible)
+
+  function typeLabel(kind: int): string {
+    switch (kind) {
+    case SceneObject.Plane: return qsTr("Plane")
+    case SceneObject.Cylinder: return qsTr("Cylinder")
+    case SceneObject.Cone: return qsTr("Cone")
+    case SceneObject.Edge: return qsTr("Edge")
+    case SceneObject.ScanPath: return qsTr("Scan path")
+    case SceneObject.MachiningPath: return qsTr("Machining path")
+    default: return ""
+    }
+  }
 
   title: qsTr("Properties")
 
   // Commit any pending edit to its original object before displaying another.
-  onObjectIdChanged: {
+  onSelectedObjectChanged: {
     if (nameInput)
       nameInput.focus = false
   }
@@ -32,8 +43,8 @@ QxPanel {
 
   Label {
     Layout.fillWidth: true
-    visible: root.selectionCount !== 1
-    text: root.selectionCount === 0 ? qsTr("Select an object.")
+    visible: !root.selectedObject
+    text: root.selectionCount <= 1 ? qsTr("Select an object.")
                                    : qsTr("%1 objects selected.").arg(root.selectionCount)
     color: Colors.foreground.medium
     font: Fonts.body
@@ -42,7 +53,7 @@ QxPanel {
 
   ColumnLayout {
     Layout.fillWidth: true
-    visible: root.selectionCount === 1
+    visible: root.selectedObject !== null
     spacing: Metrics.sp8
 
     QxHField {
@@ -52,8 +63,9 @@ QxPanel {
 
       QxTextInput {
         id: nameInput
+        objectName: "objectNameEditor"
 
-        property string editObjectId: ""
+        property SceneObject editObject: null
         property string draftName: ""
         property bool modified: false
 
@@ -71,19 +83,19 @@ QxPanel {
           nameInput.modified = false
           const name = nameInput.draftName.trim()
           if (name.length > 0)
-            root.renameRequested(nameInput.editObjectId, name)
+            root.renameRequested(nameInput.editObject, name)
         }
 
         Binding {
           target: nameInput
           property: "text"
-          value: root.selectedName
+          value: root.selectedObject ? root.selectedObject.name : ""
           when: !nameInput.activeFocus
           restoreMode: Binding.RestoreNone
         }
 
         onTextEdited: {
-          nameInput.editObjectId = root.objectId
+          nameInput.editObject = root.selectedObject
           nameInput.draftName = nameInput.text
           nameInput.modified = true
         }
@@ -106,7 +118,7 @@ QxPanel {
 
       Label {
         Layout.fillWidth: true
-        text: root.objectType
+        text: root.selectedObject ? root.typeLabel(root.selectedObject.kind) : ""
         color: Colors.foreground.high
         font: Fonts.body
         wrapMode: Text.WordWrap
@@ -120,9 +132,29 @@ QxPanel {
 
       Label {
         Layout.fillWidth: true
-        text: root.classification
+        text: !root.selectedObject ? ""
+              : root.selectedObject.classification === SceneObject.Rough ? qsTr("Rough")
+              : root.selectedObject.classification === SceneObject.Precise ? qsTr("Precise")
+              : qsTr("Not applicable")
         color: Colors.foreground.high
         font: Fonts.body
+      }
+    }
+
+    QxHField {
+      Layout.fillWidth: true
+      visible: root.selectedObject !== null && root.selectedObject.sourceUrl.toString().length > 0
+      labelWidth: Metrics.w80
+      labelText: qsTr("Source")
+
+      QxTextInput {
+        objectName: "objectSourceField"
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        readOnly: true
+        padding: Metrics.sp4
+        text: root.selectedObject ? root.selectedObject.sourceUrl.toString() : ""
+        Accessible.name: qsTr("Source JSON")
       }
     }
 
@@ -132,13 +164,68 @@ QxPanel {
       labelText: qsTr("Visible")
 
       CheckBox {
-        checked: root.objectVisible
+        objectName: "objectVisibilityCheckBox"
+        checked: root.selectedObject ? root.selectedObject.visible : false
         padding: Metrics.sp0
         Accessible.name: qsTr("Object visible")
-        onClicked: root.visibilityRequested(root.objectId, checked)
+        onClicked: root.visibilityRequested(root.selectedObject, checked)
       }
 
       Item { Layout.fillWidth: true }
+    }
+
+    Label {
+      Layout.fillWidth: true
+      Layout.topMargin: Metrics.sp8
+      visible: root.planeGeometry !== null
+      text: qsTr("Geometry")
+      color: Colors.foreground.medium
+      font: Fonts.body
+    }
+
+    QxHField {
+      Layout.fillWidth: true
+      visible: root.planeGeometry !== null
+      labelWidth: Metrics.w80
+      labelText: qsTr("Normal")
+
+      Label {
+        objectName: "planeNormalValue"
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        text: root.planeGeometry
+              ? [root.planeGeometry.normalX, root.planeGeometry.normalY,
+                 root.planeGeometry.normalZ].map(value => value.toPrecision(6)).join(", ") : ""
+        wrapMode: Text.WrapAnywhere
+        color: Colors.foreground.high
+        font: Fonts.body
+      }
+    }
+
+    QxHField {
+      Layout.fillWidth: true
+      visible: root.planeGeometry !== null
+      labelWidth: Metrics.w80
+      labelText: qsTr("Offset (d)")
+
+      Label {
+        objectName: "planeOffsetValue"
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        text: root.planeGeometry ? root.planeGeometry.offset.toPrecision(6) : ""
+        wrapMode: Text.WrapAnywhere
+        color: Colors.foreground.high
+        font: Fonts.body
+      }
+    }
+
+    Label {
+      Layout.fillWidth: true
+      visible: root.planeGeometry !== null
+      text: qsTr("nx·x + ny·y + nz·z + d = 0")
+      wrapMode: Text.WordWrap
+      color: Colors.foreground.medium
+      font: Fonts.caption
     }
   }
 

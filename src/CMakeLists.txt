@@ -15,6 +15,14 @@ qt_add_qml_module(RoboCrapBackend
   SOURCES
     network/backendqmltypes.h
 
+    geometry/planeimporter.h
+    geometry/planeimporter.cpp
+    geometry/plane.h
+    geometry/plane.cpp
+    geometry/mathtypes.h
+    geometry/utils.h
+    geometry/utils.cpp
+
     network/abstractdevice.h
     network/abstractdevice.cpp
     network/devicerunner.h
@@ -47,16 +55,14 @@ target_link_libraries(RoboCrapBackend PUBLIC
   Qt6::Network
 )
 
+target_include_directories(RoboCrapBackend PRIVATE ${EIGEN5_INCLUDE_DIR})
+
 target_sources(robocrap PRIVATE
   geometry/cylinder.h
   geometry/cylinder.cpp
   geometry/mathtypes.h
-  geometry/plane.h
-  geometry/plane.cpp
   geometry/pose.h
   geometry/pose.cpp
-  geometry/utils.h
-  geometry/utils.cpp
 
   network/fts/rdtmessage.h
   network/fts/ftsdevice.h

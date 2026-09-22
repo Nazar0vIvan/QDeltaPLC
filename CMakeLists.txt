@@ -101,6 +101,9 @@ set(QML_FILES
   qml/Views/Workspace/ModeToolBar.qml
   qml/Views/Workspace/ScenePanel.qml
   qml/Views/Workspace/PropertiesPanel.qml
+  qml/Models/SceneObject.qml
+  qml/Models/SceneModel.qml
+  qml/Models/PlaneGeometry.qml
 )
 
 set(RESOURCE_FILES

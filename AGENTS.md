@@ -29,6 +29,8 @@
 - Root CMakeLists.txt owns robocrap, application QML, and resource lists. src/CMakeLists.txt owns
   RoboCrapBackend and also adds geometry, path generation, and concrete devices directly to robocrap.
   A successful backend-only build does not validate those application sources.
+  The plane importer and existing geometry/plane.cpp and geometry/utils.cpp compile in RoboCrapBackend;
+  other geometry and concrete-device sources still compile in robocrap.
 - src/3d/CMakeLists.txt owns RoboCrap3D (URI RoboCrap.Viewport3D), the independent OCCT preview.
   It requires the bundled OCCT 8.0.0 SDK and a Windows 64-bit MinGW Qt kit. Its public controller
   header does not expose OCCT math types; internal OCCT code uses namespace RoboCrap3D.

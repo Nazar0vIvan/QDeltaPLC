@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Basic
-import QtQml.Models
+import QtQuick.Dialogs as Dialogs
+import RoboCrap.Backend 1.0 as Backend
 
+import "Models"
 import "MenuBar"
 import "Views/Viewport3D"
 import "Views/Workspace"
@@ -24,26 +26,8 @@ ApplicationWindow {
   property bool showMachiningPath: false
   property list<string> selectedObjectIds: []
 
-  // A lookup into the sample model, not a separate copy of the selected object.
-  readonly property var selectedSceneObject: root.selectedObjectIds.length === 1
-                                            ? root.findSceneObject(root.selectedObjectIds[0]) : null
-
-  function findSceneObject(objectId) {
-    for (let groupIndex = 0; groupIndex < sampleScene.count; ++groupIndex) {
-      const group = sampleScene.get(groupIndex)
-      for (let objectIndex = 0; objectIndex < group.objects.count; ++objectIndex) {
-        if (group.objects.get(objectIndex).objectId === objectId)
-          return { objects: group.objects, index: objectIndex, kind: group.kind }
-      }
-    }
-    return null
-  }
-
-  function updateSceneObject(objectId, role, value) {
-    const entry = root.findSceneObject(objectId)
-    if (entry)
-      entry.objects.setProperty(entry.index, role, value)
-  }
+  readonly property SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
+                                                    ? sampleScene.findObject(root.selectedObjectIds[0]) : null
 
   function selectSceneObject(objectId, additive) {
     if (!additive) {
@@ -59,44 +43,51 @@ ApplicationWindow {
     root.selectedObjectIds = selected
   }
 
-  // Temporary browser data only; these objects do not exist in the 3D scene.
-  ListModel {
+  Backend.PlaneImporter {
+    id: planeImporter
+
+    onLoaded: (sourceUrl, name, coefficients) => {
+      const object = sampleScene.addPlane(sourceUrl, name, coefficients)
+      if (object) {
+        root.selectedObjectIds = [object.objectId]
+      } else {
+        importError.text = qsTr("Could not add the imported plane to the scene.")
+        importError.open()
+      }
+    }
+    onFailed: message => {
+      importError.text = message
+      importError.open()
+    }
+  }
+
+  Dialogs.FileDialog {
+    id: planeFileDialog
+    title: qsTr("Import rough plane")
+    fileMode: Dialogs.FileDialog.OpenFile
+    nameFilters: [qsTr("JSON point files (*.json)")]
+    onAccepted: planeImporter.load(planeFileDialog.selectedFile)
+  }
+
+  Dialogs.MessageDialog {
+    id: importError
+    title: qsTr("Plane import failed")
+    buttons: Dialogs.MessageDialog.Ok
+  }
+
+  // Sample objects remain alongside imports; neither is rendered in 3D yet.
+  SceneModel {
     id: sampleScene
 
-    ListElement {
-      name: qsTr("Rough Surfaces"); kind: "rough"; badge: "R"; expanded: true
-      objects: [
-        ListElement { objectId: "rough-plane"; name: "Plane P1"; typeName: qsTr("Plane"); iconSource: "qrc:/pics/plane.svg"; objectVisible: true },
-        ListElement { objectId: "rough-cylinder"; name: "Cylinder C1"; typeName: qsTr("Cylinder"); iconSource: "qrc:/pics/cylinder.svg"; objectVisible: true },
-        ListElement { objectId: "rough-cone"; name: "Cone K1"; typeName: qsTr("Cone"); iconSource: "qrc:/pics/cone.svg"; objectVisible: true }
-      ]
-    }
-    ListElement {
-      name: qsTr("Precise Surfaces"); kind: "precise"; badge: "P"; expanded: true
-      objects: [
-        ListElement { objectId: "precise-plane"; name: "Plane P1"; typeName: qsTr("Plane"); iconSource: "qrc:/pics/plane.svg"; objectVisible: true },
-        ListElement { objectId: "precise-cylinder"; name: "Cylinder C1"; typeName: qsTr("Cylinder"); iconSource: "qrc:/pics/cylinder.svg"; objectVisible: true }
-      ]
-    }
-    ListElement {
-      name: qsTr("Edges"); kind: "edges"; badge: ""; expanded: true
-      objects: [
-        ListElement { objectId: "edge-1"; name: "Edge E1"; typeName: qsTr("Edge"); iconSource: "qrc:/pics/edge.svg"; objectVisible: true },
-        ListElement { objectId: "edge-2"; name: "Edge E2"; typeName: qsTr("Edge"); iconSource: "qrc:/pics/edge.svg"; objectVisible: true }
-      ]
-    }
-    ListElement {
-      name: qsTr("Scan Paths"); kind: "scanPaths"; badge: ""; expanded: true
-      objects: [
-        ListElement { objectId: "scan-1"; name: "Scan S1"; typeName: qsTr("Path"); iconSource: "qrc:/pics/path.svg"; objectVisible: true }
-      ]
-    }
-    ListElement {
-      name: qsTr("Machining Paths"); kind: "machiningPaths"; badge: ""; expanded: true
-      objects: [
-        ListElement { objectId: "path-1"; name: "Path P1"; typeName: qsTr("Path"); iconSource: "qrc:/pics/path.svg"; objectVisible: true }
-      ]
-    }
+    SceneObject { objectId: "rough-plane"; name: "Plane P1"; kind: SceneObject.Plane; classification: SceneObject.Rough }
+    SceneObject { objectId: "rough-cylinder"; name: "Cylinder C1"; kind: SceneObject.Cylinder; classification: SceneObject.Rough }
+    SceneObject { objectId: "rough-cone"; name: "Cone K1"; kind: SceneObject.Cone; classification: SceneObject.Rough }
+    SceneObject { objectId: "precise-plane"; name: "Plane P1"; kind: SceneObject.Plane; classification: SceneObject.Precise }
+    SceneObject { objectId: "precise-cylinder"; name: "Cylinder C1"; kind: SceneObject.Cylinder; classification: SceneObject.Precise }
+    SceneObject { objectId: "edge-1"; name: "Edge E1"; kind: SceneObject.Edge }
+    SceneObject { objectId: "edge-2"; name: "Edge E2"; kind: SceneObject.Edge }
+    SceneObject { objectId: "scan-1"; name: "Scan S1"; kind: SceneObject.ScanPath }
+    SceneObject { objectId: "path-1"; name: "Path P1"; kind: SceneObject.MachiningPath }
   }
 
   width: 1366
@@ -121,7 +112,8 @@ ApplicationWindow {
     }
 
     contentItem: Label {
-      text: root.workflowMode === WorkflowPanel.Machining
+      text: planeImporter.busy ? qsTr("Importing plane…")
+            : root.workflowMode === WorkflowPanel.Machining
             ? qsTr("Mode: Machining")
             : qsTr("Mode: Measuring / %1").arg(
                 root.measurementSubmode === WorkflowPanel.Rough
@@ -169,12 +161,9 @@ ApplicationWindow {
 
         sceneModel: sampleScene
         selectedObjectIds: root.selectedObjectIds
-        onExpansionRequested: (groupIndex, expanded) => sampleScene.setProperty(groupIndex, "expanded", expanded)
         onSelectionRequested: (objectId, additive) => root.selectSceneObject(objectId, additive)
-        onVisibilityRequested: (groupIndex, objectIndex, objectVisible) =>
-          sampleScene.get(groupIndex).objects.setProperty(objectIndex, "objectVisible", objectVisible)
-        onRenameRequested: (groupIndex, objectIndex, name) =>
-          sampleScene.get(groupIndex).objects.setProperty(objectIndex, "name", name)
+        onVisibilityRequested: (object, visible) => sampleScene.setObjectVisible(object, visible)
+        onRenameRequested: (object, name) => sampleScene.renameObject(object, name)
       }
     }
 
@@ -195,6 +184,8 @@ ApplicationWindow {
         showNormals: root.showNormals
         showScanPath: root.showScanPath
         showMachiningPath: root.showMachiningPath
+        planeImportAvailable: !planeImporter.busy && !planeFileDialog.visible
+        onPlaneImportRequested: planeFileDialog.open()
         onPointsToggled: checked => root.showPoints = checked
         onNormalsToggled: checked => root.showNormals = checked
         onScanPathToggled: checked => root.showScanPath = checked
@@ -216,19 +207,9 @@ ApplicationWindow {
       SplitView.minimumWidth: 220
 
       selectionCount: root.selectedObjectIds.length
-      objectId: root.selectedObjectIds.length === 1 ? root.selectedObjectIds[0] : ""
-      selectedName: root.selectedSceneObject
-                  ? root.selectedSceneObject.objects.get(root.selectedSceneObject.index).name : ""
-      objectType: root.selectedSceneObject
-                  ? root.selectedSceneObject.objects.get(root.selectedSceneObject.index).typeName : ""
-      classification: !root.selectedSceneObject ? ""
-                      : root.selectedSceneObject.kind === "rough" ? qsTr("Rough")
-                      : root.selectedSceneObject.kind === "precise" ? qsTr("Precise")
-                      : qsTr("Not applicable")
-      objectVisible: root.selectedSceneObject
-                     ? root.selectedSceneObject.objects.get(root.selectedSceneObject.index).objectVisible : false
-      onRenameRequested: (objectId, name) => root.updateSceneObject(objectId, "name", name)
-      onVisibilityRequested: (objectId, objectVisible) => root.updateSceneObject(objectId, "objectVisible", objectVisible)
+      selectedObject: root.selectedSceneObject
+      onRenameRequested: (object, name) => sampleScene.renameObject(object, name)
+      onVisibilityRequested: (object, visible) => sampleScene.setObjectVisible(object, visible)
     }
   }
 }

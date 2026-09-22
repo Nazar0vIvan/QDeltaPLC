@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>json/db.json</file>
         <file>json/kr10.json</file>
+        <file>json/rough-plane-sample.json</file>
     </qresource>
 </RCC>

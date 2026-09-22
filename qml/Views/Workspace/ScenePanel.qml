@@ -7,19 +7,54 @@ import QtQml.Models
 
 import Components 1.0
 import Styles 1.0
+import "../../Models"
 
 QxPanel {
   id: root
 
-  required property ListModel sceneModel
+  required property SceneModel sceneModel
   required property list<string> selectedObjectIds
 
-  signal expansionRequested(int groupIndex, bool expanded)
   signal selectionRequested(string objectId, bool additive)
-  signal visibilityRequested(int groupIndex, int objectIndex, bool objectVisible)
-  signal renameRequested(int groupIndex, int objectIndex, string name)
+  signal visibilityRequested(SceneObject object, bool visible)
+  signal renameRequested(SceneObject object, string name)
 
-  title: qsTr("Scene (sample data)")
+  // Groups and expansion are browser state, not properties of scene objects.
+  ListModel {
+    id: groups
+    ListElement { name: qsTr("Rough Surfaces"); kind: "rough"; badge: "R"; expanded: true }
+    ListElement { name: qsTr("Precise Surfaces"); kind: "precise"; badge: "P"; expanded: true }
+    ListElement { name: qsTr("Edges"); kind: "edges"; badge: ""; expanded: true }
+    ListElement { name: qsTr("Scan Paths"); kind: "scanPaths"; badge: ""; expanded: true }
+    ListElement { name: qsTr("Machining Paths"); kind: "machiningPaths"; badge: ""; expanded: true }
+  }
+
+  function objectsForGroup(kind: string): var {
+    return root.sceneModel.objects.filter(object => {
+      switch (kind) {
+      case "rough": return object.classification === SceneObject.Rough
+      case "precise": return object.classification === SceneObject.Precise
+      case "edges": return object.kind === SceneObject.Edge
+      case "scanPaths": return object.kind === SceneObject.ScanPath
+      case "machiningPaths": return object.kind === SceneObject.MachiningPath
+      default: return false
+      }
+    })
+  }
+
+  function objectIcon(kind: int): url {
+    switch (kind) {
+    case SceneObject.Plane: return "qrc:/pics/plane.svg"
+    case SceneObject.Cylinder: return "qrc:/pics/cylinder.svg"
+    case SceneObject.Cone: return "qrc:/pics/cone.svg"
+    case SceneObject.Edge: return "qrc:/pics/edge.svg"
+    case SceneObject.ScanPath:
+    case SceneObject.MachiningPath: return "qrc:/pics/path.svg"
+    default: return ""
+    }
+  }
+
+  title: qsTr("Scene")
   leftPadding: Metrics.w1
   rightPadding: Metrics.w1
   bottomPadding: Metrics.sp4
@@ -39,7 +74,7 @@ QxPanel {
       width: scroll.availableWidth
 
       Repeater {
-        model: root.sceneModel
+        model: groups
 
         delegate: Column {
           id: group
@@ -49,7 +84,7 @@ QxPanel {
           required property string kind
           required property bool expanded
           required property string badge
-          required property ListModel objects
+          readonly property list<SceneObject> objects: root.objectsForGroup(group.kind)
 
           readonly property color objectColor: group.kind === "rough" ? Colors.secondary.base
                                               : group.kind === "precise" ? Colors.primary.base
@@ -99,7 +134,7 @@ QxPanel {
               border.color: Colors.primary.base
             }
 
-            onClicked: root.expansionRequested(group.index, !group.expanded)
+            onClicked: groups.setProperty(group.index, "expanded", !group.expanded)
           }
 
           Column {
@@ -112,14 +147,11 @@ QxPanel {
               delegate: Rectangle {
                 id: objectRow
 
-                required property int index
-                required property string objectId
-                required property string name
-                required property string iconSource
-                required property bool objectVisible
+                required property SceneObject modelData
+                objectName: "sceneObject-" + objectRow.modelData.objectId
 
                 property bool editing: false
-                readonly property bool selected: root.selectedObjectIds.indexOf(objectRow.objectId) >= 0
+                readonly property bool selected: root.selectedObjectIds.indexOf(objectRow.modelData.objectId) >= 0
 
                 width: group.width
                 height: Metrics.h32
@@ -129,7 +161,7 @@ QxPanel {
                 HoverHandler { id: rowHover }
 
                 function beginRename() {
-                  nameEditor.text = objectRow.name
+                  nameEditor.text = objectRow.modelData.name
                   objectRow.editing = true
                   nameEditor.forceActiveFocus()
                   nameEditor.selectAll()
@@ -140,8 +172,8 @@ QxPanel {
                     return
                   objectRow.editing = false
                   const name = nameEditor.text.trim()
-                  if (name.length > 0 && name !== objectRow.name)
-                    root.renameRequested(group.index, objectRow.index, name)
+                  if (name.length > 0 && name !== objectRow.modelData.name)
+                    root.renameRequested(objectRow.modelData, name)
                 }
 
                 RowLayout {
@@ -158,20 +190,21 @@ QxPanel {
                     rightPadding: Metrics.sp4
                     topPadding: Metrics.sp0
                     bottomPadding: Metrics.sp0
-                    Accessible.name: objectRow.name
+                    Accessible.name: objectRow.modelData.name
                     Accessible.selected: objectRow.selected
-                    text: objectRow.editing ? "" : objectRow.name
+                    text: objectRow.editing ? "" : objectRow.modelData.name
                     font: Fonts.caption
                     spacing: Metrics.sp8
                     display: AbstractButton.TextBesideIcon
-                    icon.source: objectRow.iconSource
+                    icon.source: root.objectIcon(objectRow.modelData.kind)
                     icon.width: Metrics.sz16
                     icon.height: Metrics.sz16
                     icon.color: group.objectColor
-                    palette.text: objectRow.objectVisible ? Colors.foreground.high : Colors.foreground.disabled
+                    palette.text: objectRow.modelData.visible ? Colors.foreground.high : Colors.foreground.disabled
 
                     QxTextInput {
                       id: nameEditor
+                      objectName: "sceneNameEditor"
 
                       anchors.left: parent.left
                       anchors.leftMargin: objectButton.leftPadding + Metrics.sz16 + objectButton.spacing
@@ -201,13 +234,13 @@ QxPanel {
                       border.color: Colors.primary.base
                     }
 
-                    onClicked: root.selectionRequested(objectRow.objectId, false)
+                    onClicked: root.selectionRequested(objectRow.modelData.objectId, false)
                     Keys.onPressed: event => {
                       if (event.key === Qt.Key_F2) {
                         objectRow.beginRename()
                         event.accepted = true
                       } else if (event.key === Qt.Key_Space && (event.modifiers & Qt.ControlModifier)) {
-                        root.selectionRequested(objectRow.objectId, true)
+                        root.selectionRequested(objectRow.modelData.objectId, true)
                         event.accepted = true
                       }
                     }
@@ -217,7 +250,7 @@ QxPanel {
                       visible: !objectRow.editing
                       onClicked: mouse => {
                         objectButton.forceActiveFocus()
-                        root.selectionRequested(objectRow.objectId, (mouse.modifiers & Qt.ControlModifier) !== 0)
+                        root.selectionRequested(objectRow.modelData.objectId, (mouse.modifiers & Qt.ControlModifier) !== 0)
                       }
                       onDoubleClicked: objectRow.beginRename()
                     }
@@ -233,6 +266,7 @@ QxPanel {
 
                   ToolButton {
                     id: visibilityButton
+                    objectName: "sceneVisibilityButton"
 
                     Layout.preferredWidth: Metrics.sz24
                     Layout.fillHeight: true
@@ -240,10 +274,10 @@ QxPanel {
                     icon.source: "qrc:/pics/eye.svg"
                     icon.width: Metrics.sz16
                     icon.height: Metrics.sz16
-                    icon.color: visibilityButton.down || !objectRow.objectVisible
+                    icon.color: visibilityButton.down || !objectRow.modelData.visible
                                 ? Colors.foreground.disabled : Colors.foreground.high
                     opacity: visibilityButton.hovered && !visibilityButton.down ? 0.75 : 1.0
-                    Accessible.name: (objectRow.objectVisible ? qsTr("Hide %1") : qsTr("Show %1")).arg(objectRow.name)
+                    Accessible.name: (objectRow.modelData.visible ? qsTr("Hide %1") : qsTr("Show %1")).arg(objectRow.modelData.name)
 
                     background: Rectangle {
                       color: "transparent"
@@ -251,7 +285,7 @@ QxPanel {
                       border.color: Colors.primary.base
                     }
 
-                    onClicked: root.visibilityRequested(group.index, objectRow.index, !objectRow.objectVisible)
+                    onClicked: root.visibilityRequested(objectRow.modelData, !objectRow.modelData.visible)
                   }
                 }
               }
