@@ -12,12 +12,29 @@
         <file>pics/connect.svg</file>
         <file>pics/arrow_dropdown.svg</file>
         <file>pics/3d.svg</file>
-        <file>pics/dashboard.svg</file>
         <file>pics/settings.svg</file>
-        <file>pics/test.svg</file>
         <file>pics/network.svg</file>
         <file>pics/logo.svg</file>
         <file>pics/cylinder.svg</file>
         <file>pics/plane.svg</file>
+        <file>pics/cone.svg</file>
+        <file>pics/edge.svg</file>
+        <file>pics/eye.svg</file>
+        <file>pics/folder_full.svg</file>
+        <file>pics/machining.svg</file>
+        <file>pics/measuring.svg</file>
+        <file>pics/normals.svg</file>
+        <file>pics/path.svg</file>
+        <file>pics/points.svg</file>
+        <file>pics/precise.svg</file>
+        <file>pics/rough.svg</file>
+        <file>pics/attention.svg</file>
+        <file>pics/stop.svg</file>
+        <file>pics/run.svg</file>
+        <file>pics/dry_run.svg</file>
+        <file>pics/generate_path.svg</file>
+        <file>pics/show_path.svg</file>
+        <file>pics/intersec.svg</file>
+        <file>pics/scan.svg</file>
     </qresource>
 </RCC>

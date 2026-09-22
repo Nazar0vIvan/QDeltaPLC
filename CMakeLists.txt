@@ -97,6 +97,10 @@ set(QML_FILES
   qml/Views/Viewport3D/RobotViewport.qml
   qml/Views/Viewport3D/RobotKinematicsPanel.qml
   qml/Views/Viewport3D/SixValueEditor.qml
+  qml/Views/Workspace/WorkflowPanel.qml
+  qml/Views/Workspace/ModeToolBar.qml
+  qml/Views/Workspace/ScenePanel.qml
+  qml/Views/Workspace/PropertiesPanel.qml
 )
 
 set(RESOURCE_FILES
