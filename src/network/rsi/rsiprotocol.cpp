@@ -17,20 +17,15 @@ QByteArray RsiProtocol::encode(const RsiTxFrame& tx)
 
   xml.writeEmptyElement("RKorr");
 
-  static const char* keys[6] = {
-    "X", "Y", "Z", "A", "B", "C"
-  };
+	static const char* keys[6] = { "X", "Y", "Z", "A", "B", "C" };
 
   const QLocale locale = QLocale::c();
 
   for (int i = 0; i < 6; ++i) {
-    xml.writeAttribute(
-        QLatin1String(keys[i]),
-        locale.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
+		xml.writeAttribute(QLatin1String(keys[i]), locale.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
   }
 
   xml.writeTextElement("IPOC", QString::number(tx.ipoc));
-
   xml.writeEndElement();
 
   return out;
@@ -39,8 +34,7 @@ QByteArray RsiProtocol::encode(const RsiTxFrame& tx)
 
 namespace {
 
-std::optional<std::array<double, 6>> readSix(
-    const QXmlStreamAttributes& attributes, const std::array<const char*, 6>& keys)
+std::optional<std::array<double, 6>> readSix(const QXmlStreamAttributes& attributes, const std::array<const char*, 6>& keys)
 {
   std::array<double, 6> values{};
   for (std::size_t i = 0; i < keys.size(); ++i) {

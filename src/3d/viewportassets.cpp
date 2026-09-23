@@ -9,6 +9,15 @@
 
 namespace RoboCrap3D {
 
+namespace {
+
+void setResource(const QDir& resources, const char* variable, const QString& directory)
+{
+  qputenv(variable, resources.filePath(directory).toUtf8());
+}
+
+} // namespace
+
 ViewportAssets ViewportAssets::applicationAssets()
 {
   const QDir executable(QCoreApplication::applicationDirPath());
@@ -29,17 +38,14 @@ bool ViewportAssets::initializeOcct(QString& error) const
     return false;
   }
 
-  const auto setResource = [&resources](const char* variable, const QString& directory) {
-    qputenv(variable, resources.filePath(directory).toUtf8());
-  };
-  setResource("CSF_ShadersDirectory", QStringLiteral("Shaders"));
-  setResource("CSF_MDTVTexturesDirectory", QStringLiteral("Textures"));
-  setResource("CSF_SHMessage", QStringLiteral("SHMessage"));
-  setResource("CSF_XSMessage", QStringLiteral("XSMessage"));
-  setResource("CSF_STEPDefaults", QStringLiteral("XSTEPResource"));
-  setResource("CSF_PluginDefaults", QStringLiteral("StdResource"));
-  setResource("CSF_StandardDefaults", QStringLiteral("StdResource"));
-  setResource("CSF_XCAFDefaults", QStringLiteral("StdResource"));
+  setResource(resources, "CSF_ShadersDirectory", QStringLiteral("Shaders"));
+  setResource(resources, "CSF_MDTVTexturesDirectory", QStringLiteral("Textures"));
+  setResource(resources, "CSF_SHMessage", QStringLiteral("SHMessage"));
+  setResource(resources, "CSF_XSMessage", QStringLiteral("XSMessage"));
+  setResource(resources, "CSF_STEPDefaults", QStringLiteral("XSTEPResource"));
+  setResource(resources, "CSF_PluginDefaults", QStringLiteral("StdResource"));
+  setResource(resources, "CSF_StandardDefaults", QStringLiteral("StdResource"));
+  setResource(resources, "CSF_XCAFDefaults", QStringLiteral("StdResource"));
   try {
     Font_FontMgr::GetInstance()->InitFontDataBase();
     return true;

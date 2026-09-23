@@ -2,7 +2,7 @@
 
 #include "scenemodel.h"
 
-// Distinct type for the application-owned singleton; SceneModel also serves tests.
+// Distinct type for the application-owned singleton.
 class ApplicationScene final : public SceneModel
 {
   Q_OBJECT

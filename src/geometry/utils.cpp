@@ -4,6 +4,15 @@
 #include <QFile>
 #include <QJsonDocument>
 
+namespace {
+
+double zeroSmallComponent(double value)
+{
+  return std::abs(value) <= GeomConst::Eps ? 0.0 : value;
+}
+
+} // namespace
+
 std::optional<V3d> jsonValueToPoint(const QJsonValue &value)
 {
   if (!value.isArray()) return std::nullopt;
@@ -101,7 +110,7 @@ M4d makeRotation(const double angleDeg, const Axis axis)
     }
   }
 
-  R = R.unaryExpr([](double v) { return std::abs(v) <= GeomConst::Eps ? 0.0 : v; });
+  R = R.unaryExpr(&zeroSmallComponent);
 
   return R;
 }
@@ -209,7 +218,7 @@ M3d euler2rot(const double A, const double B, const double C)
 
   M3d R = (rotZ * rotY * rotX).toRotationMatrix();
 
-  R = R.unaryExpr([](double v) { return std::abs(v) <= GeomConst::Eps ? 0.0 : v; });
+  R = R.unaryExpr(&zeroSmallComponent);
 
   return R;
 }

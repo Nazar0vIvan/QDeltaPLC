@@ -16,13 +16,17 @@ QQmlListProperty<SceneObject> SceneModel::objects()
 {
   Q_ASSERT(QThread::currentThread() == thread());
   // No append/clear/replace callbacks: QML cannot take over collection ownership.
-  return {this, this,
-          [](QQmlListProperty<SceneObject>* list) -> qsizetype {
-            return static_cast<SceneModel*>(list->data)->m_objects.size();
-          },
-          [](QQmlListProperty<SceneObject>* list, qsizetype index) -> SceneObject* {
-            return static_cast<SceneModel*>(list->data)->m_objects.value(index);
-          }};
+  return {this, this, &SceneModel::objectCount, &SceneModel::objectAt};
+}
+
+qsizetype SceneModel::objectCount(QQmlListProperty<SceneObject>* list)
+{
+  return static_cast<SceneModel*>(list->data)->m_objects.size();
+}
+
+SceneObject* SceneModel::objectAt(QQmlListProperty<SceneObject>* list, qsizetype index)
+{
+  return static_cast<SceneModel*>(list->data)->m_objects.value(index);
 }
 
 SceneObject* SceneModel::findObject(const QString& objectId) const

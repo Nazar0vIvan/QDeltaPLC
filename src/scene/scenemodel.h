@@ -35,6 +35,8 @@ signals:
   void objectsChanged();
 
 private:
+  static qsizetype objectCount(QQmlListProperty<SceneObject>* list);
+  static SceneObject* objectAt(QQmlListProperty<SceneObject>* list, qsizetype index);
   void appendObject(SceneObject* object);
   SceneObject* createPlane(const QUrl& sourceUrl, const QString& name,
                            const std::array<double, 4>& coefficients,

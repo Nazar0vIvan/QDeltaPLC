@@ -1,5 +1,7 @@
 #include "network/rsi/rsidevice.h"
 
+#include <functional>
+
 #include "geometry/cylinder.h"
 #include "geometry/plane.h"
 #include "geometry/pose.h"
@@ -260,7 +262,7 @@ void RsiDevice::onReadyRead()
 
     const auto reply = RsiProtocol::replyForDatagram(
         dg.data(), m_pa, m_pp, dg.senderAddress(), dg.senderPort(),
-        [this](quint64 ipoc) { return makeTxFrame(ipoc); });
+        std::bind(&RsiDevice::makeTxFrame, this, std::placeholders::_1));
     if (!reply) continue;
 
     m_sock->writeDatagram(*reply, m_pa, m_pp);

@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <functional>
 #include <optional>
 
 namespace RoboCrap3D {
@@ -176,7 +177,7 @@ OccViewport::OccViewport(Aspect_Handle handle, const RobotPreviewState& state,
 {
   m_timer.setSingleShot(true);
   m_timer.setInterval(0);
-  QObject::connect(&m_timer, &QTimer::timeout, &m_timer, [this]() { flushRender(); });
+  QObject::connect(&m_timer, &QTimer::timeout, &m_timer, std::bind(&OccViewport::flushRender, this));
   if (!m_viewer.isValid()) return;
   m_scene.displayInfrastructure();
   if (!m_robot.load(state.model(), shapes) || !m_robot.applyTransforms(state.pose().transforms)) return;

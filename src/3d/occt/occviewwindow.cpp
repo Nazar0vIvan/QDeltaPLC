@@ -19,9 +19,12 @@ namespace RoboCrap3D {
 OccViewWindow::OccViewWindow()
 {
   setSurfaceType(QSurface::OpenGLSurface);
-  QObject::connect(this, &QWindow::screenChanged, this, [this]() {
-    if (m_viewport) m_viewport->resize();
-  });
+  QObject::connect(this, &QWindow::screenChanged, this, &OccViewWindow::resizeViewport);
+}
+
+void OccViewWindow::resizeViewport()
+{
+  if (m_viewport) m_viewport->resize();
 }
 
 OccViewWindow::~OccViewWindow()

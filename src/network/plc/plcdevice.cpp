@@ -2,6 +2,15 @@
 
 #include <QTcpSocket>
 
+namespace {
+
+bool matchesResponseField(const QVariantMap& data, const char* key, uint expected)
+{
+  return data.contains(key) && data.value(key).toUInt() == expected;
+}
+
+} // namespace
+
 PlcDevice::PlcDevice(const QString& name, QObject* parent) : AbstractDevice(name, parent) {}
 
 void PlcDevice::startDevice()
@@ -174,26 +183,23 @@ bool PlcDevice::matchResponse(const QVariantMap& data)
 
   // Error replies contain only command/error/code, so no endpoint fields can be matched.
   if (data.value("type").toUInt() == PlcMessageManager::RESP_OK) {
-    auto same = [&](const char* key, uint expected) {
-      return data.contains(key) && data.value(key).toUInt() == expected;
-    };
     switch (cmd) {
       case PlcMessageManager::READ_IO:
       case PlcMessageManager::WRITE_IO:
-        if (!same("dev", cmd == PlcMessageManager::WRITE_IO
+        if (!matchesResponseField(data, "dev", cmd == PlcMessageManager::WRITE_IO
                              ? uint(PlcMessageManager::Y) : request.value("dev").toUInt())
-            || !same("module", request.value("module").toUInt())) return false;
+            || !matchesResponseField(data, "module", request.value("module").toUInt())) return false;
         break;
       case PlcMessageManager::READ_REG:
       case PlcMessageManager::WRITE_REG:
-        if (!same("dev", PlcMessageManager::D)
-            || !same("addr", request.value("addr").toUInt())) return false;
+        if (!matchesResponseField(data, "dev", PlcMessageManager::D)
+            || !matchesResponseField(data, "addr", request.value("addr").toUInt())) return false;
         if (cmd == PlcMessageManager::WRITE_REG
-            && !same("value", request.value("value").toUInt())) return false;
+            && !matchesResponseField(data, "value", request.value("value").toUInt())) return false;
         break;
       case PlcMessageManager::SET_VAR:
-        if (!same("var", request.value("var").toUInt())
-            || !same("attr", request.value("attr").toUInt())) return false;
+        if (!matchesResponseField(data, "var", request.value("var").toUInt())
+            || !matchesResponseField(data, "attr", request.value("attr").toUInt())) return false;
         break;
       default: break;
     }

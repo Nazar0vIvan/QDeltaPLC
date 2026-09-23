@@ -31,6 +31,15 @@
 #include <QWindow>
 #include <QDebug>
 
+namespace {
+
+void logViewportMessage(const QString& text, bool error)
+{
+  Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
+}
+
+} // namespace
+
 int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
@@ -91,9 +100,8 @@ int main(int argc, char* argv[])
   viewportController.setApplicationScene(&scene);
   OccControllerQml::s_inst = &viewportController;
 
-	QObject::connect(&viewportController, &RoboCrap3D::OccController::message, Logger::instance(), [](const QString& text, bool error) {
-    Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
-  });
+  QObject::connect(&viewportController, &RoboCrap3D::OccController::message,
+                   Logger::instance(), &logViewportMessage);
 
   QQmlApplicationEngine engine;
 

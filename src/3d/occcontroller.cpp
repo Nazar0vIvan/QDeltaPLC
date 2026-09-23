@@ -14,6 +14,7 @@
 #include <Standard_Failure.hxx>
 
 #include <cmath>
+#include <functional>
 #include <optional>
 
 namespace RoboCrap3D {
@@ -97,10 +98,7 @@ void OccController::setApplicationScene(SceneModel* scene)
 
   if (m_applicationScene) {
     m_sceneCollectionConnection = QObject::connect(
-        m_applicationScene, &SceneModel::objectsChanged, this, [this]() {
-          connectApplicationObjects();
-          synchronizeApplicationScene();
-        });
+        m_applicationScene, &SceneModel::objectsChanged, this, &OccController::onApplicationObjectsChanged);
     connectApplicationObjects();
   }
   if (m_window) m_window->setApplicationScene(m_applicationScene);
@@ -146,13 +144,7 @@ void OccController::createWindow()
   QObject::connect(m_window, &OccViewWindow::applicationSelectionRequested,
                    this, &OccController::applicationSelectionRequested);
   QObject::connect(m_window, &OccViewWindow::errorOccurred, this, &OccController::setError);
-  QObject::connect(m_window, &QObject::destroyed, this, [this]() {
-    if (m_shuttingDown) return;
-    emit readyChanged();
-    // A host may destroy its child QWindow before QML's detach handler runs.
-    // QPointer prevents double deletion; the persistent robot state is retained.
-    QTimer::singleShot(0, this, [this]() { createWindow(); });
-  });
+  QObject::connect(m_window, &QObject::destroyed, this, &OccController::onViewWindowDestroyed);
   m_window->setApplicationScene(m_applicationScene);
   if (m_state && m_shapes) m_window->setScene(m_state, m_shapes);
   emit viewWindowChanged();
@@ -218,29 +210,49 @@ void OccController::loadRobot()
   emit readyChanged();
   const quint64 generation = ++m_generation;
   m_worker = std::make_unique<CadLoadWorker>(pending->model(), assets);
-  QObject::connect(m_worker.get(), &QThread::finished, this, [this, generation, pending]() {
-    if (m_shuttingDown || generation != m_generation) return;
-    m_worker->wait();
-    auto result = std::make_shared<CadLoadResult>(m_worker->takeResult());
-    m_worker.reset();
-    m_loading = false;
-    emit loadingChanged();
-    if (!result->error.isEmpty()) {
-      setError(result->error);
-      emit readyChanged();
-      return;
-    }
-    m_state = pending;
-    m_shapes = result;
-    m_warning = result->warning;
-    emit warningStringChanged();
-    if (!m_warning.isEmpty()) emit message(m_warning, false);
-    createWindow();
-    m_window->setScene(m_state, m_shapes);
-    emit poseChanged();
-    emit readyChanged();
-  }, Qt::QueuedConnection);
+  QObject::connect(m_worker.get(), &QThread::finished, this,
+                   std::bind(&OccController::finishRobotLoad, this, generation, pending),
+                   Qt::QueuedConnection);
   m_worker->start();
+}
+
+void OccController::onApplicationObjectsChanged()
+{
+  connectApplicationObjects();
+  synchronizeApplicationScene();
+}
+
+void OccController::onViewWindowDestroyed()
+{
+  if (m_shuttingDown) return;
+  emit readyChanged();
+  // A host may destroy its child QWindow before QML's detach handler runs.
+  // QPointer prevents double deletion; the persistent robot state is retained.
+  QTimer::singleShot(0, this, &OccController::createWindow);
+}
+
+void OccController::finishRobotLoad(quint64 generation, std::shared_ptr<RobotPreviewState> pending)
+{
+  if (m_shuttingDown || generation != m_generation) return;
+  m_worker->wait();
+  auto result = std::make_shared<CadLoadResult>(m_worker->takeResult());
+  m_worker.reset();
+  m_loading = false;
+  emit loadingChanged();
+  if (!result->error.isEmpty()) {
+    setError(result->error);
+    emit readyChanged();
+    return;
+  }
+  m_state = pending;
+  m_shapes = result;
+  m_warning = result->warning;
+  emit warningStringChanged();
+  if (!m_warning.isEmpty()) emit message(m_warning, false);
+  createWindow();
+  m_window->setScene(m_state, m_shapes);
+  emit poseChanged();
+  emit readyChanged();
 }
 
 bool OccController::applyPose(const RobotPose& pose)

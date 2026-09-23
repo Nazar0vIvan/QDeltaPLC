@@ -2,6 +2,8 @@
 
 #include "network/common/socketstateutils.h"
 
+#include <functional>
+
 #include <QMetaMethod>
 #include <QThread>
 
@@ -102,22 +104,28 @@ void AbstractDevice::attachSocket(QAbstractSocket* sock)
       sock,
       &QAbstractSocket::stateChanged,
       this,
-      [this](QAbstractSocket::SocketState state) {
-    emit socketStateReady(state);
-    emit logMessage({socketStateName(state), 2, objectName()});
-  });
+      &AbstractDevice::onSocketStateChanged);
 
   QObject::connect(
       sock,
       &QAbstractSocket::errorOccurred,
       this,
-      [this, sock](QAbstractSocket::SocketError error) {
-    emit logMessage({
-      QString("%1: %2").arg(socketErrorName(error), sock->errorString()),
-      0,
-      objectName()
-    });
-  });
+      std::bind(&AbstractDevice::logSocketError, this, sock, std::placeholders::_1));
 
   emit socketStateReady(sock->state());
+}
+
+void AbstractDevice::onSocketStateChanged(QAbstractSocket::SocketState state)
+{
+  emit socketStateReady(state);
+  emit logMessage({socketStateName(state), 2, objectName()});
+}
+
+void AbstractDevice::logSocketError(QAbstractSocket* socket, QAbstractSocket::SocketError error)
+{
+  emit logMessage({
+    QString("%1: %2").arg(socketErrorName(error), socket->errorString()),
+    0,
+    objectName()
+  });
 }

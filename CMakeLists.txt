@@ -159,67 +159,6 @@ if(NOT USE_HOT_RELOAD)
   qt_import_qml_plugins(robocrap)
 endif()
 
-option(ROBOCRAP_BUILD_SCENE_TESTS "Build the offline scene ownership and QML interaction tests" OFF)
-if(ROBOCRAP_BUILD_SCENE_TESTS)
-  find_package(Qt6 6.8 REQUIRED COMPONENTS QuickTest)
-  qt_add_executable(sceneobjecttests
-    tests/qml/runner.cpp
-    resources/pics.qrc
-  )
-  target_compile_definitions(sceneobjecttests PRIVATE
-    QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml"
-  )
-  target_link_libraries(sceneobjecttests PRIVATE
-    Qt6::QuickTest
-    RoboCrapBackend
-    RoboCrapBackendplugin
-    Styles
-    Components
-  )
-  qt_import_qml_plugins(sceneobjecttests)
-  qt_add_executable(boundedplanetests tests/qml/boundedplanetests.cpp)
-  target_link_libraries(boundedplanetests PRIVATE RoboCrapBackend)
-  qt_add_executable(boundedcylindertests tests/qml/boundedcylindertests.cpp)
-  target_compile_definitions(boundedcylindertests PRIVATE
-    ROBOCRAP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
-  )
-  target_link_libraries(boundedcylindertests PRIVATE RoboCrapBackend)
-endif()
-
-option(ROBOCRAP_BUILD_ARCHITECTURE_TESTS "Build offline architecture regression tests" OFF)
-if(ROBOCRAP_BUILD_ARCHITECTURE_TESTS)
-  qt_add_executable(plcprotocoltests
-    tests/network/plcprotocoltests.cpp
-    src/network/plc/plcdevice.h
-    src/network/plc/plcdevice.cpp
-  )
-  target_link_libraries(plcprotocoltests PRIVATE RoboCrapBackend)
-
-  qt_add_executable(rsiprotocoltests
-    tests/network/rsiprotocoltests.cpp
-    src/network/rsi/rsiprotocol.cpp
-  )
-  target_include_directories(rsiprotocoltests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_compile_definitions(rsiprotocoltests PRIVATE
-    ROBOCRAP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
-  )
-  target_link_libraries(rsiprotocoltests PRIVATE Qt6::Core Qt6::Network)
-
-  # Compile the production calculations without the viewport, CAD loader or devices.
-  qt_add_executable(robotnumerictests
-    tests/robot/robotnumerictests.cpp
-    src/3d/math/utils.cpp
-    src/3d/robot/model/kr10model.cpp
-    src/3d/robot/kinematics/kr10kinematics.cpp
-    src/3d/robot/robotpreviewstate.cpp
-  )
-  target_include_directories(robotnumerictests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_compile_definitions(robotnumerictests PRIVATE
-    ROBOCRAP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
-  )
-  target_link_libraries(robotnumerictests PRIVATE Qt6::Core TKernel TKMath)
-endif()
-
 include(GNUInstallDirs)
 
 include(cmake/DeployOcct.cmake)

@@ -64,6 +64,9 @@ signals:
 
 private:
   void createWindow();
+  void onApplicationObjectsChanged();
+  void onViewWindowDestroyed();
+  void finishRobotLoad(quint64 generation, std::shared_ptr<RobotPreviewState> pending);
   void connectApplicationObjects();
   void synchronizeApplicationScene();
   void setError(const QString& error);

@@ -47,6 +47,7 @@ protected:
 
 private:
   void initializeViewport();
+  void resizeViewport();
   QPoint nativePosition(const QPointF& position) const;
 
   std::shared_ptr<RobotPreviewState> m_state;

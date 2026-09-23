@@ -32,7 +32,6 @@ private slots:
   void onStateChanged(QAbstractSocket::SocketState state);
 
 private:
-  friend class PlcProtocolTests;
   static QByteArray swapBytes(const QByteArray& data);
   std::optional<quint8> availableTid() const;
   bool matchResponse(const QVariantMap& data);

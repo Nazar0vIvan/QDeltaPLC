@@ -31,12 +31,12 @@ private slots:
     void flush(); // 60 Hz
 
 private:
-    QXYSeries* m_series = nullptr;   // GUI thread only
-    QVector<QPointF> m_buffer;                 // guarded by m_mx
-    QVector<QPointF> m_data;                   // GUI thread
-    QMutex m_mx;
-    QTimer m_flush;
-    int    m_maxPoints = -1;                 // sliding window size
+	QXYSeries* m_series = nullptr;   // GUI thread only
+	QVector<QPointF> m_buffer;                 // guarded by m_mx
+	QVector<QPointF> m_data;                   // GUI thread
+	QMutex m_mx;
+	QTimer m_flush;
+	int    m_maxPoints = -1;                 // sliding window size
 };
 
 #endif // QMLCHARTBRIDGE_H

@@ -36,6 +36,8 @@ protected:
 
 private:
   void buildApi();
+  void onSocketStateChanged(QAbstractSocket::SocketState state);
+  void logSocketError(QAbstractSocket* socket, QAbstractSocket::SocketError error);
 
   QHash<QString, QMetaMethod> m_api;
   bool m_apiReady = false;

@@ -2,6 +2,9 @@
 
 ## Scope and workflow
 
+- Do not use C++ lambdas; use descriptively named helper functions or member methods.
+- No project test logic is needed; do not add tests, test harnesses, or test build targets.
+
 - Read the files you will change and inspect affected callers before changing behavior or an API.
   For a changed QML component or component use, inspect its definition and custom base types;
   verify properties, signals, default content, and sizing instead of inferring them from examples.
@@ -169,11 +172,6 @@ cmake --build "$buildDir" --target Components_qmllint
   changes. For QML changes, run the owning *_qmllint target: Components_qmllint, Styles_qmllint, or
   robocrap_qmllint (hot reload OFF for application QML). Verify targets in the selected build;
   use all_qmllint for multiple modules. Build for QML registration/resource changes too.
-- ROBOCRAP_BUILD_SCENE_TESTS=ON optionally builds boundedplanetests, boundedcylindertests,
-  and the offline sceneobjecttests Qt Quick Test runner;
-  see tests/qml/README.md. It is not registered with CTest. Do not count vendored Eigen tests,
-  old_imp/Test, or a zero-test CTest run as application coverage. For behavior
-  changes, run a focused offline regression check where feasible; report gaps when no harness exists.
 - For UI changes, check affected states, resizing, and binding/import warnings in a disconnected
   runtime when available. Build/lint success does not establish visual or hardware correctness.
   Documentation-only changes need content/diff checks.
