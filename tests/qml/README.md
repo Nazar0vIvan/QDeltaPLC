@@ -5,6 +5,13 @@ They exercise shared object identity, collection updates, rename/visibility noti
 selection, invalid imports, ID collisions, repeated imports, and the sample JSON through
 PlaneImporter. The runner does not create hardware devices or an OCCT viewport.
 
+The same runner discovers `tst_MainMenuBar.qml`. It instantiates the source menu
+without Main.qml, verifies that Quit emits `quitRequested` without terminating the
+runner, and checks that Cut, Copy, Paste and About actions and their menu items are
+disabled. Main.qml connects the request to Qt.quit(). No additional target or resource
+is needed; the existing runner already embeds the menu logo and links Styles.
+This regression was added without build or runtime verification in step 2.
+
 Build verification must be explicitly requested under AGENTS.md. With that authorization,
 select a valid matching Qt/MinGW build as described there, then enable the optional runner:
 

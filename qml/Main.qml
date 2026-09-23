@@ -126,6 +126,7 @@ ApplicationWindow {
 
   menuBar: MainMenuBar {
     id: mainMenuBar
+    onQuitRequested: Qt.quit()
   }
 
   footer: ToolBar {

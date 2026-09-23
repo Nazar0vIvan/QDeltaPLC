@@ -5,7 +5,8 @@
 
 #include <QByteArray>
 #include <QHostAddress>
-#include <QSet>
+#include <QHash>
+#include <optional>
 
 class QTcpSocket;
 
@@ -31,7 +32,11 @@ private slots:
   void onStateChanged(QAbstractSocket::SocketState state);
 
 private:
+  friend class PlcProtocolTests;
   static QByteArray swapBytes(const QByteArray& data);
+  std::optional<quint8> availableTid() const;
+  bool matchResponse(const QVariantMap& data);
+  void processIncoming(const QByteArray& bytes);
 
   void publishData(const QVariantMap& data);
 
@@ -42,6 +47,6 @@ private:
   quint16 m_pp = 0;
 
   QByteArray m_rx;
-  QSet<quint8> m_pend;
+  QHash<quint8, QVariantMap> m_pend;
   quint8 m_nextTid = 1;
 };

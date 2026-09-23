@@ -8,10 +8,8 @@
 #include "pathgeneration/rsi/rsipath.h"
 
 #include <QNetworkDatagram>
-#include <QLocale>
 #include <QTimer>
 #include <QUdpSocket>
-#include <QXmlStreamWriter>
 
 #include <iostream>
 #include <utility>
@@ -107,7 +105,7 @@ void RsiDevice::connect(const QVariantMap& config)
   if (m_sock->state() != QAbstractSocket::UnconnectedState)
     disconnect();
 
-  m_firstRead = true;
+  m_pp = 0;
 
   if (!m_sock->bind(m_la, m_lp)) {
     emit logMessage({
@@ -135,7 +133,6 @@ void RsiDevice::disconnect()
 
   m_sock->close();
 
-  m_firstRead = true;
   m_pp = 0;
 
   emit logMessage({
@@ -261,13 +258,12 @@ void RsiDevice::onReadyRead()
   while (m_sock && m_sock->hasPendingDatagrams()) {
     const QNetworkDatagram dg = m_sock->receiveDatagram();
 
-    if (m_firstRead) handleFirstRead(dg);
+    const auto reply = RsiProtocol::replyForDatagram(
+        dg.data(), m_pa, m_pp, dg.senderAddress(), dg.senderPort(),
+        [this](quint64 ipoc) { return makeTxFrame(ipoc); });
+    if (!reply) continue;
 
-    const RsiResponse resp = parseRsiResponse(dg.data());
-    const RsiTxFrame tx = makeTxFrame(resp.ipoc);
-    const QByteArray reply = subsXml(tx);
-
-    m_sock->writeDatagram(reply, m_pa, m_pp);
+    m_sock->writeDatagram(*reply, m_pa, m_pp);
   }
 }
 
@@ -313,13 +309,6 @@ void RsiDevice::finishMotion(bool cooldown)
   setMotionState(MotionState::Idle);
 }
 
-void RsiDevice::handleFirstRead(const QNetworkDatagram& dg)
-{
-  m_pa = dg.senderAddress();
-  m_pp = dg.senderPort();
-  m_firstRead = false;
-}
-
 std::array<double, 6> RsiDevice::tickMotion(bool& stop)
 {
   stop = false;
@@ -363,79 +352,4 @@ RsiTxFrame RsiDevice::makeTxFrame(quint64 ipoc)
   tx.corr = tickMotion(tx.shouldStop);
 
   return tx;
-}
-
-QByteArray RsiDevice::subsXml(const RsiTxFrame& tx)
-{
-  QByteArray out;
-  out.reserve(256);
-
-  QXmlStreamWriter xml(&out);
-  xml.setAutoFormatting(false);
-
-  xml.writeStartElement("Sen");
-  xml.writeAttribute("Type", "ImFree");
-
-  xml.writeEmptyElement("RKorr");
-
-  static const char* keys[6] = {
-    "X", "Y", "Z", "A", "B", "C"
-  };
-
-  const QLocale locale = QLocale::c();
-
-  for (int i = 0; i < 6; ++i) {
-    xml.writeAttribute(
-        QLatin1String(keys[i]),
-        locale.toString(tx.corr[static_cast<size_t>(i)], 'g', 10));
-  }
-
-  xml.writeTextElement("IPOC", QString::number(tx.ipoc));
-
-  xml.writeEndElement();
-
-  return out;
-}
-
-RsiDevice::RsiResponse RsiDevice::parseRsiResponse(const QByteArray& data)
-{
-  RsiResponse resp;
-  QXmlStreamReader xml(data);
-
-  if (!xml.readNextStartElement()) return resp;
-  if (xml.name() != QLatin1String("Rob")) return resp;
-
-  while (xml.readNextStartElement()) {
-    const auto name = xml.name();
-
-    if (name == QLatin1String("RIst")) {
-      resp.pose = readCartesian6(xml.attributes());
-      xml.skipCurrentElement();
-    } else if (name == QLatin1String("IPOC")) {
-      resp.ipoc = xml.readElementText().toULongLong();
-    } else {
-      xml.skipCurrentElement();
-    }
-  }
-
-  return resp;
-}
-
-QVector<double> RsiDevice::readCartesian6(const QXmlStreamAttributes& attrs)
-{
-  QVector<double> vals = {
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0
-  };
-
-  static const char* keys[6] = {
-    "X", "Y", "Z", "A", "B", "C"
-  };
-
-  for (int i = 0; i < 6; ++i) {
-    vals[i] =
-        attrs.value(QLatin1String(keys[i])).toString().toDouble();
-  }
-
-  return vals;
 }

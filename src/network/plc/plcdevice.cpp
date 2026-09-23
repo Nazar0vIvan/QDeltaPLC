@@ -83,6 +83,8 @@ void PlcDevice::connect(const QVariantMap& config)
 
 void PlcDevice::disconnect()
 {
+  m_rx.clear();
+  m_pend.clear();
   if (!m_sock) return;
 
   m_sock->disconnectFromHost();
@@ -99,7 +101,12 @@ void PlcDevice::writeMessage(const QVariantMap& msg)
     return;
   }
 
-  const quint8 tid = static_cast<quint8>(m_nextTid + 1);
+  const auto available = availableTid();
+  if (!available) {
+    emit logMessage({"All PLC transaction ids are pending", 0, objectName()});
+    return;
+  }
+  const quint8 tid = *available;
   const PlcMessageManager::ParseResult built =
       m_mgr->buildReq(msg, tid);
 
@@ -113,18 +120,23 @@ void PlcDevice::writeMessage(const QVariantMap& msg)
   }
 
   m_nextTid = tid;
-  m_pend.insert(tid);
+  m_pend.insert(tid, msg);
 
   const QByteArray data = built.data.toByteArray();
   const qint64 count = m_sock->write(swapBytes(data));
+  if (count != data.size()) {
+    m_pend.remove(tid);
+    // A partially queued frame cannot safely be followed by another request.
+    if (count > 0) m_sock->abort();
+  }
 
   emit logMessage({
-    count == -1
-        ? QStringLiteral("No bytes were written")
+    count != data.size()
+        ? QString("Incomplete PLC write: %1 of %2 bytes queued").arg(count).arg(data.size())
         : QString("TX: %1 (%2 bytes)")
             .arg(QString(data.toHex(' ').toUpper()))
             .arg(count),
-    count == -1 ? 0 : 4,
+    count != data.size() ? 0 : 4,
     objectName()
   });
 }
@@ -142,9 +154,62 @@ void PlcDevice::onConnected()
   });
 }
 
+std::optional<quint8> PlcDevice::availableTid() const
+{
+  for (int offset = 1; offset <= 256; ++offset) {
+    const auto tid = static_cast<quint8>(m_nextTid + offset);
+    if (!m_pend.contains(tid)) return tid;
+  }
+  return std::nullopt;
+}
+
+bool PlcDevice::matchResponse(const QVariantMap& data)
+{
+  const auto tid = static_cast<quint8>(data.value("tid").toUInt());
+  const auto pending = m_pend.constFind(tid);
+  if (pending == m_pend.cend()) return false;
+  const QVariantMap& request = *pending;
+  const uint cmd = request.value("cmd").toUInt();
+  if (data.value("cmd").toUInt() != cmd) return false;
+
+  // Error replies contain only command/error/code, so no endpoint fields can be matched.
+  if (data.value("type").toUInt() == PlcMessageManager::RESP_OK) {
+    auto same = [&](const char* key, uint expected) {
+      return data.contains(key) && data.value(key).toUInt() == expected;
+    };
+    switch (cmd) {
+      case PlcMessageManager::READ_IO:
+      case PlcMessageManager::WRITE_IO:
+        if (!same("dev", cmd == PlcMessageManager::WRITE_IO
+                             ? uint(PlcMessageManager::Y) : request.value("dev").toUInt())
+            || !same("module", request.value("module").toUInt())) return false;
+        break;
+      case PlcMessageManager::READ_REG:
+      case PlcMessageManager::WRITE_REG:
+        if (!same("dev", PlcMessageManager::D)
+            || !same("addr", request.value("addr").toUInt())) return false;
+        if (cmd == PlcMessageManager::WRITE_REG
+            && !same("value", request.value("value").toUInt())) return false;
+        break;
+      case PlcMessageManager::SET_VAR:
+        if (!same("var", request.value("var").toUInt())
+            || !same("attr", request.value("attr").toUInt())) return false;
+        break;
+      default: break;
+    }
+  }
+  m_pend.remove(tid);
+  return true;
+}
+
 void PlcDevice::onReadyRead()
 {
-  m_rx.append(m_sock->readAll());
+  processIncoming(m_sock->readAll());
+}
+
+void PlcDevice::processIncoming(const QByteArray& bytes)
+{
+  m_rx.append(bytes);
 
   while (m_rx.size() >= PlcMessageManager::RESP_SIZE) {
     const QByteArray frame = swapBytes(m_rx.left(PlcMessageManager::RESP_SIZE));
@@ -165,11 +230,9 @@ void PlcDevice::onReadyRead()
     const QVariantMap data = parsed.data.toMap();
 
     if (data.contains("tid")) {
-      const quint8 tid = static_cast<quint8>(data.value("tid").toUInt());
-
-      if (!m_pend.remove(tid)) {
+      if (!matchResponse(data)) {
         emit logMessage({
-          "Unexpected transaction id " + QString::number(tid),
+          "Unmatched PLC response for transaction " + data.value("tid").toString(),
           0,
           objectName()
         });

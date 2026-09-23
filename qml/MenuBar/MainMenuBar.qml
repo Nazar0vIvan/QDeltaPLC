@@ -7,6 +7,8 @@ import Styles 1.0
 MenuBar {
   id: root
 
+  signal quitRequested()
+
   leftPadding: Metrics.sp36
   spacing: 6
   padding: Metrics.sp4
@@ -65,7 +67,7 @@ MenuBar {
     Action {
       text: qsTr("Quit")
       shortcut: StandardKey.Quit
-      onTriggered: root.quit()
+      onTriggered: root.quitRequested()
     }
   }
 
@@ -76,19 +78,19 @@ MenuBar {
     Action {
       text: qsTr("Cut")
       shortcut: StandardKey.Cut
-      onTriggered: root.cut()
+      enabled: false
     }
 
     Action {
       text: qsTr("Copy")
       shortcut: StandardKey.Copy
-      onTriggered: root.copy()
+      enabled: false
     }
 
     Action {
       text: qsTr("Paste")
       shortcut: StandardKey.Paste
-      onTriggered: root.paste()
+      enabled: false
     }
   }
 
@@ -98,7 +100,7 @@ MenuBar {
 
     Action {
       text: qsTr("About ...")
-      onTriggered: root.about()
+      enabled: false
     }
   }
 }

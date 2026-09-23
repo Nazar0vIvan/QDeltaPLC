@@ -186,6 +186,40 @@ if(ROBOCRAP_BUILD_SCENE_TESTS)
   target_link_libraries(boundedcylindertests PRIVATE RoboCrapBackend)
 endif()
 
+option(ROBOCRAP_BUILD_ARCHITECTURE_TESTS "Build offline architecture regression tests" OFF)
+if(ROBOCRAP_BUILD_ARCHITECTURE_TESTS)
+  qt_add_executable(plcprotocoltests
+    tests/network/plcprotocoltests.cpp
+    src/network/plc/plcdevice.h
+    src/network/plc/plcdevice.cpp
+  )
+  target_link_libraries(plcprotocoltests PRIVATE RoboCrapBackend)
+
+  qt_add_executable(rsiprotocoltests
+    tests/network/rsiprotocoltests.cpp
+    src/network/rsi/rsiprotocol.cpp
+  )
+  target_include_directories(rsiprotocoltests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_compile_definitions(rsiprotocoltests PRIVATE
+    ROBOCRAP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+  target_link_libraries(rsiprotocoltests PRIVATE Qt6::Core Qt6::Network)
+
+  # Compile the production calculations without the viewport, CAD loader or devices.
+  qt_add_executable(robotnumerictests
+    tests/robot/robotnumerictests.cpp
+    src/3d/math/utils.cpp
+    src/3d/robot/model/kr10model.cpp
+    src/3d/robot/kinematics/kr10kinematics.cpp
+    src/3d/robot/robotpreviewstate.cpp
+  )
+  target_include_directories(robotnumerictests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_compile_definitions(robotnumerictests PRIVATE
+    ROBOCRAP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+  target_link_libraries(robotnumerictests PRIVATE Qt6::Core TKernel TKMath)
+endif()
+
 include(GNUInstallDirs)
 
 include(cmake/DeployOcct.cmake)

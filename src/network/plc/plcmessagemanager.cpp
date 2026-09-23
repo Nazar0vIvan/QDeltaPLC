@@ -277,7 +277,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       if (!isValidMod(module))
         return {QVariant(), BAD_MOD, module};
 
-      out["dev"] = DEV::Y;
+      out["dev"] = dev;
       out["module"] = module;
       out["state"] = byteToBits(state);
       break;
@@ -298,7 +298,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       if (!isValidDev(dev))
         return {QVariant(), BAD_DEV, dev};
 
-      out["dev"] = DEV::Y;
+      out["dev"] = dev;
       out["addr"] = addr;
       out["value"] = value;
       break;
@@ -320,6 +320,7 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       if (!isValidMod(module))
         return {QVariant(), BAD_MOD, module};
 
+      out["dev"] = dev;
       out["module"] = module;
       out["state"] = byteToBits(state);
       break;

@@ -85,6 +85,8 @@ target_sources(robocrap PRIVATE
 
   network/rsi/rsidevice.h
   network/rsi/rsidevice.cpp
+  network/rsi/rsiprotocol.h
+  network/rsi/rsiprotocol.cpp
 
   pathgeneration/blade/airfoil.h
   pathgeneration/blade/bladefrenet.h
