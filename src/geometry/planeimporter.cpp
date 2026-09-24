@@ -83,19 +83,23 @@ void PlaneImporter::fitSurface(const QString& path, std::shared_ptr<ImportResult
     if (surface == Surface::Plane) {
       auto plane = BoundedPlane::fromJsonFile(path);
       if (!plane) {
-        result->error = tr("Could not fit a plane from this file. Expected a JSON array of at least "
-                           "three finite [x, y, z] points with non-collinear XY coordinates. "
-                           "Projected bounds must have nonzero width and height. "
-                           "The current fitter does not support vertical planes.");
+        result->error = tr("Could not fit a plane from this file. Expected a JSON object with points, "
+                           "a finite nonnegative radius and dir equal to 1 or -1, or a legacy point array. "
+                           "Provide at least "
+                           "three finite, non-collinear [x, y, z] points. "
+                           "Projected bounds must have nonzero width and height.");
         return;
       }
       result->plane = std::make_shared<const BoundedPlane>(std::move(*plane));
     } else {
       auto cylinder = BoundedCylinder::fromJsonFile(path);
       if (!cylinder) {
-        result->error = tr("Could not fit a cylinder from this file. Expected a JSON array of at least "
+        result->error = tr("Could not fit a cylinder from this file. Expected a JSON object with points, "
+                           "a finite nonnegative radius and dir equal to 1 or -1, or a legacy point array. "
+                           "Provide at least "
                            "six finite [x, y, z] surface points spanning the curved side and axis. "
-                           "The fit must have a positive radius and length with a low radial error.");
+                           "The fit must have a positive radius and length with a low radial error. "
+                           "The probe-compensated cylinder radius must remain positive.");
         return;
       }
       result->cylinder = std::make_shared<const BoundedCylinder>(std::move(*cylinder));

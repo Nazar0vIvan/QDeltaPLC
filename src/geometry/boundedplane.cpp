@@ -72,10 +72,19 @@ std::optional<BoundedPlane> BoundedPlane::fromPoints(const std::vector<Point>& p
 
 std::optional<BoundedPlane> BoundedPlane::fromJsonFile(const QString& path)
 {
-  const auto samples = readJsonPoints(path);
+  const auto samples = readProbeSamples(path);
   if (!samples) return std::nullopt;
   std::vector<Point> points;
-  points.reserve(samples->size());
-  for (const auto& sample : *samples) points.push_back(coordinates(sample));
-  return fromPoints(points);
+  points.reserve(samples->points.size());
+  for (const auto& sample : samples->points) points.push_back(coordinates(sample));
+  auto plane = fromPoints(points);
+  if (!plane) return std::nullopt;
+  const double shift = samples->dir * samples->radius;
+  plane->coefficients[3] -= shift;
+  if (!std::isfinite(plane->coefficients[3])) return std::nullopt;
+  for (int i = 0; i < 3; ++i) {
+    plane->origin[i] += shift * plane->coefficients[i];
+    if (!std::isfinite(plane->origin[i])) return std::nullopt;
+  }
+  return plane;
 }

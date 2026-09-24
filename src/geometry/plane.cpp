@@ -1,66 +1,50 @@
 #include "plane.h"
 #include "utils.h"
 
+#include <Eigen/SVD>
+
 #include <cmath>
-
-namespace {
-
-bool hasValidInput(const VXdRef& x, const VXdRef& y, const VXdRef& z)
-{
-  return x.size() == y.size() &&
-         y.size() == z.size() &&
-         x.size() >= 3 &&
-         x.allFinite() &&
-         y.allFinite() &&
-         z.allFinite();
-}
-
-} // namespace
 
 std::optional<Plane> Plane::fromPoints(const QVector<V3d>& points, double eps)
 {
-  if (points.size() < 3) return std::nullopt;
+  if (points.size() < 3 || !std::isfinite(eps) || eps < 0.0) return std::nullopt;
 
-  VXd x(points.size());
-  VXd y(points.size());
-  VXd z(points.size());
+  Eigen::MatrixXd centered(points.size(), 3);
+  const V3d anchor = points.front();
 
   for (int i = 0; i < points.size(); ++i) {
     const V3d& point = points[i];
     if (!point.allFinite()) return std::nullopt;
 
-    x(i) = point.x();
-    y(i) = point.y();
-    z(i) = point.z();
+    centered.row(i) = (point - anchor).transpose();
   }
 
-  const double pointCount = static_cast<double>(points.size());
+  // Center relative to a sample to avoid summing large world-coordinate offsets.
+  const V3d meanOffset = centered.colwise().mean().transpose();
+  const V3d centroid = anchor + meanOffset;
+  centered.rowwise() -= meanOffset.transpose();
+  if (!centroid.allFinite() || !centered.allFinite()) return std::nullopt;
 
-  M3d lhs;
-  lhs << x.squaredNorm(), x.dot(y),        x.sum(),
-         x.dot(y),        y.squaredNorm(), y.sum(),
-         x.sum(),         y.sum(),         pointCount;
+  const Eigen::JacobiSVD<Eigen::MatrixXd, Eigen::ComputeFullV> svd(centered);
+  if (svd.info() != Eigen::Success) return std::nullopt;
 
-  const V3d rhs{x.dot(z), y.dot(z), z.sum()};
+  const V3d singularValues = svd.singularValues();
+  // Two independent directions determine a plane; its thickness may be zero.
+  if (!singularValues.allFinite() || singularValues.x() <= 0.0
+      || singularValues.y() <= eps * singularValues.x()) return std::nullopt;
 
-  auto qr = lhs.colPivHouseholderQr();
-  qr.setThreshold(eps);
-
-  if (qr.rank() < 3) return std::nullopt;
-
-  const V3d explicitCoeffs = qr.solve(rhs);
-
-  if (!explicitCoeffs.allFinite()) {
-    return std::nullopt;
+  V3d normal = svd.matrixV().col(2);
+  int dominantAxis = 0;
+  for (int axis = 1; axis < 3; ++axis) {
+    if (std::abs(normal[axis]) > std::abs(normal[dominantAxis])) dominantAxis = axis;
   }
+  if (normal[dominantAxis] < 0.0) normal = -normal;
 
-  const V3d normal = V3d{-explicitCoeffs.x(), -explicitCoeffs.y(), 1.0}.normalized();
-
-  const double d = -explicitCoeffs.z() * normal.z();
+  const double d = -normal.dot(centroid);
 
   const V4d coeffs{normal.x(), normal.y(), normal.z(), d};
 
-  if (!coeffs.allFinite() || std::abs(coeffs.z()) <= eps) {
+  if (!coeffs.allFinite()) {
     return std::nullopt;
   }
 
@@ -69,9 +53,14 @@ std::optional<Plane> Plane::fromPoints(const QVector<V3d>& points, double eps)
 
 std::optional<Plane> Plane::fromJsonFile(const QString &jsonFilePath, double eps)
 {
-  const auto points = readJsonPoints(jsonFilePath);
-  if (!points) return std::nullopt;
-  return Plane::fromPoints(*points, eps);
+  const auto samples = readProbeSamples(jsonFilePath);
+  if (!samples) return std::nullopt;
+  auto plane = Plane::fromPoints(samples->points, eps);
+  if (!plane) return std::nullopt;
+  // Translating by s*n changes n dot p + d = 0 to n dot p + d - s = 0.
+  plane->coeffs.w() -= samples->dir * samples->radius;
+  if (!plane->coeffs.allFinite()) return std::nullopt;
+  return plane;
 }
 
 V3d Plane::normal() const noexcept

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <QFile>
 #include <QJsonDocument>
+#include <QJsonObject>
 
 namespace {
 
@@ -50,6 +51,40 @@ std::optional<QVector<V3d>> readJsonPoints(const QString& path)
   const auto document = QJsonDocument::fromJson(file.readAll(), &error);
   if (error.error != QJsonParseError::NoError || !document.isArray()) return std::nullopt;
   return jsonArrayToPoints(document.array());
+}
+
+std::optional<ProbeSamples> readProbeSamples(const QString& path)
+{
+  QFile file(path);
+  if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) return std::nullopt;
+  QJsonParseError error;
+  const auto document = QJsonDocument::fromJson(file.readAll(), &error);
+  if (error.error != QJsonParseError::NoError) return std::nullopt;
+
+  ProbeSamples result;
+  QJsonArray array;
+  if (document.isArray()) {
+    array = document.array();
+  } else if (document.isObject()) {
+    const QJsonObject object = document.object();
+    const QJsonValue points = object.value(QStringLiteral("points"));
+    const QJsonValue radius = object.value(QStringLiteral("radius"));
+    const QJsonValue dir = object.value(QStringLiteral("dir"));
+    if (!points.isArray() || !radius.isDouble() || !dir.isDouble()) return std::nullopt;
+    result.radius = radius.toDouble();
+    const double direction = dir.toDouble();
+    if (!std::isfinite(result.radius) || result.radius < 0.0
+        || (direction != 1.0 && direction != -1.0)) return std::nullopt;
+    result.dir = static_cast<int>(direction);
+    array = points.toArray();
+  } else {
+    return std::nullopt;
+  }
+
+  const auto points = jsonArrayToPoints(array);
+  if (!points) return std::nullopt;
+  result.points = *points;
+  return result;
 }
 
 bool nearlyEqual(double lhs, double rhs, double eps)

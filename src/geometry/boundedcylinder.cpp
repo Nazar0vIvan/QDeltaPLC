@@ -223,10 +223,15 @@ std::optional<BoundedCylinder> BoundedCylinder::fromPoints(const std::vector<Poi
 
 std::optional<BoundedCylinder> BoundedCylinder::fromJsonFile(const QString& path)
 {
-  const auto samples = readJsonPoints(path);
+  const auto samples = readProbeSamples(path);
   if (!samples) return std::nullopt;
   std::vector<Point> points;
-  points.reserve(samples->size());
-  for (const V3d& sample : *samples) points.push_back(coordinates(sample));
-  return fromPoints(points);
+  points.reserve(samples->points.size());
+  for (const V3d& sample : samples->points) points.push_back(coordinates(sample));
+  auto cylinder = fromPoints(points);
+  if (!cylinder) return std::nullopt;
+  cylinder->radius += samples->dir * samples->radius;
+  if (!std::isfinite(cylinder->radius) || cylinder->radius <= GeomConst::Eps)
+    return std::nullopt;
+  return cylinder;
 }

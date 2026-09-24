@@ -11,6 +11,15 @@ std::optional<V3d> jsonValueToPoint(const QJsonValue& value);
 std::optional<QVector<V3d>> jsonArrayToPoints(const QJsonArray& array);
 std::optional<QVector<V3d>> readJsonPoints(const QString& path);
 
+struct ProbeSamples {
+  QVector<V3d> points;
+  double radius = 0.0;
+  int dir = 1;
+};
+
+// Legacy arrays have zero compensation; objects require points, radius and dir.
+std::optional<ProbeSamples> readProbeSamples(const QString& path);
+
 bool nearlyEqual(double lhs, double rhs, double eps = GeomConst::Eps);
 std::optional<V3d> normalize(const V3d& v, double eps = GeomConst::Eps);
 V3d axisVec(const Axis axis, double value);

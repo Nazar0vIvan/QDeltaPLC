@@ -105,6 +105,12 @@ and src/main.cpp.
   OccController forwards them to each viewport; CAD picks return stable application IDs to QML.
   Point and normal overlays use original samples, are bounded display-only OCCT parts, and do
   not participate in picking. Parent visibility controls overlays.
+  Surface JSON imports accept {"points": [[x,y,z], ...], "radius": r, "dir": s} for
+  probe-ball compensation after fitting. Radius is finite and nonnegative in point units;
+  dir is exactly +1 or -1. Planes shift by dir*radius along their canonical unit normal
+  (both coefficients and bounded origin); cylinders add dir*radius to their fitted radius,
+  which must remain positive. Original samples and pre-compensation fit residuals are retained.
+  Legacy point arrays remain supported without compensation; fromPoints APIs fit raw points.
 
 - Reuse compatible controls from qml/Modules/Components and values from the Styles module's
   Colors, Fonts, and Metrics singletons.

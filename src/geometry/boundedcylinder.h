@@ -15,8 +15,9 @@ struct BoundedCylinder
   Point axis{};   // Unit direction; dominant component is positive.
   double radius = 0.0;
   double length = 0.0;
-  double rmsResidual = 0.0;
+  double rmsResidual = 0.0; // Fit error of the original centers before compensation.
 
   static std::optional<BoundedCylinder> fromPoints(const std::vector<Point>& points);
+  // Applies JSON probe compensation to radius only, preserving samples and axis.
   static std::optional<BoundedCylinder> fromJsonFile(const QString& path);
 };
