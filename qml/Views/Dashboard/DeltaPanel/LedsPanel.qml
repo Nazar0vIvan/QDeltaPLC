@@ -34,11 +34,12 @@ QxPanel {
         required property color ledColor
 
         labelText: field.label
+        labelColor: root.enabled ? Colors.foreground.high : Colors.foreground.disabled
 
         QxLed {
           diameter: Metrics.sz36
-          ledColor: field.ledColor
-          isOn: !!root.ledStates[field.index]
+          ledColor: root.enabled ? field.ledColor : Colors.foreground.disabled
+          isOn: root.enabled && !!root.ledStates[field.index]
         }
       }
     }

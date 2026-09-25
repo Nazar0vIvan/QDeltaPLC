@@ -10,12 +10,13 @@ Item {
   property alias labelText: label.text
   property alias tag: tag.text
   property int ledSize: Metrics.sz12
+  property bool plugged: false
   property bool isOn: false
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
 
-  opacity: enabled ? 1.0 : 0.5
+  enabled: root.plugged
 
   RowLayout {
     id: rl
@@ -25,7 +26,7 @@ Item {
     Text {
       id: label
 
-      color: Colors.foreground.high
+      color: root.enabled ? Colors.foreground.high : Colors.foreground.disabled
       font: Fonts.body
     }
     QxLed {
@@ -33,13 +34,14 @@ Item {
 
       Layout.alignment: Qt.AlignVCenter
       diameter: root.ledSize
-      ledColor: Colors.minColor
-      isOn: root.enabled && root.isOn
+      ledColor: !root.enabled ? Colors.foreground.disabled
+                : root.isOn ? Colors.minColor : Colors.maxColor
+      isOn: root.enabled
     }
     Text {
       id: tag
 
-      color: Colors.foreground.high
+      color: root.enabled ? Colors.foreground.high : Colors.foreground.disabled
       font: Fonts.body
     }
   }

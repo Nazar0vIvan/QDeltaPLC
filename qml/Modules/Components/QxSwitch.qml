@@ -11,6 +11,7 @@ Switch {
   implicitHeight: implicitIndicatorHeight
 
   property bool displayOnly: false
+  property bool available: true
   property alias displayonly: root.displayOnly
   property alias imageSource: image.source
   property bool isOn: false
@@ -32,16 +33,17 @@ Switch {
     implicitWidth: root.barWidth
     implicitHeight: root.barHeight
     radius: height / 2
-    color: root.isOn ? Colors.secondary.base : Colors.background.dp06
+    color: root.available && root.isOn ? Colors.secondary.base : Colors.background.dp06
 
     Rectangle {
       width: parent.height - 4 * Metrics.w1
       height: width
       radius: width / 2
       anchors.verticalCenter: parent.verticalCenter
-      x: root.isOn ? parent.width - width - Metrics.w1
+      x: !root.available ? (parent.width - width) / 2
+                   : root.isOn ? parent.width - width - Metrics.w1
                    : 2 * Metrics.w1
-      color: Colors.foreground.high
+      color: root.available ? Colors.foreground.high : Colors.foreground.disabled
       Behavior on x {
         NumberAnimation {
           duration: Metrics.animationFast
@@ -54,7 +56,7 @@ Switch {
         anchors.centerIn: parent
         width: parent.width - 6
         fillMode: Image.PreserveAspectFit
-        visible: root.displayOnly
+        visible: root.available && root.displayOnly
       }
     }
   }

@@ -48,6 +48,7 @@ Control {
     bottomPadding: Metrics.sp4
 
     text: root.title
+    opacity: root.enabled ? 1.0 : Colors.overlays.disabled
     textFormat: Text.RichText
     color: Colors.foreground.medium
     font: Fonts.body

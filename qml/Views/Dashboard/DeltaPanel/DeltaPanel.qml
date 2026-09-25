@@ -11,10 +11,13 @@ QxGroupBox {
 
   readonly property Backend.DeviceRunner plc: Backend.Hub.device("plc")
 
-  readonly property var x1: root.plc?.data.x1 ?? [false, false, false, false, false, false, false, false]
-  readonly property var y1: root.plc?.data.y1 ?? [false, false, false, false, false, false, false, false]
-  readonly property var x2: root.plc?.data.x2 ?? [false, false, false, false, false, false, false, false]
-  readonly property var y2: root.plc?.data.y2 ?? [false, false, false, false, false, false, false, false]
+  readonly property var inactiveStates: [false, false, false, false, false, false, false, false]
+  readonly property var x1: root.enabled ? (root.plc.data.x1 ?? root.inactiveStates) : root.inactiveStates
+  readonly property var y1: root.enabled ? (root.plc.data.y1 ?? root.inactiveStates) : root.inactiveStates
+  readonly property var x2: root.enabled ? (root.plc.data.x2 ?? root.inactiveStates) : root.inactiveStates
+  readonly property var y2: root.enabled ? (root.plc.data.y2 ?? root.inactiveStates) : root.inactiveStates
+
+  enabled: root.plc?.isConnected ?? false
 
   RowLayout {
     id: rl
@@ -28,7 +31,7 @@ QxGroupBox {
       title: "Door Panel"
 
       ledStates: [
-        root.plc.isConnected,
+        root.enabled,
         moduleAP_P.yStates[6],
         moduleAP_P.yStates[7],
         moduleAP_T.yStates[5],
@@ -43,7 +46,6 @@ QxGroupBox {
       plc: root.plc
 
       title: 'AS16AP11<font color="red">P</font>-A'
-      enabled: root.plc.isConnected
       xStates: root.x1
       yStates: root.y1
 
@@ -63,7 +65,6 @@ QxGroupBox {
       plc: root.plc
 
       title: 'AS16AP11<font color="#509dfd">T</font>-A'
-      enabled: root.plc.isConnected
       xStates: root.x2
       yStates: root.y2
 
@@ -74,15 +75,6 @@ QxGroupBox {
       xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
       yPlugged: [0, 0, 0, 0, 0, 1, 1, 1]
       moduleIndex: 2
-    }
-
-    KukaAutExt {
-      id: kukaAutExt
-
-      plc: root.plc
-
-      Layout.alignment: Qt.AlignTop
-      title: "KUKA AUT_EXT"
     }
   }
 }

@@ -8,6 +8,8 @@ MenuBar {
   id: root
 
   signal quitRequested()
+  signal plcPanelRequested()
+  signal settingsRequested()
 
   leftPadding: Metrics.sp36
   spacing: 6
@@ -91,6 +93,23 @@ MenuBar {
       text: qsTr("Paste")
       shortcut: StandardKey.Paste
       enabled: false
+    }
+
+    MenuSeparator { }
+
+    Action {
+      text: qsTr("Settings")
+      onTriggered: root.settingsRequested()
+    }
+  }
+
+  Menu {
+    title: qsTr("Tools")
+    popupType: Popup.Window
+
+    Action {
+      text: qsTr("PLC Panel")
+      onTriggered: root.plcPanelRequested()
     }
   }
 

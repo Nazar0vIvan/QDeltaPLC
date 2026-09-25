@@ -7,7 +7,6 @@ import Components 1.0
 Item {
   id: root
 
-
   property int switchWidth: Metrics.sz36
   property int switchHeight: Metrics.sz20
   property bool plugged: false
@@ -16,13 +15,12 @@ Item {
   property alias tag: tag.text
   property alias isOn: sw.isOn
 
-  signal clicked();
+  signal clicked()
 
   implicitWidth: rl.implicitWidth
   implicitHeight: rl.implicitHeight
 
-  enabled: plugged && !displayOnly
-  opacity: plugged ? 1.0 : 0.5
+  enabled: root.plugged
 
   RowLayout {
     id: rl
@@ -32,7 +30,7 @@ Item {
     Text {
       id: label
 
-      color: Colors.foreground.high
+      color: root.enabled ? Colors.foreground.high : Colors.foreground.disabled
       font: Fonts.body
     }
     QxSwitch {
@@ -41,7 +39,8 @@ Item {
       barWidth: root.switchWidth
       barHeight: root.switchHeight
       imageSource: "qrc:/pics/lock.svg"
-      enabled: root.enabled
+      enabled: root.plugged && !root.displayOnly
+      available: root.enabled
       displayOnly: root.displayOnly
 
       onClicked: root.clicked()
@@ -49,7 +48,7 @@ Item {
     Text {
       id: tag
 
-      color: Colors.foreground.high
+      color: root.enabled ? Colors.foreground.high : Colors.foreground.disabled
       font: Fonts.body
     }
   }

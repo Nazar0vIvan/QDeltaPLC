@@ -60,6 +60,7 @@ QxPanel {
 
       Text {
         text: root.xLabel
+        opacity: root.enabled ? 1.0 : Colors.overlays.disabled
         textFormat: Text.RichText
         font: Fonts.caption
         color: Colors.foreground.high
@@ -69,13 +70,15 @@ QxPanel {
         model: 8
 
         delegate: DeltaModuleInput {
+          id: input
+
           required property int index
 
-          enabled: root.xPlugged[index]
+          plugged: root.xPlugged[input.index]
           ledSize: Metrics.sz20
-          labelText: "X" + root.moduleIndex + "." + index
-          tag: root.xTags[index]
-          isOn: root.xStates[index]
+          labelText: "X" + root.moduleIndex + "." + input.index
+          tag: root.xTags[input.index]
+          isOn: root.xStates[input.index]
         }
       }
     }
@@ -85,6 +88,7 @@ QxPanel {
 
       Text {
         text: root.yLabel
+        opacity: root.enabled ? 1.0 : Colors.overlays.disabled
         textFormat: Text.RichText
         font: Fonts.caption
         color: Colors.foreground.high

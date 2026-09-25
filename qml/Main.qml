@@ -7,6 +7,8 @@ import RoboCrap.Backend 1.0 as Backend
 import RoboCrap.Viewport3D 1.0 as Viewport3D
 
 import "MenuBar"
+import "Views/Dashboard/DeltaPanel"
+import "Views/Network"
 import "Views/Viewport3D"
 import "Views/Workspace"
 
@@ -127,6 +129,58 @@ ApplicationWindow {
   menuBar: MainMenuBar {
     id: mainMenuBar
     onQuitRequested: Qt.quit()
+    onSettingsRequested: {
+      settingsWindow.show()
+      settingsWindow.raise()
+      settingsWindow.requestActivate()
+    }
+    onPlcPanelRequested: {
+      plcPanelWindow.show()
+      plcPanelWindow.raise()
+      plcPanelWindow.requestActivate()
+    }
+  }
+
+  Window {
+    id: plcPanelWindow
+
+    title: qsTr("PLC Panel")
+    transientParent: root
+    flags: Qt.Tool
+    color: Colors.background.dp00
+    width: minimumWidth
+    height: minimumHeight
+    minimumWidth: plcPanel.implicitWidth + 2 * Metrics.sp16
+    minimumHeight: plcPanel.implicitHeight + 2 * Metrics.sp16
+    maximumWidth: minimumWidth
+    maximumHeight: minimumHeight
+
+    DeltaPanel {
+      id: plcPanel
+
+      anchors.fill: parent
+      anchors.margins: Metrics.sp16
+      title: qsTr("PLC AS332T-A")
+    }
+  }
+
+  Window {
+    id: settingsWindow
+
+    title: qsTr("Settings")
+    transientParent: root
+    flags: Qt.Tool
+    color: Colors.background.dp00
+    width: Math.ceil(networkSettings.contentWidth)
+    height: Math.ceil(networkSettings.contentHeight)
+    minimumWidth: 640
+    minimumHeight: 360
+
+    Network {
+      id: networkSettings
+
+      anchors.fill: parent
+    }
   }
 
   footer: ToolBar {

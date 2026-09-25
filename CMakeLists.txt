@@ -83,7 +83,6 @@ set(QML_FILES
   qml/Views/Dashboard/DeltaPanel/LedsPanel.qml
   qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
   qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
-  qml/Views/Dashboard/DeltaPanel/KukaAutExt.qml
   qml/Views/Dashboard/FtsPanel/FtsPanel.qml
   qml/Views/Dashboard/FtsPanel/FtsBars.qml
   qml/Views/Dashboard/KukaPanel/KukaPanel.qml
