@@ -69,11 +69,11 @@ QxGroupBox {
       yStates: root.y2
 
       xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-      yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "LEDR1", "LEDR2", "LEDR3"]
+      yTags: ["RUN MOT", "N/D", "N/D", "N/D", "N/D", "LEDR1", "LEDR2", "LEDR3"]
       xLabel: 'IN / <font color="#509dfd">SINK</font>'
       yLabel: 'OUT / <font color="#509dfd">SINK</font>'
       xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
-      yPlugged: [0, 0, 0, 0, 0, 1, 1, 1]
+      yPlugged: [1, 0, 0, 0, 0, 1, 1, 1]
       moduleIndex: 2
     }
   }
