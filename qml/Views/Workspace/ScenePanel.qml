@@ -13,17 +13,17 @@ QxPanel {
   id: root
 
   required property Backend.SceneModel sceneModel
-  required property list<string> selectedObjectIds
+  required property list<real> selectedObjectIds
 
-  signal selectionRequested(string objectId, bool additive)
+  signal selectionRequested(double objectId, bool additive)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
   signal renameRequested(Backend.SceneObject object, string name)
 
   // Groups and expansion are browser state, not properties of scene objects.
   ListModel {
     id: groups
-    ListElement { name: qsTr("Rough Surfaces"); kind: "rough"; badge: "R"; expanded: true }
-    ListElement { name: qsTr("Precise Surfaces"); kind: "precise"; badge: "P"; expanded: true }
+    ListElement { name: qsTr("Rough Geometry"); kind: "rough"; badge: "R"; expanded: true }
+    ListElement { name: qsTr("Precise Geometry"); kind: "precise"; badge: "P"; expanded: true }
     ListElement { name: qsTr("Edges"); kind: "edges"; badge: ""; expanded: true }
     ListElement { name: qsTr("Scan Paths"); kind: "scanPaths"; badge: ""; expanded: true }
     ListElement { name: qsTr("Machining Paths"); kind: "machiningPaths"; badge: ""; expanded: true }
@@ -45,6 +45,7 @@ QxPanel {
   function objectIcon(kind: int): url {
     switch (kind) {
     case Backend.SceneObject.Plane: return "qrc:/pics/plane.svg"
+    case Backend.SceneObject.Circle: return "qrc:/pics/circ.svg"
     case Backend.SceneObject.Cylinder: return "qrc:/pics/cylinder.svg"
     case Backend.SceneObject.Cone: return "qrc:/pics/cone.svg"
     case Backend.SceneObject.Edge: return "qrc:/pics/edge.svg"

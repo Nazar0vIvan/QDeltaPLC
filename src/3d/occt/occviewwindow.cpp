@@ -5,6 +5,7 @@
 
 #include <QExposeEvent>
 #include <QMouseEvent>
+#include <QKeyEvent>
 #include <QPlatformSurfaceEvent>
 #include <QResizeEvent>
 #include <QWheelEvent>
@@ -32,14 +33,16 @@ OccViewWindow::~OccViewWindow()
   m_viewport.reset();
 }
 
-void OccViewWindow::setScene(std::shared_ptr<RobotPreviewState> state,
+void OccViewWindow::setScene(std::shared_ptr<const RobotPreviewState> state,
                              std::shared_ptr<const CadLoadResult> shapes)
 {
-  releaseSurface();
   m_state = std::move(state);
   m_shapes = std::move(shapes);
   m_initializationFailed = false;
-  if (isExposed()) initializeViewport();
+  if (m_viewport)
+    attachRobot();
+  else if (isExposed())
+    initializeViewport();
 }
 
 void OccViewWindow::setApplicationScene(SceneModel* scene)
@@ -53,7 +56,17 @@ void OccViewWindow::synchronizeApplicationScene()
   if (m_viewport) m_viewport->synchronizeApplicationScene(m_applicationScene);
 }
 
-void OccViewWindow::setSelectedObjects(const QStringList& ids)
+void OccViewWindow::removeSceneObject(quint32 objectId)
+{
+  if (m_viewport) m_viewport->removeSceneObject(objectId);
+}
+
+void OccViewWindow::synchronizeSceneObject(SceneObject* object)
+{
+  if (m_viewport) m_viewport->synchronizeSceneObject(object);
+}
+
+void OccViewWindow::setSelectedObjects(const QList<quint32>& ids)
 {
   if (m_viewport) m_viewport->setSelectedObjects(ids);
 }
@@ -68,7 +81,26 @@ bool OccViewWindow::applyPose(const RobotPose& pose)
   return isReady() && m_viewport->applyPose(pose);
 }
 
+void OccViewWindow::setEndEffectors(
+    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, SceneEndEffectors::Tool active)
+{
+  m_toolShapes = shapes;
+  m_activeTool = active;
+  attachEndEffectors();
+}
+
+void OccViewWindow::attachEndEffectors()
+{
+  if (m_viewport && !m_viewport->setEndEffectors(m_toolShapes, m_activeTool))
+    emit errorOccurred(QStringLiteral("Cannot update the end-effector presentation."));
+}
+
 bool OccViewWindow::isReady() const
+{
+  return m_viewport && m_viewport->isRobotReady();
+}
+
+bool OccViewWindow::isViewportReady() const
 {
   return m_viewport && m_viewport->isValid();
 }
@@ -76,8 +108,10 @@ bool OccViewWindow::isReady() const
 void OccViewWindow::releaseSurface()
 {
   const bool wasReady = isReady();
+  const bool wasViewportReady = isViewportReady();
   m_viewport.reset();
   if (wasReady) emit readyChanged();
+  if (wasViewportReady) emit viewportReadyChanged();
 }
 
 bool OccViewWindow::event(QEvent* event)
@@ -121,7 +155,7 @@ void OccViewWindow::resizeEvent(QResizeEvent*)
 
 void OccViewWindow::mousePressEvent(QMouseEvent* event)
 {
-  if (!isReady()) return;
+  if (!isViewportReady()) return;
   const auto picked = m_viewport->mousePress(nativePosition(event->position()), event->button());
   if (picked) emit applicationSelectionRequested(*picked,
                                                   (event->modifiers() & Qt::ControlModifier) != 0);
@@ -130,7 +164,7 @@ void OccViewWindow::mousePressEvent(QMouseEvent* event)
 
 void OccViewWindow::mouseMoveEvent(QMouseEvent* event)
 {
-  if (!isReady()) return;
+  if (!isViewportReady()) return;
   if (event->buttons() == Qt::NoButton) m_viewport->cancelGesture();
   m_viewport->mouseMove(nativePosition(event->position()));
   event->accept();
@@ -138,39 +172,67 @@ void OccViewWindow::mouseMoveEvent(QMouseEvent* event)
 
 void OccViewWindow::mouseReleaseEvent(QMouseEvent* event)
 {
-  if (!isReady()) return;
+  if (!isViewportReady()) return;
   m_viewport->mouseRelease(event->button());
   if (parent()) parent()->requestActivate();
   event->accept();
 }
 
+void OccViewWindow::keyPressEvent(QKeyEvent* event)
+{
+  if (event->key() == Qt::Key_Delete && event->modifiers() == Qt::NoModifier) {
+    if (!event->isAutoRepeat()) emit deleteSelectionRequested();
+    event->accept();
+    return;
+  }
+  QWindow::keyPressEvent(event);
+}
+
 void OccViewWindow::wheelEvent(QWheelEvent* event)
 {
-  if (!isReady()) return;
+  if (!isViewportReady()) return;
   m_viewport->wheel(nativePosition(event->position()), event->angleDelta().y());
   event->accept();
 }
 
 void OccViewWindow::initializeViewport()
 {
-  if (m_viewport || m_initializationFailed || !m_state || !m_shapes || !isExposed()) return;
+  if (m_viewport || m_initializationFailed || !isExposed()) return;
   try {
     auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()),
-                                                  *m_state, *m_shapes, m_applicationScene);
+                                                  m_applicationScene);
     if (!viewport->isValid()) {
       m_initializationFailed = true;
-      emit errorOccurred(QStringLiteral("Cannot create the OCCT robot presentation."));
+      emit errorOccurred(QStringLiteral("Cannot create the OCCT viewport."));
       return;
     }
     m_viewport = std::move(viewport);
     m_viewport->setExposed(true);
-    emit readyChanged();
   } catch (const Standard_Failure& failure) {
     releaseSurface();
     m_initializationFailed = true;
     emit errorOccurred(QStringLiteral("Cannot initialize the viewport: %1")
                            .arg(QString::fromUtf8(failure.what())));
+    return;
   }
+  // Robot failures must not enter the viewport teardown path above.
+  attachRobot();
+  emit viewportReadyChanged();
+}
+
+void OccViewWindow::attachRobot()
+{
+  if (!isViewportReady()) return;
+  const bool wasReady = isReady();
+  try {
+    if (!m_viewport->setRobot(m_state.get(), m_shapes.get()))
+      emit errorOccurred(QStringLiteral("Cannot create the OCCT robot presentation."));
+  } catch (const Standard_Failure& failure) {
+    emit errorOccurred(QStringLiteral("Cannot attach the robot presentation: %1")
+                           .arg(QString::fromUtf8(failure.what())));
+  }
+  attachEndEffectors();
+  if (wasReady != isReady()) emit readyChanged();
 }
 
 QPoint OccViewWindow::nativePosition(const QPointF& position) const

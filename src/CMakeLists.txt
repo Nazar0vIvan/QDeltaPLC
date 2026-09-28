@@ -1,93 +1,27 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(EIGEN5_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/libs/eigen-5.0.0)
 
-qt_add_qml_module(RoboCrapBackend
-  STATIC
-  URI RoboCrap.Backend
-  VERSION 1.0
-
-  DEPENDENCIES
-    QtQml
-
-  SOURCES
-    network/backendqmltypes.h
-
-    scene/applicationscene.h
-    scene/scenemodel.h
-    scene/scenemodel.cpp
-    scene/sceneobject.h
-    scene/sceneobject.cpp
-    scene/planegeometry.h
-    scene/cylindergeometry.h
-
-    geometry/planeimporter.h
-    geometry/boundedplane.h
-    geometry/boundedplane.cpp
-    geometry/boundedcylinder.h
-    geometry/boundedcylinder.cpp
-    geometry/planeimporter.cpp
-    geometry/plane.h
-    geometry/plane.cpp
-    geometry/mathtypes.h
-    geometry/utils.h
-    geometry/utils.cpp
-
-    network/abstractdevice.h
-    network/abstractdevice.cpp
-    network/devicerunner.h
-    network/devicerunner.cpp
-    network/devicehub.h
-    network/devicehub.cpp
-
-    network/common/socketstateutils.h
-    network/common/socketstateutils.cpp
-    network/common/deviceprofilemodel.h
-    network/common/deviceprofilemodel.cpp
-
-    network/plc/plcmessagemanager.h
-    network/plc/plcmessagemanager.cpp
-
-    logger.h
-    logger.cpp
-)
-
-target_include_directories(RoboCrapBackend PUBLIC
-  ${SRC_DIR}
-  ${SRC_DIR}/network
-  ${SRC_DIR}/network/common
-  ${SRC_DIR}/network/plc
-)
-
-target_link_libraries(RoboCrapBackend PUBLIC
-  Qt6::Core
-  Qt6::Qml
-  Qt6::Network
-)
-
-target_include_directories(RoboCrapBackend PRIVATE ${EIGEN5_INCLUDE_DIR})
-
-add_subdirectory(3d)
-set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
-
-target_sources(robocrap PRIVATE
+qt_add_library(RoboCrapGeometry STATIC
+  3d/robot/model/kr10kinematicmodel.h
+  3d/robot/kinematics/kr10kinematics.h
+  3d/robot/kinematics/kr10kinematics.cpp
+  geometry/boundedplane.h
+  geometry/boundedplane.cpp
+  geometry/boundedcylinder.h
+  geometry/boundedcylinder.cpp
+  geometry/circle.h
+  geometry/circle.cpp
+  geometry/surfaceintersection.h
+  geometry/surfaceintersection.cpp
+  geometry/plane.h
+  geometry/plane.cpp
+  geometry/mathtypes.h
+  geometry/utils.h
+  geometry/utils.cpp
   geometry/cylinder.h
   geometry/cylinder.cpp
-  geometry/mathtypes.h
   geometry/pose.h
   geometry/pose.cpp
-
-  network/fts/rdtmessage.h
-  network/fts/ftsdevice.h
-  network/fts/ftsdevice.cpp
-
-  network/plc/plcdevice.h
-  network/plc/plcdevice.cpp
-
-  network/rsi/rsidevice.h
-  network/rsi/rsidevice.cpp
-  network/rsi/rsiprotocol.h
-  network/rsi/rsiprotocol.cpp
-
   pathgeneration/blade/airfoil.h
   pathgeneration/blade/bladefrenet.h
   pathgeneration/blade/bladefrenet.cpp
@@ -98,25 +32,78 @@ target_sources(robocrap PRIVATE
   pathgeneration/rsi/offsetjsonwriter.cpp
   pathgeneration/rsi/rsipath.h
   pathgeneration/rsi/rsipath.cpp
+)
+target_include_directories(RoboCrapGeometry PUBLIC ${SRC_DIR} ${EIGEN5_INCLUDE_DIR})
+target_link_libraries(RoboCrapGeometry PUBLIC Qt6::Core)
 
+qt_add_library(RoboCrapScene STATIC
+  scene/sceneendeffectors.h
+  scene/sceneendeffectors.cpp
+  scene/scenemodel.h
+  scene/scenemodel.cpp
+  scene/sceneobject.h
+  scene/sceneobject.cpp
+  scene/scenegeometry.h
+  scene/scenesurfaceimporter.h
+  scene/scenesurfaceimporter.cpp
+)
+target_include_directories(RoboCrapScene PUBLIC ${SRC_DIR})
+target_link_libraries(RoboCrapScene PUBLIC RoboCrapGeometry Qt6::Qml)
+qt_extract_metatypes(RoboCrapScene)
+
+qt_add_library(RoboCrapDevices STATIC
+  network/abstractdevice.h
+  network/abstractdevice.cpp
+  network/devicerunner.h
+  network/devicerunner.cpp
+  network/devicehub.h
+  network/devicehub.cpp
+  network/common/socketstateutils.h
+  network/common/socketstateutils.cpp
+  network/common/socketconfigutils.h
+  network/common/deviceprofilemodel.h
+  network/common/deviceprofilemodel.cpp
+  network/plc/plcmessagemanager.h
+  network/plc/plcmessagemanager.cpp
+  network/fts/rdtmessage.h
+  network/fts/ftsdevice.h
+  network/fts/ftsdevice.cpp
+  network/plc/plcdevice.h
+  network/plc/plcdevice.cpp
+  network/rsi/rsidevice.h
+  network/rsi/rsidevice.cpp
+  network/rsi/rsiprotocol.h
+  network/rsi/rsiprotocol.cpp
+  network/common/loggermessage.h
+)
+target_include_directories(RoboCrapDevices PUBLIC ${SRC_DIR})
+target_link_libraries(RoboCrapDevices PUBLIC RoboCrapGeometry Qt6::Network Qt6::Qml)
+qt_extract_metatypes(RoboCrapDevices)
+
+qt_add_qml_module(RoboCrapBackend
+  STATIC
+  URI RoboCrap.Backend
+  VERSION 1.0
+  DEPENDENCIES QtQml
+  SOURCES backendqmltypes.h
+)
+
+# Foreign-type registration needs the original headers by their moc include names.
+target_include_directories(RoboCrapBackend PRIVATE
+  ${SRC_DIR}/scene
+  ${SRC_DIR}/network
+  ${SRC_DIR}/network/common
+  ${SRC_DIR}/network/plc
+)
+target_link_libraries(RoboCrapBackend PUBLIC RoboCrapScene RoboCrapDevices)
+
+add_subdirectory(3d)
+set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
+
+target_sources(robocrap PRIVATE
+  logger.h
+  logger.cpp
   qmlchartbridge.h
   qmlchartbridge.cpp
 )
-
-target_include_directories(robocrap PRIVATE
-  ${SRC_DIR}
-
-  ${SRC_DIR}/geometry
-
-  ${SRC_DIR}/network
-  ${SRC_DIR}/network/common
-  ${SRC_DIR}/network/fts
-  ${SRC_DIR}/network/plc
-  ${SRC_DIR}/network/rsi
-
-  ${SRC_DIR}/pathgeneration
-  ${SRC_DIR}/pathgeneration/blade
-  ${SRC_DIR}/pathgeneration/rsi
-
-  ${EIGEN5_INCLUDE_DIR}
-)
+target_include_directories(robocrap PRIVATE ${SRC_DIR})

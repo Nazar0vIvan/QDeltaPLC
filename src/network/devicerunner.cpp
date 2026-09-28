@@ -7,6 +7,8 @@
 DeviceRunner::DeviceRunner(AbstractDevice* dev, QObject* parent): QObject(parent),
   m_data(new QQmlPropertyMap(this)) {
   Q_ASSERT(dev);
+  // Empty until the device accepts a connection configuration on its I/O thread.
+  m_data->insert(QStringLiteral("connectionConfig"), QVariantMap{});
 
   QObject::connect(this, &DeviceRunner::startReq, dev, &AbstractDevice::start, Qt::QueuedConnection);
   QObject::connect(this, &DeviceRunner::stopReq, dev, &AbstractDevice::stop, Qt::QueuedConnection);

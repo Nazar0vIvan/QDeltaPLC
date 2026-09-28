@@ -1,5 +1,5 @@
 #include "occviewer.h"
-#include "3d/math/utils.h"
+#include "3d/occt/occpartprops.h"
 
 #include <QDebug>
 
@@ -16,6 +16,7 @@
 #include <OpenGl_GraphicDriver.hxx>
 
 #include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
 #include <Prs3d_TypeOfHighlight.hxx>
 
 #include <Quantity_Color.hxx>
@@ -96,7 +97,8 @@ void OccViewer::fitAll()
 {
   if (m_view.IsNull()) return;
 
-  m_view->FitAll();
+  // Render only after camera-dependent presentations have been updated.
+  m_view->FitAll(0.01, false);
   m_view->ZFitAll();
 }
 
@@ -190,7 +192,7 @@ void OccViewer::configureView()
   m_view->SetImmediateUpdate(false);
 
   m_view->SetBackgroundColor(
-    Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB)
+    Quantity_Color(165.0 / 255.0, 165.0 / 255.0, 165.0 / 255.0, Quantity_TOC_sRGB)
   );
 
   if (!m_view->Camera().IsNull()) {
@@ -224,12 +226,18 @@ void OccViewer::configureHighlightStyles()
     hoverStyle->SetZLayer(Graphic3d_ZLayerId_Top);
   }
 
-  Handle(Prs3d_Drawer) selectionStyle = m_context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected);
-
-  if (!selectionStyle.IsNull()) {
-    selectionStyle->SetColor(rgb(0, 128, 255));
+  const Quantity_Color amber(1.0, 176.0 / 255.0, 0.0, Quantity_TOC_sRGB);
+  const Quantity_Color outline(48.0 / 255.0, 48.0 / 255.0, 48.0 / 255.0, Quantity_TOC_sRGB);
+  // Tree selection highlights whole objects; viewport picking can select subshapes.
+  for (const auto type : {Prs3d_TypeOfHighlight_Selected, Prs3d_TypeOfHighlight_LocalSelected}) {
+    const Handle(Prs3d_Drawer) selectionStyle = m_context->HighlightStyle(type);
+    if (selectionStyle.IsNull()) continue;
+    selectionStyle->SetColor(amber);
     selectionStyle->SetDisplayMode(AIS_Shaded);
-    selectionStyle->SetFaceBoundaryDraw(false);
+    selectionStyle->SetFaceBoundaryDraw(true);
+    selectionStyle->SetFaceBoundaryAspect(new Prs3d_LineAspect(outline, Aspect_TOL_SOLID, 2.0));
+    selectionStyle->SetWireAspect(new Prs3d_LineAspect(amber, Aspect_TOL_SOLID, 4.0));
+    selectionStyle->SetLineAspect(new Prs3d_LineAspect(amber, Aspect_TOL_SOLID, 4.0));
     selectionStyle->SetZLayer(Graphic3d_ZLayerId_Top);
   }
 }

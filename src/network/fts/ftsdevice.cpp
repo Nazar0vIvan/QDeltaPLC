@@ -1,6 +1,7 @@
 // ftsdevice.cpp
 
 #include "network/fts/ftsdevice.h"
+#include "network/common/socketconfigutils.h"
 
 #include <QFile>
 #include <QJsonArray>
@@ -118,23 +119,19 @@ void FtsDevice::connect(const QVariantMap& config)
 		const QHostAddress localAddr(config.value("localAddress").toString());
 		const QHostAddress peerAddr(config.value("peerAddress").toString());
 
-		bool localPortOk = false;
-		bool peerPortOk = false;
-		const uint localPort = config.value("localPort").toUInt(&localPortOk);
-		const uint peerPort = config.value("peerPort").toUInt(&peerPortOk);
+		const auto localPort = parseSocketPort(config.value("localPort"));
+		const auto peerPort = parseSocketPort(config.value("peerPort"));
 
 		if (localAddr.isNull() || peerAddr.isNull()
-				|| !localPortOk || !peerPortOk
-				|| localPort == 0 || localPort > 65535
-				|| peerPort == 0 || peerPort > 65535) {
+				|| !localPort || !peerPort) {
 			emit logMessage({"Invalid socket configuration", 0, objectName()});
 			return;
 		}
 
 		m_la = localAddr;
-		m_lp = static_cast<quint16>(localPort);
+		m_lp = *localPort;
 		m_pa = peerAddr;
-		m_pp = static_cast<quint16>(peerPort);
+		m_pp = *peerPort;
 	}
 
 	if (m_la.isNull() || m_lp == 0 || m_pa.isNull() || m_pp == 0) {
@@ -143,6 +140,11 @@ void FtsDevice::connect(const QVariantMap& config)
 	}
 
 	if (m_sock->state() != QAbstractSocket::UnconnectedState) disconnect();
+
+	emit stateReady({{"connectionConfig", QVariantMap{
+		{"localAddress", m_la.toString()}, {"localPort", m_lp},
+		{"peerAddress", m_pa.toString()}, {"peerPort", m_pp}
+	}}});
 
 	if (!m_sock->bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
 		emit logMessage({

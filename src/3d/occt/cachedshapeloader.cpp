@@ -24,11 +24,15 @@ CachedShapeLoader::CachedShapeLoader(QString cadDirectory, QString cacheDirector
 
 CadImportResult CachedShapeLoader::loadStpWithCache(const QString& fileName) const
 {
-  // The robot manifest lists filenames, not paths outside its asset directory.
+  // Callers select a source directory; this argument is always its basename.
   if (fileName.isEmpty() || QFileInfo(fileName).fileName() != fileName
       || fileName.contains('/') || fileName.contains('\\')) {
-    return CadImportResult::failure(QStringLiteral("Invalid robot CAD filename: %1").arg(fileName));
+    return CadImportResult::failure(QStringLiteral("Invalid CAD filename: %1").arg(fileName));
   }
+
+  const QString suffix = QFileInfo(fileName).suffix().toLower();
+  if (suffix != QStringLiteral("stp") && suffix != QStringLiteral("step"))
+    return CadImportResult::failure(QStringLiteral("Choose a STEP or STP file: %1").arg(fileName));
 
   const QString sourcePath = QDir(m_cadDirectory).filePath(fileName);
   QFile source(sourcePath);
@@ -52,6 +56,7 @@ CadImportResult CachedShapeLoader::loadStpWithCache(const QString& fileName) con
       BRep_Builder builder;
       BRepTools::Read(shape, stream, builder);
       if (!shape.IsNull() && !stream.bad() && !stream.fail()) {
+        qDebug() << "CAD loaded from BREP cache:" << cachePath;
         return CadImportResult::success(shape);
       }
     } catch (const Standard_Failure&) {
@@ -61,6 +66,7 @@ CadImportResult CachedShapeLoader::loadStpWithCache(const QString& fileName) con
   }
   cache.close();
 
+  qDebug() << "Importing STEP source:" << sourcePath;
   const CadImportResult result = m_stepImporter.importFile(sourcePath);
   if (!result.ok) return result;
 

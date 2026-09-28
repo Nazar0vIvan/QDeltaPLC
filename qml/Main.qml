@@ -21,12 +21,19 @@ ApplicationWindow {
   property int workflowMode: WorkflowPanel.Measuring
   property int measurementSubmode: WorkflowPanel.Rough
 
+  onWorkflowModeChanged: root.syncEndEffector()
+
+  function syncEndEffector() {
+    Backend.EndEffectors.setActiveTool(root.workflowMode === WorkflowPanel.Machining
+                                      ? Backend.EndEffectors.Spindle : Backend.EndEffectors.Measuring)
+  }
+
   // UI display preferences for the imported rough-surface presentations.
   property bool showPoints: false
   property bool showNormals: false
   property bool showScanPath: false
   property bool showMachiningPath: false
-  property list<string> selectedObjectIds: []
+  property list<real> selectedObjectIds: []
 
   readonly property Backend.SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
                                                             ? root.sceneModel.findObject(root.selectedObjectIds[0]) : null
@@ -43,6 +50,28 @@ ApplicationWindow {
     else
       selected.push(objectId)
     root.selectedObjectIds = selected
+  }
+
+  function deleteSelectedObjects() {
+    const ids = root.selectedObjectIds.slice()
+    root.selectedObjectIds = []
+    root.sceneModel.removeObjects(ids)
+  }
+
+  Shortcut {
+    sequence: "Del"
+    context: Qt.WindowShortcut
+    autoRepeat: false
+    enabled: root.selectedObjectIds.length > 0
+             && !(root.activeFocusItem instanceof TextInput)
+             && !(root.activeFocusItem instanceof TextEdit)
+    onActivated: root.deleteSelectedObjects()
+  }
+
+  function intersectSelected() {
+    const createdIds = root.sceneModel.intersect(root.selectedObjectIds)
+    if (createdIds.length > 0)
+      root.selectedObjectIds = createdIds
   }
 
   function syncViewportSelection() {
@@ -62,6 +91,7 @@ ApplicationWindow {
   onShowPointsChanged: root.syncViewportOverlays()
   onShowNormalsChanged: root.syncViewportOverlays()
   Component.onCompleted: {
+    root.syncEndEffector()
     root.syncViewportSelection()
     root.syncViewportOverlays()
   }
@@ -69,15 +99,17 @@ ApplicationWindow {
   Connections {
     target: Viewport3D.OccController
 
-    function onReadyChanged() {
-      if (Viewport3D.OccController.ready) {
+    function onDeleteSelectionRequested() { root.deleteSelectedObjects() }
+
+    function onViewportReadyChanged() {
+      if (Viewport3D.OccController.viewportReady) {
         root.syncViewportSelection()
         root.syncViewportOverlays()
       }
     }
 
     function onApplicationSelectionRequested(objectId, additive) {
-      if (objectId.length === 0)
+      if (objectId === 0)
         root.selectedObjectIds = []
       else
         root.selectSceneObject(objectId, additive)
@@ -103,6 +135,14 @@ ApplicationWindow {
   }
 
   Dialogs.FileDialog {
+    id: circleFileDialog
+    title: qsTr("Import rough circle")
+    fileMode: Dialogs.FileDialog.OpenFile
+    nameFilters: [qsTr("JSON point files (*.json)")]
+    onAccepted: surfaceImporter.loadCircle(circleFileDialog.selectedFile, root.sceneModel)
+  }
+
+  Dialogs.FileDialog {
     id: cylinderFileDialog
     title: qsTr("Import rough cylinder")
     fileMode: Dialogs.FileDialog.OpenFile
@@ -112,11 +152,52 @@ ApplicationWindow {
 
   Dialogs.MessageDialog {
     id: importError
-    title: qsTr("Surface import failed")
+    title: qsTr("Geometry import failed")
     buttons: Dialogs.MessageDialog.Ok
   }
 
+  readonly property bool geometryImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible
+                                                 && !circleFileDialog.visible && !cylinderFileDialog.visible
   readonly property Backend.SceneModel sceneModel: Backend.Scene
+  // Reading the collection also reevaluates eligibility after model insertions.
+  readonly property bool intersectionAvailable: root.sceneModel.objects.length >= 2
+                                                && root.sceneModel.canIntersect(root.selectedObjectIds)
+
+  Connections {
+    target: root.sceneModel
+    function onObjectsChanged() {
+      root.selectedObjectIds = root.selectedObjectIds.filter(id => root.sceneModel.findObject(id) !== null)
+    }
+    function onIntersectionFailed(message) {
+      intersectionError.text = message
+      intersectionError.open()
+    }
+  }
+
+  Dialogs.MessageDialog {
+    id: intersectionError
+    title: qsTr("Surface intersection failed")
+    buttons: Dialogs.MessageDialog.Ok
+  }
+
+  Dialogs.FileDialog {
+    id: endEffectorFileDialog
+    property bool measuring: true
+    title: endEffectorFileDialog.measuring ? qsTr("Choose measuring end-effector CAD") : qsTr("Choose spindle end-effector CAD")
+    fileMode: Dialogs.FileDialog.OpenFile
+    nameFilters: [qsTr("STEP files (*.step *.stp *.STEP *.STP)")]
+    onAccepted: {
+      const currentSource = endEffectorFileDialog.measuring
+                            ? Backend.EndEffectors.measuringCadSource : Backend.EndEffectors.spindleCadSource
+      if (currentSource.toString() === endEffectorFileDialog.selectedFile.toString()) {
+        Viewport3D.OccController.reloadEndEffector(endEffectorFileDialog.measuring
+                                                 ? Backend.EndEffectors.Measuring : Backend.EndEffectors.Spindle)
+      } else if (endEffectorFileDialog.measuring)
+        Backend.EndEffectors.setMeasuringCadSource(endEffectorFileDialog.selectedFile)
+      else
+        Backend.EndEffectors.setSpindleCadSource(endEffectorFileDialog.selectedFile)
+    }
+  }
 
   width: 1366
   height: 768
@@ -265,9 +346,13 @@ ApplicationWindow {
         showNormals: root.showNormals
         showScanPath: root.showScanPath
         showMachiningPath: root.showMachiningPath
-        planeImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible && !cylinderFileDialog.visible
-        cylinderImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible && !cylinderFileDialog.visible
+        planeImportAvailable: root.geometryImportAvailable
+        circleImportAvailable: root.geometryImportAvailable
+        cylinderImportAvailable: root.geometryImportAvailable
+        intersectionAvailable: root.intersectionAvailable
+        onIntersectionRequested: root.intersectSelected()
         onPlaneImportRequested: planeFileDialog.open()
+        onCircleImportRequested: circleFileDialog.open()
         onCylinderImportRequested: cylinderFileDialog.open()
         onPointsToggled: checked => root.showPoints = checked
         onNormalsToggled: checked => root.showNormals = checked
@@ -285,14 +370,40 @@ ApplicationWindow {
       }
     }
 
-    PropertiesPanel {
-      SplitView.preferredWidth: 272
-      SplitView.minimumWidth: 220
+    SplitView {
+      orientation: Qt.Vertical
+      SplitView.preferredWidth: 330
+      SplitView.minimumWidth: 280
 
-      selectionCount: root.selectedObjectIds.length
-      selectedObject: root.selectedSceneObject
-      onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
-      onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+      PropertiesPanel {
+        SplitView.fillHeight: true
+        SplitView.minimumHeight: 140
+        selectionCount: root.selectedObjectIds.length
+        selectedObject: root.selectedSceneObject
+        onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
+        onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+      }
+
+      EndEffectorPanel {
+        id: endEffectorPanel
+        SplitView.preferredHeight: Math.min(implicitHeight, 370)
+        SplitView.minimumHeight: 140
+        measuring: root.workflowMode === WorkflowPanel.Measuring
+        cadSource: endEffectorPanel.measuring ? Backend.EndEffectors.measuringCadSource : Backend.EndEffectors.spindleCadSource
+        loading: endEffectorPanel.measuring ? Viewport3D.OccController.measuringCadLoading : Viewport3D.OccController.spindleCadLoading
+        loadError: endEffectorPanel.measuring ? Viewport3D.OccController.measuringCadError : Viewport3D.OccController.spindleCadError
+        measuringName: Backend.EndEffectors.measuringName
+        ballDiameter: Backend.EndEffectors.rubyBallDiameter
+        stylusLength: Backend.EndEffectors.stylusLength
+        tcp: Backend.EndEffectors.spindleTcp
+        onTcpRequested: values => Backend.EndEffectors.setSpindleTcp(values)
+        onRetryRequested: Viewport3D.OccController.reloadEndEffector(
+                            endEffectorPanel.measuring ? Backend.EndEffectors.Measuring : Backend.EndEffectors.Spindle)
+        onBrowseRequested: {
+          endEffectorFileDialog.measuring = endEffectorPanel.measuring
+          endEffectorFileDialog.open()
+        }
+      }
     }
   }
 }

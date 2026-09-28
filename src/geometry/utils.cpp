@@ -61,6 +61,11 @@ std::optional<ProbeSamples> readProbeSamples(const QString& path)
   const auto document = QJsonDocument::fromJson(file.readAll(), &error);
   if (error.error != QJsonParseError::NoError) return std::nullopt;
 
+  return decodeProbeSamples(document);
+}
+
+std::optional<ProbeSamples> decodeProbeSamples(const QJsonDocument& document)
+{
   ProbeSamples result;
   QJsonArray array;
   if (document.isArray()) {
@@ -83,6 +88,9 @@ std::optional<ProbeSamples> readProbeSamples(const QString& path)
 
   const auto points = jsonArrayToPoints(array);
   if (!points) return std::nullopt;
+  for (const V3d& point : *points) {
+    if (!point.allFinite()) return std::nullopt;
+  }
   result.points = *points;
   return result;
 }
@@ -150,6 +158,14 @@ M4d makeRotation(const double angleDeg, const Axis axis)
   return R;
 }
 
+M4d makeRotation(double angleDeg, const V3d& axis)
+{
+  M4d result = M4d::Identity();
+  result.block<3, 3>(0, 0) =
+      Eigen::AngleAxisd(angleDeg * GeomConst::DegToRad, axis.normalized()).toRotationMatrix();
+  return result;
+}
+
 M4d makeTransform(const M3d& rot, const V3d& origin)
 {
   M4d T = M4d::Identity();
@@ -158,6 +174,13 @@ M4d makeTransform(const M3d& rot, const V3d& origin)
   T.block<3, 1>(0, 3) = origin;
 
   return T;
+}
+
+M4d inverseRigidTransform(const M4d& transform)
+{
+  const M3d rotation = transform.block<3, 3>(0, 0).transpose();
+  const V3d origin = -rotation * transform.block<3, 1>(0, 3);
+  return makeTransform(rotation, origin);
 }
 
 bool isBasis(const V3d& v1, const V3d& v2, const V3d& v3, double eps)

@@ -16,18 +16,41 @@ QxPanel {
   readonly property Backend.CylinderGeometry cylinderGeometry: root.selectedObject
                                                                ? root.selectedObject.geometry as Backend.CylinderGeometry : null
 
+  readonly property Backend.CircleGeometry circleGeometry: root.selectedObject
+                                                           ? root.selectedObject.geometry as Backend.CircleGeometry : null
+
   signal renameRequested(Backend.SceneObject object, string name)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
 
   function typeLabel(kind: int): string {
     switch (kind) {
       case Backend.SceneObject.Plane: return qsTr("Plane")
+      case Backend.SceneObject.Circle: return qsTr("Circle")
       case Backend.SceneObject.Cylinder: return qsTr("Cylinder")
       case Backend.SceneObject.Cone: return qsTr("Cone")
       case Backend.SceneObject.Edge: return qsTr("Edge")
       case Backend.SceneObject.ScanPath: return qsTr("Scan path")
       case Backend.SceneObject.MachiningPath: return qsTr("Machining path")
       default: return ""
+    }
+  }
+
+  component PropertyValue: QxHField {
+    property alias valueText: valueLabel.text
+    property alias valueObjectName: valueLabel.objectName
+    property alias wrapMode: valueLabel.wrapMode
+
+    Layout.fillWidth: true
+    labelWidth: Metrics.w80
+
+    Label {
+      id: valueLabel
+
+      Layout.fillWidth: true
+      Layout.minimumWidth: 0
+      wrapMode: Text.WrapAnywhere
+      color: Colors.foreground.high
+      font: Fonts.body
     }
   }
 
@@ -67,6 +90,7 @@ QxPanel {
       visible: root.selectedObject !== null
       spacing: Metrics.sp8
 
+      // General object properties.
       QxHField {
         Layout.fillWidth: true
         labelWidth: Metrics.w80
@@ -189,112 +213,57 @@ QxPanel {
       Label {
         Layout.fillWidth: true
         Layout.topMargin: Metrics.sp8
-        visible: root.planeGeometry !== null || root.cylinderGeometry !== null
+        visible: root.planeGeometry !== null || root.cylinderGeometry !== null || root.circleGeometry !== null
         text: qsTr("Geometry")
         color: Colors.foreground.medium
         font: Fonts.body
       }
 
-      QxHField {
-        Layout.fillWidth: true
+      // Plane geometry.
+      PropertyValue {
         visible: root.planeGeometry !== null
-        labelWidth: Metrics.w80
         labelText: qsTr("Normal")
-
-        Label {
-          objectName: "planeNormalValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.planeGeometry
-                ? [root.planeGeometry.normalX, root.planeGeometry.normalY,
-                   root.planeGeometry.normalZ].map(value => value.toPrecision(6)).join(", ") : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+        valueObjectName: "planeNormalValue"
+        valueText: root.planeGeometry
+              ? [root.planeGeometry.normalX, root.planeGeometry.normalY,
+                 root.planeGeometry.normalZ].map(value => value.toPrecision(6)).join(", ") : ""
       }
 
-      QxHField {
-        Layout.fillWidth: true
+      PropertyValue {
         visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelWidth: Metrics.w80
         labelText: qsTr("Origin")
-
-        Label {
-          objectName: "planeOriginValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.planeGeometry && root.planeGeometry.hasBounds
-                ? [root.planeGeometry.originX, root.planeGeometry.originY,
-                   root.planeGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+        valueObjectName: "planeOriginValue"
+        valueText: root.planeGeometry && root.planeGeometry.hasBounds
+              ? [root.planeGeometry.originX, root.planeGeometry.originY,
+                 root.planeGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
       }
-      QxHField {
-        Layout.fillWidth: true
+
+      PropertyValue {
         visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelWidth: Metrics.w80
         labelText: qsTr("Width")
-
-        Label {
-          objectName: "planeWidthValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.planeGeometry && root.planeGeometry.hasBounds ? root.planeGeometry.width.toPrecision(6) : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+        valueObjectName: "planeWidthValue"
+        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.planeGeometry.width.toPrecision(6) : ""
       }
-      QxHField {
-        Layout.fillWidth: true
+
+      PropertyValue {
         visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelWidth: Metrics.w80
         labelText: qsTr("Height")
-
-        Label {
-          objectName: "planeHeightValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.planeGeometry && root.planeGeometry.hasBounds ? root.planeGeometry.height.toPrecision(6) : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+        valueObjectName: "planeHeightValue"
+        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.planeGeometry.height.toPrecision(6) : ""
       }
-      QxHField {
-        Layout.fillWidth: true
+
+      PropertyValue {
         visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelWidth: Metrics.w80
         labelText: qsTr("Points")
-
-        Label {
-          objectName: "planePointCountValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.planeGeometry && root.planeGeometry.hasBounds ? String(root.planeGeometry.pointCount) : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+        valueObjectName: "planePointCountValue"
+        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? String(root.planeGeometry.pointCount) : ""
       }
-      QxHField {
-        Layout.fillWidth: true
-        visible: root.planeGeometry !== null
-        labelWidth: Metrics.w80
-        labelText: qsTr("Offset (d)")
 
-        Label {
-          objectName: "planeOffsetValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.planeGeometry ? root.planeGeometry.offset.toPrecision(6) : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+      PropertyValue {
+        visible: root.planeGeometry !== null
+        labelText: qsTr("Offset (d)")
+        valueObjectName: "planeOffsetValue"
+        valueText: root.planeGeometry ? root.planeGeometry.offset.toPrecision(6) : ""
       }
 
       Label {
@@ -306,90 +275,87 @@ QxPanel {
         font: Fonts.caption
       }
 
-      QxHField {
-        Layout.fillWidth: true
-        visible: root.cylinderGeometry !== null
-        labelWidth: Metrics.w80
-        labelText: qsTr("Origin")
-
-        Label {
-          objectName: "cylinderOriginValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.cylinderGeometry
-                ? [root.cylinderGeometry.originX, root.cylinderGeometry.originY,
-                   root.cylinderGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+      // Circle geometry.
+      PropertyValue {
+        visible: root.circleGeometry !== null
+        labelText: qsTr("Center")
+        valueObjectName: "circleCenterValue"
+        valueText: root.circleGeometry
+                   ? [root.circleGeometry.centerX, root.circleGeometry.centerY,
+                      root.circleGeometry.centerZ].map(value => value.toPrecision(6)).join(", ") : ""
       }
 
-      QxHField {
-        Layout.fillWidth: true
-        visible: root.cylinderGeometry !== null
-        labelWidth: Metrics.w80
-        labelText: qsTr("Axis")
-
-        Label {
-          objectName: "cylinderAxisValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.cylinderGeometry
-                ? [root.cylinderGeometry.axisX, root.cylinderGeometry.axisY,
-                   root.cylinderGeometry.axisZ].map(value => value.toPrecision(6)).join(", ") : ""
-          wrapMode: Text.WrapAnywhere
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
-      }
-
-      QxHField {
-        Layout.fillWidth: true
-        visible: root.cylinderGeometry !== null
-        labelWidth: Metrics.w80
+      PropertyValue {
+        visible: root.circleGeometry !== null
         labelText: qsTr("Radius")
-
-        Label {
-          objectName: "cylinderRadiusValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.cylinderGeometry ? root.cylinderGeometry.radius.toPrecision(6) : ""
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+        valueObjectName: "circleRadiusValue"
+        valueText: root.circleGeometry ? root.circleGeometry.radius.toPrecision(6) : ""
       }
 
-      QxHField {
-        Layout.fillWidth: true
-        visible: root.cylinderGeometry !== null
-        labelWidth: Metrics.w80
-        labelText: qsTr("Length")
-
-        Label {
-          objectName: "cylinderLengthValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.cylinderGeometry ? root.cylinderGeometry.length.toPrecision(6) : ""
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+      PropertyValue {
+        visible: root.circleGeometry !== null
+        labelText: qsTr("Normal")
+        valueObjectName: "circleNormalValue"
+        valueText: root.circleGeometry
+                   ? [root.circleGeometry.normalX, root.circleGeometry.normalY,
+                      root.circleGeometry.normalZ].map(value => value.toPrecision(6)).join(", ") : ""
       }
 
-      QxHField {
-        Layout.fillWidth: true
-        visible: root.cylinderGeometry !== null
-        labelWidth: Metrics.w80
+      PropertyValue {
+        visible: root.circleGeometry !== null
         labelText: qsTr("Points")
+        valueObjectName: "circlePointCountValue"
+        valueText: root.circleGeometry ? String(root.circleGeometry.pointCount) : ""
+      }
 
-        Label {
-          objectName: "cylinderPointCountValue"
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          text: root.cylinderGeometry ? String(root.cylinderGeometry.pointCount) : ""
-          color: Colors.foreground.high
-          font: Fonts.body
-        }
+      PropertyValue {
+        visible: root.circleGeometry !== null
+        labelText: qsTr("Fit RMS")
+        valueObjectName: "circleResidualValue"
+        valueText: root.circleGeometry ? root.circleGeometry.rmsResidual.toPrecision(6) : ""
+      }
+
+      // Cylinder geometry.
+      PropertyValue {
+        visible: root.cylinderGeometry !== null
+        labelText: qsTr("Origin")
+        valueObjectName: "cylinderOriginValue"
+        valueText: root.cylinderGeometry
+              ? [root.cylinderGeometry.originX, root.cylinderGeometry.originY,
+                 root.cylinderGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
+      }
+
+      PropertyValue {
+        visible: root.cylinderGeometry !== null
+        labelText: qsTr("Axis")
+        valueObjectName: "cylinderAxisValue"
+        valueText: root.cylinderGeometry
+              ? [root.cylinderGeometry.axisX, root.cylinderGeometry.axisY,
+                 root.cylinderGeometry.axisZ].map(value => value.toPrecision(6)).join(", ") : ""
+      }
+
+      PropertyValue {
+        visible: root.cylinderGeometry !== null
+        labelText: qsTr("Radius")
+        valueObjectName: "cylinderRadiusValue"
+        valueText: root.cylinderGeometry ? root.cylinderGeometry.radius.toPrecision(6) : ""
+        wrapMode: Text.NoWrap
+      }
+
+      PropertyValue {
+        visible: root.cylinderGeometry !== null
+        labelText: qsTr("Length")
+        valueObjectName: "cylinderLengthValue"
+        valueText: root.cylinderGeometry ? root.cylinderGeometry.length.toPrecision(6) : ""
+        wrapMode: Text.NoWrap
+      }
+
+      PropertyValue {
+        visible: root.cylinderGeometry !== null
+        labelText: qsTr("Points")
+        valueObjectName: "cylinderPointCountValue"
+        valueText: root.cylinderGeometry ? String(root.cylinderGeometry.pointCount) : ""
+        wrapMode: Text.NoWrap
       }
     }
   }

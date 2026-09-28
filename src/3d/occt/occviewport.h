@@ -3,11 +3,11 @@
 #include "occinputcontroller.h"
 #include "occviewer.h"
 #include "3d/robot/robotpreviewstate.h"
-#include "3d/robot/visualization/robotoccsceneadapter.h"
+#include "3d/adapters/occrobotadapter.h"
+#include "3d/adapters/occsceneadapter.h"
 
-#include <QHash>
 #include <QString>
-#include <QStringList>
+#include <QList>
 #include <QTimer>
 
 #include <optional>
@@ -20,20 +20,25 @@ namespace RoboCrap3D {
 class OccViewport final
 {
 public:
-  OccViewport(Aspect_Handle handle, const RobotPreviewState& state, const CadLoadResult& shapes,
-              SceneModel* applicationScene);
+  OccViewport(Aspect_Handle handle, SceneModel* applicationScene);
   ~OccViewport();
   OccViewport(const OccViewport&) = delete;
   OccViewport& operator=(const OccViewport&) = delete;
 
   bool isValid() const;
+  bool isRobotReady() const { return isValid() && m_robot.isLoaded(); }
+  bool setRobot(const RobotPreviewState* state, const CadLoadResult* shapes);
   bool applyPose(const RobotPose& pose);
+  bool setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
+                      SceneEndEffectors::Tool active);
   void synchronizeApplicationScene(SceneModel* applicationScene);
-  void setSelectedObjects(const QStringList& ids);
+  void synchronizeSceneObject(SceneObject* object);
+  void removeSceneObject(quint32 objectId);
+  void setSelectedObjects(const QList<quint32>& ids);
   void setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene);
   void setExposed(bool exposed);
   void resize();
-  std::optional<QString> mousePress(const QPoint& pos, Qt::MouseButton button);
+  std::optional<quint32> mousePress(const QPoint& pos, Qt::MouseButton button);
   void mouseMove(const QPoint& pos);
   void mouseRelease(Qt::MouseButton button);
   void wheel(const QPoint& pos, int delta);
@@ -41,27 +46,17 @@ public:
 
 private:
   void applyInput(const OccInputResult& input);
+  void fitInitialCamera();
   void requestRender();
   void flushRender();
-  bool synchronizeOverlay(const SceneObject* object, std::optional<OccScene::PartId>& partId,
-                          bool enabled, bool normals);
-
-  struct OverlayParts {
-    std::optional<OccScene::PartId> points;
-    std::optional<OccScene::PartId> normals;
-  };
 
   OccViewer m_viewer;
   OccScene m_scene;
-  RobotOccSceneAdapter m_robot;
+  OccRobotAdapter m_robot;
+  OccSceneAdapter m_application;
   OccInputController m_input;
   QTimer m_timer;
-  // Derived viewport handles only; application data remains owned by SceneModel.
-  QHash<QString, OccScene::PartId> m_applicationParts;
-  QHash<QString, OverlayParts> m_applicationOverlays;
-  bool m_showPoints = false;
-  bool m_showNormals = false;
-  bool m_ready = false;
+  bool m_cameraAdjusted = false;
   bool m_exposed = false;
 };
 

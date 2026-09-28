@@ -3,13 +3,14 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include "scenegeometry.h"
 
 class SceneModel;
 
 class SceneObject final : public QObject
 {
   Q_OBJECT
-  Q_PROPERTY(QString objectId READ objectId CONSTANT)
+  Q_PROPERTY(quint32 objectId READ objectId CONSTANT)
   Q_PROPERTY(QString name READ name NOTIFY nameChanged)
   Q_PROPERTY(Kind kind READ kind CONSTANT)
   Q_PROPERTY(Classification classification READ classification CONSTANT)
@@ -18,12 +19,23 @@ class SceneObject final : public QObject
   Q_PROPERTY(QObject* geometry READ geometry CONSTANT)
 
 public:
-  enum Kind { Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath };
+  enum Kind { Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath, Circle };
   Q_ENUM(Kind)
   enum Classification { Unclassified, Rough, Precise };
   Q_ENUM(Classification)
 
-  QString objectId() const { return m_objectId; }
+  quint32 objectId() const { return m_objectId; }
+  struct Description {
+    QString name;
+    Kind kind = Plane;
+    Classification classification = Unclassified;
+    QUrl sourceUrl;
+  };
+
+  const BoundedPlane* plane() const;
+  const BoundedCylinder* cylinder() const;
+  const ::Circle* circle() const;
+  const EdgeGeometry* edge() const;
   QString name() const { return m_name; }
   Kind kind() const { return m_kind; }
   Classification classification() const { return m_classification; }
@@ -37,12 +49,16 @@ signals:
 
 private:
   friend class SceneModel;
-  SceneObject(const QString& objectId, const QString& name, Kind kind,
-              Classification classification, const QUrl& sourceUrl, QObject* parent);
+  SceneObject(quint32 objectId, const Description& description, QObject* parent);
+  void setPlaneGeometry(BoundedPlane plane);
+  void setPlaneGeometry(const std::array<double, 4>& coefficients);
+  void setCylinderGeometry(BoundedCylinder cylinder);
+  void setCircleGeometry(::Circle circle);
+  void setEdgeGeometry(EdgeGeometry edge, const std::array<quint32, 2>& sources);
   void setName(const QString& name);
   void setVisible(bool visible);
 
-  const QString m_objectId;
+  const quint32 m_objectId;
   QString m_name;
   const Kind m_kind;
   const Classification m_classification;

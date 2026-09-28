@@ -1,4 +1,5 @@
 #include "network/plc/plcdevice.h"
+#include "network/common/socketconfigutils.h"
 
 #include <QTcpSocket>
 
@@ -56,12 +57,13 @@ void PlcDevice::connect(const QVariantMap& config)
   }
 
   if (!config.isEmpty()) {
+    const QHostAddress localAddr(config.value("localAddress").toString());
     const QHostAddress addr(config.value("peerAddress").toString());
 
-    bool portOk = false;
-    const uint port = config.value("peerPort").toUInt(&portOk);
+    const auto localPort = parseSocketPort(config.value("localPort"));
+    const auto port = parseSocketPort(config.value("peerPort"));
 
-    if (addr.isNull() || !portOk || port == 0 || port > 65535) {
+    if (localAddr.isNull() || !localPort || addr.isNull() || !port) {
       emit logMessage({
         "Invalid socket configuration",
         0,
@@ -70,13 +72,15 @@ void PlcDevice::connect(const QVariantMap& config)
       return;
     }
 
+    m_la = localAddr;
+    m_lp = *localPort;
     m_pa = addr;
-    m_pp = static_cast<quint16>(port);
+    m_pp = *port;
   }
 
-  if (m_pa.isNull() || m_pp == 0) {
+  if (m_la.isNull() || m_lp == 0 || m_pa.isNull() || m_pp == 0) {
     emit logMessage({
-      "Peer endpoint is not configured",
+      "Socket configuration is incomplete",
       0,
       objectName()
     });
@@ -85,6 +89,22 @@ void PlcDevice::connect(const QVariantMap& config)
 
   if (m_sock->state() != QAbstractSocket::UnconnectedState) {
     m_sock->abort();
+  }
+
+  emit stateReady({{"connectionConfig", QVariantMap{
+    {"localAddress", m_la.toString()}, {"localPort", m_lp},
+    {"peerAddress", m_pa.toString()}, {"peerPort", m_pp}
+  }}});
+
+  // The PLC program expects this PC endpoint, including its source port.
+  if (!m_sock->bind(m_la, m_lp)) {
+    emit logMessage({
+      QString("Bind failed: %1").arg(m_sock->errorString()),
+      0,
+      objectName()
+    });
+    m_sock->abort();
+    return;
   }
 
   m_sock->connectToHost(m_pa, m_pp, QIODevice::ReadWrite);
@@ -97,6 +117,26 @@ void PlcDevice::disconnect()
   if (!m_sock) return;
 
   m_sock->disconnectFromHost();
+}
+
+void PlcDevice::setOutput(const QVariantMap& args)
+{
+  if (!m_sock || !m_mgr || m_sock->state() != QAbstractSocket::ConnectedState) {
+    emit logMessage({"PLC is not connected", 0, objectName()});
+    return;
+  }
+
+  const PlcMessageManager::ParseResult request = m_mgr->outputRequest(args);
+  if (!request.ok()) {
+    emit logMessage({
+      "WRITE ERROR: " + QString::number(request.error),
+      0,
+      objectName()
+    });
+    return;
+  }
+
+  writeMessage(request.data.toMap());
 }
 
 void PlcDevice::writeMessage(const QVariantMap& msg)

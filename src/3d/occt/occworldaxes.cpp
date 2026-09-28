@@ -1,5 +1,5 @@
 #include "occworldaxes.h"
-#include "3d/math/utils.h"
+#include "3d/occt/occpartprops.h"
 
 #include <AIS_Line.hxx>
 
@@ -83,6 +83,11 @@ void OccWorldAxes::configureAxes()
   if (!isValid()) return;
 
   constexpr double width = 2.0;
+
+  // Reference axes must not contribute to camera-fit bounds.
+  m_xAxis->SetInfiniteState(true);
+  m_yAxis->SetInfiniteState(true);
+  m_zAxis->SetInfiniteState(true);
 
   m_xAxis->SetColor(rgb(255, 0, 0));
   m_yAxis->SetColor(rgb(0, 180, 0));

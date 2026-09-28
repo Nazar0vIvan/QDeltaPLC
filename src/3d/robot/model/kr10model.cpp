@@ -11,7 +11,7 @@
 #include <QJsonParseError>
 #include <QJsonValue>
 
-#include "3d/math/utils.h"
+#include "geometry/utils.h"
 
 namespace RoboCrap3D {
 
@@ -88,9 +88,9 @@ std::optional<V3d> readAxis(const QJsonObject& obj)
 
   const std::optional<V3d> unitAxis = normalize(*axis);
 
-  if (!unitAxis || std::abs(unitAxis->X()) > GeomConst::Eps
-      || std::abs(unitAxis->Y()) > GeomConst::Eps
-      || !nearlyEqual(std::abs(unitAxis->Z()), 1.0)) {
+  if (!unitAxis || std::abs(unitAxis->x()) > GeomConst::Eps
+      || std::abs(unitAxis->y()) > GeomConst::Eps
+      || !nearlyEqual(std::abs(unitAxis->z()), 1.0)) {
     qWarning() << "KR10 analytical IK requires signed local Z joint axes";
     return std::nullopt;
   }
@@ -129,14 +129,14 @@ std::optional<JointModel> readJoint(const QJsonObject& obj)
   }
 
   const M4d T = makeTranslation(V3d{*dx, *dy, *dz})
-          .Multiplied(makeRotation(*da, V3d{0.0, 0.0, 1.0}))
-          .Multiplied(makeRotation(*db, V3d{0.0, 1.0, 0.0}))
-          .Multiplied(makeRotation(*dc, V3d{1.0, 0.0, 0.0}));
+          * makeRotation(*da, V3d{0.0, 0.0, 1.0})
+          * makeRotation(*db, V3d{0.0, 1.0, 0.0})
+          * makeRotation(*dc, V3d{1.0, 0.0, 0.0});
 
   return JointModel{*axis, T, *qMin, *qMax};
 }
 
-std::optional<Kr10Model::IkParams> readIk(const QJsonObject& obj)
+std::optional<Kr10KinematicModel::IkParams> readIk(const QJsonObject& obj)
 {
   const std::optional<double> sx = readDouble(obj, QStringLiteral("sx"));
   const std::optional<double> sz = readDouble(obj, QStringLiteral("sz"));
@@ -149,7 +149,7 @@ std::optional<Kr10Model::IkParams> readIk(const QJsonObject& obj)
     return std::nullopt;
   }
 
-  return Kr10Model::IkParams{*sx, *sz, *a, *bx, *by, *dF};
+  return Kr10KinematicModel::IkParams{*sx, *sz, *a, *bx, *by, *dF};
 }
 
 std::optional<std::array<JointModel, DofCount>> readJoints(const QJsonArray& arr)
@@ -270,20 +270,6 @@ std::optional<Kr10Model> Kr10Model::fromJson(const QString& file)
     return std::nullopt;
   }
 
-  const QJsonValue effVal = root->value(QStringLiteral("end_effector"));
-
-  if (!effVal.isObject()) {
-    qWarning() << "KR10 end_effector is missing";
-    return std::nullopt;
-  }
-
-  const std::optional<LinkModel> eff = readLink(effVal.toObject());
-
-  if (!eff) {
-    qWarning() << "Cannot parse KR10 end_effector";
-    return std::nullopt;
-  }
-
   const QJsonValue ikVal = root->value(QStringLiteral("IkParams"));
 
   if (!ikVal.isObject()) {
@@ -291,7 +277,7 @@ std::optional<Kr10Model> Kr10Model::fromJson(const QString& file)
     return std::nullopt;
   }
 
-  const std::optional<Kr10Model::IkParams> ik = readIk(ikVal.toObject());
+  const std::optional<Kr10KinematicModel::IkParams> ik = readIk(ikVal.toObject());
 
   if (!ik) {
     qWarning() << "Cannot parse KR10 analyticalIK";
@@ -319,7 +305,7 @@ std::optional<Kr10Model> Kr10Model::fromJson(const QString& file)
     }
   }
 
-  return Kr10Model{name, *joints, *links, *eff, *ik, *qHome, *pHome};
+  return Kr10Model{name, {*joints, *ik, *qHome, *pHome}, {*links}};
 }
 
 } // namespace RoboCrap3D

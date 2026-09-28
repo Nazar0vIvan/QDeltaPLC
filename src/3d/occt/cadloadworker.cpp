@@ -2,6 +2,9 @@
 
 #include "cachedshapeloader.h"
 
+#include <QFileInfo>
+#include <QMutex>
+#include <QMutexLocker>
 #include <Standard_Failure.hxx>
 
 #include <exception>
@@ -9,8 +12,8 @@
 
 namespace RoboCrap3D {
 
-CadLoadWorker::CadLoadWorker(Kr10Model model, ViewportAssets assets)
-  : m_model(std::move(model)), m_assets(std::move(assets))
+CadLoadWorker::CadLoadWorker(QStringList sourcePaths, QString cacheDirectory)
+  : m_sourcePaths(std::move(sourcePaths)), m_cacheDirectory(std::move(cacheDirectory))
 {
   setObjectName(QStringLiteral("CadLoader"));
 }
@@ -23,31 +26,25 @@ CadLoadResult CadLoadWorker::takeResult()
 
 void CadLoadWorker::run()
 {
+  // Independent requests retain the original serialized OCCT parsing/cache access.
+  static QMutex importMutex;
+  const QMutexLocker lock(&importMutex);
   try {
-    const CachedShapeLoader loader(m_assets.cadDirectory, m_assets.cacheDirectory);
-    for (std::size_t i = 0; i < LinkCount; ++i) {
+    for (const QString& path : std::as_const(m_sourcePaths)) {
       if (isInterruptionRequested()) return;
-      const CadImportResult result = loader.loadStpWithCache(m_model.links[i].fileName);
+      const QFileInfo source(path);
+      if (!source.isAbsolute()) {
+        m_result.error = QStringLiteral("CAD source must be an absolute file path: %1").arg(path);
+        return;
+      }
+      const CachedShapeLoader loader(source.absolutePath(), m_cacheDirectory);
+      const CadImportResult result = loader.loadStpWithCache(source.fileName());
+      if (isInterruptionRequested()) return;
       if (!result.ok) {
         m_result.error = result.error;
         return;
       }
-      m_result.links[i] = result.shape;
-    }
-    if (isInterruptionRequested()) return;
-    try {
-      const CadImportResult effector = loader.loadStpWithCache(m_model.endEffector.fileName);
-      if (effector.ok) {
-        m_result.endEffector = effector.shape;
-      } else {
-        m_result.warning = QStringLiteral("End effector is unavailable: %1").arg(effector.error);
-      }
-    } catch (const Standard_Failure& failure) {
-      m_result.warning = QStringLiteral("End effector is unavailable: %1")
-                             .arg(QString::fromUtf8(failure.what()));
-    } catch (const std::exception& failure) {
-      m_result.warning = QStringLiteral("End effector is unavailable: %1")
-                             .arg(QString::fromUtf8(failure.what()));
+      m_result.shapes.append(result.shape);
     }
   } catch (const Standard_Failure& failure) {
     m_result.error = QStringLiteral("CAD loading failed: %1").arg(QString::fromUtf8(failure.what()));

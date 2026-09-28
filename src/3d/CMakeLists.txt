@@ -37,9 +37,11 @@ qt_add_qml_module(RoboCrap3D
     occcontroller.cpp
     viewportassets.h
     viewportassets.cpp
-    math/mathtypes.h
-    math/utils.h
-    math/utils.cpp
+    adapters/occsceneadapter.h
+    adapters/occsceneadapter.cpp
+    adapters/occrobotadapter.h
+    adapters/occrobotadapter.cpp
+    occt/cadloadresult.h
     occt/cadloadworker.h
     occt/cadloadworker.cpp
     occt/cachedshapeloader.h
@@ -65,20 +67,14 @@ qt_add_qml_module(RoboCrap3D
     occt/occworldaxes.cpp
     robot/robotpreviewstate.h
     robot/robotpreviewstate.cpp
-    robot/model/jointmodel.h
-    robot/model/linkmodel.h
     robot/model/kr10model.h
     robot/model/kr10model.cpp
-    robot/kinematics/kr10kinematics.h
-    robot/kinematics/kr10kinematics.cpp
-    robot/visualization/robotoccsceneadapter.h
-    robot/visualization/robotoccsceneadapter.cpp
 )
 
 target_include_directories(RoboCrap3D PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(RoboCrap3D
-  PUBLIC Qt6::Core Qt6::Gui Qt6::Qml
-  PRIVATE RoboCrapBackend TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP
+  PUBLIC RoboCrapGeometry Qt6::Core Qt6::Gui Qt6::Qml
+  PRIVATE RoboCrapScene TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP
 )
 
 set(ROBOCRAP_OCCT_PREFIX "${OpenCASCADE_INSTALL_PREFIX}" PARENT_SCOPE)

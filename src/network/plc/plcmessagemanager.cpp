@@ -78,6 +78,29 @@ PlcMessageManager::ParseResult PlcMessageManager::buildReq(const QVariantMap& re
   return { header + payload };
 }
 
+PlcMessageManager::ParseResult PlcMessageManager::outputRequest(const QVariantMap& args) const
+{
+  const auto module = readUInt<quint8>(args, "module");
+  if (!module || !isValidMod(*module))
+    return {QVariant(), BAD_MOD, args.value("module")};
+
+  const auto index = readUInt<quint8>(args, "index");
+  if (!index || *index >= 8)
+    return {QVariant(), BAD_ADDR, args.value("index")};
+
+  const QVariant enabled = args.value("enabled");
+  if (enabled.isNull() || enabled.metaType().id() != QMetaType::Bool)
+    return {QVariant(), BAD_DATA, enabled};
+
+  const quint8 bit = static_cast<quint8>(1u << *index);
+  return {QVariantMap{
+    {"cmd", CMD::WRITE_IO},
+    {"module", *module},
+    {"andMask", static_cast<quint8>(0xFFu ^ bit)},
+    {"orMask", enabled.toBool() ? bit : quint8(0)}
+  }};
+}
+
 PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray& resp) const
 {
   if (resp.size() < HEADER_SIZE)

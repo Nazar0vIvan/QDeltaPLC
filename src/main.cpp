@@ -19,8 +19,9 @@
 
 #include "logger.h"
 #include "3d/viewportqmltypes.h"
+#include "3d/viewportassets.h"
 
-#include "network/backendqmltypes.h"
+#include "backendqmltypes.h"
 #include "network/devicehub.h"
 
 #include "network/fts/rdtmessage.h"
@@ -64,6 +65,10 @@ int main(int argc, char* argv[])
   auto* ftsDev = new FtsDevice(QStringLiteral("FTS_Delta"));
   auto* rsiDev = new RsiDevice(QStringLiteral("KRC4_RSI"));
 
+  QObject::connect(plcDev, &AbstractDevice::logMessage, Logger::instance(), &Logger::push, Qt::QueuedConnection);
+  QObject::connect(ftsDev, &AbstractDevice::logMessage, Logger::instance(), &Logger::push, Qt::QueuedConnection);
+  QObject::connect(rsiDev, &AbstractDevice::logMessage, Logger::instance(), &Logger::push, Qt::QueuedConnection);
+
   DeviceHub hub;
 
   hub.add(QStringLiteral("plc"), plcDev, DeviceHub::DeviceGroup::General);
@@ -83,25 +88,20 @@ int main(int argc, char* argv[])
   // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
 
   // The scene outlives the QML engine and survives workspace recreation.
-  ApplicationScene scene;
-  ApplicationSceneQml::s_inst = &scene;
-  // Preserve the existing metadata-only sample rows until their producers exist.
-  scene.addObject(QStringLiteral("rough-plane"), QStringLiteral("Plane P1"), SceneObject::Plane, SceneObject::Rough);
-  scene.addObject(QStringLiteral("rough-cylinder"), QStringLiteral("Cylinder C1"), SceneObject::Cylinder, SceneObject::Rough);
-  scene.addObject(QStringLiteral("rough-cone"), QStringLiteral("Cone K1"), SceneObject::Cone, SceneObject::Rough);
-  scene.addObject(QStringLiteral("precise-plane"), QStringLiteral("Plane P1"), SceneObject::Plane, SceneObject::Precise);
-  scene.addObject(QStringLiteral("precise-cylinder"), QStringLiteral("Cylinder C1"), SceneObject::Cylinder, SceneObject::Precise);
-  scene.addObject(QStringLiteral("edge-1"), QStringLiteral("Edge E1"), SceneObject::Edge, SceneObject::Unclassified);
-  scene.addObject(QStringLiteral("edge-2"), QStringLiteral("Edge E2"), SceneObject::Edge, SceneObject::Unclassified);
-  scene.addObject(QStringLiteral("scan-1"), QStringLiteral("Scan S1"), SceneObject::ScanPath, SceneObject::Unclassified);
-  scene.addObject(QStringLiteral("path-1"), QStringLiteral("Path P1"), SceneObject::MachiningPath, SceneObject::Unclassified);
+  SceneModel scene;
+  SceneSingletonQml::s_inst = &scene;
+  SceneEndEffectors endEffectors;
+  const QDir robotCadDirectory(RoboCrap3D::ViewportAssets::applicationAssets().cadDirectory);
+  endEffectors.setMeasuringCadSource(QUrl::fromLocalFile(robotCadDirectory.filePath(QStringLiteral("MEE.stp"))));
+  endEffectors.setSpindleCadSource(QUrl::fromLocalFile(robotCadDirectory.filePath(QStringLiteral("SEE.stp"))));
+  SceneEndEffectorsQml::s_inst = &endEffectors;
 
   RoboCrap3D::OccController viewportController;
   viewportController.setApplicationScene(&scene);
+  viewportController.setEndEffectors(&endEffectors);
   OccControllerQml::s_inst = &viewportController;
 
-  QObject::connect(&viewportController, &RoboCrap3D::OccController::message,
-                   Logger::instance(), &logViewportMessage);
+	QObject::connect(&viewportController, &RoboCrap3D::OccController::message, Logger::instance(), &logViewportMessage);
 
   QQmlApplicationEngine engine;
 

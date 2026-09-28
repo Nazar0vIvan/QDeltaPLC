@@ -1,23 +1,38 @@
 #pragma once
 
-#include <QString>
+#include "mathtypes.h"
 
+#include <QString>
+#include <QVector>
 #include <array>
 #include <optional>
-#include <vector>
 
-// Fitted numerical data. Points remain in their original order and coordinates.
-struct BoundedCylinder
+struct ProbeSamples;
+
+// Validated numerical data; only factories construct it. Samples retain input order.
+class BoundedCylinder
 {
+public:
   using Point = std::array<double, 3>;
-  std::vector<Point> points;
-  Point origin{}; // Midpoint of the sampled axial interval, on the fitted axis.
-  Point axis{};   // Unit direction; dominant component is positive.
-  double radius = 0.0;
-  double length = 0.0;
-  double rmsResidual = 0.0; // Fit error of the original centers before compensation.
+  const QVector<V3d>& points() const { return m_points; }
+  const Point& origin() const { return m_origin; }
+  const Point& axis() const { return m_axis; }
+  double radius() const { return m_radius; }
+  double length() const { return m_length; }
+  double rmsResidual() const { return m_rmsResidual; }
 
-  static std::optional<BoundedCylinder> fromPoints(const std::vector<Point>& points);
-  // Applies JSON probe compensation to radius only, preserving samples and axis.
+  static std::optional<BoundedCylinder> fromPoints(QVector<V3d> points);
+  static std::optional<BoundedCylinder> fromSamples(ProbeSamples samples);
   static std::optional<BoundedCylinder> fromJsonFile(const QString& path);
+
+private:
+  // Samples, axis frame, radius/length and fit residual define a fitted cylinder.
+	BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions, double residual);
+  bool applyProbe(double radius, int dir);
+  QVector<V3d> m_points{};
+  Point m_origin{};
+  Point m_axis{};
+  double m_radius{};
+  double m_length{};
+  double m_rmsResidual{};
 };

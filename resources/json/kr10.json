@@ -70,11 +70,6 @@
     }
   ],
 
-  "end_effector": {
-    "filename": "EE.stp",
-    "rgb": [184, 194, 204]
-  },
-
   "IkParams": {
     "sx": 150.0,
     "sz": 450.0,

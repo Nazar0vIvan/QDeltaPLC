@@ -20,6 +20,7 @@ public:
 
   Q_INVOKABLE void connect(const QVariantMap& config);
   Q_INVOKABLE void disconnect();
+  Q_INVOKABLE void setOutput(const QVariantMap& args);
   Q_INVOKABLE void writeMessage(const QVariantMap& msg);
 
 protected:
@@ -42,6 +43,8 @@ private:
   QTcpSocket* m_sock = nullptr;
   PlcMessageManager* m_mgr = nullptr;
 
+  QHostAddress m_la;
+  quint16 m_lp = 0;
   QHostAddress m_pa;
   quint16 m_pp = 0;
 

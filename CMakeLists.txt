@@ -100,6 +100,7 @@ set(QML_FILES
   qml/Views/Workspace/ModeToolBar.qml
   qml/Views/Workspace/ScenePanel.qml
   qml/Views/Workspace/PropertiesPanel.qml
+  qml/Views/Workspace/EndEffectorPanel.qml
 )
 
 set(RESOURCE_FILES
@@ -129,6 +130,13 @@ else()
   )
 endif()
 
+# Preserve rdtResponse in its existing application QML module after moving its implementation.
+qt_generate_foreign_qml_types(RoboCrapDevices robocrap)
+target_include_directories(robocrap PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${PROJECT_SOURCE_DIR}/src/network/fts
+)
+
 target_sources(robocrap PRIVATE
   ${RESOURCE_FILES}
 )
@@ -136,6 +144,8 @@ target_sources(robocrap PRIVATE
 target_link_libraries(robocrap PRIVATE
   RoboCrapBackend
   RoboCrapBackendplugin
+  RoboCrapScene
+  RoboCrapDevices
   RoboCrap3D
   RoboCrap3Dplugin
   Qt6::Core

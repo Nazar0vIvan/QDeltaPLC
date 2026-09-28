@@ -6,7 +6,7 @@
 
 #include <QDebug>
 
-#include "3d/math/utils.h"
+#include "geometry/utils.h"
 
 namespace RoboCrap3D {
 
@@ -14,17 +14,17 @@ namespace {
 
 double posErr(const M4d& T)
 {
-  return V3d{T.TranslationPart()}.Magnitude();
+  return T.block<3, 1>(0, 3).norm();
 }
 
 double rotErr(const M4d& T)
 {
   double maxErr = 0.0;
 
-  for (int row = 1; row <= 3; ++row) {
-    for (int col = 1; col <= 3; ++col) {
+  for (int row = 0; row < 3; ++row) {
+    for (int col = 0; col < 3; ++col) {
       const double want = row == col ? 1.0 : 0.0;
-      maxErr = std::max(maxErr, std::abs(T.Value(row, col) - want));
+      maxErr = std::max(maxErr, std::abs(T(row, col) - want));
     }
   }
 
@@ -32,12 +32,12 @@ double rotErr(const M4d& T)
 }
 } // namespace
 
-Kr10Kinematics::Kr10Kinematics(const Kr10Model& model) : m_model(model)
+Kr10Kinematics::Kr10Kinematics(const Kr10KinematicModel& model) : m_model(model)
 {}
 
 bool Kr10Kinematics::isValid() const
 {
-  const Kr10Model::IkParams& ik = m_model.ik;
+  const Kr10KinematicModel::IkParams& ik = m_model.ik;
   const double b = std::hypot(ik.by, ik.bx);
 
   return ik.a > GeomConst::Eps && b > GeomConst::Eps && std::abs(ik.dF) > GeomConst::Eps;
@@ -47,14 +47,14 @@ std::array<M4d, LinkCount> Kr10Kinematics::solveFK(const V6d& q) const
 {
   std::array<M4d, LinkCount> T0i{};
 
-  M4d T{};
+  M4d T = M4d::Identity();
   T0i[0] = T;
 
   for (std::size_t i = 0; i < DofCount; ++i) {
     const JointModel& joint = m_model.joints[i];
     const double dq = q[i] - m_model.qHome[i];
 
-    T = T.Multiplied(joint.localTransform).Multiplied(makeRotation(dq, joint.axis));
+    T = (T * joint.localTransform * makeRotation(dq, joint.axis)).eval();
     T0i[i + 1] = T;
   }
 
@@ -71,10 +71,10 @@ Kr10Kinematics::solveIK(const M4d& targetT06, const V6d& currentQ) const
 
   const IkBranch branch = branchFrom(currentQ);
 
-  const V3d flangeOrigin{targetT06.TranslationPart()};
-  const V3d flangeZ{targetT06.VectorialPart().Column(3)};
+  const V3d flangeOrigin = targetT06.block<3, 1>(0, 3);
+  const V3d flangeZ = targetT06.block<3, 1>(0, 2);
 
-  const V3d wristCenter = flangeOrigin.Subtracted(flangeZ.Multiplied(m_model.ik.dF));
+  const V3d wristCenter = flangeOrigin - flangeZ * m_model.ik.dF;
 
   const std::optional<ArmJoints> arm = solveArm(wristCenter, branch, currentQ);
   if (!arm) return std::nullopt;
@@ -107,12 +107,12 @@ Kr10Kinematics::branchFrom(const V6d &q) const
   const double alpha = std::atan2(m_model.ik.bx, m_model.ik.by);
 
   const JointModel& joint3 = m_model.joints[2];
-  const double dq3 = (q[2] - m_model.qHome[2]) * GeomConst::DegToRad / joint3.axis.Z();
+  const double dq3 = (q[2] - m_model.qHome[2]) * GeomConst::DegToRad / joint3.axis.z();
 
   const double elbowRad = alpha - GeomConst::Pi / 2.0 - dq3;
 
   const JointModel& joint5 = m_model.joints[4];
-  const double dq5 = (q[4] - m_model.qHome[4]) * GeomConst::DegToRad / joint5.axis.Z();
+  const double dq5 = (q[4] - m_model.qHome[4]) * GeomConst::DegToRad / joint5.axis.z();
 
   return {
       isOverhead(q) ? ShoulderBranch::Overhead : ShoulderBranch::Basic,
@@ -127,16 +127,16 @@ Kr10Kinematics::solveArm(const V3d &wristCenter,
                          const IkBranch &branch,
                          const V6d &currentQ) const
 {
-  const Kr10Model::IkParams& ik = m_model.ik;
+  const Kr10KinematicModel::IkParams& ik = m_model.ik;
 
   // q1
-  const double radialDistance = std::hypot(wristCenter.X(), wristCenter.Y());
+  const double radialDistance = std::hypot(wristCenter.x(), wristCenter.y());
   if (radialDistance <= GeomConst::Eps)
     return std::nullopt;
 
   const bool overhead = branch.shoulder == ShoulderBranch::Overhead;
 
-  const double dq1 = std::atan2(wristCenter.Y(), wristCenter.X()) + (overhead ? GeomConst::Pi : 0.0);
+  const double dq1 = std::atan2(wristCenter.y(), wristCenter.x()) + (overhead ? GeomConst::Pi : 0.0);
 
   const double signedRadius = overhead ? -radialDistance : radialDistance;
 
@@ -145,7 +145,7 @@ Kr10Kinematics::solveArm(const V3d &wristCenter,
 
   // q2
   const double planarX = signedRadius - ik.sx;
-  const double planarZ = wristCenter.Z() - ik.sz;
+  const double planarZ = wristCenter.z() - ik.sz;
   const double distanceSquared = planarX * planarX + planarZ * planarZ;
 
   if (!std::isfinite(distanceSquared) || distanceSquared <= GeomConst::Eps * GeomConst::Eps)
@@ -186,9 +186,9 @@ Kr10Kinematics::solveWrist(const M4d &targetT06,
   q123[2] = arm.q3;
 
   const std::array<M4d, LinkCount> transforms = solveFK(q123);
-  const M4d T36 = transforms[3].Inverted().Multiplied(targetT06);
+  const M4d T36 = inverseRigidTransform(transforms[3]) * targetT06;
 
-  const double rawCosQ5 = -T36.Value(2, 3);
+  const double rawCosQ5 = -T36(1, 2);
 
   if (!std::isfinite(rawCosQ5) || rawCosQ5 < -1.0 - GeomConst::Eps || rawCosQ5 >  1.0 + GeomConst::Eps) {
     return std::nullopt;
@@ -205,8 +205,8 @@ Kr10Kinematics::solveWrist(const M4d &targetT06,
   if (std::abs(sinQ5) <= GeomConst::Eps)
     return std::nullopt;
 
-  const double dq4 = std::atan2(-T36.Value(3, 3) / sinQ5, T36.Value(1, 3) / sinQ5);
-  const double dq6 = std::atan2(-T36.Value(2, 2) / sinQ5, T36.Value(2, 1) / sinQ5);
+  const double dq4 = std::atan2(-T36(2, 2) / sinQ5, T36(0, 2) / sinQ5);
+  const double dq6 = std::atan2(-T36(1, 1) / sinQ5, T36(1, 0) / sinQ5);
 
   const std::optional<double> q4 = resolveJointAngle(3, dq4, currentQ[3]);
   const std::optional<double> q5 = resolveJointAngle(4, dq5, currentQ[4]);
@@ -222,7 +222,7 @@ std::optional<double> Kr10Kinematics::resolveJointAngle(std::size_t jointIndex, 
 {
   const JointModel& joint = m_model.joints[jointIndex];
 
-  const double angleDeg = m_model.qHome[jointIndex]+ deltaRad * joint.axis.Z() * GeomConst::RadToDeg;
+  const double angleDeg = m_model.qHome[jointIndex]+ deltaRad * joint.axis.z() * GeomConst::RadToDeg;
   if (!std::isfinite(angleDeg) || !std::isfinite(currentDeg)) return std::nullopt;
 
   const int firstTurn = static_cast<int>(std::ceil((joint.qMin - angleDeg) / 360.0));
@@ -245,15 +245,15 @@ bool Kr10Kinematics::isOverhead(const V6d& q) const
   const M4d& T01 = transforms[1];
   const M4d& T06 = transforms.back();
 
-  const V3d flangeOrigin{T06.TranslationPart()};
-  const V3d flangeZ{T06.VectorialPart().Column(3)};
+  const V3d flangeOrigin = T06.block<3, 1>(0, 3);
+  const V3d flangeZ = T06.block<3, 1>(0, 2);
 
-  const V3d wristCenter = flangeOrigin.Subtracted(flangeZ.Multiplied(m_model.ik.dF));
+  const V3d wristCenter = flangeOrigin - flangeZ * m_model.ik.dF;
 
-  const V3d a1Origin{T01.TranslationPart()};
-  const V3d a1X{T01.VectorialPart().Column(1)};
+  const V3d a1Origin = T01.block<3, 1>(0, 3);
+  const V3d a1X = T01.block<3, 1>(0, 0);
 
-  const double wristXInA1 = wristCenter.Subtracted(a1Origin).Dot(a1X);
+  const double wristXInA1 = (wristCenter - a1Origin).dot(a1X);
 
   return wristXInA1 < 0.0;
 }
@@ -261,11 +261,11 @@ bool Kr10Kinematics::isOverhead(const V6d& q) const
 bool Kr10Kinematics::isSolution(const M4d& targetT06, const V6d& q) const
 {
   const M4d actualT06 = solveFK(q).back();
-  const M4d errorTransform = targetT06.Inverted().Multiplied(actualT06);
+  const M4d errorTransform = inverseRigidTransform(targetT06) * actualT06;
 
   return
-      posErr(errorTransform) <= GeomConst::PosEps &&
-      rotErr(errorTransform) <= GeomConst::RotEps;
+      posErr(errorTransform) <= Kr10PosEps &&
+      rotErr(errorTransform) <= Kr10RotEps;
 }
 
 uint8_t Kr10Kinematics::statusFrom(const IkBranch &branch) noexcept

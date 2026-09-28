@@ -13,10 +13,14 @@ ToolBar {
   required property bool showScanPath
   required property bool showMachiningPath
   property bool planeImportAvailable: false
+  property bool circleImportAvailable: false
   property bool cylinderImportAvailable: false
+  property bool intersectionAvailable: false
 
   signal planeImportRequested()
+  signal circleImportRequested()
   signal cylinderImportRequested()
+  signal intersectionRequested()
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
   signal scanPathToggled(bool checked)
@@ -123,6 +127,13 @@ ToolBar {
         }
 
         Tool {
+          text: qsTr("Circle from JSON")
+          iconSource: "qrc:/pics/circ.svg"
+          available: root.circleImportAvailable
+          onTriggered: root.circleImportRequested()
+        }
+
+        Tool {
           text: qsTr("Cylinder from JSON")
           iconSource: "qrc:/pics/cylinder.svg"
           available: root.cylinderImportAvailable
@@ -136,9 +147,11 @@ ToolBar {
       }
 
       Tool {
-        visible: root.precise
+        visible: root.measuring
         text: qsTr("Intersect Selected")
         iconSource: "qrc:/pics/intersec.svg"
+        available: root.intersectionAvailable
+        onTriggered: root.intersectionRequested()
       }
 
       Row {

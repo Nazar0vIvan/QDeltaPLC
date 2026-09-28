@@ -3,6 +3,7 @@
 #include <cmath>
 #include <optional>
 #include <QJsonValue>
+#include <QJsonDocument>
 #include <QJsonArray>
 
 #include "mathtypes.h"
@@ -18,6 +19,7 @@ struct ProbeSamples {
 };
 
 // Legacy arrays have zero compensation; objects require points, radius and dir.
+std::optional<ProbeSamples> decodeProbeSamples(const QJsonDocument& document);
 std::optional<ProbeSamples> readProbeSamples(const QString& path);
 
 bool nearlyEqual(double lhs, double rhs, double eps = GeomConst::Eps);
@@ -26,7 +28,12 @@ V3d axisVec(const Axis axis, double value);
 
 M4d makeTranslation(const V3d& delta);
 M4d makeRotation(const double angleDeg, const Axis axis);
+// Finite angle and finite nonzero axis; numerical callers validate their inputs.
+// Unlike the principal-axis overload, this retains small rotation components.
+M4d makeRotation(double angleDeg, const V3d& axis);
 M4d makeTransform(const M3d& rot, const V3d& origin);
+// Inverse of a rigid transform: rotation must be orthonormal, with no scale/shear.
+M4d inverseRigidTransform(const M4d& transform);
 
 bool isBasis(const V3d& v1, const V3d& v2, const V3d& v3, double eps = GeomConst::Eps);
 std::optional<OrthoBasis> vecs2basis(const V3d& v1, const V3d& v2, const V3d& v3, double eps = GeomConst::Eps);

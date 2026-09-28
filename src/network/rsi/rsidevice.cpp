@@ -1,4 +1,5 @@
 #include "network/rsi/rsidevice.h"
+#include "network/common/socketconfigutils.h"
 
 #include <functional>
 
@@ -71,14 +72,11 @@ void RsiDevice::connect(const QVariantMap& config)
     const QHostAddress la(config.value("localAddress").toString());
     const QHostAddress pa(config.value("peerAddress").toString());
 
-    bool lpOk = false;
-    const uint lp = config.value("localPort").toUInt(&lpOk);
+    const auto lp = parseSocketPort(config.value("localPort"));
 
     if (la.isNull()
         || pa.isNull()
-        || !lpOk
-        || lp == 0
-        || lp > 65535) {
+        || !lp) {
       emit logMessage({
         "Invalid socket configuration",
         0,
@@ -88,7 +86,7 @@ void RsiDevice::connect(const QVariantMap& config)
     }
 
     m_la = la;
-    m_lp = static_cast<quint16>(lp);
+    m_lp = *lp;
     m_pa = pa;
 
     // RSI peer port comes from the first incoming datagram.
@@ -108,6 +106,11 @@ void RsiDevice::connect(const QVariantMap& config)
     disconnect();
 
   m_pp = 0;
+
+  emit stateReady({{"connectionConfig", QVariantMap{
+    {"localAddress", m_la.toString()}, {"localPort", m_lp},
+    {"peerAddress", m_pa.toString()}
+  }}});
 
   if (!m_sock->bind(m_la, m_lp)) {
     emit logMessage({

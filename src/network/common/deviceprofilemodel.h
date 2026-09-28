@@ -25,16 +25,8 @@ public:
   };
   Q_ENUM(Column)
 
-  enum Status {
-    Disconnected,
-    Connected,
-    Bound,
-    Streaming
-  };
-  Q_ENUM(Status)
-
   enum Role {
-    StatusRole = Qt::UserRole + 1
+    DriverRole = Qt::UserRole + 1
   };
 
   explicit DeviceProfileModel(QObject* parent = nullptr);
@@ -50,24 +42,20 @@ public:
 
   QStringList names() const;
 
-  void setStatus(int row, Status status);
-
 private:
   struct Device
   {
     QString name;
+    QString driver;
     QString localAddress;
     int localPort = -1;
     QString peerAddress;
     int peerPort = -1;
     QString protocol;
     QString openMode;
-    Status status = Disconnected;
   };
 
   void load();
-
-  static QString statusText(Status status);
 
   QVector<Device> m_devices;
 };

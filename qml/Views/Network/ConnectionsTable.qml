@@ -11,7 +11,6 @@ Item {
   id: root
 
   required property Backend.DeviceProfileModel model
-  required property list<Backend.DeviceRunner> runners
   property int selectedRow: -1
 
   implicitWidth: table.contentWidth
@@ -106,11 +105,27 @@ Item {
         required property int row
         required property int column
         required property var display
+        required property string driver
 
         readonly property Backend.DeviceRunner runner:
-          cell.row >= 0 && cell.row < root.runners.length
-            ? root.runners[cell.row]
-            : null
+          Backend.Hub.device(cell.driver)
+
+        readonly property var appliedConfig: cell.runner ? cell.runner.data.connectionConfig : ({})
+
+        function configurationText() {
+          switch (cell.column) {
+          case Backend.DeviceProfileModel.LocalAddressColumn:
+            return cell.appliedConfig.localAddress ?? "—"
+          case Backend.DeviceProfileModel.LocalPortColumn:
+            return cell.appliedConfig.localPort ?? "—"
+          case Backend.DeviceProfileModel.PeerAddressColumn:
+            return cell.appliedConfig.peerAddress ?? "—"
+          case Backend.DeviceProfileModel.PeerPortColumn:
+            return cell.appliedConfig.peerPort ?? (cell.driver === "rsi" ? qsTr("Learned") : "—")
+          default:
+            return cell.display ?? ""
+          }
+        }
 
         readonly property bool connected:
           runner && runner.isConnected
@@ -130,7 +145,7 @@ Item {
                         : 0
           }
 
-          text: cell.display ?? ""
+          text: cell.configurationText()
 
           readOnly: true
           selectByMouse: true
@@ -169,7 +184,9 @@ Item {
             width: contentWidth
             height: parent.height
 
-            text: cell.connected ? qsTr("Connected") : qsTr("Disconnected")
+            text: cell.connected ? qsTr("Connected")
+                  : !cell.runner || cell.runner.isDisconnected ? qsTr("Disconnected")
+                  : qsTr("Connecting / closing")
 
             readOnly: true
             selectByMouse: true

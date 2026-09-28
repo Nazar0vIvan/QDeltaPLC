@@ -10,13 +10,6 @@
 AbstractDevice::AbstractDevice(const QString& name, QObject* parent)
   : QObject(parent) {
   setObjectName(name);
-
-  QObject::connect(
-      this,
-      &AbstractDevice::logMessage,
-      Logger::instance(),
-      &Logger::push,
-      Qt::QueuedConnection);
 }
 
 void AbstractDevice::start()

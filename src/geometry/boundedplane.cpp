@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace {
 
@@ -16,11 +17,9 @@ BoundedPlane::Point coordinates(const V3d& value)
 
 } // namespace
 
-std::optional<BoundedPlane> BoundedPlane::fromPoints(const std::vector<Point>& points)
+std::optional<BoundedPlane> BoundedPlane::fromPoints(QVector<V3d> points)
 {
-  QVector<V3d> samples;
-  samples.reserve(static_cast<qsizetype>(points.size()));
-  for (const auto& point : points) samples.append(V3d{point[0], point[1], point[2]});
+  const auto& samples = std::as_const(points);
   const auto plane = Plane::fromPoints(samples);
   if (!plane) return std::nullopt;
 
@@ -59,32 +58,41 @@ std::optional<BoundedPlane> BoundedPlane::fromPoints(const std::vector<Point>& p
   const V3d origin = *anchor + (minU + width / 2) * u + (minV + height / 2) * v;
   if (!origin.allFinite()) return std::nullopt;
 
-  BoundedPlane result;
-  for (int i = 0; i < 4; ++i) result.coefficients[i] = plane->coeffs[i];
-  result.points = points;
-  result.origin = coordinates(origin);
-  result.axisU = coordinates(u);
-  result.axisV = coordinates(v);
-  result.width = width;
-  result.height = height;
-  return result;
+  const std::array<double, 4> coefficients{plane->coeffs[0], plane->coeffs[1], plane->coeffs[2], plane->coeffs[3]};
+  return BoundedPlane(std::move(points), coefficients,
+                       {coordinates(origin), coordinates(u), coordinates(v)}, {width, height});
 }
 
 std::optional<BoundedPlane> BoundedPlane::fromJsonFile(const QString& path)
 {
-  const auto samples = readProbeSamples(path);
-  if (!samples) return std::nullopt;
-  std::vector<Point> points;
-  points.reserve(samples->points.size());
-  for (const auto& sample : samples->points) points.push_back(coordinates(sample));
-  auto plane = fromPoints(points);
+  auto samples = readProbeSamples(path);
+  return samples ? fromSamples(std::move(*samples)) : std::nullopt;
+}
+
+std::optional<BoundedPlane> BoundedPlane::fromSamples(ProbeSamples samples)
+{
+  if (!std::isfinite(samples.radius) || samples.radius < 0.0
+      || (samples.dir != 1 && samples.dir != -1)) return std::nullopt;
+  auto plane = fromPoints(std::move(samples.points));
   if (!plane) return std::nullopt;
-  const double shift = samples->dir * samples->radius;
-  plane->coefficients[3] -= shift;
-  if (!std::isfinite(plane->coefficients[3])) return std::nullopt;
-  for (int i = 0; i < 3; ++i) {
-    plane->origin[i] += shift * plane->coefficients[i];
-    if (!std::isfinite(plane->origin[i])) return std::nullopt;
-  }
+  if (!plane->applyProbe(samples.radius, samples.dir)) return std::nullopt;
   return plane;
+}
+
+BoundedPlane::BoundedPlane(QVector<V3d> points, const std::array<double, 4>& coefficients,
+                           const std::array<Point, 3>& frame, const std::array<double, 2>& bounds)
+  : m_coefficients(coefficients), m_points(std::move(points)), m_origin(frame[0]), m_axisU(frame[1]),
+    m_axisV(frame[2]), m_width(bounds[0]), m_height(bounds[1])
+{}
+
+bool BoundedPlane::applyProbe(double radius, int dir)
+{
+  const double shift = dir * radius;
+  m_coefficients[3] -= shift;
+  if (!std::isfinite(m_coefficients[3])) return false;
+  for (int i = 0; i < 3; ++i) {
+    m_origin[i] += shift * m_coefficients[i];
+    if (!std::isfinite(m_origin[i])) return false;
+  }
+  return true;
 }

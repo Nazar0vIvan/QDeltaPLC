@@ -107,6 +107,7 @@ public:
   };
 
   ParseResult buildReq(const QVariantMap& req, quint8 tid) const;
+  ParseResult outputRequest(const QVariantMap& args) const;
 	ParseResult parseMessage(const QByteArray& message) const;
 
 private:

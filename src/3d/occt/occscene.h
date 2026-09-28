@@ -1,6 +1,5 @@
 #pragma once
 
-#include "3d/math/mathtypes.h"
 #include "3d/occt/occpartprops.h"
 
 #include "occpart.h"
@@ -14,6 +13,7 @@
 #include <cstddef>
 #include <optional>
 #include <vector>
+#include <map>
 
 class AIS_InteractiveContext;
 class V3d_View;
@@ -36,9 +36,10 @@ public:
   OccScene& operator=(OccScene&&) noexcept = delete;
 
   [[nodiscard]] bool isValid() const;
+  [[nodiscard]] bool hasVisibleParts() const;
 
   [[nodiscard]] std::optional<PartId> addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props = {});
-  [[nodiscard]] bool setPartTransform(PartId id, const M4d& transform);
+  [[nodiscard]] bool setPartTransform(PartId id, const gp_Trsf& transform);
   [[nodiscard]] bool setPartVisible(PartId id, bool visible);
   [[nodiscard]] bool removePart(PartId id);
   [[nodiscard]] Handle(AIS_Shape) partHandle(PartId id) const;
@@ -63,6 +64,7 @@ private:
   // Slots are never reused during this scene's lifetime. A removed part leaves
   // a tombstone so a stale PartId cannot address a later presentation.
   std::vector<std::optional<OccPart>> m_parts;
+  std::map<PartId, Handle(AIS_Shape)> m_selectionOutlines;
   OccWorldAxes m_worldAxes;
   OccViewCube m_viewCube;
   bool m_worldAxesDisplayed = false;

@@ -15,11 +15,8 @@ struct OccInputResult
 {
   bool accepted = false;
   bool needsRedraw = false;
-  bool needsViewerUpdate = false;
-  bool cameraChanged = false;
   bool cameraScaleChanged = false;
   bool selectionChanged = false;
-  bool hoverChanged = false;
 };
 
 class OccInputController final

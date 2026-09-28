@@ -1,9 +1,26 @@
 # RoboCrap — agent instructions
 
-## Scope and workflow
+## Mandatory C++ style
 
 - Do not use C++ lambdas; use descriptively named helper functions or member methods.
 - No project test logic is needed; do not add tests, test harnesses, or test build targets.
+
+- Do not use exception-handling syntax in project C++ code: no `try`, `catch`, or `throw`.
+  Report expected failures through return values, using existing optional/result conventions.
+  This rule does not authorize disabling compiler exception support or changing third-party code.
+- Return results through the function return value, never through output or input/output parameters.
+  Do not use references, raw pointers, or smart pointers as result channels, including shared result
+  objects populated by a worker. Return a cohesive value containing the result and error information
+  when both are needed. Input references/pointers and explicit operations on an existing object
+  (such as setters or scene insertion) are allowed; do not disguise an output parameter as mutation.
+- Functions and constructors must have at most four parameters. Prefer zero to two; three or four
+  require a concrete responsibility/API justification, not caller convenience. Group values only
+  when they form a meaningful concept; do not introduce parameter bags merely to satisfy the limit.
+- Access another object's private state only through its methods: getters for reads and setters
+  or named operations for changes. Do not assign fields such as `object->m_geometry`, including
+  through friendship. A class may initialize and update its own members inside its implementation.
+
+## Scope and workflow
 
 - Read the files you will change and inspect affected callers before changing behavior or an API.
   For a changed QML component or component use, inspect its definition and custom base types;
@@ -30,19 +47,43 @@
   Root and module CMakeLists.txt files are authoritative for requirements, sources, and options.
   Keep compatibility with those minimums; local SDK versions do not authorize raising them.
 - Root CMakeLists.txt owns robocrap, application QML, and resource lists. src/CMakeLists.txt owns
-  RoboCrapBackend and also adds geometry, path generation, and concrete devices directly to robocrap.
-  A successful backend-only build does not validate those application sources.
-  The plane importer, bounded plane/cylinder numerical data, and existing geometry/plane.cpp
-  and geometry/utils.cpp compile in RoboCrapBackend; the trajectory Cylinder and other
-  geometry and concrete-device sources still compile in robocrap.
+  RoboCrapGeometry (geometry, KR10 numerical kinematics and the previously active path-generation sources), RoboCrapScene
+  (scene objects and synchronous importer), RoboCrapDevices (device infrastructure, concrete
+  devices and protocols), and RoboCrapBackend (backend QML registration only). Scene and Devices
+  link Geometry; Backend links Scene and Devices. Logger and QmlChartBridge compile in robocrap.
+  Geometry publicly supplies Eigen because its public headers expose Eigen types. Scene and
+  Devices export Qt metatype metadata for backend foreign registration. RDTResponse retains
+  its application-module QML registration through qt_generate_foreign_qml_types.
+  A backend build includes its implementation dependencies but does not validate the executable,
+  application QML, or viewport integration; build robocrap for full integration verification.
 - src/3d/CMakeLists.txt owns RoboCrap3D (URI RoboCrap.Viewport3D), the independent OCCT preview.
   It requires the bundled OCCT 8.0.0 SDK and a Windows 64-bit MinGW Qt kit. Its public controller
   header does not expose OCCT math types; internal OCCT code uses namespace RoboCrap3D.
-  RobotViewport.qml hosts its native QWindow; CAD parsing runs on a dedicated worker, while
+  RoboCrap3D links RoboCrapScene rather than RoboCrapBackend and publicly links RoboCrapGeometry.
+  Kr10Kinematics compiles in RoboCrapGeometry and uses the shared Eigen types in geometry/mathtypes.h.
+  OccRobotAdapter converts numerical transforms to gp_Trsf; OccScene and OccPart retain OCCT types.
+  The former 3d/math copies are removed; RGB conversion lives with OccPartProps.
+  RobotViewport.qml hosts its native QWindow; CAD parsing runs on CadLoadWorker instances, while
   robot state, QML properties, and OCCT presentation remain on the GUI thread.
+  viewportReady reports an initialized viewer independently of robot assets; ready still reports
+  robot-preview readiness for kinematics. Robot attachment replaces only robot parts and preserves
+  application presentations. Initial camera fitting stops after a camera gesture on that surface.
+  Startup displays the viewcube first; world axes appear only with visible scene parts after
+  camera setup. Axes are excluded from fit bounds, and fitting defers redraw until their size is updated.
+  Kr10Model groups Kr10KinematicModel and RobotVisualModel from one JSON definition; Kr10Kinematics
+  receives only Kr10KinematicModel, while robot presentation receives RobotVisualModel.
+  CadLoadWorker takes absolute source paths and a cache directory and returns ordered shapes/errors;
+  requests serialize OCCT parsing/cache access. Robot loading includes only the seven links.
+  Joint data and fixed dimensions share kr10kinematicmodel.h; visual records and the complete
+  model share kr10model.h.
+  CadLoadResult is worker-independent data. RobotPreviewState owns the model and current IK seed;
+  it creates read-only RobotPose candidates, and OccController commits them after presentation
+  succeeds. OccViewWindow retains const access to preview state for restoration.
   resources/json/kr10.json is embedded by json.qrc. cmake/DeployOcct.cmake stages OCCT DLLs,
   runtime resources, and resources/cad/kr10 beside the executable and during installation.
   Generated BREP caches belong under QStandardPaths::CacheLocation, not beside source CAD.
+  CachedShapeLoader accepts STEP/STP basenames in a selected directory. Its content/OCCT-version
+  hash selects a BREP before STEP conversion; absent/invalid caches are regenerated atomically.
 - USE_HOT_RELOAD=ON requires Felgo/FelgoHotReload. OFF embeds application QML using
   qt_add_qml_module(). Preserve both paths; use OFF for verification when Felgo is unavailable.
 - FAST_QML_BUILD=ON applies NO_CACHEGEN to the application, UI, and viewport modules. Check OFF too
@@ -72,10 +113,12 @@ and src/main.cpp.
 - Publish value state through stateReady -> DeviceRunner::onStateReady -> data, and socket state
   through socketStateReady -> onSockState -> socketState. Preserve keys consumed by QML and notify
   bindings when values change. Keep QML-facing model mutations on the model's owning thread.
+- Device log signals are connected to Logger in main.cpp before devices start, using queued
+  connections. Devices depend only on network/common/loggermessage.h, not the Logger singleton.
 - Methods dispatched by DeviceRunner::invoke(name, args) must be public Q_INVOKABLE methods on
   an AbstractDevice-derived class, return void, and take zero arguments or one QVariantMap.
   Names must be unique: buildApi() indexes by name, not overload signature. Inspect string call sites.
-- Register C++ QML types through src/network/backendqmltypes.h and src/CMakeLists.txt, following
+- Register C++ QML types through src/backendqmltypes.h and src/CMakeLists.txt, following
   the existing QML_FOREIGN pattern. Preserve Hub's C++ ownership, engine/thread checks, and lifetime.
   logger is the existing context-property exception; use typed registration for new exposure.
 - Keep device/protocol processing and substantial numerical work in C++. Avoid blocking the GUI
@@ -84,33 +127,87 @@ and src/main.cpp.
 
 ## QML components and geometry
 
-- Scene data is owned in C++ by src/scene. main.cpp owns ApplicationScene and exposes it as
+- SceneEndEffectors in src/scene owns both tool configurations on the GUI thread, independently
+  of scene-object selection. main.cpp owns it before the QML engine and exposes Backend.EndEffectors
+  through backendqmltypes.h. CAD URLs default to deployed MEE.stp and SEE.stp via ViewportAssets.
+  MEE is WP-500 V6 with constant 3 mm ball diameter and 37.2 mm stylus length. Spindle TCP is an
+  initially empty QList<double>, set atomically to six finite flange-relative XYZABC values
+  (mm/degrees, Z-Y-X rotation). Active tool defaults to Measuring. OccController observes CAD
+  source changes and retains separate MEE/SEE shapes, successful source URLs, loading states and
+  errors. Superseded load results are discarded; failed replacements retain the last good shape.
+  OccRobotAdapter retains both tool presentations, updating both at the flange during pose changes;
+  switching only changes visibility. OccViewWindow retains tool shapes/selection across surface
+  recreation. Main.qml selects MEE for both measuring submodes and SEE for Machining.
+  EndEffectorPanel.qml sits below Properties in a vertical splitter, visible in both measuring submodes and Machining. It shows
+  fixed MEE data or six SEE TCP draft fields with explicit Apply/Reset. Main.qml owns the STEP/STP
+  dialog and captures its destination tool when opened. The panel displays per-tool load errors
+  and retry; selecting the same source explicitly reloads through the existing cache.
+  SceneEndEffectors converts spindle TCP/flange XYZABC poses with existing geometry helpers.
+  OccController.tcpPose derives the base-relative TCP pose from committed flange state;
+  solveTcpIK converts a TCP target to a flange target and delegates to existing IK.
+  These generically named APIs currently use spindleTcp calibration, independently of activeTool.
+  Calibration edits notify the derived
+  TCP only, without moving CAD/robot or reloading files. Missing calibration yields empty results;
+  no MEE TCP is inferred from stylus length. Existing solveFK/solveIK remain flange-based.
+
+- Numerical intersections live in geometry/surfaceintersection.h/.cpp in RoboCrapGeometry.
+  intersectSurfaces supports only plane-cylinder and returns a status and optional immutable EdgeGeometry containing a complete ellipse/circle using the infinite plane and axially extended cylinder.
+  Displayed surface bounds do not clip the intersection; parallel-axis cases return no edge. SceneModel::canIntersect/intersect
+  accept only one fitted plane and one fitted cylinder; intersect inserts one Edge and returns its ID list, or emits
+  intersectionFailed without insertion. SceneEdgeGeometry owns immutable geometry and source IDs,
+  exposed as uncreatable Backend.EdgeGeometry. OccSceneAdapter renders complete cyan ellipse/circle edges with existing picking and visibility. Main.qml wires Intersect Selected in both measuring submodes through canIntersect/intersect, selects successful results and shows intersectionFailed messages;
+  see INTERSECTIONS_EXECPLAN.md.
+
+- The Scene Abstraction Layer lives in src/scene. main.cpp owns SceneModel and exposes it as
   RoboCrap.Backend's Scene singleton; SceneModel owns SceneObject children and their
-  PlaneGeometry or CylinderGeometry.
+  ScenePlaneGeometry, SceneCylinderGeometry or SceneCircleGeometry (all in scenegeometry.h).
   QML receives a read-only object list and edits names/visibility through model methods. Preserve
-  stable IDs, shared object references, and GUI-thread mutations. Fitting remains in src/geometry.
+  scene-allocated quint32 IDs (zero means no object), shared object references and GUI-thread mutations.
+  Startup creates no demo scene objects. SceneModel::removeObjects emits objectRemoved for targeted
+  viewport/overlay removal and defers QObject destruction; source deletion does not cascade to edges.
+  Delete works from the scene UI and native viewport, with text editing excluded from the shortcut.
+  The viewport background is neutral sRGB #A5A5A5.
+  SceneModel indexes IDs with QHash, emits objectAdded/objectVisibilityChanged for targeted rendering,
+  and retains objectsChanged only as the QML collection notification. Fitting remains in src/geometry.
   OccController observes the application scene directly in C++ and carries it through viewport
-  recreation; viewport-local presentation handles are keyed by stable object IDs. Bounded imported
+  recreation. OccSceneAdapter in src/3d/adapters translates typed scene geometry, overlays, selection and picks
+  into OccScene operations, grouping viewport-local parts by stable object ID. OccViewport owns
+  OccSceneAdapter and OccRobotAdapter and coordinates input and rendering. Full scene installation
+  replaces presentations; ordinary object changes update only the affected presentation. Bounded imported
   planes and cylinders render as finite OCCT faces from their authoritative frames and bounds.
-  Other scene geometry is not rendered yet, and scene objects are not connected to trajectory generation.
-  Imported planes retain immutable BoundedPlane data (original points, centered rectangle,
-  tangent axes and bounds). Imported cylinders retain immutable BoundedCylinder data (original
-  points, fitted axis, midpoint origin, radius and finite length). PlaneImporter.load(url, scene)
-  and loadCylinder(url, scene) fit on the same worker lifecycle, insert directly into the
-  destination scene on the GUI thread, and emit loaded(SceneObject*); QML never forwards geometry.
+  Fitted circles render as complete OCCT circular edges. Other scene geometry is not rendered yet,
+  and scene objects are not connected to trajectory generation.
+  BoundedPlane and BoundedCylinder have private construction and read-only accessors; validated
+  fromPoints/fromSamples factories create them. Both retain original samples as QVector<V3d>;
+  fromPoints takes that container by value and fromSamples takes ProbeSamples by value so the
+  importer can transfer ownership. Fitting reads shared samples through const access; centered
+  numerical workspaces remain separate. Point arrays describe the small surface frames only.
+  Imported planes retain immutable BoundedPlane data
+  (original points, centered rectangle, tangent axes and bounds). Imported cylinders retain immutable BoundedCylinder data (original
+  points, fitted axis, midpoint origin, radius and finite length). Imported circles retain immutable
+  Circle data (center, radius, canonical unit normal, original points and 3D fit RMS).
+  Circle::fromPoints uses a direct circumcircle for three non-collinear points and geometric
+  least-squares fitting for larger sets. SceneSurfaceImporter in
+  scenesurfaceimporter.* retains the QML name PlaneImporter.
+  load(url, scene), loadCylinder(url, scene) and loadCircle(url, scene) synchronously decode, fit and insert on the GUI
+  thread, then emit loaded(SceneObject*); there is no import worker or event pumping. QML never
+  forwards geometry. Source URLs are provenance metadata in the scene, validated only for file import.
   The coefficient-only addPlane API remains unbounded. Properties displays plane bounds only
-  when PlaneGeometry.hasBounds is true. CylinderGeometry is shown only for fitted cylinders;
-  metadata-only cylinder rows have no OCCT presentation.
+  when the PlaneGeometry QML view hasBounds is true. The CylinderGeometry QML view is shown only
+  for fitted cylinders; metadata-only cylinder rows have no OCCT presentation.
   Main.qml owns the selected application IDs and the Show Points/Show Normals preferences.
   OccController forwards them to each viewport; CAD picks return stable application IDs to QML.
-  Point and normal overlays use original samples, are bounded display-only OCCT parts, and do
+  Point overlays use original samples; plane/cylinder normals originate at samples and a circle's
+  single normal originates at its center. Overlays are bounded display-only OCCT parts and do
   not participate in picking. Parent visibility controls overlays.
-  Surface JSON imports accept {"points": [[x,y,z], ...], "radius": r, "dir": s} for
+  Plane and cylinder JSON imports accept {"points": [[x,y,z], ...], "radius": r, "dir": s} for
   probe-ball compensation after fitting. Radius is finite and nonnegative in point units;
   dir is exactly +1 or -1. Planes shift by dir*radius along their canonical unit normal
   (both coefficients and bounded origin); cylinders add dir*radius to their fitted radius,
   which must remain positive. Original samples and pre-compensation fit residuals are retained.
   Legacy point arrays remain supported without compensation; fromPoints APIs fit raw points.
+  Circle JSON imports read raw point arrays or an object's points array; radius/dir metadata is
+  ignored and no probe compensation is applied. Manual circle examples live in resources/json/circ.
 
 - Reuse compatible controls from qml/Modules/Components and values from the Styles module's
   Colors, Fonts, and Metrics singletons.
@@ -148,6 +245,11 @@ and src/main.cpp.
   consumer. Preserve frame order X/Y/Z/A/B/C, degree-based Euler APIs and Z-Y-X composition,
   existing units, tolerances, optional/error results, and trajectory timing unless the task changes them.
   Check failed optional results before using them; validate finite and degenerate inputs as appropriate.
+  Initialize Eigen transforms explicitly to identity and persistent vectors to zero. Robot joint
+  rotations use the arbitrary-axis makeRotation overload without small-component cleanup; preserve
+  the existing principal-axis overload's cleanup for trajectory callers. inverseRigidTransform
+  assumes orthonormal rotation with no scale/shear. KR10 tolerances remain 1e-4 position and 1e-6
+  rotation entries; its wrist singularity threshold remains GeomConst::Eps (1e-9).
 - For protocol changes, preserve or explicitly update framing, byte order, state keys, and endpoint
   validation together with their consumers. Validate changes using offline inputs or local simulation.
 - Connecting to live PLC/FTS/RSI equipment, writing outputs, biasing a sensor, or starting motion

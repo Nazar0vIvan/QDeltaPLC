@@ -8,7 +8,7 @@
 #include <QHash>
 #include <QMetaMethod>
 
-#include "logger.h"
+#include "network/common/loggermessage.h"
 
 class AbstractDevice : public QObject
 {

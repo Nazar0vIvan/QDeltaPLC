@@ -10,16 +10,18 @@
 #include <cmath>
 #include <limits>
 #include <utility>
+#include <vector>
 
 namespace {
 
 using Point = BoundedCylinder::Point;
 
 struct Fit {
-  V3d axis;
-  V3d center; // Relative to the sample centroid, perpendicular to the axis.
+  V3d axis = V3d::Zero();
+  V3d center = V3d::Zero(); // Relative to the sample centroid, perpendicular to the axis.
   double radius = 0.0;
   double cost = std::numeric_limits<double>::infinity();
+  Eigen::VectorXd values; // Radial residuals for these fitted parameters.
 };
 
 Point coordinates(const V3d& value)
@@ -27,36 +29,45 @@ Point coordinates(const V3d& value)
   return {value.x(), value.y(), value.z()};
 }
 
-bool tangentBasis(const V3d& axis, V3d& u, V3d& v)
+std::optional<std::array<V3d, 2>> tangentBasis(const V3d& axis)
 {
   const V3d reference = std::abs(axis.x()) < 0.9 ? V3d{1, 0, 0} : V3d{0, 1, 0};
   const auto tangent = normalize(reference - reference.dot(axis) * axis);
-  if (!tangent) return false;
-  u = *tangent;
-  v = axis.cross(u);
-  return v.allFinite();
+  if (!tangent) return std::nullopt;
+  const V3d bitangent = axis.cross(*tangent);
+  if (!bitangent.allFinite()) return std::nullopt;
+  return std::array<V3d, 2>{*tangent, bitangent};
 }
 
-bool residuals(const std::vector<V3d>& points, const Fit& fit, Eigen::VectorXd& result)
+std::optional<double> residual(const V3d& point, const Fit& fit)
+{
+  const V3d delta = point - fit.center;
+  const double radial = (delta - delta.dot(fit.axis) * fit.axis).norm();
+  if (!std::isfinite(radial) || radial <= GeomConst::Eps) return std::nullopt;
+  const double value = radial - fit.radius;
+  return std::isfinite(value) ? std::optional<double>{value} : std::nullopt;
+}
+
+std::optional<Fit> evaluate(const std::vector<V3d>& points, Fit fit)
 {
   if (!fit.axis.allFinite() || !fit.center.allFinite() || !std::isfinite(fit.radius)
-      || fit.radius <= GeomConst::Eps) return false;
-  result.resize(static_cast<Eigen::Index>(points.size()));
+      || fit.radius <= GeomConst::Eps) return std::nullopt;
+  fit.values.resize(static_cast<Eigen::Index>(points.size()));
   for (std::size_t i = 0; i < points.size(); ++i) {
-    const V3d delta = points[i] - fit.center;
-    const double radial = (delta - delta.dot(fit.axis) * fit.axis).norm();
-    if (!std::isfinite(radial) || radial <= GeomConst::Eps) return false;
-    result[static_cast<Eigen::Index>(i)] = radial - fit.radius;
+    const auto value = residual(points[i], fit);
+    if (!value) return std::nullopt;
+    fit.values[static_cast<Eigen::Index>(i)] = *value;
   }
-  return result.allFinite();
+  fit.cost = fit.values.squaredNorm();
+  return fit;
 }
 
-std::optional<Fit> displaced(const Fit& fit, const V3d& u, const V3d& v,
-                             const Eigen::Matrix<double, 5, 1>& delta)
+// A fit, its tangent frame and an increment define one numerical displacement.
+std::optional<Fit> displaced(const Fit& fit, const std::array<V3d, 2>& basis, const Eigen::Matrix<double, 5, 1>& delta)
 {
-  const auto axis = normalize(fit.axis + delta[0] * u + delta[1] * v);
+  const auto axis = normalize(fit.axis + delta[0] * basis[0] + delta[1] * basis[1]);
   if (!axis) return std::nullopt;
-  const V3d shifted = fit.center + delta[2] * u + delta[3] * v;
+  const V3d shifted = fit.center + delta[2] * basis[0] + delta[3] * basis[1];
   Fit next;
   next.axis = *axis;
   next.center = shifted - shifted.dot(next.axis) * next.axis;
@@ -66,8 +77,31 @@ std::optional<Fit> displaced(const Fit& fit, const V3d& u, const V3d& v,
   return next;
 }
 
-std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initialAxis,
-                               double scale)
+// Samples and an evaluated fit define the derivatives; scale sets the finite
+// difference steps, and the owned matrix is returned for reuse across iterations.
+std::optional<Eigen::MatrixXd> linearize(const std::vector<V3d>& points, const Fit& fit, double scale, Eigen::MatrixXd jacobian)
+{
+  const auto basis = tangentBasis(fit.axis);
+  if (!basis) return std::nullopt;
+  jacobian.resize(fit.values.size(), 5);
+  for (int column = 0; column < 5; ++column) {
+    Eigen::Matrix<double, 5, 1> step = Eigen::Matrix<double, 5, 1>::Zero();
+    step[column] = column < 2 ? 1e-5 : std::max(1e-6, scale * 1e-5);
+    const auto perturbed = displaced(fit, *basis, step);
+    if (!perturbed) return std::nullopt;
+    for (std::size_t i = 0; i < points.size(); ++i) {
+      const auto sample = residual(points[i], *perturbed);
+      if (!sample) return std::nullopt;
+      const auto row = static_cast<Eigen::Index>(i);
+      jacobian(row, column) = *sample;
+    }
+    jacobian.col(column) = (jacobian.col(column) - fit.values) / step[column];
+  }
+  return jacobian;
+}
+
+// Samples, initial axis and sample scale define one fit initialization.
+std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initialAxis, double scale)
 {
   const auto axis = normalize(initialAxis);
   if (!axis) return std::nullopt;
@@ -77,24 +111,20 @@ std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initia
   fit.radius /= static_cast<double>(points.size());
   if (!std::isfinite(fit.radius) || fit.radius <= GeomConst::Eps) return std::nullopt;
 
-  Eigen::VectorXd values;
-  if (!residuals(points, fit, values)) return std::nullopt;
-  fit.cost = values.squaredNorm();
+  auto evaluated = evaluate(points, std::move(fit));
+  if (!evaluated) return std::nullopt;
+  fit = std::move(*evaluated);
+  Eigen::MatrixXd jacobian;
+  Eigen::VectorXd trialValues;
   double damping = 1e-3;
   for (int iteration = 0; iteration < 200; ++iteration) {
-    V3d u, v;
-    if (!tangentBasis(fit.axis, u, v)) return std::nullopt;
-    Eigen::MatrixXd jacobian(values.size(), 5);
-    for (int column = 0; column < 5; ++column) {
-      Eigen::Matrix<double, 5, 1> step = Eigen::Matrix<double, 5, 1>::Zero();
-      step[column] = column < 2 ? 1e-5 : std::max(1e-6, scale * 1e-5);
-      const auto perturbed = displaced(fit, u, v, step);
-      Eigen::VectorXd sample;
-      if (!perturbed || !residuals(points, *perturbed, sample)) return std::nullopt;
-      jacobian.col(column) = (sample - values) / step[column];
-    }
+    const auto basis = tangentBasis(fit.axis);
+    if (!basis) return std::nullopt;
+    auto derivatives = linearize(points, fit, scale, std::move(jacobian));
+    if (!derivatives) return std::nullopt;
+    jacobian = std::move(*derivatives);
 
-    const Eigen::Matrix<double, 5, 1> gradient = jacobian.transpose() * values;
+    const Eigen::Matrix<double, 5, 1> gradient = jacobian.transpose() * fit.values;
     const Eigen::Matrix<double, 5, 5> normal = jacobian.transpose() * jacobian;
     if (!gradient.allFinite() || !normal.allFinite()) return std::nullopt;
     bool improved = false;
@@ -103,20 +133,23 @@ std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initia
       for (int i = 0; i < 5; ++i) regularized(i, i) += damping * std::max(1.0, normal(i, i));
       const Eigen::Matrix<double, 5, 1> change = regularized.ldlt().solve(-gradient);
       if (!change.allFinite()) return std::nullopt;
-      const auto candidate = displaced(fit, u, v, change);
-      Eigen::VectorXd candidateValues;
-      if (candidate && residuals(points, *candidate, candidateValues)) {
-        const double cost = candidateValues.squaredNorm();
+      auto candidate = displaced(fit, *basis, change);
+      if (candidate) {
+        candidate->values = std::move(trialValues);
+        candidate = evaluate(points, std::move(*candidate));
+      }
+      if (candidate) {
+        const double cost = candidate->cost;
         if (std::isfinite(cost) && cost < fit.cost) {
           const double previous = fit.cost;
-          fit = *candidate;
-          fit.cost = cost;
-          values = std::move(candidateValues);
+          trialValues = std::move(fit.values);
+          fit = std::move(*candidate);
           damping = std::max(1e-12, damping / 3.0);
           improved = true;
           if (previous - cost <= 1e-12 * std::max(1.0, previous)) return fit;
           break;
         }
+        trialValues = std::move(candidate->values);
       }
       damping *= 10.0;
     }
@@ -128,23 +161,14 @@ std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initia
   return std::nullopt;
 }
 
+// The observability check uses the samples, fitted parameters and their scale.
 bool wellConstrained(const std::vector<V3d>& points, const Fit& fit, double scale)
 {
   // The five fitted parameters must each affect the radial residuals. This
   // rejects single rings, narrow arcs, and other ambiguous point layouts.
-  V3d u, v;
-  if (!tangentBasis(fit.axis, u, v)) return false;
-  Eigen::VectorXd values;
-  if (!residuals(points, fit, values)) return false;
-  Eigen::MatrixXd jacobian(values.size(), 5);
-  for (int column = 0; column < 5; ++column) {
-    Eigen::Matrix<double, 5, 1> step = Eigen::Matrix<double, 5, 1>::Zero();
-    step[column] = column < 2 ? 1e-5 : std::max(1e-6, scale * 1e-5);
-    const auto perturbed = displaced(fit, u, v, step);
-    Eigen::VectorXd sample;
-    if (!perturbed || !residuals(points, *perturbed, sample)) return false;
-    jacobian.col(column) = (sample - values) / step[column];
-  }
+  auto derivatives = linearize(points, fit, scale, {});
+  if (!derivatives) return false;
+  Eigen::MatrixXd jacobian = std::move(*derivatives);
   jacobian.col(0) /= scale;
   jacobian.col(1) /= scale;
   const Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian);
@@ -155,12 +179,12 @@ bool wellConstrained(const std::vector<V3d>& points, const Fit& fit, double scal
 
 } // namespace
 
-std::optional<BoundedCylinder> BoundedCylinder::fromPoints(const std::vector<Point>& points)
+std::optional<BoundedCylinder> BoundedCylinder::fromPoints(QVector<V3d> points)
 {
-  if (points.size() < 6) return std::nullopt;
+  const auto& samples = std::as_const(points);
+  if (samples.size() < 6) return std::nullopt;
   V3d centroid = V3d::Zero();
-  for (const Point& point : points) {
-    const V3d value(point[0], point[1], point[2]);
+  for (const V3d& value : samples) {
     if (!value.allFinite()) return std::nullopt;
     centroid += value;
   }
@@ -170,8 +194,7 @@ std::optional<BoundedCylinder> BoundedCylinder::fromPoints(const std::vector<Poi
   std::vector<V3d> centered;
   centered.reserve(points.size());
   M3d covariance = M3d::Zero();
-  for (const Point& point : points) {
-    const V3d value(point[0], point[1], point[2]);
+  for (const V3d& value : samples) {
     centered.push_back(value - centroid);
     covariance += centered.back() * centered.back().transpose();
   }
@@ -186,8 +209,8 @@ std::optional<BoundedCylinder> BoundedCylinder::fromPoints(const std::vector<Poi
     V3d initial;
     if (i < 3) initial = eigen.eigenvectors().col(i);
     else initial = V3d::Unit(i - 3);
-    const auto candidate = fitFromAxis(centered, initial, scale);
-    if (candidate && (!best || candidate->cost < best->cost)) best = candidate;
+    auto candidate = fitFromAxis(centered, initial, scale);
+    if (candidate && (!best || candidate->cost < best->cost)) best = std::move(candidate);
   }
   if (!best || !wellConstrained(centered, *best, scale)) return std::nullopt;
 
@@ -206,32 +229,36 @@ std::optional<BoundedCylinder> BoundedCylinder::fromPoints(const std::vector<Poi
   const double rms = std::sqrt(best->cost / static_cast<double>(points.size()));
   const double tolerance = std::max(0.1, 0.02 * best->radius); // mm
   if (!std::isfinite(length) || length <= GeomConst::Eps
-      || !std::isfinite(best->radius) || best->radius <= GeomConst::Eps
-      || !std::isfinite(rms) || rms > tolerance) return std::nullopt;
+	 || !std::isfinite(best->radius) || best->radius <= GeomConst::Eps
+	 || !std::isfinite(rms) || rms > tolerance) return std::nullopt;
 
   const V3d origin = centroid + best->center + (minimum + length / 2.0) * axis;
   if (!origin.allFinite()) return std::nullopt;
-  BoundedCylinder result;
-  result.points = points;
-  result.origin = coordinates(origin);
-  result.axis = coordinates(axis);
-  result.radius = best->radius;
-  result.length = length;
-  result.rmsResidual = rms;
-  return result;
+  return BoundedCylinder(std::move(points), {coordinates(origin), coordinates(axis)}, {best->radius, length}, rms);
 }
 
 std::optional<BoundedCylinder> BoundedCylinder::fromJsonFile(const QString& path)
 {
-  const auto samples = readProbeSamples(path);
-  if (!samples) return std::nullopt;
-  std::vector<Point> points;
-  points.reserve(samples->points.size());
-  for (const V3d& sample : samples->points) points.push_back(coordinates(sample));
-  auto cylinder = fromPoints(points);
+  auto samples = readProbeSamples(path);
+  return samples ? fromSamples(std::move(*samples)) : std::nullopt;
+}
+
+std::optional<BoundedCylinder> BoundedCylinder::fromSamples(ProbeSamples samples)
+{
+	if (!std::isfinite(samples.radius) || samples.radius < 0.0 || (samples.dir != 1 && samples.dir != -1)) return std::nullopt;
+  auto cylinder = fromPoints(std::move(samples.points));
   if (!cylinder) return std::nullopt;
-  cylinder->radius += samples->dir * samples->radius;
-  if (!std::isfinite(cylinder->radius) || cylinder->radius <= GeomConst::Eps)
-    return std::nullopt;
+  if (!cylinder->applyProbe(samples.radius, samples.dir)) return std::nullopt;
   return cylinder;
+}
+
+BoundedCylinder::BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions, double residual)
+  : m_points(std::move(points)), m_origin(frame[0]), m_axis(frame[1]), m_radius(dimensions[0]),
+    m_length(dimensions[1]), m_rmsResidual(residual)
+{}
+
+bool BoundedCylinder::applyProbe(double radius, int dir)
+{
+  m_radius += dir * radius;
+  return std::isfinite(m_radius) && m_radius > GeomConst::Eps;
 }

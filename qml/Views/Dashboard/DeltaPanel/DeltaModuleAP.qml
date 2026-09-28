@@ -37,16 +37,6 @@ QxPanel {
     yStates = ystates.slice()
   }
 
-  function buildMasks(index, desiredOn, width = 8) {
-    const full = (1 << width) - 1
-    const bit = (1 << index) & full
-
-    return {
-      andMask: full ^ bit,
-      orMask: desiredOn ? bit : 0x00
-    }
-  }
-
   function byteToBitString(n) {
     n = n & 0xFF
     return n.toString(2).padStart(8, "0")
@@ -110,17 +100,11 @@ QxPanel {
           tag: root.yTags[output.index]
           isOn: root.yStates[output.index]
 
-          onClicked: {
-            const desired = !output.isOn
-            const masks = root.buildMasks(output.index, desired)
-            const args = {
-              "cmd": Backend.PlcMessage.WRITE_IO,
-              "module": root.moduleIndex,
-              "andMask": masks.andMask,
-              "orMask": masks.orMask
-            }
-            root.plc.invoke("writeMessage", args)
-          }
+          onClicked: root.plc.invoke("setOutput", {
+            "module": root.moduleIndex,
+            "index": output.index,
+            "enabled": !output.isOn
+          })
         }
       }
     }

@@ -32,7 +32,7 @@ QVariant DeviceProfileModel::data(const QModelIndex& index, int role) const
 
   const Device& device = m_devices.at(index.row());
 
-  if (role == StatusRole) return device.status;
+  if (role == DriverRole) return device.driver;
 
   if (role != Qt::DisplayRole) return {};
 
@@ -64,7 +64,7 @@ QVariant DeviceProfileModel::data(const QModelIndex& index, int role) const
                  ? tr("N/D")
                  : device.openMode;
     case StatusColumn:
-      return statusText(device.status);
+      return {}; // Live status belongs to DeviceRunner, not the profile defaults.
     default:
       return {};
   }
@@ -92,7 +92,7 @@ QVariant DeviceProfileModel::headerData(int section, Qt::Orientation orientation
 QHash<int, QByteArray> DeviceProfileModel::roleNames() const
 {
   auto roles = QAbstractTableModel::roleNames();
-  roles.insert(StatusRole, "status");
+  roles.insert(DriverRole, "driver");
   return roles;
 }
 
@@ -116,30 +116,14 @@ QVariantMap DeviceProfileModel::device(int row) const
 
   return {
     { "name", device.name },
+    { "driver", device.driver },
     { "localAddress", device.localAddress },
     { "localPort", device.localPort },
     { "peerAddress", device.peerAddress },
     { "peerPort", device.peerPort },
     { "protocol", device.protocol },
-    { "openMode", device.openMode },
-    { "status", device.status }
+    { "openMode", device.openMode }
   };
-}
-
-void DeviceProfileModel::setStatus(int row, Status status)
-{
-  if (row < 0 || row >= m_devices.size())
-    return;
-
-  Device& device = m_devices[row];
-
-  if (device.status == status) return;
-
-  device.status = status;
-
-  const QModelIndex modelIndex =  index(row, StatusColumn);
-
-  emit dataChanged(modelIndex, modelIndex, { Qt::DisplayRole, StatusRole });
 }
 
 void DeviceProfileModel::load()
@@ -178,6 +162,7 @@ void DeviceProfileModel::load()
 
     Device device;
     device.name = obj.value("name").toString();
+    device.driver = obj.value("driver").toString();
     device.localAddress =  obj.value("localAddress").toString();
     device.localPort = obj.value("localPort").toInt(-1);
     device.peerAddress = obj.value("peerAddress").toString();
@@ -189,16 +174,4 @@ void DeviceProfileModel::load()
 
     m_devices.append(std::move(device));
   }
-}
-
-QString DeviceProfileModel::statusText(Status status)
-{
-  switch (status) {
-    case Disconnected: return tr("Disconnected");
-    case Connected:    return tr("Connected");
-    case Bound:        return tr("Bound");
-    case Streaming:    return tr("Streaming");
-  }
-
-  return {};
 }

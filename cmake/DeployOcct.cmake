@@ -67,7 +67,7 @@ file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}")
 file(COPY ${runtime_roots} ${resolved} DESTINATION "${ROBOCRAP_DEPLOY_DEST}")
 file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/cad/kr10")
 file(COPY "${cad_source}/" DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/cad/kr10"
-  FILES_MATCHING PATTERN "*.stp" PATTERN "*.brep" PATTERN "*.m3d")
+  FILES_MATCHING PATTERN "*.stp" PATTERN "*.step" PATTERN "*.brep" PATTERN "*.m3d")
 file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/occt")
 file(COPY "${occt_prefix}/share/opencascade/resources/"
   DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/occt")

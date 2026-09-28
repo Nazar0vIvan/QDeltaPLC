@@ -14,20 +14,26 @@ QxScrollView {
     id: devProfModel
   }
 
-  readonly property list<Backend.DeviceRunner> runners: [
-    Backend.Hub.device("plc"),
-    Backend.Hub.device("rsi"),
-    Backend.Hub.device("fts"),
-    null
-  ]
-
   readonly property Backend.DeviceRunner currentRunner:
-    cbDevice.currentIndex >= 0 && cbDevice.currentIndex < runners.length
-      ? runners[cbDevice.currentIndex]
-      : null
+    Backend.Hub.device(root.selectedDevice.driver ?? "")
 
   readonly property var selectedDevice:
     devProfModel.device(cbDevice.currentIndex)
+
+  readonly property bool usesPeerPort: root.selectedDevice.driver !== "rsi"
+
+  // Fields are a draft. Switching profiles discards unsent edits and restores
+  // the last accepted configuration, or the JSON defaults before first use.
+  function loadDraft() {
+    const applied = root.currentRunner ? root.currentRunner.data.connectionConfig : {}
+    const source = Object.keys(applied).length > 0 ? applied : root.selectedDevice
+    laInput.text = source.localAddress ?? ""
+    lpInput.text = source.localPort >= 0 ? String(source.localPort) : ""
+    paInput.text = source.peerAddress ?? ""
+    ppInput.text = root.usesPeerPort && source.peerPort >= 0 ? String(source.peerPort) : ""
+  }
+
+  Component.onCompleted: root.loadDraft()
 
   function currentSocketConfig() {
     const config = {
@@ -36,7 +42,7 @@ QxScrollView {
       peerAddress: paInput.text
     }
 
-    if (root.selectedDevice.peerPort >= 0)
+    if (root.usesPeerPort)
       config.peerPort = Number(ppInput.text)
 
     return config
@@ -54,7 +60,7 @@ QxScrollView {
     id: configPanel
 
     Layout.fillWidth: true
-    title: "Configuration"
+    title: qsTr("Configuration")
     contentHorizontalMargin: Metrics.sp12
     contentVerticalMargin: Metrics.sp16
     spacing: Metrics.sp8
@@ -67,6 +73,7 @@ QxScrollView {
 
         Layout.preferredWidth: Metrics.w200
         model: devProfModel.names
+        onActivated: index => root.loadDraft()
       }
     }
 
@@ -77,7 +84,6 @@ QxScrollView {
         id: laInput
 
         Layout.preferredWidth: Metrics.w120
-        text: root.selectedDevice.localAddress ?? ""
         validator: RegularExpressionValidator {
           regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
         }
@@ -91,11 +97,8 @@ QxScrollView {
         id: lpInput
 
         Layout.preferredWidth: Metrics.w80
-        text: root.selectedDevice.localPort >= 0
-              ? String(root.selectedDevice.localPort)
-              : "N/D"
         validator: IntValidator {
-          bottom: 0
+          bottom: 1
           top: 65535
         }
       }
@@ -108,7 +111,6 @@ QxScrollView {
         id: paInput
 
         Layout.preferredWidth: Metrics.w120
-        text: root.selectedDevice.peerAddress ?? ""
         validator: RegularExpressionValidator {
           regularExpression: /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
         }
@@ -122,11 +124,10 @@ QxScrollView {
         id: ppInput
 
         Layout.preferredWidth: Metrics.w80
-        text: root.selectedDevice.peerPort >= 0
-              ? String(root.selectedDevice.peerPort)
-              : "N/D"
+        enabled: root.usesPeerPort
+        placeholder: root.usesPeerPort ? "" : qsTr("Learned")
         validator: IntValidator {
-          bottom: 0
+          bottom: 1
           top: 65535
         }
       }
@@ -142,17 +143,14 @@ QxScrollView {
       text: checked ? qsTr("Disconnect") : qsTr("Connect")
 
       enabled: {
-        if (!runner)
-          return false
-        if (runner.isConnected)
+        if (runner && runner.isConnected)
           return true
-        if (!runner.isDisconnected)
+        if (runner && !runner.isDisconnected)
           return false
 
-        return laInput.acceptableInput
-            && lpInput.acceptableInput
+        return laInput.acceptableInput && lpInput.acceptableInput
             && paInput.acceptableInput
-            && (root.selectedDevice.peerPort < 0 || ppInput.acceptableInput)
+            && (!root.usesPeerPort || ppInput.acceptableInput)
       }
 
       onClicked: {
@@ -171,7 +169,7 @@ QxScrollView {
     id: conPanel
 
     Layout.fillWidth: true
-    title: "Connections"
+    title: qsTr("Connections")
     contentVerticalMargin: Metrics.sp12
 
     ConnectionsTable {
@@ -179,7 +177,6 @@ QxScrollView {
 
       Layout.fillWidth: true
       model: devProfModel
-      runners: root.runners
       selectedRow: cbDevice.currentIndex
     }
   }

@@ -86,8 +86,6 @@ OccInputResult OccInputController::wheel(const QPoint& pos, const int angleDelta
   OccInputResult result;
   result.accepted = true;
   result.needsRedraw = true;
-  result.needsViewerUpdate = true;
-  result.cameraChanged = true;
   result.cameraScaleChanged = true;
   return result;
 }
@@ -138,7 +136,6 @@ OccInputResult OccInputController::handleRotationMove(const QPoint& pos)
   OccInputResult result;
   result.accepted      = true;
   result.needsRedraw   = true;
-  result.cameraChanged = true;
   return result;
 }
 
@@ -153,7 +150,6 @@ OccInputResult OccInputController::handlePanMove(const QPoint& pos)
   OccInputResult result;
   result.accepted = true;
   result.needsRedraw = true;
-  result.cameraChanged = true;
 
   return result;
 }
@@ -164,8 +160,7 @@ OccInputResult OccInputController::handleHoverMove(const QPoint& pos)
 
   OccInputResult input;
   input.accepted = true;
-  input.needsViewerUpdate = true;
-  input.hoverChanged = true;
+  input.needsRedraw = true;
   return input;
 }
 
@@ -180,8 +175,6 @@ OccInputResult OccInputController::handleCube(const Handle(AIS_ViewCubeOwner)& o
   OccInputResult input;
   input.accepted = true;
   input.needsRedraw = true;
-  input.needsViewerUpdate = true;
-  input.cameraChanged = true;
   input.cameraScaleChanged = true;
   return input;
 }
@@ -191,7 +184,6 @@ OccInputResult OccInputController::handleDetectedSelectable()
   OccInputResult result;
   result.accepted          = true;
   result.needsRedraw       = true;
-  result.needsViewerUpdate = true;
   result.selectionChanged  = true;
 
   return result;
@@ -204,7 +196,6 @@ OccInputResult OccInputController::clearSelection()
   OccInputResult result;
   result.accepted = true;
   result.needsRedraw = true;
-  result.needsViewerUpdate = true;
   result.selectionChanged = true;
 
   return result;

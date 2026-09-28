@@ -1,6 +1,6 @@
 # Rough surface measurements
 
-For measurements made with the WP-500 V6 probe, store ball-center coordinates and
+For plane and cylinder measurements made with the WP-500 V6 probe, store ball-center coordinates and
 stylus ball radius in the same units (millimeters for the supplied datasets):
 
 ```json
@@ -48,3 +48,20 @@ Legacy JSON point arrays remain supported with zero compensation. Direct C++
 The two `rough-*-sample.json` files and all four files in `edge_2planes` and
 `edge_cyl_plane` use `radius: 3` and `dir: 1`. Change `dir` to `-1` wherever the
 required correction is in the opposite direction.
+
+## Circle samples
+
+Import the files in `circ` using **Circle from JSON**:
+
+- `circle_3_points.json` contains three exact, non-collinear points. The resulting
+  circle has center `(100, 200, 300)`, radius `50`, and unit normal `(0, -0.6, 0.8)`.
+  It should pass through all three points, with fit RMS effectively zero.
+- `circle_12_noisy_points.json` contains twelve points distributed around the same
+  reference circle, with small radial and out-of-plane offsets. The fitted center,
+  radius and normal should be close to the reference values, with a nonzero RMS.
+  RMS is the root mean square of the 3D distances from samples to the circumference.
+
+These files contain raw `[x, y, z]` arrays without probe metadata. Circle imports
+also accept an object containing `points`; `radius` and `dir` are not used for
+circle fitting or compensation. Show Points displays the original samples;
+Show Normals displays one normal arrow at the fitted center.

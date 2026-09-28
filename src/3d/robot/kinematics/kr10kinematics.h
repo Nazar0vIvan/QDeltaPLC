@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <optional>
 
-#include "3d/math/mathtypes.h"
-#include "3d/robot/model/kr10model.h"
+#include "geometry/mathtypes.h"
+#include "3d/robot/model/kr10kinematicmodel.h"
 
 namespace RoboCrap3D {
 
@@ -15,12 +15,12 @@ class Kr10Kinematics final
 public:
   struct IkSolution
   {
-    V6d q{};
+    V6d q = V6d::Zero();
     uint8_t status = 0;
     uint8_t turn = 0;
   };
 
-  explicit Kr10Kinematics(const Kr10Model& model);
+  explicit Kr10Kinematics(const Kr10KinematicModel& model);
 
   [[nodiscard]] std::array<M4d, LinkCount> solveFK(const V6d& q) const;
   [[nodiscard]] std::optional<IkSolution> solveIK(const M4d& T06,const V6d& currentQ) const;
@@ -76,7 +76,7 @@ private:
   [[nodiscard]] static uint8_t turnFrom(const V6d& q) noexcept;
 
 private:
-  const Kr10Model& m_model;
+  const Kr10KinematicModel& m_model;
 };
 
 } // namespace RoboCrap3D
