@@ -130,24 +130,49 @@ and src/main.cpp.
 - Numerical internal-chamfer geometry lives in pathgeneration/chamfer/chamferpath.h/.cpp
   in RoboCrapGeometry. ChamferPath validates an ellipse against a cylinder axis line and
   evaluates a BASE-relative surface-attached TCP frame at an ellipse parameter in radians.
-  Chamfer size is the leg dimension of a nominal 45-degree chamfer, not a normal offset.
-  The normal points into the hole and toward the chosen opening; flipAxis reverses the
-  outward axis and traversal. Lead-in/out add axial clearance and quaternion-interpolated
-  orientation; their clear-end burr Y is opposite the outward axis (parallel to its line).
+  Chamfer size is an equal setback along the end plane and cylinder generator in each
+  longitudinal radial/axis section (45 degrees for a perpendicular opening). TCP origin
+  is the midpoint of these endpoints. Local Y follows the section diagonal toward the
+  end plane; local Z points inward/toward the opening; local X is radial cross outward axis.
+  TCP = local frame * Rx(180 degrees), with coincident origins and opposite Y/Z axes.
+  flipAxis reverses the outward axis and traversal. Lead-in/out add axial clearance and
+  quaternion-interpolated orientation; their clear-end burr Y is opposite the outward
+  axis and TCP Z is radially outward. Evaluated lead TCP Y must project negatively on
+  the outward axis. The section frame X need not follow the tilted ellipse tangent.
+  ChamferPath stores positive finite stagingDistance (default 10 mm). stagingPoint returns
+  ellipse center + stagingDistance*outwardAxis; stagingPose(LeadIn/LeadOut) returns that
+  origin with the corresponding clear-lead orientation (Y opposite hole Z). Machining
+  is not a valid staging side. Scene settings and MachiningPanel preserve the distance
+  through Apply and saved-path selection. HOME PTP terminates/starts at P_s; straight fixed-attitude Cartesian transfers connect
+  it to the clear lead endpoints using lead-in/out feeds. Transfer/lead corners stop.
+  SceneMachining exposes geometry-only frame preview controls (showFrames, framePhase,
+  frameProgress, localFrame) and previewGeometry(), independent of IK/robot calibration.
+  coordinateFrames returns labelled numerical frames for H, P_s and a selected lead/cutting
+  sample. Local lead reference frames retain cutting orientation at their displaced origin.
+  MachiningPanel Preview frames commits drafts without generating motion; phase/progress and
+  Local/TCP selectors update diagnostics. OccViewWindow retains frames across recreation;
+  OccScene renders labelled RGB OccWorldAxes, non-selectable and excluded from fit bounds,
+  with camera-dependent sizing. These target frames never move the robot or its TCP marker.
   Phase evaluation and adaptive sampling retain shared junctions and the full-turn endpoint.
   SceneMachining connects numerical generation to scene ownership. OccSceneAdapter renders
-  five phase polylines under one object ID (purple HOME, blue leads, green machining).
+  seven phase polylines under one object ID (purple HOME, blue leads, green machining).
   OccController.showMachiningPaths is bound to Show Path and combines with object visibility.
   OccViewWindow retains path visibility, selection and axis-preview parameters on recreation.
   The non-selectable magenta outward-axis arrow uses SceneMachining.previewParameters,
-  responds to draft Flip changes, and is excluded from camera bounds. MachiningPanel edits parameters and Apply generates/selects paths. SceneMachining owns a GUI-thread timer and monotonic clock for Dry Run; direct C++ pose requests go through OccController and the existing preview-state FK/commit path. Stop freezes the last displayed pose, restart resets to HOME, and completion ends at HOME. Calibration/model changes, viewport loss, active-path deletion, leaving machining mode and shutdown stop playback. Manual FK/IK and generation are blocked during playback; selection does not replace the active motion.
-  chamfermotion.h/.cpp compiles a timed five-stage KR10 simulation using the existing
+  responds to draft Flip changes, and is excluded from camera bounds. New edge inputs default
+  outward toward negative scene X for the current XP/XC workpiece; saved paths retain their Flip. MachiningPanel edits parameters and Apply generates/selects paths. SceneMachining owns a GUI-thread timer and monotonic clock for Dry Run; direct C++ pose requests go through OccController and the existing preview-state FK/commit path. Stop freezes the last displayed pose, restart resets to HOME, and completion ends at HOME. Calibration/model changes, viewport loss, active-path deletion, leaving machining mode and shutdown stop playback. Manual FK/IK and generation are blocked during playback; selection does not replace the active motion.
+  chamfermotion.h/.cpp compiles a timed seven-stage KR10 simulation using the existing
   numerical IK solver, preceding-joint seeds, bounded alternate starting configurations,
   FK validation and direct synchronized joint-space HOME movements. It owns model/TCP
   snapshots and continuous joint angles; it does not call viewport or device APIs.
   Central motion uses monotone cubic joint interpolation, feed/acceleration timing and
   a reported uniform time scale for rate limits. HOME movements use synchronized quintic
   progress. evaluate(seconds) returns a pose independently of display refresh rate.
+  Temporary offline diagnostic: IgnorePreviewJointPositionLimits in kr10kinematicmodel.h is true.
+  It bypasses A1-A6 position checks in analytical IK, chamfer generation/evaluation and preview FK,
+  including manual preview. Original model limits remain for seed selection and model validation.
+  Set the constant false to restore enforcement. Finite, singularity, FK accuracy, continuity,
+  speed and acceleration checks remain active; device control is unaffected.
   Simulation joint limits for speed/acceleration are explicit settings, not KUKA ratings;
   Cartesian rate and interpolation-error checks are numerical samples, not analytic guarantees.
 
@@ -173,8 +198,20 @@ and src/main.cpp.
   OccRobotAdapter retains both tool presentations, updating both at the flange during pose changes;
   switching only changes visibility. OccViewWindow retains tool shapes/selection across surface
   recreation. Main.qml selects MEE for both measuring submodes and SEE for Machining.
-  EndEffectorPanel.qml sits below Properties in a vertical splitter, visible in both measuring submodes and Machining. It shows
-  fixed MEE data or six SEE TCP draft fields with explicit Apply/Reset. Main.qml owns the STEP/STP
+  Main.qml owns two nonmodal tool windows opened by mode-toolbar setup buttons: Measuring EE
+  contains EndEffectorPanel for both measuring submodes; Machining Setup contains the spindle
+  EndEffectorPanel and MachiningPanel in a horizontal splitter. Properties keeps the main right
+  column and shows cylinder diameter as twice its compensated radius. Tool windows retain drafts
+  when closed and hide when leaving their mode. EndEffectorPanel shows fixed MEE data or six SEE
+  TCP draft fields with explicit Apply/Reset. HOME PTP simulation is displayed as a percentage of
+  configured joint speed/acceleration limits; the backend auxiliaryScale remains in (0,1].
+  Simulation tuning is collapsed by default. Apply TCP remains enabled for valid six-value drafts
+  and shows the spindle TCP trihedron; its Visible checkbox controls OccController.showSpindleTcp.
+  OccViewWindow retains the optional flange-relative TCP frame across surface recreation.
+  OccRobotAdapter places RGB axes at BASE_FLANGE * FLANGE_TCP and updates them with robot poses.
+  OccScene reuses OccWorldAxes sizing (5% of camera scale); TCP axes are non-selectable, excluded
+  from fit bounds, and hidden without a robot or while Measuring is active. The visibility preference
+  survives mode changes. Reapplying unchanged TCP does not invalidate paths. Main.qml owns the STEP/STP
   dialog and captures its destination tool when opened. The panel displays per-tool load errors
   and retry; selecting the same source explicitly reloads through the existing cache.
   SceneEndEffectors converts spindle TCP/flange XYZABC poses with existing geometry helpers.

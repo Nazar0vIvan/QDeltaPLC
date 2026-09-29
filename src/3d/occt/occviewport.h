@@ -1,5 +1,7 @@
 #pragma once
 
+#include "scene/scenegeometry.h"
+
 #include "occinputcontroller.h"
 #include "occviewer.h"
 #include "3d/robot/robotpreviewstate.h"
@@ -30,6 +32,8 @@ public:
   bool isRobotReady() const { return isValid() && m_robot.isLoaded(); }
   bool setRobot(const RobotPreviewState* state, const CadLoadResult* shapes);
   bool applyPose(const RobotPose& pose);
+  // Applied flange-relative calibration; empty hides the TCP decoration.
+  void setSpindleTcpFrame(const std::optional<M4d>& frame);
   bool setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
                       SceneEndEffectors::Tool active);
   void synchronizeApplicationScene(SceneModel* applicationScene);
@@ -37,6 +41,7 @@ public:
   void removeSceneObject(quint32 objectId);
   void setSelectedObjects(const QList<quint32>& ids);
   void setMachiningPathsVisible(bool visible, SceneModel* scene);
+  void setMachiningFrames(const QVector<SceneCoordinateFrame>& frames);
   void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   void setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene);
   void setExposed(bool exposed);

@@ -87,6 +87,12 @@ void OccViewWindow::setMachiningPathsVisible(bool visible)
   }
 }
 
+void OccViewWindow::setMachiningFrames(const QVector<SceneCoordinateFrame>& frames)
+{
+  m_machiningFrames = frames;
+  if (m_viewport) m_viewport->setMachiningFrames(frames);
+}
+
 void OccViewWindow::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
 {
   m_machiningPreview = parameters;
@@ -96,6 +102,12 @@ void OccViewWindow::setMachiningPreview(const std::optional<ChamferPathParameter
 void OccViewWindow::setDiagnosticOverlays(bool showPoints, bool showNormals)
 {
   if (m_viewport) m_viewport->setDiagnosticOverlays(showPoints, showNormals, m_applicationScene);
+}
+
+void OccViewWindow::setSpindleTcpFrame(const std::optional<M4d>& frame)
+{
+  m_spindleTcpFrame = frame;
+  if (m_viewport) m_viewport->setSpindleTcpFrame(frame);
 }
 
 bool OccViewWindow::applyPose(const RobotPose& pose)
@@ -231,6 +243,8 @@ void OccViewWindow::initializeViewport()
     m_viewport = std::move(viewport);
     m_viewport->setMachiningPathsVisible(m_showMachiningPaths, m_applicationScene);
     m_viewport->setMachiningPreview(m_machiningPreview);
+    m_viewport->setMachiningFrames(m_machiningFrames);
+    m_viewport->setSpindleTcpFrame(m_spindleTcpFrame);
     m_viewport->setSelectedObjects(m_selectedObjects);
     m_viewport->setExposed(true);
   } catch (const Standard_Failure& failure) {

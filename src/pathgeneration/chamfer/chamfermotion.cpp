@@ -23,6 +23,7 @@ bool rigid(const M4d& transform)
 bool withinLimits(const V6d& joints, const Kr10KinematicModel& model)
 {
   if (!joints.allFinite()) return false;
+  if (IgnorePreviewJointPositionLimits) return true;
   for (std::size_t i = 0; i < DofCount; ++i)
     if (joints[i] < model.joints[i].qMin || joints[i] > model.joints[i].qMax) return false;
   return true;
@@ -47,10 +48,53 @@ bool validRobot(const ChamferRobotSetup& robot)
   return withinLimits(model.qHome, model) && Kr10Kinematics(model).isValid();
 }
 
+// Central phase target shared by IK compilation and timed interpolation checks.
+std::optional<M4d> centralTarget(const ChamferPath& path, ChamferMotionPhase phase, double progress)
+{
+  if (!std::isfinite(progress) || progress < 0.0 || progress > 1.0) return std::nullopt;
+  if (phase == ChamferMotionPhase::TransferIn || phase == ChamferMotionPhase::TransferOut) {
+    const bool entering = phase == ChamferMotionPhase::TransferIn;
+    const auto lead = entering ? ChamferPhase::LeadIn : ChamferPhase::LeadOut;
+    const auto staging = path.stagingPose(lead);
+    const auto endpoint = path.evaluatePhase(lead, entering ? 0.0 : 1.0);
+    if (!staging || !endpoint) return std::nullopt;
+    const M4d first = entering ? *staging : endpoint->tcp;
+    const M4d last = entering ? endpoint->tcp : *staging;
+    if (progress == 0.0) return first;
+    if (progress == 1.0) return last;
+    M4d target = first;
+    target.block<3, 1>(0, 3) = (1.0 - progress) * first.block<3, 1>(0, 3)
+        + progress * last.block<3, 1>(0, 3);
+    return target;
+  }
+  ChamferPhase curve;
+  switch (phase) {
+  case ChamferMotionPhase::LeadIn: curve = ChamferPhase::LeadIn; break;
+  case ChamferMotionPhase::Machining: curve = ChamferPhase::Machining; break;
+  case ChamferMotionPhase::LeadOut: curve = ChamferPhase::LeadOut; break;
+  default: return std::nullopt;
+  }
+  const auto sample = path.evaluatePhase(curve, progress);
+  if (!sample) return std::nullopt;
+  return sample->tcp;
+}
+
+QString centralPhaseName(ChamferMotionPhase phase)
+{
+  switch (phase) {
+  case ChamferMotionPhase::TransferIn: return QStringLiteral("P_s to lead-in");
+  case ChamferMotionPhase::LeadIn: return QStringLiteral("lead-in");
+  case ChamferMotionPhase::Machining: return QStringLiteral("machining");
+  case ChamferMotionPhase::LeadOut: return QStringLiteral("lead-out");
+  case ChamferMotionPhase::TransferOut: return QStringLiteral("lead-out to P_s");
+  default: return QStringLiteral("unknown phase");
+  }
+}
+
 struct CompiledPoints
 {
   QVector<ChamferJointPoint> points;
-  std::array<qsizetype, 6> boundaries{};
+  std::array<qsizetype, 8> boundaries{};
   QString error;
   double centralTimeScale = 1.0;
   bool needsRefinement = false;
@@ -65,11 +109,11 @@ public:
   QVector<V6d> starts()
   {
     m_starts.clear();
-    const auto target = m_path.evaluatePhase(ChamferPhase::LeadIn, 0.0);
+    const auto target = m_path.stagingPose(ChamferPhase::LeadIn);
     if (!target) return {};
     // Probe valid arm/wrist seeds deterministically; the existing solver owns
     // branch selection. HOME is tried first, then interior limit fractions.
-    appendStart(m_robot.model.qHome, target->tcp);
+    appendStart(m_robot.model.qHome, *target);
     for (double shoulder : {0.15, 0.5, 0.85})
       for (double elbow : {0.15, 0.5, 0.85})
         for (double wrist : {0.25, 0.75}) {
@@ -77,7 +121,7 @@ public:
           seed[1] = seedAngle(1, shoulder);
           seed[2] = seedAngle(2, elbow);
           seed[4] = seedAngle(4, wrist);
-          appendStart(seed, target->tcp);
+          appendStart(seed, *target);
         }
     // A valid full revolution may need a different initial wrist winding.
     // Ask the solver to resolve those turns within limits, rather than wrapping
@@ -89,7 +133,7 @@ public:
           V6d seed = branch;
           seed[3] = seedAngle(3, fourth);
           seed[5] = seedAngle(5, sixth);
-          appendStart(seed, target->tcp);
+          appendStart(seed, *target);
         }
     return m_starts;
   }
@@ -103,24 +147,31 @@ public:
     m_output.boundaries[1] = m_output.points.size() - 1;
     const auto sampled = m_path.sample();
     if (!sampled.path) { m_output.error = sampled.error; return std::move(m_output); }
-    const std::array<ChamferPhase, 3> phases{ChamferPhase::LeadIn, ChamferPhase::Machining, ChamferPhase::LeadOut};
-    for (std::size_t i = 0; i < phases.size(); ++i) {
-      m_phase = phases[i];
+    for (std::size_t phase = 1; phase <= 5; ++phase) {
+      m_phase = static_cast<ChamferMotionPhase>(phase);
+      QVector<double> progressValues;
+      if (phase == 1 || phase == 5) {
+        // Multiple intervals permit acceleration from/to rest at transfer corners.
+        for (int i = 1; i <= 16; ++i) progressValues.append(i / 16.0);
+      } else {
+        const auto curve = phase - 2;
+        for (qsizetype j = sampled.path->boundaries[curve] + 1;
+             j <= sampled.path->boundaries[curve + 1]; ++j)
+          progressValues.append(sampled.path->points[j].progress);
+      }
       double previous = 0.0;
-      for (qsizetype j = sampled.path->boundaries[i] + 1; j <= sampled.path->boundaries[i + 1]; ++j) {
-        const double progress = sampled.path->points[j].progress;
+      for (double progress : progressValues) {
         if (!appendCurve(previous, progress, 0)) {
           m_output.error = QStringLiteral("No continuous IK path in %1 at %2%: unreachable, singular, joint limit or refinement limit.")
-              .arg(i == 0 ? QStringLiteral("lead-in") : i == 1 ? QStringLiteral("machining") : QStringLiteral("lead-out"))
-              .arg(100.0 * progress, 0, 'f', 2);
+              .arg(centralPhaseName(m_phase)).arg(100.0 * progress, 0, 'f', 2);
           return std::move(m_output);
         }
         previous = progress;
       }
-      m_output.boundaries[i + 2] = m_output.points.size() - 1;
+      m_output.boundaries[phase + 1] = m_output.points.size() - 1;
     }
     appendPtp(m_robot.model.qHome);
-    m_output.boundaries[5] = m_output.points.size() - 1;
+    m_output.boundaries[7] = m_output.points.size() - 1;
     for (const auto& point : m_output.points)
       if (!rigid(point.tcp) || !withinLimits(point.joints, m_robot.model)) {
         m_output.error = QStringLiteral("Invalid forward-kinematic pose in the compiled motion.");
@@ -179,9 +230,9 @@ private:
   {
     if (m_output.points.size() >= 200000) return false;
     const V6d start = m_output.points.back().joints;
-    const auto target = m_path.evaluatePhase(m_phase, to);
+    const auto target = centralTarget(m_path, m_phase, to);
     if (!target) return false;
-    const auto end = inverse(target->tcp, start);
+    const auto end = inverse(*target, start);
     if (depth >= m_refinement && end && (*end - start).cwiseAbs().maxCoeff() <= 5.0) {
       m_output.points.append(forward(*end, to));
       return true;
@@ -195,7 +246,7 @@ private:
   const ChamferRobotSetup& m_robot;
   Kr10Kinematics m_solver;
   M4d m_tcpToFlange = M4d::Identity();
-  ChamferPhase m_phase = ChamferPhase::LeadIn;
+  ChamferMotionPhase m_phase = ChamferMotionPhase::TransferIn;
   CompiledPoints m_output;
   QVector<V6d> m_starts;
   int m_refinement = 0;
@@ -262,7 +313,7 @@ public:
       if (m_data.error.isEmpty()) m_data.error = QStringLiteral("Degenerate or non-finite motion timing.");
       return std::move(m_data);
     }
-    timePtp(4);
+    timePtp(6);
     for (qsizetype i = 1; i < m_data.points.size(); ++i)
       if (!std::isfinite(m_data.points[i].time)
           || m_data.points[i].time <= m_data.points[i - 1].time
@@ -299,19 +350,23 @@ private:
 
   double feed(qsizetype interval) const
   {
-    if (interval < m_data.boundaries[2]) return m_robot.timing.leadInFeed;
-    if (interval < m_data.boundaries[3]) return m_robot.timing.machiningFeed;
+    if (interval < m_data.boundaries[3]) return m_robot.timing.leadInFeed;
+    if (interval < m_data.boundaries[4]) return m_robot.timing.machiningFeed;
     return m_robot.timing.leadOutFeed;
   }
 
   void setVelocities()
   {
     const auto first = m_data.boundaries[1];
-    const auto last = m_data.boundaries[4];
+    const auto last = m_data.boundaries[6];
     m_data.points[first].velocity.setZero();
     m_data.points[last].velocity.setZero();
     for (qsizetype i = first + 1; i < last; ++i) {
       auto& point = m_data.points[i];
+      if (i == m_data.boundaries[2] || i == m_data.boundaries[5]) {
+        point.velocity.setZero();
+        continue;
+      }
       const auto& before = m_data.points[i - 1];
       const auto& after = m_data.points[i + 1];
       const double left = point.time - before.time;
@@ -356,9 +411,10 @@ private:
   {
     const auto& first = m_data.points[interval];
     const auto& last = m_data.points[interval + 1];
-    std::size_t phase = interval < m_data.boundaries[2] ? 0 : interval < m_data.boundaries[3] ? 1 : 2;
-    const auto kind = static_cast<ChamferPhase>(phase);
-    const double from = interval == m_data.boundaries[phase + 1] ? 0.0 : first.progress;
+    std::size_t phase = 1;
+    while (phase < 5 && interval >= m_data.boundaries[phase + 1]) ++phase;
+    const auto kind = static_cast<ChamferMotionPhase>(phase);
+    const double from = interval == m_data.boundaries[phase] ? 0.0 : first.progress;
     const V3d chord = last.tcp.block<3, 1>(0, 3) - first.tcp.block<3, 1>(0, 3);
     const double length2 = chord.squaredNorm();
     if (!std::isfinite(length2) || length2 <= GeomConst::Eps * GeomConst::Eps) return std::nullopt;
@@ -374,10 +430,10 @@ private:
       if (!tcp.allFinite()) return std::nullopt;
       const V3d position = tcp.block<3, 1>(0, 3);
       const double fraction = std::clamp((position - first.tcp.block<3, 1>(0, 3)).dot(chord) / length2, 0.0, 1.0);
-      const auto expected = m_path.evaluatePhase(kind, from + fraction * (last.progress - from));
-      if (!expected || (position - expected->tcp.block<3, 1>(0, 3)).norm() > 0.01) return std::nullopt;
+      const auto expected = centralTarget(m_path, kind, from + fraction * (last.progress - from));
+      if (!expected || (position - expected->block<3, 1>(0, 3)).norm() > 0.01) return std::nullopt;
       const Eigen::Quaterniond actualRotation(M3d(tcp.block<3, 3>(0, 0)));
-      const Eigen::Quaterniond expectedRotation(M3d(expected->tcp.block<3, 3>(0, 0)));
+      const Eigen::Quaterniond expectedRotation(M3d(expected->block<3, 3>(0, 0)));
       if (actualRotation.angularDistance(expectedRotation) > 0.1 * GeomConst::DegToRad) return std::nullopt;
       // One segment's polynomial is extended only to estimate derivatives.
       // Checking both endpoints covers both sides of every acceleration jump.
@@ -399,7 +455,7 @@ private:
   bool timeCentral()
   {
     const auto first = m_data.boundaries[1];
-    const auto last = m_data.boundaries[4];
+    const auto last = m_data.boundaries[6];
     QVector<double> distance(last - first);
     QVector<double> speed(last - first + 1);
     const double acceleration = m_robot.timing.cartesianAcceleration;
@@ -407,7 +463,8 @@ private:
       distance[i - first] = (m_data.points[i + 1].tcp.block<3, 1>(0, 3)
           - m_data.points[i].tcp.block<3, 1>(0, 3)).norm();
       if (!std::isfinite(distance[i - first]) || distance[i - first] <= GeomConst::Eps) return false;
-      speed[i - first] = i == first ? 0.0 : std::min(feed(i - 1), feed(i));
+      speed[i - first] = (i == first || i == m_data.boundaries[2] || i == m_data.boundaries[5])
+          ? 0.0 : std::min(feed(i - 1), feed(i));
     }
     speed.back() = 0.0;
     for (qsizetype i = 1; i < speed.size(); ++i)
@@ -450,7 +507,7 @@ private:
 } // namespace
 
 ChamferMotion::ChamferMotion(const ChamferPath& path, const ChamferRobotSetup& robot,
-                             QVector<ChamferJointPoint> points, const std::array<qsizetype, 6>& boundaries)
+                             QVector<ChamferJointPoint> points, const std::array<qsizetype, 8>& boundaries)
   : m_parameters(path.parameters()), m_robot(robot), m_points(std::move(points)), m_boundaries(boundaries) {}
 
 ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const ChamferRobotSetup& robot)
@@ -459,7 +516,7 @@ ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const Chamfer
   if (!validTiming(robot.timing)) return {{}, QStringLiteral("Feeds and simulation limits must be finite and positive; auxiliary scale must be in (0, 1].")};
   MotionCompiler compiler(path, robot);
   const auto starts = compiler.starts();
-  QString error = QStringLiteral("No IK solution for the first lead-in pose in the searched configurations.");
+  QString error = QStringLiteral("No IK solution for the approach P_s pose in the searched configurations.");
   for (const auto& start : starts) {
     for (int refinement = 0; refinement <= 3; ++refinement) {
       auto compiled = compiler.compile(start, refinement);
@@ -484,11 +541,11 @@ std::optional<ChamferPlaybackPose> ChamferMotion::evaluate(double seconds) const
   if (time == 0.0) return ChamferPlaybackPose{m_points.front().joints, m_points.front().tcp, ChamferMotionPhase::Approach};
   if (time == duration()) return ChamferPlaybackPose{m_points.back().joints, m_points.back().tcp, ChamferMotionPhase::ReturnHome};
   std::size_t phase = 0;
-  while (phase < 4 && time >= m_points[m_boundaries[phase + 1]].time) ++phase;
+  while (phase < 6 && time >= m_points[m_boundaries[phase + 1]].time) ++phase;
   const auto first = m_boundaries[phase];
   const auto last = m_boundaries[phase + 1];
   V6d joints = V6d::Zero();
-  if (phase == 0 || phase == 4) {
+  if (phase == 0 || phase == 6) {
     const double u = (time - m_points[first].time) / (m_points[last].time - m_points[first].time);
     joints = m_points[first].joints + smoothProgress(u) * (m_points[last].joints - m_points[first].joints);
   } else {

@@ -1,5 +1,6 @@
 #include "occcontroller.h"
 #include "scene/scenemachining.h"
+#include "geometry/utils.h"
 
 #include "occt/cadloadworker.h"
 #include "occt/occviewwindow.h"
@@ -153,6 +154,7 @@ void OccController::setMachining(SceneMachining* machining)
     connect(m_machining, &SceneMachining::playbackPoseRequested, this,
             &OccController::applyPlaybackPose, Qt::DirectConnection);
     connect(m_machining, &SceneMachining::settingsChanged, this, &OccController::synchronizeMachiningPreview);
+    connect(m_machining, &SceneMachining::framePreviewChanged, this, &OccController::synchronizeMachiningPreview);
     connect(m_machining, &SceneMachining::availabilityChanged, this, &OccController::synchronizeMachiningPreview);
   }
   connect(this, &OccController::readyChanged, this,
@@ -172,7 +174,9 @@ void OccController::setShowMachiningPaths(bool visible)
 
 void OccController::synchronizeMachiningPreview()
 {
-  if (m_window) m_window->setMachiningPreview(m_machining ? m_machining->previewParameters() : std::nullopt);
+  if (!m_window) return;
+  m_window->setMachiningPreview(m_machining ? m_machining->previewParameters() : std::nullopt);
+  m_window->setMachiningFrames(m_machining ? m_machining->coordinateFrames() : QVector<SceneCoordinateFrame>{});
 }
 
 void OccController::synchronizeMachiningReadiness()
@@ -215,6 +219,8 @@ void OccController::setEndEffectors(SceneEndEffectors* effectors)
                      this, &OccController::synchronizeEndEffectors);
     QObject::connect(effectors, &SceneEndEffectors::spindleTcpChanged,
                      this, &OccController::tcpPoseChanged);
+    QObject::connect(effectors, &SceneEndEffectors::spindleTcpChanged,
+                     this, &OccController::synchronizeSpindleTcp);
     QObject::connect(effectors, &SceneEndEffectors::measuringCadSourceChanged, this,
                      std::bind(&OccController::reloadEndEffector, this, SceneEndEffectors::Measuring));
     QObject::connect(effectors, &SceneEndEffectors::spindleCadSourceChanged, this,
@@ -237,6 +243,31 @@ void OccController::synchronizeEndEffectors()
   if (!m_window) return;
   m_window->setEndEffectors({m_toolCad[0].shapes, m_toolCad[1].shapes},
       m_endEffectors ? m_endEffectors->activeTool() : SceneEndEffectors::Measuring);
+  synchronizeSpindleTcp();
+}
+
+void OccController::setShowSpindleTcp(bool visible)
+{
+  if (m_showSpindleTcp == visible) return;
+  m_showSpindleTcp = visible;
+  synchronizeSpindleTcp();
+  emit showSpindleTcpChanged();
+}
+
+void OccController::synchronizeSpindleTcp()
+{
+  if (!m_window) return;
+  std::optional<M4d> frame;
+  if (m_showSpindleTcp && m_endEffectors
+      && m_endEffectors->activeTool() == SceneEndEffectors::Spindle) {
+    const auto& tcp = m_endEffectors->spindleTcp();
+    if (tcp.size() == 6) {
+      const M4d transform = makeTransform(euler2rot(tcp[3], tcp[4], tcp[5]),
+                                          V3d{tcp[0], tcp[1], tcp[2]});
+      if (transform.allFinite()) frame = transform;
+    }
+  }
+  m_window->setSpindleTcpFrame(frame);
 }
 
 void OccController::reloadEndEffector(SceneEndEffectors::Tool tool)
@@ -444,6 +475,8 @@ void OccController::finishRobotLoad(quint64 generation, std::shared_ptr<RobotPre
     return;
   }
   m_state = pending;
+  if (IgnorePreviewJointPositionLimits)
+    emit message(QStringLiteral("Offline diagnostic: A1-A6 joint-position limits are disabled in the robot preview."), false);
   if (m_machining) m_machining->setRobotModel(m_state->model().kinematics);
   m_shapes = result;
   if (m_window)

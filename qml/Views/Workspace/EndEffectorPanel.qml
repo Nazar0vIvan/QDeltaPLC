@@ -14,9 +14,11 @@ QxPanel {
   required property real ballDiameter
   required property real stylusLength
   required property list<double> tcp
+  required property bool tcpVisible
   signal browseRequested()
   signal retryRequested()
   signal tcpRequested(var values)
+  signal tcpVisibilityRequested(bool visible)
 
   property list<string> drafts: []
   property bool modified: false
@@ -152,11 +154,36 @@ QxPanel {
           }
         }
       }
+      QxHField {
+        Layout.fillWidth: true
+        visible: !root.measuring
+        labelText: qsTr("TCP trihedron")
+        QxCheckBox {
+          checked: root.tcpVisible
+          enabled: root.tcp.length === 6
+          Accessible.name: qsTr("TCP trihedron visible")
+          onClicked: root.tcpVisibilityRequested(checked)
+        }
+        Label {
+          text: qsTr("Visible")
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
+        Item { Layout.fillWidth: true }
+      }
+      Label {
+        Layout.fillWidth: true
+        visible: !root.measuring
+        text: qsTr("Apply shows the TCP axes: X red, Y green, Z blue. The frame follows the robot flange.")
+        wrapMode: Text.Wrap
+        color: Colors.foreground.medium
+        font: Fonts.caption
+      }
       RowLayout {
         visible: !root.measuring
         QxButton {
           text: qsTr("Apply TCP")
-          enabled: root.modified && root.validDraft
+          enabled: root.validDraft
           onClicked: {
             root.tcpRequested(root.drafts.map(value => Number(value)))
             root.modified = false

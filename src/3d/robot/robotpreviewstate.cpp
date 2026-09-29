@@ -44,8 +44,13 @@ bool RobotPreviewState::initialize(QString& error)
 std::optional<RobotPose> RobotPreviewState::forward(const V6d& joints, QString& error) const
 {
   for (std::size_t i = 0; i < DofCount; ++i) {
-    if (!std::isfinite(joints[i]) || joints[i] < m_model.kinematics.joints[i].qMin
-        || joints[i] > m_model.kinematics.joints[i].qMax) {
+    if (!std::isfinite(joints[i])) {
+      error = QStringLiteral("Joint %1 must be finite.").arg(i + 1);
+      return std::nullopt;
+    }
+    if (!IgnorePreviewJointPositionLimits
+        && (joints[i] < m_model.kinematics.joints[i].qMin
+            || joints[i] > m_model.kinematics.joints[i].qMax)) {
       error = QStringLiteral("Joint %1 must be between %2 and %3 degrees.")
                   .arg(i + 1).arg(m_model.kinematics.joints[i].qMin).arg(m_model.kinematics.joints[i].qMax);
       return std::nullopt;

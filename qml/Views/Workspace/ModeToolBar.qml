@@ -27,6 +27,7 @@ ToolBar {
   signal cylinderImportRequested()
   signal intersectionRequested()
   signal generationRequested()
+  signal toolSetupRequested()
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
   signal scanPathToggled(bool checked)
@@ -120,6 +121,13 @@ ToolBar {
       id: toolRow
 
       spacing: Metrics.sp16
+
+      Tool {
+        text: root.measuring ? qsTr("Measuring EE") : qsTr("Machining Setup")
+        iconSource: "qrc:/pics/settings.svg"
+        available: true
+        onTriggered: root.toolSetupRequested()
+      }
 
       Row {
         visible: root.rough

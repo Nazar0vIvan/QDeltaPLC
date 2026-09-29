@@ -225,6 +225,13 @@ std::optional<double> Kr10Kinematics::resolveJointAngle(std::size_t jointIndex, 
   const double angleDeg = m_model.qHome[jointIndex]+ deltaRad * joint.axis.z() * GeomConst::RadToDeg;
   if (!std::isfinite(angleDeg) || !std::isfinite(currentDeg)) return std::nullopt;
 
+  if (IgnorePreviewJointPositionLimits) {
+    // Keep the nearest continuous winding without clamping it to model limits.
+    const double turn = std::round((currentDeg - angleDeg) / 360.0);
+    const double resolved = angleDeg + 360.0 * turn;
+    return std::isfinite(resolved) ? std::optional<double>{resolved} : std::nullopt;
+  }
+
   const int firstTurn = static_cast<int>(std::ceil((joint.qMin - angleDeg) / 360.0));
 
   const int lastTurn = static_cast<int>(std::floor((joint.qMax - angleDeg) / 360.0));

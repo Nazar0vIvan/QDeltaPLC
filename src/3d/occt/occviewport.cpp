@@ -86,6 +86,12 @@ void OccViewport::setMachiningPathsVisible(bool visible, SceneModel* scene)
   if (m_application.setMachiningPathsVisible(visible, scene)) requestRender();
 }
 
+void OccViewport::setMachiningFrames(const QVector<SceneCoordinateFrame>& frames)
+{
+  m_application.setMachiningFrames(frames);
+  requestRender();
+}
+
 void OccViewport::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
 {
   if (m_application.setMachiningPreview(parameters)) requestRender();
@@ -99,6 +105,12 @@ OccViewport::~OccViewport()
 bool OccViewport::isValid() const
 {
   return m_viewer.isValid();
+}
+
+void OccViewport::setSpindleTcpFrame(const std::optional<M4d>& frame)
+{
+  m_robot.setSpindleTcpFrame(frame);
+  requestRender();
 }
 
 bool OccViewport::applyPose(const RobotPose& pose)

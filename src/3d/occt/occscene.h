@@ -7,6 +7,7 @@
 #include "occworldaxes.h"
 
 #include <Standard_Handle.hxx>
+#include <AIS_TextLabel.hxx>
 
 #include <QString>
 
@@ -20,6 +21,12 @@ class V3d_View;
 class TopoDS_Shape;
 
 namespace RoboCrap3D {
+
+struct OccCoordinateFrame
+{
+  gp_Trsf transform;
+  QString label;
+};
 
 class OccScene final
 {
@@ -47,12 +54,17 @@ public:
 
   void updateViewer();
   void updateCameraDependentObjects();
+  // BASE-relative frame; empty hides the non-selectable TCP axes.
+  void setSpindleTcpFrame(const std::optional<gp_Trsf>& frame);
   void displayInfrastructure();
+  void setCoordinateFrames(const std::vector<OccCoordinateFrame>& frames);
   void clearParts();
 
 private:
   void displayWorldAxes();
   void redisplayWorldAxes();
+  void resizeSpindleTcpAxes();
+  void resizeCoordinateFrames();
   void displayViewCube();
   bool displayPart(OccPart& part);
   void activateAllSelectionModes(const OccPart& part);
@@ -65,9 +77,16 @@ private:
   // a tombstone so a stale PartId cannot address a later presentation.
   std::vector<std::optional<OccPart>> m_parts;
   std::map<PartId, Handle(AIS_Shape)> m_selectionOutlines;
+  struct FramePresentation {
+    OccWorldAxes axes;
+    Handle(AIS_TextLabel) label;
+  };
+  std::vector<FramePresentation> m_coordinateFrames;
   OccWorldAxes m_worldAxes;
+  OccWorldAxes m_spindleTcpAxes;
   OccViewCube m_viewCube;
   bool m_worldAxesDisplayed = false;
+  bool m_spindleTcpAxesDisplayed = false;
   bool m_viewCubeDisplayed = false;
 };
 

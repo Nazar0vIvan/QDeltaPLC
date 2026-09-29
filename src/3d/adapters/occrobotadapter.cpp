@@ -35,6 +35,7 @@ bool OccRobotAdapter::load(const RobotVisualModel& visuals, const CadLoadResult&
     return false;
   }
   m_loaded = true;
+  synchronizeSpindleTcp();
   for (std::size_t i = 0; i < m_tools.size(); ++i)
     if (m_tools[i].id) (void)m_scene.setPartVisible(*m_tools[i].id, i == static_cast<std::size_t>(m_activeTool));
   return true;
@@ -43,6 +44,7 @@ bool OccRobotAdapter::load(const RobotVisualModel& visuals, const CadLoadResult&
 void OccRobotAdapter::clear()
 {
   m_loaded = false;
+  synchronizeSpindleTcp();
   for (const ToolPart& tool : m_tools)
     if (tool.id) (void)m_scene.setPartVisible(*tool.id, false);
   while (m_linkCount > 0) {
@@ -60,7 +62,22 @@ bool OccRobotAdapter::applyTransforms(const std::array<M4d, LinkCount>& transfor
   for (const ToolPart& tool : m_tools)
     if (tool.id && !m_scene.setPartTransform(*tool.id, toOccTransform(transforms.back()))) return false;
   m_flange = transforms.back();
+  synchronizeSpindleTcp();
   return true;
+}
+
+void OccRobotAdapter::setSpindleTcpFrame(const std::optional<M4d>& frame)
+{
+  m_spindleTcpFrame = frame;
+  synchronizeSpindleTcp();
+}
+
+void OccRobotAdapter::synchronizeSpindleTcp()
+{
+  std::optional<gp_Trsf> frame;
+  if (m_loaded && m_spindleTcpFrame && m_activeTool == SceneEndEffectors::Spindle)
+    frame = toOccTransform((m_flange * *m_spindleTcpFrame).eval());
+  m_scene.setSpindleTcpFrame(frame);
 }
 
 bool OccRobotAdapter::setEndEffectors(
@@ -86,6 +103,7 @@ bool OccRobotAdapter::setEndEffectors(
     tool.shapes = shapes[i];
   }
   m_activeTool = active;
+  synchronizeSpindleTcp();
   for (std::size_t i = 0; i < m_tools.size(); ++i) {
     if (!m_tools[i].id) continue;
     success = m_scene.setPartVisible(*m_tools[i].id,

@@ -23,6 +23,9 @@ ApplicationWindow {
 
   onWorkflowModeChanged: {
     if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
+    if (root.workflowMode === WorkflowPanel.Machining) {
+      if (measuringSetupWindow) measuringSetupWindow.hide()
+    } else if (machiningSetupWindow) machiningSetupWindow.hide()
     root.syncEndEffector()
     root.syncMachiningInput()
   }
@@ -30,6 +33,13 @@ ApplicationWindow {
   function syncEndEffector() {
     Backend.EndEffectors.setActiveTool(root.workflowMode === WorkflowPanel.Machining
                                       ? Backend.EndEffectors.Spindle : Backend.EndEffectors.Measuring)
+  }
+
+  function openToolSetup() {
+    const window = root.workflowMode === WorkflowPanel.Machining ? machiningSetupWindow : measuringSetupWindow
+    window.show()
+    window.raise()
+    window.requestActivate()
   }
 
   // UI display preferences for the imported rough-surface presentations.
@@ -291,6 +301,93 @@ ApplicationWindow {
     }
   }
 
+  Window {
+    id: measuringSetupWindow
+
+    title: qsTr("Measuring end effector")
+    transientParent: root
+    flags: Qt.Tool
+    color: Colors.background.dp00
+    width: 440
+    height: 360
+    minimumWidth: 360
+    minimumHeight: 280
+
+    EndEffectorPanel {
+      anchors.fill: parent
+      anchors.margins: Metrics.sp8
+      measuring: true
+      cadSource: Backend.EndEffectors.measuringCadSource
+      loading: Viewport3D.OccController.measuringCadLoading
+      loadError: Viewport3D.OccController.measuringCadError
+      measuringName: Backend.EndEffectors.measuringName
+      ballDiameter: Backend.EndEffectors.rubyBallDiameter
+      stylusLength: Backend.EndEffectors.stylusLength
+      tcp: Backend.EndEffectors.spindleTcp
+      tcpVisible: false
+      onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Measuring)
+      onBrowseRequested: {
+        endEffectorFileDialog.measuring = true
+        endEffectorFileDialog.open()
+      }
+    }
+  }
+
+  Window {
+    id: machiningSetupWindow
+
+    title: qsTr("Machining setup")
+    transientParent: root
+    flags: Qt.Tool
+    color: Colors.background.dp00
+    width: 860
+    height: 640
+    minimumWidth: 720
+    minimumHeight: 400
+
+    SplitView {
+      anchors.fill: parent
+      anchors.margins: Metrics.sp8
+      orientation: Qt.Horizontal
+
+      EndEffectorPanel {
+        SplitView.preferredWidth: 340
+        SplitView.minimumWidth: 300
+        measuring: false
+        cadSource: Backend.EndEffectors.spindleCadSource
+        loading: Viewport3D.OccController.spindleCadLoading
+        loadError: Viewport3D.OccController.spindleCadError
+        measuringName: Backend.EndEffectors.measuringName
+        ballDiameter: Backend.EndEffectors.rubyBallDiameter
+        stylusLength: Backend.EndEffectors.stylusLength
+        tcp: Backend.EndEffectors.spindleTcp
+        tcpVisible: Viewport3D.OccController.showSpindleTcp
+        onTcpVisibilityRequested: visible => Viewport3D.OccController.showSpindleTcp = visible
+        onTcpRequested: values => {
+          if (Backend.EndEffectors.setSpindleTcp(values))
+            Viewport3D.OccController.showSpindleTcp = true
+        }
+        onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)
+        onBrowseRequested: {
+          endEffectorFileDialog.measuring = false
+          endEffectorFileDialog.open()
+        }
+      }
+
+      MachiningPanel {
+        id: machiningPanel
+        SplitView.fillWidth: true
+        SplitView.minimumWidth: 360
+        coordinator: Backend.Machining
+        inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
+        tcpConfigured: Backend.EndEffectors.spindleTcp.length === 6
+        savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath
+                   ? root.selectedSceneObject.geometry as Backend.MachiningPath : null
+        onApplyRequested: Backend.Machining.apply()
+      }
+    }
+  }
+
   footer: ToolBar {
     padding: Metrics.sp8
 
@@ -381,7 +478,11 @@ ApplicationWindow {
         onDryRunRequested: Backend.Machining.dryRun()
         onStopRequested: Backend.Machining.stop()
         generationAvailable: Backend.Machining.canGenerate
-        onGenerationRequested: machiningPanel.focusEditor()
+        onToolSetupRequested: root.openToolSetup()
+        onGenerationRequested: {
+          root.openToolSetup()
+          machiningPanel.focusEditor()
+        }
         intersectionAvailable: root.intersectionAvailable
         onIntersectionRequested: root.intersectSelected()
         onPlaneImportRequested: planeFileDialog.open()
@@ -403,52 +504,13 @@ ApplicationWindow {
       }
     }
 
-    SplitView {
-      orientation: Qt.Vertical
+    PropertiesPanel {
       SplitView.preferredWidth: 330
       SplitView.minimumWidth: 280
-
-      PropertiesPanel {
-        SplitView.fillHeight: true
-        SplitView.minimumHeight: 140
-        selectionCount: root.selectedObjectIds.length
-        selectedObject: root.selectedSceneObject
-        onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
-        onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
-      }
-
-      MachiningPanel {
-        id: machiningPanel
-        visible: root.workflowMode === WorkflowPanel.Machining
-        SplitView.preferredHeight: 460
-        SplitView.minimumHeight: 160
-        coordinator: Backend.Machining
-        inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
-        tcpConfigured: Backend.EndEffectors.spindleTcp.length === 6
-        savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath
-                   ? root.selectedSceneObject.geometry as Backend.MachiningPath : null
-        onApplyRequested: Backend.Machining.apply()
-      }
-      EndEffectorPanel {
-        id: endEffectorPanel
-        SplitView.preferredHeight: Math.min(implicitHeight, 370)
-        SplitView.minimumHeight: 140
-        measuring: root.workflowMode === WorkflowPanel.Measuring
-        cadSource: endEffectorPanel.measuring ? Backend.EndEffectors.measuringCadSource : Backend.EndEffectors.spindleCadSource
-        loading: endEffectorPanel.measuring ? Viewport3D.OccController.measuringCadLoading : Viewport3D.OccController.spindleCadLoading
-        loadError: endEffectorPanel.measuring ? Viewport3D.OccController.measuringCadError : Viewport3D.OccController.spindleCadError
-        measuringName: Backend.EndEffectors.measuringName
-        ballDiameter: Backend.EndEffectors.rubyBallDiameter
-        stylusLength: Backend.EndEffectors.stylusLength
-        tcp: Backend.EndEffectors.spindleTcp
-        onTcpRequested: values => Backend.EndEffectors.setSpindleTcp(values)
-        onRetryRequested: Viewport3D.OccController.reloadEndEffector(
-                            endEffectorPanel.measuring ? Backend.EndEffectors.Measuring : Backend.EndEffectors.Spindle)
-        onBrowseRequested: {
-          endEffectorFileDialog.measuring = endEffectorPanel.measuring
-          endEffectorFileDialog.open()
-        }
-      }
+      selectionCount: root.selectedObjectIds.length
+      selectedObject: root.selectedSceneObject
+      onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
+      onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
     }
   }
 }

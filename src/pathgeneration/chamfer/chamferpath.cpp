@@ -72,13 +72,36 @@ ChamferPathResult ChamferPath::create(ChamferPathParameters parameters)
   parameters.cylinderAxis /= axisLength;
   if (!std::isfinite(parameters.chamferSize) || parameters.chamferSize < 0.0)
     return {{}, QStringLiteral("Chamfer size must be finite and nonnegative.")};
+  if (!std::isfinite(parameters.stagingDistance) || parameters.stagingDistance <= 0.0)
+    return {{}, QStringLiteral("P_s axial distance must be finite and positive.")};
   const auto& edge = parameters.edge;
   if (std::abs(edge.majorAxis.cross(edge.minorAxis).dot(parameters.cylinderAxis))
       <= GeomConst::Eps)
     return {{}, QStringLiteral("The hole axis is parallel to the opening plane.")};
   if (!matchesCylinder(parameters))
     return {{}, QStringLiteral("The edge does not lie on the specified cylindrical hole.")};
+  const V3d staging = edge.center + (parameters.flipAxis ? -1.0 : 1.0)
+      * parameters.stagingDistance * parameters.cylinderAxis;
+  if (!staging.allFinite())
+    return {{}, QStringLiteral("P_s position exceeds the numerical range.")};
   return {ChamferPath(std::move(parameters)), {}};
+}
+
+V3d ChamferPath::stagingPoint() const
+{
+  // The ellipse center is the intersection of the end plane and cylinder axis.
+  return m_parameters.edge.center + m_parameters.stagingDistance * m_outwardAxis;
+}
+
+std::optional<M4d> ChamferPath::stagingPose(ChamferPhase lead) const
+{
+  if (lead != ChamferPhase::LeadIn && lead != ChamferPhase::LeadOut)
+    return std::nullopt;
+  const auto endpoint = evaluatePhase(lead, lead == ChamferPhase::LeadIn ? 0.0 : 1.0);
+  if (!endpoint) return std::nullopt;
+  M4d pose = endpoint->tcp;
+  pose.block<3, 1>(0, 3) = stagingPoint();
+  return pose;
 }
 
 std::optional<ChamferPathSample> ChamferPath::evaluate(double angleRad) const
@@ -90,34 +113,40 @@ std::optional<ChamferPathSample> ChamferPath::evaluate(double angleRad) const
   const double sine = std::sin(angle);
   const V3d offset = edge.majorRadius * cosine * edge.majorAxis
       + edge.minorRadius * sine * edge.minorAxis;
-  const V3d derivative = m_direction * (-edge.majorRadius * sine * edge.majorAxis
-                                       + edge.minorRadius * cosine * edge.minorAxis);
-  const double tangentLength = derivative.stableNorm();
   // The center is on the axis; avoid subtracting large world coordinates here.
   const V3d radial = transverse(offset, m_outwardAxis);
   const double radialLength = radial.stableNorm();
-  if (!std::isfinite(tangentLength) || !std::isfinite(radialLength)
-      || tangentLength <= GeomConst::Eps || radialLength <= GeomConst::Eps)
+  if (!std::isfinite(radialLength) || radialLength <= GeomConst::Eps)
     return std::nullopt;
-  const V3d x = derivative / tangentLength;
   const V3d r = radial / radialLength;
-  if (std::abs(x.dot(r)) > FrameTolerance) return std::nullopt;
-  const V3d q = r.cross(x).normalized();
-  // Reorthogonalize only the small accepted roundoff, preserving the tangent.
-  const V3d normal = (q - x.cross(q)).normalized();
-  const V3d y = normal.cross(x).normalized();
-  if (normal.dot(m_outwardAxis) <= 0.0 || normal.dot(r) >= 0.0
-      || !isBasis(x, y, normal, FrameTolerance))
+  const V3d planeNormal = edge.majorAxis.cross(edge.minorAxis);
+  // In the longitudinal (r,k) section, this direction lies on the end plane
+  // and points away from the hole. c measures length along each surface.
+  const auto faceDirection = normalize(r - (planeNormal.dot(r)
+      / planeNormal.dot(m_outwardAxis)) * m_outwardAxis);
+  if (!faceDirection) return std::nullopt;
+  const auto diagonal = normalize(*faceDirection + m_outwardAxis);
+  if (!diagonal) return std::nullopt;
+  const V3d localX = r.cross(m_outwardAxis).normalized();
+  const V3d localY = *diagonal;
+  const V3d localZ = localX.cross(localY).normalized();
+  if (localZ.dot(m_outwardAxis) <= 0.0 || localZ.dot(r) >= 0.0
+      || localY.dot(m_outwardAxis) <= 0.0
+      || !isBasis(localX, localY, localZ, FrameTolerance))
     return std::nullopt;
 
   ChamferPathSample sample;
   sample.edgePoint = edge.center + offset;
   sample.radialNormal = r;
-  // c is a leg size. For a perpendicular circle this is +c/2 radially
-  // into material and -c/2 axially, at the midpoint of the chamfer section.
-  const V3d origin = sample.edgePoint - (m_parameters.chamferSize / std::sqrt(2.0)) * normal;
+  // Endpoints are p+c*faceDirection on the plane and p-c*k on the wall.
+  // Average their offsets to preserve accuracy at large world coordinates.
+  const V3d origin = sample.edgePoint
+      + (0.5 * m_parameters.chamferSize) * (*faceDirection - m_outwardAxis);
   if (!sample.edgePoint.allFinite() || !origin.allFinite()) return std::nullopt;
-  sample.tcp = makeTransform(basis2rot({x, y, normal}), origin);
+  const M4d localFrame = makeTransform(basis2rot({localX, localY, localZ}), origin);
+  // The drawing specifies coincident origins, X_T=X_i, Y_T=-Y_i, Z_T=-Z_i.
+  const M4d localToTcp = makeRotation(180.0, Axis::X);
+  sample.tcp = localFrame * localToTcp;
   return sample;
 }
 
@@ -143,7 +172,7 @@ std::optional<ChamferPathSample> ChamferPath::evaluatePhase(ChamferPhase phase, 
   if (clearWeight == 0.0) return result;
 
   const V3d clearY = -m_outwardAxis;
-  const V3d clearZ = -result->radialNormal;
+  const V3d clearZ = result->radialNormal;
   const V3d clearX = clearY.cross(clearZ).normalized();
   const M3d clearRotation = basis2rot({clearX, clearY, clearZ});
   const Eigen::Quaterniond machining(M3d(result->tcp.block<3, 3>(0, 0)));
@@ -153,7 +182,9 @@ std::optional<ChamferPathSample> ChamferPath::evaluatePhase(ChamferPhase phase, 
   result->tcp.block<3, 3>(0, 0) = clearWeight == 1.0 ? clearRotation
       : machining.slerp(clearWeight, clear).normalized().toRotationMatrix();
   result->tcp.block<3, 1>(0, 3) += (lead.clearance * clearWeight) * m_outwardAxis;
-  if (!result->tcp.allFinite()) return std::nullopt;
+  if (!result->tcp.allFinite()
+      || result->tcp.block<3, 1>(0, 1).dot(m_outwardAxis) >= 0.0)
+    return std::nullopt;
   return result;
 }
 

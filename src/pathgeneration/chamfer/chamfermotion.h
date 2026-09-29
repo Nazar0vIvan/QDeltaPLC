@@ -22,7 +22,7 @@ struct ChamferRobotSetup
   ChamferTimingParameters timing;
 };
 
-enum class ChamferMotionPhase { Approach, LeadIn, Machining, LeadOut, ReturnHome };
+enum class ChamferMotionPhase { Approach, TransferIn, LeadIn, Machining, LeadOut, TransferOut, ReturnHome };
 
 struct ChamferJointPoint
 {
@@ -49,7 +49,7 @@ public:
   static ChamferMotionResult create(const ChamferPath& path, const ChamferRobotSetup& robot);
   const QVector<ChamferJointPoint>& points() const { return m_points; }
   // Inclusive ranges, in ChamferMotionPhase order. Junction points are shared.
-  const std::array<qsizetype, 6>& boundaries() const { return m_boundaries; }
+  const std::array<qsizetype, 8>& boundaries() const { return m_boundaries; }
   const ChamferRobotSetup& robot() const { return m_robot; }
   const ChamferPathParameters& parameters() const { return m_parameters; }
   double duration() const { return m_points.isEmpty() ? 0.0 : m_points.back().time; }
@@ -60,12 +60,12 @@ public:
 private:
   // Source curve, robot calibration and complete point/range data define a motion.
   ChamferMotion(const ChamferPath& path, const ChamferRobotSetup& robot,
-                QVector<ChamferJointPoint> points, const std::array<qsizetype, 6>& boundaries);
+                QVector<ChamferJointPoint> points, const std::array<qsizetype, 8>& boundaries);
   void setCentralTimeScale(double scale) { m_centralTimeScale = scale; }
   ChamferPathParameters m_parameters;
   ChamferRobotSetup m_robot;
   QVector<ChamferJointPoint> m_points;
-  std::array<qsizetype, 6> m_boundaries{};
+  std::array<qsizetype, 8> m_boundaries{};
   double m_centralTimeScale = 1.0;
 };
 

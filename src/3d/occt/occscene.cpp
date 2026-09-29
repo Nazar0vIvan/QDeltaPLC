@@ -5,6 +5,7 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_SelectionModesConcurrency.hxx>
 #include <AIS_Shape.hxx>
+#include <TCollection_ExtendedString.hxx>
 
 #include <Graphic3d_ZLayerId.hxx>
 
@@ -24,6 +25,7 @@ OccScene::OccScene(
     : m_context(context)
       , m_view(view)
       , m_worldAxes(currentWorldAxisLength())
+      , m_spindleTcpAxes(currentWorldAxisLength())
       , m_viewCube()
 {}
 
@@ -47,11 +49,85 @@ void OccScene::updateCameraDependentObjects()
 
   if (!m_worldAxesDisplayed) {
     if (hasVisibleParts()) displayWorldAxes();
+  } else {
+    m_worldAxes.setLength(currentWorldAxisLength());
+    redisplayWorldAxes();
+  }
+  resizeSpindleTcpAxes();
+  resizeCoordinateFrames();
+}
+
+void OccScene::setSpindleTcpFrame(const std::optional<gp_Trsf>& frame)
+{
+  if (!isValid() || !m_spindleTcpAxes.isValid()) return;
+  if (!frame) {
+    if (!m_spindleTcpAxesDisplayed) return;
+    m_context->Erase(m_spindleTcpAxes.xAxis(), false);
+    m_context->Erase(m_spindleTcpAxes.yAxis(), false);
+    m_context->Erase(m_spindleTcpAxes.zAxis(), false);
+    m_spindleTcpAxesDisplayed = false;
     return;
   }
+  for (const auto& axis : {m_spindleTcpAxes.xAxis(), m_spindleTcpAxes.yAxis(), m_spindleTcpAxes.zAxis()})
+    axis->SetLocalTransformation(*frame);
+  if (m_spindleTcpAxesDisplayed) return;
+  m_spindleTcpAxes.setLength(currentWorldAxisLength());
+  for (const auto& axis : {m_spindleTcpAxes.xAxis(), m_spindleTcpAxes.yAxis(), m_spindleTcpAxes.zAxis()}) {
+    m_context->Display(axis, 0, -1, false);
+    m_context->Deactivate(axis);
+    m_context->Redisplay(axis, false);
+  }
+  m_spindleTcpAxesDisplayed = true;
+}
 
-  m_worldAxes.setLength(currentWorldAxisLength());
-  redisplayWorldAxes();
+void OccScene::resizeSpindleTcpAxes()
+{
+  if (!m_spindleTcpAxesDisplayed) return;
+  m_spindleTcpAxes.setLength(currentWorldAxisLength());
+  m_context->Redisplay(m_spindleTcpAxes.xAxis(), false);
+  m_context->Redisplay(m_spindleTcpAxes.yAxis(), false);
+  m_context->Redisplay(m_spindleTcpAxes.zAxis(), false);
+}
+
+void OccScene::setCoordinateFrames(const std::vector<OccCoordinateFrame>& frames)
+{
+  if (!isValid()) return;
+  for (const auto& frame : m_coordinateFrames) {
+    for (const auto& axis : {frame.axes.xAxis(), frame.axes.yAxis(), frame.axes.zAxis()})
+      m_context->Remove(axis, false);
+    m_context->Remove(frame.label, false);
+  }
+  m_coordinateFrames.clear();
+  m_coordinateFrames.reserve(frames.size());
+  for (const auto& frame : frames) {
+    m_coordinateFrames.emplace_back();
+    auto& presentation = m_coordinateFrames.back();
+    presentation.axes.setLength(currentWorldAxisLength());
+    for (const auto& axis : {presentation.axes.xAxis(), presentation.axes.yAxis(), presentation.axes.zAxis()}) {
+      axis->SetLocalTransformation(frame.transform);
+      m_context->Display(axis, 0, -1, false);
+      m_context->Deactivate(axis);
+    }
+    presentation.label = new AIS_TextLabel;
+    presentation.label->SetText(TCollection_ExtendedString(frame.label.toUtf8().constData(), true));
+    presentation.label->SetPosition(gp_Pnt(0.0, 0.0, 0.0));
+    presentation.label->SetLocalTransformation(frame.transform);
+    presentation.label->SetHeight(13.0);
+    presentation.label->SetColor(rgb(245, 245, 245));
+    presentation.label->SetZLayer(Graphic3d_ZLayerId_Topmost);
+    presentation.label->SetInfiniteState(true);
+    m_context->Display(presentation.label, 0, -1, false);
+    m_context->Deactivate(presentation.label);
+  }
+}
+
+void OccScene::resizeCoordinateFrames()
+{
+  for (auto& frame : m_coordinateFrames) {
+    frame.axes.setLength(currentWorldAxisLength());
+    for (const auto& axis : {frame.axes.xAxis(), frame.axes.yAxis(), frame.axes.zAxis()})
+      m_context->Redisplay(axis, false);
+  }
 }
 
 void OccScene::displayInfrastructure()

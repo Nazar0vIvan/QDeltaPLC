@@ -1,5 +1,7 @@
 #pragma once
 
+#include "scene/scenegeometry.h"
+
 #include "3d/robot/robotpreviewstate.h"
 #include "cadloadresult.h"
 #include "scene/sceneendeffectors.h"
@@ -32,9 +34,12 @@ public:
   void removeSceneObject(quint32 objectId);
   void setSelectedObjects(const QList<quint32>& ids);
   void setMachiningPathsVisible(bool visible);
+  void setMachiningFrames(const QVector<SceneCoordinateFrame>& frames);
   void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   void setDiagnosticOverlays(bool showPoints, bool showNormals);
   bool applyPose(const RobotPose& pose);
+  // Applied flange-relative calibration; empty hides the TCP decoration.
+  void setSpindleTcpFrame(const std::optional<M4d>& frame);
   void setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
                       SceneEndEffectors::Tool active);
   bool isReady() const;
@@ -74,6 +79,8 @@ private:
   bool m_initializationFailed = false;
   bool m_showMachiningPaths = true;
   std::optional<ChamferPathParameters> m_machiningPreview;
+  std::optional<M4d> m_spindleTcpFrame;
+  QVector<SceneCoordinateFrame> m_machiningFrames;
   QList<quint32> m_selectedObjects;
 };
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "scene/scenegeometry.h"
+
 #include "3d/occt/occscene.h"
 #include "pathgeneration/chamfer/chamferpath.h"
 
@@ -26,6 +28,7 @@ public:
   void setSelectedObjects(const QList<quint32>& ids);
   bool setMachiningPathsVisible(bool visible, const SceneModel* scene);
   bool setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
+  void setMachiningFrames(const QVector<SceneCoordinateFrame>& frames);
   quint32 objectIdFor(const Handle(AIS_InteractiveObject)& picked) const;
 
 private:

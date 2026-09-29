@@ -344,6 +344,14 @@ QxPanel {
 
       PropertyValue {
         visible: root.cylinderGeometry !== null
+        labelText: qsTr("Diameter")
+        valueObjectName: "cylinderDiameterValue"
+        valueText: root.cylinderGeometry ? (2 * root.cylinderGeometry.radius).toPrecision(6) : ""
+        wrapMode: Text.NoWrap
+      }
+
+      PropertyValue {
+        visible: root.cylinderGeometry !== null
         labelText: qsTr("Length")
         valueObjectName: "cylinderLengthValue"
         valueText: root.cylinderGeometry ? root.cylinderGeometry.length.toPrecision(6) : ""

@@ -21,16 +21,18 @@ struct ChamferPathParameters
   V3d cylinderOrigin = V3d::Zero();
   V3d cylinderAxis = V3d::UnitZ();
   bool flipAxis = false;
-  double chamferSize = 0.0; // Leg dimension in mm, e.g. 2 in 2 x 45 degrees.
+  double chamferSize = 0.0; // Equal surface setbacks in the longitudinal section, mm.
   ChamferLeadParameters leadIn;
   ChamferLeadParameters leadOut;
+  double stagingDistance = 10.0; // From plane/axis intersection along outward Z, mm.
 };
 
 struct ChamferPathSample
 {
   V3d edgePoint = V3d::Zero();
   V3d radialNormal = V3d::Zero();
-  // BASE-relative surface-attached TCP: columns X/Y/Z, then origin.
+  // BASE-relative TCP: local machining frame * Rx(180 degrees).
+  // Columns X/Y/Z, then the midpoint of the chamfer section.
   M4d tcp = M4d::Identity();
 };
 
@@ -57,13 +59,18 @@ struct ChamferSampledPath
   std::array<qsizetype, 4> boundaries{};
 };
 
-// Nominal internal 45-degree chamfer. Owns numerical geometry, not source samples.
+// Equal-setback internal chamfer (45 degrees for a perpendicular opening).
+// Owns numerical geometry, not source samples.
 class ChamferPath
 {
 public:
   static ChamferPathResult create(ChamferPathParameters parameters);
   const ChamferPathParameters& parameters() const { return m_parameters; }
   const V3d& outwardAxis() const { return m_outwardAxis; }
+  V3d stagingPoint() const;
+  // LeadIn selects approach attitude; LeadOut selects return attitude.
+  // Both have origin P_s and Y=-outwardAxis. Machining is not a staging side.
+  std::optional<M4d> stagingPose(ChamferPhase lead) const;
   // Ellipse parameter in radians, not arc length or cylinder azimuth.
   // Zero starts at the major-axis endpoint; increasing values follow the
   // chosen outward axis. Negative values support the lead-in.

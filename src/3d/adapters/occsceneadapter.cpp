@@ -232,15 +232,15 @@ bool OccSceneAdapter::synchronizeObject(const SceneObject* object, bool overlays
   const bool created = it == m_parts.end();
   if (created && object->machiningPath()) {
     std::vector<OccScene::PartId> parts;
-    for (std::size_t phase = 0; phase < 5; ++phase) {
+    for (std::size_t phase = 0; phase + 1 < object->machiningPath()->boundaries().size(); ++phase) {
       const auto shape = makeMotionPhase(*object->machiningPath(), phase);
       if (!shape) continue;
       OccPartProps props;
-      props.color = phase == 2 ? rgb(30, 130, 45)
-          : phase == 1 || phase == 3 ? rgb(0, 100, 210) : rgb(90, 65, 130);
+      props.color = phase == 3 ? rgb(30, 130, 45)
+          : phase == 0 || phase == 6 ? rgb(90, 65, 130) : rgb(0, 100, 210);
       props.selectionMode = OccSelectionMode::PartOnly;
       props.wireframe = true;
-      props.lineWidth = phase == 2 ? 3.0 : 2.0;
+      props.lineWidth = phase == 3 ? 3.0 : 2.0;
       const auto part = m_scene.addShapePartWithId(*shape, props);
       if (!part) {
         for (auto id : parts) (void)m_scene.removePart(id);
@@ -351,6 +351,21 @@ bool OccSceneAdapter::setMachiningPathsVisible(bool visible, const SceneModel* s
     for (const auto* object : scene->objectList())
       if (object->machiningPath()) changed = synchronizeObject(object) || changed;
   return changed;
+}
+
+void OccSceneAdapter::setMachiningFrames(const QVector<SceneCoordinateFrame>& frames)
+{
+  std::vector<OccCoordinateFrame> converted;
+  converted.reserve(static_cast<std::size_t>(frames.size()));
+  for (const auto& frame : frames) {
+    const auto& t = frame.transform;
+    gp_Trsf transform;
+    transform.SetValues(t(0, 0), t(0, 1), t(0, 2), t(0, 3),
+                        t(1, 0), t(1, 1), t(1, 2), t(1, 3),
+                        t(2, 0), t(2, 1), t(2, 2), t(2, 3));
+    converted.push_back({transform, frame.label});
+  }
+  m_scene.setCoordinateFrames(converted);
 }
 
 bool OccSceneAdapter::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
