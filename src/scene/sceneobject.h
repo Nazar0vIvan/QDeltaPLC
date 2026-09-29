@@ -36,6 +36,7 @@ public:
   const BoundedCylinder* cylinder() const;
   const ::Circle* circle() const;
   const EdgeGeometry* edge() const;
+  const ChamferMotion* machiningPath() const;
   QString name() const { return m_name; }
   Kind kind() const { return m_kind; }
   Classification classification() const { return m_classification; }
@@ -55,6 +56,7 @@ private:
   void setCylinderGeometry(BoundedCylinder cylinder);
   void setCircleGeometry(::Circle circle);
   void setEdgeGeometry(EdgeGeometry edge, const std::array<quint32, 2>& sources);
+  void setMachiningPath(SceneMachiningData data);
   void setName(const QString& name);
   void setVisible(bool visible);
 

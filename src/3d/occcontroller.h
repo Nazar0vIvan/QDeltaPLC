@@ -14,6 +14,7 @@
 
 class SceneModel;
 class SceneObject;
+class SceneMachining;
 
 namespace RoboCrap3D {
 
@@ -28,6 +29,7 @@ class OccController final : public QObject
   Q_OBJECT
   Q_PROPERTY(QWindow* viewWindow READ viewWindow NOTIFY viewWindowChanged)
   Q_PROPERTY(bool ready READ isReady NOTIFY readyChanged)
+  Q_PROPERTY(bool showMachiningPaths READ showMachiningPaths WRITE setShowMachiningPaths NOTIFY showMachiningPathsChanged)
   Q_PROPERTY(bool viewportReady READ isViewportReady NOTIFY viewportReadyChanged)
   Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged)
   Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
@@ -56,6 +58,9 @@ public:
   QList<double> tcpPose() const;
   void setApplicationScene(SceneModel* scene);
   void setEndEffectors(SceneEndEffectors* effectors);
+  void setMachining(SceneMachining* machining);
+  bool showMachiningPaths() const { return m_showMachiningPaths; }
+  void setShowMachiningPaths(bool visible);
   bool isMeasuringCadLoading() const;
   bool isSpindleCadLoading() const;
   QString measuringCadError() const;
@@ -71,6 +76,7 @@ public:
   Q_INVOKABLE QVariantList solveTcpIK(const QVariantList& tcp);
 
 signals:
+  void showMachiningPathsChanged();
   void viewWindowChanged();
   void readyChanged();
   void viewportReadyChanged();
@@ -87,6 +93,9 @@ signals:
 
 private:
   void createWindow();
+  void synchronizeMachiningReadiness();
+  void synchronizeMachiningPreview();
+  void applyPlaybackPose(QList<double> joints);
   void synchronizeEndEffectors();
   void synchronizeSceneObject(SceneObject* object);
   void removeSceneObject(quint32 objectId);
@@ -110,6 +119,7 @@ private:
 
   std::array<ToolCadState, 2> m_toolCad;
   QPointer<SceneEndEffectors> m_endEffectors;
+  QPointer<SceneMachining> m_machining;
   std::shared_ptr<RobotPreviewState> m_state;
   std::shared_ptr<const CadLoadResult> m_shapes;
   std::unique_ptr<CadLoadWorker> m_worker;
@@ -125,6 +135,7 @@ private:
   bool m_loading = false;
   bool m_shuttingDown = false;
   bool m_occtInitialized = false;
+  bool m_showMachiningPaths = true;
 };
 
 } // namespace RoboCrap3D

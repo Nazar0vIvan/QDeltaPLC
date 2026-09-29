@@ -20,6 +20,7 @@ public:
   Q_INVOKABLE void removeObjects(const QList<quint32>& ids);
   Q_INVOKABLE bool canIntersect(const QList<quint32>& selectedIds) const;
   Q_INVOKABLE QList<quint32> intersect(const QList<quint32>& selectedIds);
+  SceneObject* addMachiningPath(SceneMachiningData data, const QString& name);
   // Source metadata, display name and geometry define a surface insertion.
 	Q_INVOKABLE SceneObject* addPlane(const QUrl& sourceUrl, const QString& name, const QVariantList& coefficients);
 	SceneObject* addBoundedPlane(const QUrl& sourceUrl, const QString& name, BoundedPlane plane);

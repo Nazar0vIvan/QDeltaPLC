@@ -27,6 +27,10 @@ qt_add_library(RoboCrapGeometry STATIC
   pathgeneration/blade/bladefrenet.cpp
   pathgeneration/blade/bladejsonloader.h
   pathgeneration/blade/bladejsonloader.cpp
+  pathgeneration/chamfer/chamferpath.h
+  pathgeneration/chamfer/chamferpath.cpp
+  pathgeneration/chamfer/chamfermotion.h
+  pathgeneration/chamfer/chamfermotion.cpp
   pathgeneration/rsi/motionprofile.h
   pathgeneration/rsi/offsetjsonwriter.h
   pathgeneration/rsi/offsetjsonwriter.cpp
@@ -39,6 +43,8 @@ target_link_libraries(RoboCrapGeometry PUBLIC Qt6::Core)
 qt_add_library(RoboCrapScene STATIC
   scene/sceneendeffectors.h
   scene/sceneendeffectors.cpp
+  scene/scenemachining.h
+  scene/scenemachining.cpp
   scene/scenemodel.h
   scene/scenemodel.cpp
   scene/sceneobject.h

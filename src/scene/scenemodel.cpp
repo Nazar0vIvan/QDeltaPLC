@@ -116,6 +116,17 @@ SceneObject* SceneModel::createObject(SceneObject::Description description)
   return new SceneObject(m_nextId++, description, this);
 }
 
+SceneObject* SceneModel::addMachiningPath(SceneMachiningData data, const QString& name)
+{
+  if (!data.motion) return nullptr;
+  auto* object = createObject({name.trimmed().isEmpty() ? tr("Machining Path %1").arg(m_nextId) : name,
+                              SceneObject::MachiningPath, SceneObject::Unclassified, {}});
+  if (!object) return nullptr;
+  object->setMachiningPath(std::move(data));
+  appendObject(object);
+  return object;
+}
+
 void SceneModel::appendObject(SceneObject* object)
 {
   QJSEngine::setObjectOwnership(object, QJSEngine::CppOwnership);

@@ -53,7 +53,10 @@ void OccViewWindow::setApplicationScene(SceneModel* scene)
 
 void OccViewWindow::synchronizeApplicationScene()
 {
-  if (m_viewport) m_viewport->synchronizeApplicationScene(m_applicationScene);
+  if (m_viewport) {
+    m_viewport->synchronizeApplicationScene(m_applicationScene);
+    m_viewport->setSelectedObjects(m_selectedObjects);
+  }
 }
 
 void OccViewWindow::removeSceneObject(quint32 objectId)
@@ -63,12 +66,31 @@ void OccViewWindow::removeSceneObject(quint32 objectId)
 
 void OccViewWindow::synchronizeSceneObject(SceneObject* object)
 {
-  if (m_viewport) m_viewport->synchronizeSceneObject(object);
+  if (m_viewport) {
+    m_viewport->synchronizeSceneObject(object);
+    m_viewport->setSelectedObjects(m_selectedObjects);
+  }
 }
 
 void OccViewWindow::setSelectedObjects(const QList<quint32>& ids)
 {
+  m_selectedObjects = ids;
   if (m_viewport) m_viewport->setSelectedObjects(ids);
+}
+
+void OccViewWindow::setMachiningPathsVisible(bool visible)
+{
+  m_showMachiningPaths = visible;
+  if (m_viewport) {
+    m_viewport->setMachiningPathsVisible(visible, m_applicationScene);
+    m_viewport->setSelectedObjects(m_selectedObjects);
+  }
+}
+
+void OccViewWindow::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
+{
+  m_machiningPreview = parameters;
+  if (m_viewport) m_viewport->setMachiningPreview(parameters);
 }
 
 void OccViewWindow::setDiagnosticOverlays(bool showPoints, bool showNormals)
@@ -200,13 +222,16 @@ void OccViewWindow::initializeViewport()
   if (m_viewport || m_initializationFailed || !isExposed()) return;
   try {
     auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()),
-                                                  m_applicationScene);
+                                                  m_applicationScene, m_showMachiningPaths);
     if (!viewport->isValid()) {
       m_initializationFailed = true;
       emit errorOccurred(QStringLiteral("Cannot create the OCCT viewport."));
       return;
     }
     m_viewport = std::move(viewport);
+    m_viewport->setMachiningPathsVisible(m_showMachiningPaths, m_applicationScene);
+    m_viewport->setMachiningPreview(m_machiningPreview);
+    m_viewport->setSelectedObjects(m_selectedObjects);
     m_viewport->setExposed(true);
   } catch (const Standard_Failure& failure) {
     releaseSurface();

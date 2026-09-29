@@ -8,11 +8,47 @@
 #include "scene/scenemodel.h"
 #include "scene/scenegeometry.h"
 #include "scene/sceneendeffectors.h"
+#include "scene/scenemachining.h"
 
 #include <QJSEngine>
 #include <QPointer>
 #include <QQmlEngine>
 #include <QtQml/qqmlregistration.h>
+
+struct SceneMachiningQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneMachining)
+  QML_NAMED_ELEMENT(Machining)
+  QML_SINGLETON
+public:
+  inline static SceneMachining* s_inst = nullptr;
+  static SceneMachining* create(QQmlEngine*, QJSEngine* engine)
+  {
+    if (!s_inst || engine->thread() != s_inst->thread() || (s_engine && s_engine != engine))
+      qFatal("Machining must be used by one GUI-thread QML engine at a time");
+    s_engine = engine;
+    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
+    return s_inst;
+  }
+private:
+  inline static QPointer<QJSEngine> s_engine;
+};
+
+struct SceneMachiningSettingsQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneMachiningSettings)
+  QML_VALUE_TYPE(machiningSettings)
+};
+
+struct SceneMachiningPathQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneMachiningPath)
+  QML_NAMED_ELEMENT(MachiningPath)
+  QML_UNCREATABLE("Machining paths are owned by SceneModel")
+};
 
 struct SceneEndEffectorsQml
 {

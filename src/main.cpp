@@ -96,9 +96,13 @@ int main(int argc, char* argv[])
   endEffectors.setSpindleCadSource(QUrl::fromLocalFile(robotCadDirectory.filePath(QStringLiteral("SEE.stp"))));
   SceneEndEffectorsQml::s_inst = &endEffectors;
 
+  SceneMachining machining(&scene, &endEffectors);
+  SceneMachiningQml::s_inst = &machining;
+
   RoboCrap3D::OccController viewportController;
   viewportController.setApplicationScene(&scene);
   viewportController.setEndEffectors(&endEffectors);
+  viewportController.setMachining(&machining);
   OccControllerQml::s_inst = &viewportController;
 
 	QObject::connect(&viewportController, &RoboCrap3D::OccController::message, Logger::instance(), &logViewportMessage);

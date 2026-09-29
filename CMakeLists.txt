@@ -101,6 +101,7 @@ set(QML_FILES
   qml/Views/Workspace/ScenePanel.qml
   qml/Views/Workspace/PropertiesPanel.qml
   qml/Views/Workspace/EndEffectorPanel.qml
+  qml/Views/Workspace/MachiningPanel.qml
 )
 
 set(RESOURCE_FILES

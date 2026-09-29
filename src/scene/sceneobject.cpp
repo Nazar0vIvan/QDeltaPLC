@@ -64,6 +64,17 @@ void SceneObject::setName(const QString& name)
   emit nameChanged();
 }
 
+void SceneObject::setMachiningPath(SceneMachiningData data)
+{
+  m_geometry = new SceneMachiningPath(std::move(data), this);
+}
+
+const ChamferMotion* SceneObject::machiningPath() const
+{
+  const auto* geometry = qobject_cast<const SceneMachiningPath*>(m_geometry);
+  return geometry ? &geometry->motion() : nullptr;
+}
+
 void SceneObject::setVisible(bool visible)
 {
   if (m_visible == visible) return;

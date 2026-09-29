@@ -1,4 +1,5 @@
 #include "occcontroller.h"
+#include "scene/scenemachining.h"
 
 #include "occt/cadloadworker.h"
 #include "occt/occviewwindow.h"
@@ -69,6 +70,7 @@ OccController::OccController(QObject* parent) : QObject(parent)
 
 OccController::~OccController()
 {
+  if (m_machining) m_machining->setRobotAvailable(false);
   m_shuttingDown = true;
   ++m_generation;
   for (ToolCadState& tool : m_toolCad)
@@ -136,6 +138,46 @@ void OccController::setApplicationScene(SceneModel* scene)
         scene, &QObject::destroyed, this, &OccController::onSceneDestroyed);
   }
   if (m_window) m_window->setApplicationScene(scene);
+}
+
+void OccController::setMachining(SceneMachining* machining)
+{
+  if (m_machining == machining) return;
+  if (m_machining) {
+    disconnect(m_machining, nullptr, this, nullptr);
+    m_machining->setRobotAvailable(false);
+  }
+  m_machining = machining;
+  if (m_machining) {
+    connect(m_machining, &SceneMachining::inputChanged, this, &OccController::synchronizeMachiningPreview);
+    connect(m_machining, &SceneMachining::playbackPoseRequested, this,
+            &OccController::applyPlaybackPose, Qt::DirectConnection);
+    connect(m_machining, &SceneMachining::settingsChanged, this, &OccController::synchronizeMachiningPreview);
+    connect(m_machining, &SceneMachining::availabilityChanged, this, &OccController::synchronizeMachiningPreview);
+  }
+  connect(this, &OccController::readyChanged, this,
+          &OccController::synchronizeMachiningReadiness, Qt::UniqueConnection);
+  if (m_machining && m_state) m_machining->setRobotModel(m_state->model().kinematics);
+  synchronizeMachiningReadiness();
+  synchronizeMachiningPreview();
+}
+
+void OccController::setShowMachiningPaths(bool visible)
+{
+  if (m_showMachiningPaths == visible) return;
+  m_showMachiningPaths = visible;
+  if (m_window) m_window->setMachiningPathsVisible(visible);
+  emit showMachiningPathsChanged();
+}
+
+void OccController::synchronizeMachiningPreview()
+{
+  if (m_window) m_window->setMachiningPreview(m_machining ? m_machining->previewParameters() : std::nullopt);
+}
+
+void OccController::synchronizeMachiningReadiness()
+{
+  if (m_machining) m_machining->setRobotAvailable(isReady() && !m_loading);
 }
 
 void OccController::onSceneDestroyed()
@@ -272,6 +314,7 @@ void OccController::removeSceneObject(quint32 objectId)
 void OccController::synchronizeSceneObject(SceneObject* object)
 {
   if (m_window) m_window->synchronizeSceneObject(object);
+  if (m_machining && object && object->objectId() == m_machining->inputId()) synchronizeMachiningPreview();
 }
 
 void OccController::setSelectedObjects(const QList<quint32>& ids)
@@ -305,6 +348,8 @@ void OccController::createWindow()
   QObject::connect(m_window, &QObject::destroyed, this, &OccController::onViewWindowDestroyed);
   QObject::connect(m_window, &OccViewWindow::deleteSelectionRequested, this, &OccController::deleteSelectionRequested);
   m_window->setApplicationScene(m_applicationScene);
+  m_window->setMachiningPathsVisible(m_showMachiningPaths);
+  synchronizeMachiningPreview();
   if (m_state && m_shapes) m_window->setScene(m_state, m_shapes);
   synchronizeEndEffectors();
   emit viewWindowChanged();
@@ -399,6 +444,7 @@ void OccController::finishRobotLoad(quint64 generation, std::shared_ptr<RobotPre
     return;
   }
   m_state = pending;
+  if (m_machining) m_machining->setRobotModel(m_state->model().kinematics);
   m_shapes = result;
   if (m_window)
     m_window->setScene(m_state, m_shapes);
@@ -428,6 +474,10 @@ bool OccController::applyPose(const RobotPose& pose)
 
 QVariantList OccController::solve(const QVariantList& values, bool inverse)
 {
+  if (m_machining && m_machining->playing()) {
+    setError(QStringLiteral("Stop Dry Run before changing the robot pose."));
+    return {};
+  }
   Q_ASSERT(QThread::currentThread() == thread());
   if (!isReady() || !m_state) {
     setError(QStringLiteral("The robot preview is not ready."));
@@ -460,6 +510,22 @@ QVariantList OccController::solve(const QVariantList& values, bool inverse)
 QVariantList OccController::solveFK(const QVariantList& joints)
 {
   return solve(joints, false);
+}
+
+void OccController::applyPlaybackPose(QList<double> joints)
+{
+  if (!m_machining || !m_machining->playing()) return;
+  if (!isReady() || m_loading || !m_state || joints.size() != 6) {
+    m_machining->failPlayback(QStringLiteral("Robot preview is not ready for playback."));
+    return;
+  }
+  V6d values = V6d::Zero();
+  for (int i = 0; i < 6; ++i) values[i] = joints[i];
+  QString error;
+  const auto pose = m_state->forward(values, error);
+  if (!pose || !applyPose(*pose)) {
+    m_machining->failPlayback(error.isEmpty() ? QStringLiteral("Cannot display the trajectory pose.") : error);
+  }
 }
 
 QVariantList OccController::solveIK(const QVariantList& flange)

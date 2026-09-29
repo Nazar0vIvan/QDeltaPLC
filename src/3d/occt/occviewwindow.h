@@ -3,6 +3,7 @@
 #include "3d/robot/robotpreviewstate.h"
 #include "cadloadresult.h"
 #include "scene/sceneendeffectors.h"
+#include "pathgeneration/chamfer/chamferpath.h"
 
 #include <QPointer>
 #include <QList>
@@ -30,6 +31,8 @@ public:
   void synchronizeSceneObject(SceneObject* object);
   void removeSceneObject(quint32 objectId);
   void setSelectedObjects(const QList<quint32>& ids);
+  void setMachiningPathsVisible(bool visible);
+  void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   void setDiagnosticOverlays(bool showPoints, bool showNormals);
   bool applyPose(const RobotPose& pose);
   void setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
@@ -69,6 +72,9 @@ private:
   QPointer<SceneModel> m_applicationScene;
   std::unique_ptr<OccViewport> m_viewport;
   bool m_initializationFailed = false;
+  bool m_showMachiningPaths = true;
+  std::optional<ChamferPathParameters> m_machiningPreview;
+  QList<quint32> m_selectedObjects;
 };
 
 } // namespace RoboCrap3D

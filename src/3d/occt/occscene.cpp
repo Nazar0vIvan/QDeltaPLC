@@ -36,7 +36,7 @@ bool OccScene::hasVisibleParts() const
 {
   if (!isValid()) return false;
   for (const auto& part : m_parts) {
-    if (part && m_context->IsDisplayed(part->handle())) return true;
+    if (part && !part->handle()->IsInfinite() && m_context->IsDisplayed(part->handle())) return true;
   }
   return false;
 }

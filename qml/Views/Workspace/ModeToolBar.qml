@@ -16,11 +16,17 @@ ToolBar {
   property bool circleImportAvailable: false
   property bool cylinderImportAvailable: false
   property bool intersectionAvailable: false
+  property bool generationAvailable: false
+  property bool playbackAvailable: false
+  property bool playing: false
+  signal dryRunRequested()
+  signal stopRequested()
 
   signal planeImportRequested()
   signal circleImportRequested()
   signal cylinderImportRequested()
   signal intersectionRequested()
+  signal generationRequested()
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
   signal scanPathToggled(bool checked)
@@ -161,11 +167,15 @@ ToolBar {
         Tool {
           text: qsTr("Generate Path")
           iconSource: "qrc:/pics/generate_path.svg"
+          available: root.generationAvailable
+          onTriggered: root.generationRequested()
         }
 
         Tool {
           text: qsTr("Dry Run")
           iconSource: "qrc:/pics/dry_run.svg"
+          available: root.playbackAvailable
+          onTriggered: root.dryRunRequested()
         }
 
         Tool {
@@ -184,6 +194,8 @@ ToolBar {
         visible: !root.rough
         text: qsTr("Stop")
         iconSource: "qrc:/pics/stop.svg"
+        available: root.playing
+        onTriggered: root.stopRequested()
       }
 
       Rectangle {

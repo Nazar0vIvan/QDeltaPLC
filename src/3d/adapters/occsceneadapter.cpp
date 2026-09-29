@@ -4,6 +4,8 @@
 #include "scene/sceneobject.h"
 
 #include <AIS_InteractiveObject.hxx>
+#include <AIS_Shape.hxx>
+#include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
@@ -28,6 +30,21 @@
 namespace RoboCrap3D {
 
 namespace {
+
+std::optional<TopoDS_Shape> makeMotionPhase(const ChamferMotion& motion, std::size_t phase)
+{
+  BRepBuilderAPI_MakePolygon polygon;
+  std::optional<gp_Pnt> previous;
+  for (qsizetype i = motion.boundaries()[phase]; i <= motion.boundaries()[phase + 1]; ++i) {
+    const auto& tcp = motion.points()[i].tcp;
+    const gp_Pnt point(tcp(0, 3), tcp(1, 3), tcp(2, 3));
+    if (previous && previous->SquareDistance(point) <= 1e-14) continue;
+    polygon.Add(point);
+    previous = point;
+  }
+  if (!polygon.IsDone()) return std::nullopt; // A stationary HOME phase has no line.
+  return polygon.Shape();
+}
 
 std::optional<TopoDS_Face> makeBoundedPlaneFace(const BoundedPlane& plane)
 {
@@ -184,7 +201,7 @@ bool OccSceneAdapter::removeObject(quint32 objectId)
 {
   const auto it = m_parts.find(objectId);
   if (it == m_parts.end()) return false;
-  (void)m_scene.removePart(it->surface);
+  for (auto part : it->surfaces) (void)m_scene.removePart(part);
   if (it->points) (void)m_scene.removePart(*it->points);
   if (it->normals) (void)m_scene.removePart(*it->normals);
   m_parts.erase(it);
@@ -196,7 +213,7 @@ bool OccSceneAdapter::synchronize(const SceneModel* applicationScene)
   // Full synchronization installs a scene; IDs are local to that scene.
   bool changed = !m_parts.isEmpty();
   for (const Presentation& part : m_parts) {
-    (void)m_scene.removePart(part.surface);
+    for (auto id : part.surfaces) (void)m_scene.removePart(id);
     if (part.points) (void)m_scene.removePart(*part.points);
     if (part.normals) (void)m_scene.removePart(*part.normals);
   }
@@ -213,7 +230,27 @@ bool OccSceneAdapter::synchronizeObject(const SceneObject* object, bool overlays
   if (!object) return false;
   auto it = m_parts.find(object->objectId());
   const bool created = it == m_parts.end();
-  if (created) {
+  if (created && object->machiningPath()) {
+    std::vector<OccScene::PartId> parts;
+    for (std::size_t phase = 0; phase < 5; ++phase) {
+      const auto shape = makeMotionPhase(*object->machiningPath(), phase);
+      if (!shape) continue;
+      OccPartProps props;
+      props.color = phase == 2 ? rgb(30, 130, 45)
+          : phase == 1 || phase == 3 ? rgb(0, 100, 210) : rgb(90, 65, 130);
+      props.selectionMode = OccSelectionMode::PartOnly;
+      props.wireframe = true;
+      props.lineWidth = phase == 2 ? 3.0 : 2.0;
+      const auto part = m_scene.addShapePartWithId(*shape, props);
+      if (!part) {
+        for (auto id : parts) (void)m_scene.removePart(id);
+        return false;
+      }
+      parts.push_back(*part);
+    }
+    if (parts.empty()) return false;
+    it = m_parts.insert(object->objectId(), Presentation{std::move(parts), true, {}, {}});
+  } else if (created) {
     std::optional<TopoDS_Shape> shape;
     if (const BoundedPlane* plane = object->plane()) shape = makeBoundedPlaneFace(*plane);
     else if (const BoundedCylinder* cylinder = object->cylinder()) shape = makeBoundedCylinderFace(*cylinder);
@@ -233,13 +270,14 @@ bool OccSceneAdapter::synchronizeObject(const SceneObject* object, bool overlays
     }
     const auto part = m_scene.addShapePartWithId(*shape, props);
     if (!part) return false;
-    it = m_parts.insert(object->objectId(), Presentation{*part, true, {}, {}});
+    it = m_parts.insert(object->objectId(), Presentation{{*part}, true, {}, {}});
   }
-  const bool visibilityChanged = it->visible != object->visible();
+  const bool visible = object->visible() && (!object->machiningPath() || m_showMachiningPaths);
+  const bool visibilityChanged = it->visible != visible;
   if (!created && !visibilityChanged && !overlaysChanged) return false;
   if (visibilityChanged) {
-    (void)m_scene.setPartVisible(it->surface, object->visible());
-    it->visible = object->visible();
+    for (auto id : it->surfaces) (void)m_scene.setPartVisible(id, visible);
+    it->visible = visible;
   }
   it->points = synchronizeOverlay(object, it->points, false);
   it->normals = synchronizeOverlay(object, it->normals, true);
@@ -287,9 +325,9 @@ void OccSceneAdapter::setSelectedObjects(const QList<quint32>& ids)
   parts.reserve(static_cast<std::size_t>(ids.size()));
   for (quint32 id : ids) {
     const auto it = m_parts.constFind(id);
-    if (it != m_parts.cend()
-        && std::find(parts.cbegin(), parts.cend(), it->surface) == parts.cend())
-      parts.push_back(it->surface);
+    if (it != m_parts.cend())
+      for (auto part : it->surfaces)
+        if (std::find(parts.cbegin(), parts.cend(), part) == parts.cend()) parts.push_back(part);
   }
   m_scene.selectParts(parts);
 }
@@ -298,9 +336,64 @@ quint32 OccSceneAdapter::objectIdFor(const Handle(AIS_InteractiveObject)& picked
 {
   if (picked.IsNull()) return {};
   for (auto it = m_parts.cbegin(); it != m_parts.cend(); ++it) {
-    if (m_scene.partHandle(it->surface) == picked) return it.key();
+    for (auto part : it->surfaces)
+      if (m_scene.partHandle(part) == picked) return it.key();
   }
   return {}; // Background or non-application geometry clears UI selection.
+}
+
+bool OccSceneAdapter::setMachiningPathsVisible(bool visible, const SceneModel* scene)
+{
+  if (m_showMachiningPaths == visible) return false;
+  m_showMachiningPaths = visible;
+  bool changed = false;
+  if (scene)
+    for (const auto* object : scene->objectList())
+      if (object->machiningPath()) changed = synchronizeObject(object) || changed;
+  return changed;
+}
+
+bool OccSceneAdapter::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
+{
+  if (parameters && m_previewParameters && m_axisPreview
+      && parameters->edge.center == m_previewParameters->edge.center
+      && parameters->edge.minorRadius == m_previewParameters->edge.minorRadius
+      && parameters->cylinderAxis == m_previewParameters->cylinderAxis
+      && parameters->flipAxis == m_previewParameters->flipAxis) return false;
+  m_previewParameters = parameters;
+  bool changed = m_axisPreview.has_value();
+  if (m_axisPreview) (void)m_scene.removePart(*m_axisPreview);
+  m_axisPreview.reset();
+  if (!parameters) return changed;
+  V3d direction = parameters->cylinderAxis;
+  const double norm = direction.stableNorm();
+  if (!direction.allFinite() || norm <= GeomConst::Eps) return changed;
+  direction /= norm;
+  if (parameters->flipAxis) direction = -direction;
+  const V3d origin = parameters->edge.center;
+  const double length = std::clamp(parameters->edge.minorRadius, 5.0, 40.0);
+  const V3d tip = origin + length * direction;
+  const V3d side = direction.unitOrthogonal();
+  const std::array<V3d, 3> starts{origin, tip, tip};
+  const std::array<V3d, 3> ends{tip, tip - 0.25 * length * direction + 0.12 * length * side,
+                                   tip - 0.25 * length * direction - 0.12 * length * side};
+  BRep_Builder builder;
+  TopoDS_Compound shape;
+  builder.MakeCompound(shape);
+  for (std::size_t i = 0; i < starts.size(); ++i) {
+    BRepBuilderAPI_MakeEdge edge(gp_Pnt(starts[i].x(), starts[i].y(), starts[i].z()),
+                                 gp_Pnt(ends[i].x(), ends[i].y(), ends[i].z()));
+    if (!edge.IsDone()) return changed;
+    builder.Add(shape, edge.Edge());
+  }
+  OccPartProps props;
+  props.color = rgb(180, 35, 125);
+  props.wireframe = true;
+  props.lineWidth = 3.0;
+  props.selectionMode = OccSelectionMode::None;
+  m_axisPreview = m_scene.addShapePartWithId(shape, props);
+  if (m_axisPreview) m_scene.partHandle(*m_axisPreview)->SetInfiniteState(true);
+  return changed || m_axisPreview.has_value();
 }
 
 } // namespace RoboCrap3D

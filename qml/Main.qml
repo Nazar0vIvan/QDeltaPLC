@@ -21,7 +21,11 @@ ApplicationWindow {
   property int workflowMode: WorkflowPanel.Measuring
   property int measurementSubmode: WorkflowPanel.Rough
 
-  onWorkflowModeChanged: root.syncEndEffector()
+  onWorkflowModeChanged: {
+    if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
+    root.syncEndEffector()
+    root.syncMachiningInput()
+  }
 
   function syncEndEffector() {
     Backend.EndEffectors.setActiveTool(root.workflowMode === WorkflowPanel.Machining
@@ -33,6 +37,11 @@ ApplicationWindow {
   property bool showNormals: false
   property bool showScanPath: false
   property bool showMachiningPath: false
+  Binding {
+    target: Viewport3D.OccController
+    property: "showMachiningPaths"
+    value: root.showMachiningPath
+  }
   property list<real> selectedObjectIds: []
 
   readonly property Backend.SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
@@ -74,6 +83,22 @@ ApplicationWindow {
       root.selectedObjectIds = createdIds
   }
 
+  function syncMachiningInput() {
+    const object = root.selectedSceneObject
+    Backend.Machining.inputId = root.workflowMode === WorkflowPanel.Machining && object
+        && (object.kind === Backend.SceneObject.Edge || object.kind === Backend.SceneObject.MachiningPath)
+        ? object.objectId : 0
+  }
+
+  onSelectedSceneObjectChanged: root.syncMachiningInput()
+
+  Connections {
+    target: Backend.Machining
+    function onGenerated(objectId) {
+      root.showMachiningPath = true
+      root.selectedObjectIds = [objectId]
+    }
+  }
   function syncViewportSelection() {
     Viewport3D.OccController.setSelectedObjects(root.selectedObjectIds)
   }
@@ -91,7 +116,9 @@ ApplicationWindow {
   onShowPointsChanged: root.syncViewportOverlays()
   onShowNormalsChanged: root.syncViewportOverlays()
   Component.onCompleted: {
+    if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
     root.syncEndEffector()
+    root.syncMachiningInput()
     root.syncViewportSelection()
     root.syncViewportOverlays()
   }
@@ -349,6 +376,12 @@ ApplicationWindow {
         planeImportAvailable: root.geometryImportAvailable
         circleImportAvailable: root.geometryImportAvailable
         cylinderImportAvailable: root.geometryImportAvailable
+        playbackAvailable: Backend.Machining.canPlay
+        playing: Backend.Machining.playing
+        onDryRunRequested: Backend.Machining.dryRun()
+        onStopRequested: Backend.Machining.stop()
+        generationAvailable: Backend.Machining.canGenerate
+        onGenerationRequested: machiningPanel.focusEditor()
         intersectionAvailable: root.intersectionAvailable
         onIntersectionRequested: root.intersectSelected()
         onPlaneImportRequested: planeFileDialog.open()
@@ -384,6 +417,18 @@ ApplicationWindow {
         onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
       }
 
+      MachiningPanel {
+        id: machiningPanel
+        visible: root.workflowMode === WorkflowPanel.Machining
+        SplitView.preferredHeight: 460
+        SplitView.minimumHeight: 160
+        coordinator: Backend.Machining
+        inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
+        tcpConfigured: Backend.EndEffectors.spindleTcp.length === 6
+        savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath
+                   ? root.selectedSceneObject.geometry as Backend.MachiningPath : null
+        onApplyRequested: Backend.Machining.apply()
+      }
       EndEffectorPanel {
         id: endEffectorPanel
         SplitView.preferredHeight: Math.min(implicitHeight, 370)

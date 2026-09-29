@@ -4,11 +4,94 @@
 #include "geometry/boundedcylinder.h"
 #include "geometry/circle.h"
 #include "geometry/surfaceintersection.h"
+#include "pathgeneration/chamfer/chamfermotion.h"
+#include <memory>
 #include <QList>
 #include <QObject>
 #include <QVariantList>
 #include <optional>
 #include <utility>
+
+// Value-type draft settings; geometry and robot calibration are supplied by C++.
+struct SceneMachiningSettings
+{
+  Q_GADGET
+  Q_PROPERTY(double chamferSize MEMBER chamferSize)
+  Q_PROPERTY(bool flipAxis MEMBER flipAxis)
+  Q_PROPERTY(double leadInClearance MEMBER leadInClearance)
+  Q_PROPERTY(double leadOutClearance MEMBER leadOutClearance)
+  Q_PROPERTY(double leadInSpan MEMBER leadInSpan)
+  Q_PROPERTY(double leadOutSpan MEMBER leadOutSpan)
+  Q_PROPERTY(int leadInIntervals MEMBER leadInIntervals)
+  Q_PROPERTY(int leadOutIntervals MEMBER leadOutIntervals)
+  Q_PROPERTY(double leadInFeed MEMBER leadInFeed)
+  Q_PROPERTY(double machiningFeed MEMBER machiningFeed)
+  Q_PROPERTY(double leadOutFeed MEMBER leadOutFeed)
+  Q_PROPERTY(double acceleration MEMBER acceleration)
+  Q_PROPERTY(double auxiliaryScale MEMBER auxiliaryScale)
+  Q_PROPERTY(QList<double> jointSpeed MEMBER jointSpeed)
+  Q_PROPERTY(QList<double> jointAcceleration MEMBER jointAcceleration)
+public:
+  double chamferSize = 0.0;
+  bool flipAxis = false;
+  double leadInClearance = 5.0;
+  double leadOutClearance = 5.0;
+  double leadInSpan = 30.0;
+  double leadOutSpan = 30.0;
+  int leadInIntervals = 16;
+  int leadOutIntervals = 16;
+  double leadInFeed = 10.0;
+  double machiningFeed = 5.0;
+  double leadOutFeed = 10.0;
+  double acceleration = 20.0;
+  double auxiliaryScale = 1.0;
+  QList<double> jointSpeed{30, 30, 30, 30, 30, 30};
+  QList<double> jointAcceleration{60, 60, 60, 60, 60, 60};
+
+  static SceneMachiningSettings fromMotion(const ChamferMotion& motion);
+  ChamferPathParameters applyTo(ChamferPathParameters parameters) const;
+  std::optional<ChamferTimingParameters> timing() const;
+};
+
+struct SceneMachiningData
+{
+  std::shared_ptr<const ChamferMotion> motion;
+  quint32 sourceEdgeId = 0;
+  quint64 calibrationRevision = 0;
+};
+
+class SceneMachiningPath final : public QObject
+{
+  Q_OBJECT
+  Q_PROPERTY(double duration READ duration CONSTANT)
+  Q_PROPERTY(double centralTimeScale READ centralTimeScale CONSTANT)
+  Q_PROPERTY(quint32 sourceEdgeId READ sourceEdgeId CONSTANT)
+  Q_PROPERTY(SceneMachiningSettings settings READ settings CONSTANT)
+  Q_PROPERTY(QString incompatibility READ incompatibility NOTIFY compatibilityChanged)
+  Q_PROPERTY(bool compatible READ compatible NOTIFY compatibilityChanged)
+public:
+  SceneMachiningPath(SceneMachiningData data, QObject* parent)
+    : QObject(parent), m_data(std::move(data)) {}
+  const ChamferMotion& motion() const { return *m_data.motion; }
+  const SceneMachiningData& data() const { return m_data; }
+  double duration() const { return motion().duration(); }
+  double centralTimeScale() const { return motion().centralTimeScale(); }
+  quint32 sourceEdgeId() const { return m_data.sourceEdgeId; }
+  SceneMachiningSettings settings() const { return SceneMachiningSettings::fromMotion(motion()); }
+  QString incompatibility() const { return m_incompatibility; }
+  bool compatible() const { return m_incompatibility.isEmpty(); }
+  void setIncompatibility(const QString& reason)
+  {
+    if (reason == m_incompatibility) return;
+    m_incompatibility = reason;
+    emit compatibilityChanged();
+  }
+signals:
+  void compatibilityChanged();
+private:
+  const SceneMachiningData m_data;
+  QString m_incompatibility;
+};
 
 // Read-only presentation of a fitted plane; fitting stays in geometry/plane.cpp.
 class ScenePlaneGeometry final : public QObject

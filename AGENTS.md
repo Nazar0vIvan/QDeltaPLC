@@ -127,6 +127,41 @@ and src/main.cpp.
 
 ## QML components and geometry
 
+- Numerical internal-chamfer geometry lives in pathgeneration/chamfer/chamferpath.h/.cpp
+  in RoboCrapGeometry. ChamferPath validates an ellipse against a cylinder axis line and
+  evaluates a BASE-relative surface-attached TCP frame at an ellipse parameter in radians.
+  Chamfer size is the leg dimension of a nominal 45-degree chamfer, not a normal offset.
+  The normal points into the hole and toward the chosen opening; flipAxis reverses the
+  outward axis and traversal. Lead-in/out add axial clearance and quaternion-interpolated
+  orientation; their clear-end burr Y is opposite the outward axis (parallel to its line).
+  Phase evaluation and adaptive sampling retain shared junctions and the full-turn endpoint.
+  SceneMachining connects numerical generation to scene ownership. OccSceneAdapter renders
+  five phase polylines under one object ID (purple HOME, blue leads, green machining).
+  OccController.showMachiningPaths is bound to Show Path and combines with object visibility.
+  OccViewWindow retains path visibility, selection and axis-preview parameters on recreation.
+  The non-selectable magenta outward-axis arrow uses SceneMachining.previewParameters,
+  responds to draft Flip changes, and is excluded from camera bounds. MachiningPanel edits parameters and Apply generates/selects paths. SceneMachining owns a GUI-thread timer and monotonic clock for Dry Run; direct C++ pose requests go through OccController and the existing preview-state FK/commit path. Stop freezes the last displayed pose, restart resets to HOME, and completion ends at HOME. Calibration/model changes, viewport loss, active-path deletion, leaving machining mode and shutdown stop playback. Manual FK/IK and generation are blocked during playback; selection does not replace the active motion.
+  chamfermotion.h/.cpp compiles a timed five-stage KR10 simulation using the existing
+  numerical IK solver, preceding-joint seeds, bounded alternate starting configurations,
+  FK validation and direct synchronized joint-space HOME movements. It owns model/TCP
+  snapshots and continuous joint angles; it does not call viewport or device APIs.
+  Central motion uses monotone cubic joint interpolation, feed/acceleration timing and
+  a reported uniform time scale for rate limits. HOME movements use synchronized quintic
+  progress. evaluate(seconds) returns a pose independently of display refresh rate.
+  Simulation joint limits for speed/acceleration are explicit settings, not KUKA ratings;
+  Cartesian rate and interpolation-error checks are numerical samples, not analytic guarantees.
+
+- main.cpp owns SceneMachining after SceneModel/SceneEndEffectors and before the viewport/QML
+  engine; Backend.Machining exposes typed machiningSettings drafts and synchronous apply().
+  One edge with live fitted source surfaces, or an existing generated path, supplies input.
+  SceneMachiningPath in scenegeometry.h owns shared immutable ChamferMotion and source-edge
+  provenance. SceneModel inserts MachiningPath objects using existing IDs/signals. Regeneration
+  inserts a complete replacement before removing the original and preserves its name/visibility.
+  Saved paths retain geometry/model/TCP/settings snapshots and survive source deletion.
+  OccController passes a numerical robot-model copy on successful loading and forwards readiness.
+  Model/TCP revisions invalidate old paths until regeneration; viewport unavailability is temporary.
+  Scene playback has no OCCT dependency and invokes no devices.
+
 - SceneEndEffectors in src/scene owns both tool configurations on the GUI thread, independently
   of scene-object selection. main.cpp owns it before the QML engine and exposes Backend.EndEffectors
   through backendqmltypes.h. CAD URLs default to deployed MEE.stp and SEE.stp via ViewportAssets.
@@ -176,7 +211,7 @@ and src/main.cpp.
   replaces presentations; ordinary object changes update only the affected presentation. Bounded imported
   planes and cylinders render as finite OCCT faces from their authoritative frames and bounds.
   Fitted circles render as complete OCCT circular edges. Other scene geometry is not rendered yet,
-  and scene objects are not connected to trajectory generation.
+  and intersection edges supply chamfer trajectory generation through SceneMachining.
   BoundedPlane and BoundedCylinder have private construction and read-only accessors; validated
   fromPoints/fromSamples factories create them. Both retain original samples as QVector<V3d>;
   fromPoints takes that container by value and fromSamples takes ProbeSamples by value so the
