@@ -353,21 +353,6 @@ bool OccSceneAdapter::setMachiningPathsVisible(bool visible, const SceneModel* s
   return changed;
 }
 
-void OccSceneAdapter::setMachiningFrames(const QVector<SceneCoordinateFrame>& frames)
-{
-  std::vector<OccCoordinateFrame> converted;
-  converted.reserve(static_cast<std::size_t>(frames.size()));
-  for (const auto& frame : frames) {
-    const auto& t = frame.transform;
-    gp_Trsf transform;
-    transform.SetValues(t(0, 0), t(0, 1), t(0, 2), t(0, 3),
-                        t(1, 0), t(1, 1), t(1, 2), t(1, 3),
-                        t(2, 0), t(2, 1), t(2, 2), t(2, 3));
-    converted.push_back({transform, frame.label});
-  }
-  m_scene.setCoordinateFrames(converted);
-}
-
 bool OccSceneAdapter::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
 {
   if (parameters && m_previewParameters && m_axisPreview

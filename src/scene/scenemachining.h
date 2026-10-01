@@ -18,10 +18,6 @@ class SceneMachining : public QObject
   Q_PROPERTY(double elapsed READ elapsed NOTIFY playbackChanged)
   Q_PROPERTY(double duration READ duration NOTIFY playbackChanged)
   Q_PROPERTY(QString phase READ phase NOTIFY playbackChanged)
-  Q_PROPERTY(bool showFrames READ showFrames WRITE setShowFrames NOTIFY framePreviewChanged)
-  Q_PROPERTY(int framePhase READ framePhase WRITE setFramePhase NOTIFY framePreviewChanged)
-  Q_PROPERTY(double frameProgress READ frameProgress WRITE setFrameProgress NOTIFY framePreviewChanged)
-  Q_PROPERTY(bool localFrame READ localFrame WRITE setLocalFrame NOTIFY framePreviewChanged)
 public:
   // Scene ownership, tool calibration and QObject lifetime define the coordinator.
   SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, QObject* parent = nullptr);
@@ -44,20 +40,9 @@ public:
   void setRobotModel(const RoboCrap3D::Kr10KinematicModel& model);
   void setRobotAvailable(bool available);
   std::optional<ChamferPathParameters> previewParameters() const;
-  QVector<SceneCoordinateFrame> coordinateFrames() const;
-  bool showFrames() const { return m_showFrames; }
-  void setShowFrames(bool visible);
-  int framePhase() const { return m_framePhase; }
-  void setFramePhase(int phase);
-  double frameProgress() const { return m_frameProgress; }
-  void setFrameProgress(double progress);
-  bool localFrame() const { return m_localFrame; }
-  void setLocalFrame(bool local);
-  Q_INVOKABLE bool previewGeometry();
 
 signals:
   void settingsChanged();
-  void framePreviewChanged();
   void inputChanged();
   void availabilityChanged();
   void errorChanged();
@@ -92,8 +77,4 @@ private:
   double m_elapsed = 0.0;
   double m_duration = 0.0;
   QString m_phase;
-  bool m_showFrames = false;
-  int m_framePhase = 1;
-  double m_frameProgress = 0.0;
-  bool m_localFrame = false;
 };

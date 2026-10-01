@@ -21,25 +21,22 @@ QxPanel {
   signal tcpVisibilityRequested(bool visible)
 
   property list<string> drafts: []
-  property bool modified: false
   readonly property bool validDraft: root.drafts.length === 6 && root.drafts.every(
       value => value.trim().length > 0 && isFinite(Number(value)))
 
-  function resetDraft() {
+  function loadTcpDraft() {
     const values = []
     for (let i = 0; i < 6; ++i)
       values.push(root.tcp.length === 6 ? (root.tcp[i] === 0 ? "0.00" : String(root.tcp[i])) : "0.00")
     root.drafts = values
-    root.modified = root.tcp.length !== 6
   }
   function editValue(index, value) {
     const values = root.drafts.slice()
     values[index] = value
     root.drafts = values
-    root.modified = true
   }
-  onTcpChanged: root.resetDraft()
-  Component.onCompleted: root.resetDraft()
+  onTcpChanged: root.loadTcpDraft()
+  Component.onCompleted: root.loadTcpDraft()
   title: root.measuring ? qsTr("Measuring End Effector") : qsTr("Spindle End Effector")
   implicitHeight: fields.implicitHeight + topPadding + bottomPadding
 
@@ -171,28 +168,12 @@ QxPanel {
         }
         Item { Layout.fillWidth: true }
       }
-      Label {
-        Layout.fillWidth: true
-        visible: !root.measuring
-        text: qsTr("Apply shows the TCP axes: X red, Y green, Z blue. The frame follows the robot flange.")
-        wrapMode: Text.Wrap
-        color: Colors.foreground.medium
-        font: Fonts.caption
-      }
       RowLayout {
         visible: !root.measuring
         QxButton {
           text: qsTr("Apply TCP")
           enabled: root.validDraft
-          onClicked: {
-            root.tcpRequested(root.drafts.map(value => Number(value)))
-            root.modified = false
-          }
-        }
-        QxButton {
-          text: qsTr("Reset")
-          enabled: root.modified
-          onClicked: root.resetDraft()
+          onClicked: root.tcpRequested(root.drafts.map(value => Number(value)))
         }
       }
     }

@@ -4,7 +4,6 @@
 
 #include <utility>
 #include <algorithm>
-#include <cmath>
 #include <QCoreApplication>
 #include <QMetaMethod>
 
@@ -14,6 +13,7 @@ SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& m
   const auto& path = motion.parameters();
   const auto& timing = motion.robot().timing;
   result.chamferSize = path.chamferSize;
+  result.chamferAngle = path.chamferAngleDegrees;
   result.stagingDistance = path.stagingDistance;
   result.flipAxis = path.flipAxis;
   result.leadInClearance = path.leadIn.clearance;
@@ -37,6 +37,7 @@ SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& m
 ChamferPathParameters SceneMachiningSettings::applyTo(ChamferPathParameters parameters) const
 {
   parameters.chamferSize = chamferSize;
+  parameters.chamferAngleDegrees = chamferAngle;
   parameters.stagingDistance = stagingDistance;
   parameters.flipAxis = flipAxis;
   parameters.leadIn = {leadInClearance, leadInSpan, leadInIntervals};
@@ -137,99 +138,6 @@ std::optional<ChamferPathParameters> SceneMachining::previewParameters() const
   if (!object || !object->visible()) return std::nullopt;
   const auto source = sourceParameters();
   return source ? std::optional<ChamferPathParameters>{m_settings.applyTo(*source)} : std::nullopt;
-}
-
-void SceneMachining::setShowFrames(bool visible)
-{
-  if (m_showFrames == visible) return;
-  m_showFrames = visible;
-  emit framePreviewChanged();
-}
-
-void SceneMachining::setFramePhase(int phase)
-{
-  if (phase < 0 || phase > 4 || phase == m_framePhase) return;
-  m_framePhase = phase;
-  emit framePreviewChanged();
-}
-
-void SceneMachining::setFrameProgress(double progress)
-{
-  if (!std::isfinite(progress) || progress < 0.0 || progress > 1.0
-      || progress == m_frameProgress) return;
-  m_frameProgress = progress;
-  emit framePreviewChanged();
-}
-
-void SceneMachining::setLocalFrame(bool local)
-{
-  if (local == m_localFrame) return;
-  m_localFrame = local;
-  emit framePreviewChanged();
-}
-
-bool SceneMachining::previewGeometry()
-{
-  const auto parameters = previewParameters();
-  if (!parameters) {
-    setShowFrames(false);
-    setError(tr("Select a visible hole edge or machining path."));
-    return false;
-  }
-  const auto path = ChamferPath::create(*parameters);
-  if (!path.path) { setShowFrames(false); setError(path.error); return false; }
-  setError({});
-  setShowFrames(true);
-  if (coordinateFrames().isEmpty()) {
-    setShowFrames(false);
-    setError(tr("Cannot evaluate the selected geometry frame."));
-    return false;
-  }
-  return true;
-}
-
-QVector<SceneCoordinateFrame> SceneMachining::coordinateFrames() const
-{
-  if (!m_showFrames) return {};
-  const auto parameters = previewParameters();
-  if (!parameters) return {};
-  const auto created = ChamferPath::create(*parameters);
-  if (!created.path) return {};
-  const auto& path = *created.path;
-  const V3d z = path.outwardAxis();
-  const V3d major = parameters->edge.majorAxis;
-  const auto x = normalize(major - major.dot(z) * z);
-  if (!x) return {};
-  const V3d y = z.cross(*x);
-  QVector<SceneCoordinateFrame> frames;
-  frames.append({makeTransform(basis2rot({*x, y, z}), parameters->edge.center), QStringLiteral("{H}")});
-  const bool returning = m_framePhase == 2 || m_framePhase == 4;
-  const auto staging = path.stagingPose(returning ? ChamferPhase::LeadOut : ChamferPhase::LeadIn);
-  if (!staging) return {};
-  frames.append({*staging, returning ? QStringLiteral("P_s return {T}") : QStringLiteral("P_s approach {T}")});
-  if (m_framePhase >= 3) return frames;
-  const auto phase = static_cast<ChamferPhase>(m_framePhase);
-  const auto sample = path.evaluatePhase(phase, m_frameProgress);
-  if (!sample) return {};
-  M4d frame = sample->tcp;
-  QString label = QStringLiteral("{T}");
-  if (m_localFrame) {
-    // The reference local lead frame retains the machining orientation at
-    // this angle; its origin includes the lead's axial displacement.
-    const double angle = phase == ChamferPhase::LeadIn
-        ? (m_frameProgress - 1.0) * parameters->leadIn.spanDegrees * GeomConst::DegToRad
-        : phase == ChamferPhase::LeadOut
-          ? 2.0 * GeomConst::Pi + m_frameProgress * parameters->leadOut.spanDegrees * GeomConst::DegToRad
-          : 2.0 * GeomConst::Pi * m_frameProgress;
-    const auto cutting = path.evaluate(angle);
-    if (!cutting) return {};
-    frame = cutting->tcp * makeRotation(180.0, Axis::X);
-    frame.block<3, 1>(0, 3) = sample->tcp.block<3, 1>(0, 3);
-    label = phase == ChamferPhase::LeadIn ? QStringLiteral("{i_L}")
-        : phase == ChamferPhase::LeadOut ? QStringLiteral("{i_O}") : QStringLiteral("{i}");
-  }
-  frames.append({frame, label + QStringLiteral(" %1%").arg(100.0 * m_frameProgress, 0, 'f', 1)});
-  return frames;
 }
 
 quint32 SceneMachining::apply()

@@ -154,7 +154,6 @@ void OccController::setMachining(SceneMachining* machining)
     connect(m_machining, &SceneMachining::playbackPoseRequested, this,
             &OccController::applyPlaybackPose, Qt::DirectConnection);
     connect(m_machining, &SceneMachining::settingsChanged, this, &OccController::synchronizeMachiningPreview);
-    connect(m_machining, &SceneMachining::framePreviewChanged, this, &OccController::synchronizeMachiningPreview);
     connect(m_machining, &SceneMachining::availabilityChanged, this, &OccController::synchronizeMachiningPreview);
   }
   connect(this, &OccController::readyChanged, this,
@@ -176,7 +175,6 @@ void OccController::synchronizeMachiningPreview()
 {
   if (!m_window) return;
   m_window->setMachiningPreview(m_machining ? m_machining->previewParameters() : std::nullopt);
-  m_window->setMachiningFrames(m_machining ? m_machining->coordinateFrames() : QVector<SceneCoordinateFrame>{});
 }
 
 void OccController::synchronizeMachiningReadiness()

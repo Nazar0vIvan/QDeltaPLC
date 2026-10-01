@@ -12,18 +12,12 @@
 #include <optional>
 #include <utility>
 
-// Read-only numerical display frame, independent of robot IK and calibration.
-struct SceneCoordinateFrame
-{
-  M4d transform = M4d::Identity();
-  QString label;
-};
-
 // Value-type draft settings; geometry and robot calibration are supplied by C++.
 struct SceneMachiningSettings
 {
   Q_GADGET
   Q_PROPERTY(double chamferSize MEMBER chamferSize)
+  Q_PROPERTY(double chamferAngle MEMBER chamferAngle)
   Q_PROPERTY(double stagingDistance MEMBER stagingDistance)
   Q_PROPERTY(bool flipAxis MEMBER flipAxis)
   Q_PROPERTY(double leadInClearance MEMBER leadInClearance)
@@ -40,7 +34,8 @@ struct SceneMachiningSettings
   Q_PROPERTY(QList<double> jointSpeed MEMBER jointSpeed)
   Q_PROPERTY(QList<double> jointAcceleration MEMBER jointAcceleration)
 public:
-  double chamferSize = 0.0;
+  double chamferSize = 0.5;
+  double chamferAngle = 45.0;
   double stagingDistance = 10.0;
   bool flipAxis = false;
   double leadInClearance = 5.0;

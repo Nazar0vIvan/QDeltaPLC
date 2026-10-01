@@ -21,7 +21,8 @@ struct ChamferPathParameters
   V3d cylinderOrigin = V3d::Zero();
   V3d cylinderAxis = V3d::UnitZ();
   bool flipAxis = false;
-  double chamferSize = 0.0; // Equal surface setbacks in the longitudinal section, mm.
+  double chamferSize = 0.5; // Setback along the end plane in the longitudinal section, mm.
+  double chamferAngleDegrees = 45.0; // Diagonal angle from the hole axis, in (0, 90).
   ChamferLeadParameters leadIn;
   ChamferLeadParameters leadOut;
   double stagingDistance = 10.0; // From plane/axis intersection along outward Z, mm.
@@ -59,7 +60,7 @@ struct ChamferSampledPath
   std::array<qsizetype, 4> boundaries{};
 };
 
-// Equal-setback internal chamfer (45 degrees for a perpendicular opening).
+// Internal chamfer with a specified longitudinal-section angle.
 // Owns numerical geometry, not source samples.
 class ChamferPath
 {

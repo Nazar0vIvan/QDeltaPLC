@@ -25,7 +25,8 @@ ApplicationWindow {
     if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
     if (root.workflowMode === WorkflowPanel.Machining) {
       if (measuringSetupWindow) measuringSetupWindow.hide()
-    } else if (machiningSetupWindow) machiningSetupWindow.hide()
+    } else if (spindleSetupWindow) spindleSetupWindow.hide()
+    if (root.chamferEditorOpen) machiningPanel.cancelEditing()
     root.syncEndEffector()
     root.syncMachiningInput()
   }
@@ -36,7 +37,7 @@ ApplicationWindow {
   }
 
   function openToolSetup() {
-    const window = root.workflowMode === WorkflowPanel.Machining ? machiningSetupWindow : measuringSetupWindow
+    const window = root.workflowMode === WorkflowPanel.Machining ? spindleSetupWindow : measuringSetupWindow
     window.show()
     window.raise()
     window.requestActivate()
@@ -46,12 +47,7 @@ ApplicationWindow {
   property bool showPoints: false
   property bool showNormals: false
   property bool showScanPath: false
-  property bool showMachiningPath: false
-  Binding {
-    target: Viewport3D.OccController
-    property: "showMachiningPaths"
-    value: root.showMachiningPath
-  }
+  property bool chamferEditorOpen: false
   property list<real> selectedObjectIds: []
 
   readonly property Backend.SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
@@ -100,12 +96,15 @@ ApplicationWindow {
         ? object.objectId : 0
   }
 
-  onSelectedSceneObjectChanged: root.syncMachiningInput()
+  onSelectedSceneObjectChanged: {
+    if (root.chamferEditorOpen) machiningPanel.cancelEditing()
+    root.syncMachiningInput()
+  }
 
   Connections {
     target: Backend.Machining
     function onGenerated(objectId) {
-      root.showMachiningPath = true
+      root.chamferEditorOpen = false
       root.selectedObjectIds = [objectId]
     }
   }
@@ -334,56 +333,38 @@ ApplicationWindow {
   }
 
   Window {
-    id: machiningSetupWindow
+    id: spindleSetupWindow
 
-    title: qsTr("Machining setup")
+    title: qsTr("Spindle EE")
     transientParent: root
     flags: Qt.Tool
     color: Colors.background.dp00
-    width: 860
+    width: 440
     height: 640
-    minimumWidth: 720
+    minimumWidth: 360
     minimumHeight: 400
 
-    SplitView {
+    EndEffectorPanel {
       anchors.fill: parent
       anchors.margins: Metrics.sp8
-      orientation: Qt.Horizontal
-
-      EndEffectorPanel {
-        SplitView.preferredWidth: 340
-        SplitView.minimumWidth: 300
-        measuring: false
-        cadSource: Backend.EndEffectors.spindleCadSource
-        loading: Viewport3D.OccController.spindleCadLoading
-        loadError: Viewport3D.OccController.spindleCadError
-        measuringName: Backend.EndEffectors.measuringName
-        ballDiameter: Backend.EndEffectors.rubyBallDiameter
-        stylusLength: Backend.EndEffectors.stylusLength
-        tcp: Backend.EndEffectors.spindleTcp
-        tcpVisible: Viewport3D.OccController.showSpindleTcp
-        onTcpVisibilityRequested: visible => Viewport3D.OccController.showSpindleTcp = visible
-        onTcpRequested: values => {
-          if (Backend.EndEffectors.setSpindleTcp(values))
-            Viewport3D.OccController.showSpindleTcp = true
-        }
-        onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)
-        onBrowseRequested: {
-          endEffectorFileDialog.measuring = false
-          endEffectorFileDialog.open()
-        }
+      measuring: false
+      cadSource: Backend.EndEffectors.spindleCadSource
+      loading: Viewport3D.OccController.spindleCadLoading
+      loadError: Viewport3D.OccController.spindleCadError
+      measuringName: Backend.EndEffectors.measuringName
+      ballDiameter: Backend.EndEffectors.rubyBallDiameter
+      stylusLength: Backend.EndEffectors.stylusLength
+      tcp: Backend.EndEffectors.spindleTcp
+      tcpVisible: Viewport3D.OccController.showSpindleTcp
+      onTcpVisibilityRequested: visible => Viewport3D.OccController.showSpindleTcp = visible
+      onTcpRequested: values => {
+        if (Backend.EndEffectors.setSpindleTcp(values))
+          Viewport3D.OccController.showSpindleTcp = true
       }
-
-      MachiningPanel {
-        id: machiningPanel
-        SplitView.fillWidth: true
-        SplitView.minimumWidth: 360
-        coordinator: Backend.Machining
-        inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
-        tcpConfigured: Backend.EndEffectors.spindleTcp.length === 6
-        savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath
-                   ? root.selectedSceneObject.geometry as Backend.MachiningPath : null
-        onApplyRequested: Backend.Machining.apply()
+      onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)
+      onBrowseRequested: {
+        endEffectorFileDialog.measuring = false
+        endEffectorFileDialog.open()
       }
     }
   }
@@ -469,7 +450,6 @@ ApplicationWindow {
         showPoints: root.showPoints
         showNormals: root.showNormals
         showScanPath: root.showScanPath
-        showMachiningPath: root.showMachiningPath
         planeImportAvailable: root.geometryImportAvailable
         circleImportAvailable: root.geometryImportAvailable
         cylinderImportAvailable: root.geometryImportAvailable
@@ -477,10 +457,13 @@ ApplicationWindow {
         playing: Backend.Machining.playing
         onDryRunRequested: Backend.Machining.dryRun()
         onStopRequested: Backend.Machining.stop()
-        generationAvailable: Backend.Machining.canGenerate
+        generationAvailable: !Backend.Machining.playing && root.selectedSceneObject !== null
+                             && (root.selectedSceneObject.kind === Backend.SceneObject.Edge
+                                 || root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath)
         onToolSetupRequested: root.openToolSetup()
         onGenerationRequested: {
-          root.openToolSetup()
+          if (!root.chamferEditorOpen) machiningPanel.beginEditing()
+          root.chamferEditorOpen = true
           machiningPanel.focusEditor()
         }
         intersectionAvailable: root.intersectionAvailable
@@ -491,7 +474,6 @@ ApplicationWindow {
         onPointsToggled: checked => root.showPoints = checked
         onNormalsToggled: checked => root.showNormals = checked
         onScanPathToggled: checked => root.showScanPath = checked
-        onMachiningPathToggled: checked => root.showMachiningPath = checked
       }
 
       RobotViewport {
@@ -504,13 +486,28 @@ ApplicationWindow {
       }
     }
 
-    PropertiesPanel {
+    Item {
       SplitView.preferredWidth: 330
       SplitView.minimumWidth: 280
-      selectionCount: root.selectedObjectIds.length
-      selectedObject: root.selectedSceneObject
-      onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
-      onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+      PropertiesPanel {
+        anchors.fill: parent
+        visible: !root.chamferEditorOpen
+        selectionCount: root.selectedObjectIds.length
+        selectedObject: root.selectedSceneObject
+        onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
+        onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+      }
+      MachiningPanel {
+        id: machiningPanel
+        anchors.fill: parent
+        visible: root.chamferEditorOpen
+        coordinator: Backend.Machining
+        inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
+        savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath
+                   ? root.selectedSceneObject.geometry as Backend.MachiningPath : null
+        onApplyRequested: Backend.Machining.apply()
+        onCancelRequested: root.chamferEditorOpen = false
+      }
     }
   }
 }

@@ -72,12 +72,21 @@ ChamferPathResult ChamferPath::create(ChamferPathParameters parameters)
   parameters.cylinderAxis /= axisLength;
   if (!std::isfinite(parameters.chamferSize) || parameters.chamferSize < 0.0)
     return {{}, QStringLiteral("Chamfer size must be finite and nonnegative.")};
+  if (!std::isfinite(parameters.chamferAngleDegrees)
+      || parameters.chamferAngleDegrees <= 0.0 || parameters.chamferAngleDegrees >= 90.0)
+    return {{}, QStringLiteral("Chamfer angle must be between 0 and 90 degrees (exclusive).")};
   if (!std::isfinite(parameters.stagingDistance) || parameters.stagingDistance <= 0.0)
     return {{}, QStringLiteral("P_s axial distance must be finite and positive.")};
   const auto& edge = parameters.edge;
   if (std::abs(edge.majorAxis.cross(edge.minorAxis).dot(parameters.cylinderAxis))
       <= GeomConst::Eps)
     return {{}, QStringLiteral("The hole axis is parallel to the opening plane.")};
+  const V3d planeNormal = edge.majorAxis.cross(edge.minorAxis).normalized();
+  const double axialCosine = std::abs(planeNormal.dot(parameters.cylinderAxis));
+  const double maximumSlope = planeNormal.cross(parameters.cylinderAxis).stableNorm() / axialCosine;
+  const double cotangent = 1.0 / std::tan(parameters.chamferAngleDegrees * GeomConst::DegToRad);
+  if (cotangent <= maximumSlope + FrameTolerance)
+    return {{}, QStringLiteral("Chamfer angle is too large for the opening plane tilt; reduce the angle.")};
   if (!matchesCylinder(parameters))
     return {{}, QStringLiteral("The edge does not lie on the specified cylindrical hole.")};
   const V3d staging = edge.center + (parameters.flipAxis ? -1.0 : 1.0)
@@ -121,14 +130,13 @@ std::optional<ChamferPathSample> ChamferPath::evaluate(double angleRad) const
   const V3d r = radial / radialLength;
   const V3d planeNormal = edge.majorAxis.cross(edge.minorAxis);
   // In the longitudinal (r,k) section, this direction lies on the end plane
-  // and points away from the hole. c measures length along each surface.
+  // and points away from the hole. c measures length along the end plane.
   const auto faceDirection = normalize(r - (planeNormal.dot(r)
       / planeNormal.dot(m_outwardAxis)) * m_outwardAxis);
   if (!faceDirection) return std::nullopt;
-  const auto diagonal = normalize(*faceDirection + m_outwardAxis);
-  if (!diagonal) return std::nullopt;
+  const double chamferAngle = m_parameters.chamferAngleDegrees * GeomConst::DegToRad;
   const V3d localX = r.cross(m_outwardAxis).normalized();
-  const V3d localY = *diagonal;
+  const V3d localY = std::sin(chamferAngle) * r + std::cos(chamferAngle) * m_outwardAxis;
   const V3d localZ = localX.cross(localY).normalized();
   if (localZ.dot(m_outwardAxis) <= 0.0 || localZ.dot(r) >= 0.0
       || localY.dot(m_outwardAxis) <= 0.0
@@ -138,10 +146,12 @@ std::optional<ChamferPathSample> ChamferPath::evaluate(double angleRad) const
   ChamferPathSample sample;
   sample.edgePoint = edge.center + offset;
   sample.radialNormal = r;
-  // Endpoints are p+c*faceDirection on the plane and p-c*k on the wall.
-  // Average their offsets to preserve accuracy at large world coordinates.
+  // Join p+c*u on the plane to p-depth*k on the wall at the requested angle.
+  const double depthRatio = faceDirection->dot(r) / std::tan(chamferAngle)
+      - faceDirection->dot(m_outwardAxis);
+  if (!std::isfinite(depthRatio) || depthRatio <= 0.0) return std::nullopt;
   const V3d origin = sample.edgePoint
-      + (0.5 * m_parameters.chamferSize) * (*faceDirection - m_outwardAxis);
+      + (0.5 * m_parameters.chamferSize) * (*faceDirection - depthRatio * m_outwardAxis);
   if (!sample.edgePoint.allFinite() || !origin.allFinite()) return std::nullopt;
   const M4d localFrame = makeTransform(basis2rot({localX, localY, localZ}), origin);
   // The drawing specifies coincident origins, X_T=X_i, Y_T=-Y_i, Z_T=-Z_i.

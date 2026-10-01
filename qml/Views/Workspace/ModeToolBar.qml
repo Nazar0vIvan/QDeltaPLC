@@ -11,7 +11,6 @@ ToolBar {
   required property bool showPoints
   required property bool showNormals
   required property bool showScanPath
-  required property bool showMachiningPath
   property bool planeImportAvailable: false
   property bool circleImportAvailable: false
   property bool cylinderImportAvailable: false
@@ -31,7 +30,6 @@ ToolBar {
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
   signal scanPathToggled(bool checked)
-  signal machiningPathToggled(bool checked)
 
   readonly property bool measuring: root.mode === WorkflowPanel.Measuring
   readonly property bool rough: root.measuring && root.submode === WorkflowPanel.Rough
@@ -123,7 +121,7 @@ ToolBar {
       spacing: Metrics.sp16
 
       Tool {
-        text: root.measuring ? qsTr("Measuring EE") : qsTr("Machining Setup")
+        text: root.measuring ? qsTr("Measuring EE") : qsTr("Spindle EE")
         iconSource: "qrc:/pics/settings.svg"
         available: true
         onTriggered: root.toolSetupRequested()
@@ -234,18 +232,13 @@ ToolBar {
       }
 
       Tool {
-        visible: !root.rough
+        visible: root.precise
         text: qsTr("Show Path")
         iconSource: "qrc:/pics/show_path.svg"
         available: true
         checkable: true
-        checked: root.measuring ? root.showScanPath : root.showMachiningPath
-        onToggled: checked => {
-          if (root.measuring)
-            root.scanPathToggled(checked)
-          else
-            root.machiningPathToggled(checked)
-        }
+        checked: root.showScanPath
+        onToggled: checked => root.scanPathToggled(checked)
       }
     }
   }

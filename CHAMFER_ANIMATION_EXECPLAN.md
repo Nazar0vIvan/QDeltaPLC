@@ -2,6 +2,8 @@
 
 This is a living ExecPlan maintained according to `PLANS.md`. `AGENTS.md` takes precedence where it prohibits tests, unsolicited builds, or Git mutations. Steps 1 through 8 are implemented; the remaining steps are pending.
 
+Current UI and geometry are defined by the October 2026 milestone at the end of this plan; it supersedes the earlier equal-setback geometry, frame-preview controls and combined machining popup descriptions. Earlier progress entries are historical.
+
 ## Purpose / Big Picture
 
 
@@ -398,3 +400,32 @@ Revision note, 2026-09-29: Implement requested follow-up step 5, extending all p
 Revision note, 2026-09-29: Implement step 6 target-frame diagnostics independent of IK with labelled camera-scaled axes, phase/progress and local/TCP selection, and a separate draft-preview action. Runtime validation remains pending.
 
 Revision note, 2026-09-29: Rechecked step 6 lifecycle wiring (input removal/visibility, mode input clearing and surface restoration). Preview now clears stale frames on missing input and reports failure if a selected or staging frame cannot be evaluated. Source/diff review only; build and visual verification remain outstanding.
+
+
+## October 2026 UI simplification and adjustable angle
+
+This milestone supersedes the earlier frame-preview and setup-window UI descriptions. Generate Path will open Internal chamfer in the right pane; Spindle EE will contain only tool calibration. Cancel discards the current draft and returns to Properties. Remove geometry-frame rendering end to end, the tuning UI, both reset buttons and machining Show Path. Existing numerical timing defaults remain needed by the simulation.
+
+### Progress
+
+- [x] (2026-10-01) Inspected affected QML, numerical geometry, settings and preview consumers; preserved pre-existing IDE and panel edits.
+- [x] (2026-10-01) Implement UI, angle propagation and preview removal through scene/controller/OCCT layers.
+- [x] (2026-10-01) Reviewed final diff, removed-feature references, settings round-trip and draft lifecycle; git diff --check passed. No build requested.
+
+### Surprises & Discoveries
+
+The original equal-setback construction was not a fixed 45-degree diagonal on an oblique opening. The new angle therefore changes tilted-opening geometry even at the default. Cancel also requires restoring settings after a failed synchronous Apply, because generation consumes the backend draft. Baselines contain primitive field values, not a live QML value-type reference.
+
+### Decision Log
+
+The angle is measured between the chamfer diagonal and the outward hole axis, matching the user's section drawing. Size remains the setback along the end plane. For radial unit r, outward axis k, end-plane section unit u and angle a, the wall setback is c*((u dot r)*cot(a) - u dot k). The midpoint is p + (c*u - wallSetback*k)/2, and local Y is sin(a)*r + cos(a)*k. Require 0<a<90 and positive wall setback around the whole opening. Defaults are c=0.5 mm and a=45 degrees. This replaces equal setbacks for tilted openings.
+
+### Validation and acceptance
+
+Inspect references and run git diff --check without configuring or building, per AGENTS.md. Manual acceptance after an authorized build: Generate Path replaces Properties; Cancel restores settings after unsuccessful Apply and closes the editor; successful Apply selects the path and restores Properties. Spindle EE opens only the calibration panel. Removed preview/tuning/reset controls are absent. Angle is retained when selecting a generated path. Scene object visibility still controls paths and the calibrated spindle TCP trihedron remains available.
+
+### Outcomes & Retrospective
+
+Implementation and source/diff verification complete. Build, QML lint and runtime checks were not run because build verification was not requested. No tests or build targets were added. Robot preview tutorial labels were also removed, retaining loading/error status.
+
+Revision: 2026-10-01, simplify the machining workflow and replace the equal-setback construction with the user-requested adjustable section angle.

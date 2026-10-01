@@ -87,12 +87,6 @@ void OccViewWindow::setMachiningPathsVisible(bool visible)
   }
 }
 
-void OccViewWindow::setMachiningFrames(const QVector<SceneCoordinateFrame>& frames)
-{
-  m_machiningFrames = frames;
-  if (m_viewport) m_viewport->setMachiningFrames(frames);
-}
-
 void OccViewWindow::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
 {
   m_machiningPreview = parameters;
@@ -243,7 +237,6 @@ void OccViewWindow::initializeViewport()
     m_viewport = std::move(viewport);
     m_viewport->setMachiningPathsVisible(m_showMachiningPaths, m_applicationScene);
     m_viewport->setMachiningPreview(m_machiningPreview);
-    m_viewport->setMachiningFrames(m_machiningFrames);
     m_viewport->setSpindleTcpFrame(m_spindleTcpFrame);
     m_viewport->setSelectedObjects(m_selectedObjects);
     m_viewport->setExposed(true);

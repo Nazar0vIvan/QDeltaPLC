@@ -86,12 +86,6 @@ void OccViewport::setMachiningPathsVisible(bool visible, SceneModel* scene)
   if (m_application.setMachiningPathsVisible(visible, scene)) requestRender();
 }
 
-void OccViewport::setMachiningFrames(const QVector<SceneCoordinateFrame>& frames)
-{
-  m_application.setMachiningFrames(frames);
-  requestRender();
-}
-
 void OccViewport::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
 {
   if (m_application.setMachiningPreview(parameters)) requestRender();

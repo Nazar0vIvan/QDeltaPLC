@@ -48,9 +48,8 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.preferredWidth: Metrics.w200
     wrapMode: Text.WordWrap
-    text: Viewport3D.OccController.loading
-          ? qsTr("Loading robot CAD…")
-          : qsTr("Local FK / IK preview. Angles are in degrees; position is the flange, not a tool tip.")
+    visible: Viewport3D.OccController.loading
+    text: qsTr("Loading robot CAD\u2026")
     color: Colors.foreground.medium
     font: Fonts.caption
   }
@@ -117,15 +116,6 @@ ColumnLayout {
     enabled: Viewport3D.OccController.ready && flangeEditor.valid
     text: qsTr("Apply IK")
     onClicked: Viewport3D.OccController.solveIK(flangeEditor.numbers())
-  }
-
-  Label {
-    Layout.fillWidth: true
-    Layout.preferredWidth: Metrics.w200
-    wrapMode: Text.WordWrap
-    text: qsTr("Right drag: rotate · Middle drag: pan · Wheel: zoom")
-    color: Colors.foreground.medium
-    font: Fonts.caption
   }
 
   Connections {

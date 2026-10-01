@@ -1,7 +1,5 @@
 #pragma once
 
-#include "scene/scenegeometry.h"
-
 #include "occinputcontroller.h"
 #include "occviewer.h"
 #include "3d/robot/robotpreviewstate.h"
@@ -41,7 +39,6 @@ public:
   void removeSceneObject(quint32 objectId);
   void setSelectedObjects(const QList<quint32>& ids);
   void setMachiningPathsVisible(bool visible, SceneModel* scene);
-  void setMachiningFrames(const QVector<SceneCoordinateFrame>& frames);
   void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   void setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene);
   void setExposed(bool exposed);
