@@ -172,12 +172,17 @@ std::optional<ChamferPathSample> ChamferPath::evaluatePhase(ChamferPhase phase, 
   const bool entering = phase == ChamferPhase::LeadIn;
   const auto& lead = entering ? m_parameters.leadIn : m_parameters.leadOut;
   const double span = lead.spanDegrees * GeomConst::DegToRad;
-  const double angle = entering ? (progress - 1.0) * span
-                                : 2.0 * GeomConst::Pi + progress * span;
+  const double quarterTurn = 0.5 * GeomConst::Pi * progress;
+  // Pin the quarter-circle endpoint so cos(pi/2) cannot shift the machining join.
+  const double sine = progress == 1.0 ? 1.0 : std::sin(quarterTurn);
+  const double cosine = progress == 1.0 ? 0.0 : std::cos(quarterTurn);
+  const double angle = entering ? -span * cosine
+                                : 2.0 * GeomConst::Pi + span * sine;
   auto result = evaluate(angle);
   if (!result) return std::nullopt;
-  const double smooth = progress * progress * (3.0 - 2.0 * progress);
-  const double clearWeight = entering ? 1.0 - smooth : smooth;
+  // Angular progress and axial clearance trace a normalized quarter circle.
+  // The same clear-state amount controls the attitude interpolation below.
+  const double clearWeight = entering ? 1.0 - sine : 1.0 - cosine;
   // Preserve the exact shared machining poses, including their rotation entries.
   if (clearWeight == 0.0) return result;
 

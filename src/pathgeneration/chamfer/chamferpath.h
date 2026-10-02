@@ -76,6 +76,8 @@ public:
   // Zero starts at the major-axis endpoint; increasing values follow the
   // chosen outward axis. Negative values support the lead-in.
   std::optional<ChamferPathSample> evaluate(double angleRad) const;
+  // Leads follow quarter circles in normalized angular/axial coordinates.
+  // Progress is a geometric parameter in [0, 1], not elapsed time or arc length.
   std::optional<ChamferPathSample> evaluatePhase(ChamferPhase phase, double progress) const;
   ChamferSamplingResult sample(const ChamferSamplingParameters& parameters = {}) const;
 

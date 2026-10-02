@@ -140,8 +140,11 @@ and src/main.cpp.
   be finite and strictly between 0 and 90 degrees. TCP origin is the midpoint of the endpoints.
   Local Y follows the section diagonal toward the end plane; local Z points inward/toward the opening; local X is radial cross outward axis.
   TCP = local frame * Rx(180 degrees), with coincident origins and opposite Y/Z axes.
-  flipAxis reverses the outward axis and traversal. Lead-in/out add axial clearance and
-  quaternion-interpolated orientation; their clear-end burr Y is opposite the outward
+  flipAxis reverses the outward axis and traversal. Lead-in/out follow quarter circles
+  in normalized angular/axial coordinates, with phi=pi*progress/2: lead-in angle is
+  -span*cos(phi) and clear amount is 1-sin(phi); lead-out angle is 2*pi+span*sin(phi)
+  and clear amount is 1-cos(phi). Axial clearance and quaternion-interpolated orientation
+  use that same clear amount; their clear-end burr Y is opposite the outward
   axis and TCP Z is radially outward. Evaluated lead TCP Y must project negatively on
   the outward axis. The section frame X need not follow the tilted ellipse tangent.
   ChamferPath stores positive finite stagingDistance (default 10 mm). stagingPoint returns
