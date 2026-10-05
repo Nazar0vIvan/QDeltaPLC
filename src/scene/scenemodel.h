@@ -50,4 +50,6 @@ private:
   QList<SceneObject*> m_objects;
   QHash<quint32, SceneObject*> m_objectsById;
   quint32 m_nextId = 1; // Zero is never allocated, including after exhaustion.
+  quint64 m_nextEdgeNumber = 1;
+  quint64 m_nextMachiningPathNumber = 1;
 };

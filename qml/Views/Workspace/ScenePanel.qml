@@ -32,8 +32,8 @@ QxPanel {
   function objectsForGroup(kind: string): var {
     return root.sceneModel.objects.filter(object => {
       switch (kind) {
-      case "rough": return object.classification === Backend.SceneObject.Rough
-      case "precise": return object.classification === Backend.SceneObject.Precise
+      case "rough": return object.kind !== Backend.SceneObject.Edge && object.classification === Backend.SceneObject.Rough
+      case "precise": return object.kind !== Backend.SceneObject.Edge && object.classification === Backend.SceneObject.Precise
       case "edges": return object.kind === Backend.SceneObject.Edge
       case "scanPaths": return object.kind === Backend.SceneObject.ScanPath
       case "machiningPaths": return object.kind === Backend.SceneObject.MachiningPath
@@ -153,6 +153,11 @@ QxPanel {
 
                 property bool editing: false
                 readonly property bool selected: root.selectedObjectIds.indexOf(objectRow.modelData.objectId) >= 0
+                readonly property string badge: objectRow.modelData.kind !== Backend.SceneObject.Edge ? group.badge
+                                                : objectRow.modelData.classification === Backend.SceneObject.Rough ? "R"
+                                                : objectRow.modelData.classification === Backend.SceneObject.Precise ? "P" : ""
+                readonly property color iconColor: objectRow.badge === "R" ? Colors.secondary.base
+                                                   : objectRow.badge === "P" ? Colors.primary.base : group.objectColor
 
                 width: group.width
                 height: Metrics.h32
@@ -200,7 +205,7 @@ QxPanel {
                     icon.source: root.objectIcon(objectRow.modelData.kind)
                     icon.width: Metrics.sz16
                     icon.height: Metrics.sz16
-                    icon.color: group.objectColor
+                    icon.color: objectRow.iconColor
                     palette.text: objectRow.modelData.visible ? Colors.foreground.high : Colors.foreground.disabled
 
                     QxTextInput {
@@ -260,8 +265,8 @@ QxPanel {
                   Label {
                     Layout.rightMargin: 4
 
-                    text: group.badge
-                    color: group.objectColor
+                    text: objectRow.badge
+                    color: objectRow.iconColor
                     font: Fonts.caption
                   }
 

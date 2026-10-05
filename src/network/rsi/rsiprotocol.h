@@ -21,8 +21,7 @@ struct Response {
 
 std::optional<Response> decode(const QByteArray& data);
 QByteArray encode(const RsiTxFrame& frame);
-bool acceptsSender(const QHostAddress& configuredAddress, quint16 learnedPort,
-                   const QHostAddress& senderAddress, quint16 senderPort);
+bool acceptsSender(const QHostAddress& configuredAddress, quint16 learnedPort, const QHostAddress& senderAddress, quint16 senderPort);
 
 // Shared receive gate: the motion callback is invoked only for a fully validated
 // packet. A zero learned port means this connection has not accepted a peer yet.

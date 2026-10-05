@@ -4,6 +4,7 @@
 #include "sceneendeffectors.h"
 #include <QElapsedTimer>
 #include <QTimer>
+#include <future>
 
 class SceneMachining : public QObject
 {
@@ -13,6 +14,8 @@ class SceneMachining : public QObject
   Q_PROPERTY(bool canGenerate READ canGenerate NOTIFY availabilityChanged)
   Q_PROPERTY(QString unavailableReason READ unavailableReason NOTIFY availabilityChanged)
   Q_PROPERTY(QString error READ error NOTIFY errorChanged)
+  Q_PROPERTY(bool calculating READ calculating NOTIFY calculatingChanged)
+  Q_PROPERTY(bool playbackActive READ playbackActive NOTIFY playbackChanged)
   Q_PROPERTY(bool playing READ playing NOTIFY playbackChanged)
   Q_PROPERTY(bool canPlay READ canPlay NOTIFY availabilityChanged)
   Q_PROPERTY(double elapsed READ elapsed NOTIFY playbackChanged)
@@ -28,9 +31,12 @@ public:
   bool canGenerate() const { return unavailableReason().isEmpty(); }
   QString unavailableReason() const;
   QString error() const { return m_error; }
-  Q_INVOKABLE quint32 apply();
+  Q_INVOKABLE void apply();
+  bool calculating() const { return m_calculating; }
   Q_INVOKABLE void dryRun();
   Q_INVOKABLE void stop();
+  Q_INVOKABLE void pause();
+  bool playbackActive() const { return bool(m_activeMotion); }
   bool playing() const { return m_playing; }
   bool canPlay() const;
   double elapsed() const { return m_elapsed; }
@@ -47,6 +53,7 @@ signals:
   void availabilityChanged();
   void errorChanged();
   void generated(quint32 objectId);
+  void calculatingChanged();
   void playbackChanged();
   void playbackPoseRequested(QList<double> joints);
 
@@ -59,7 +66,10 @@ private:
   void onObjectRemoved(quint32 id);
   void setError(const QString& error);
   void advancePlayback();
+  void endPlayback();
   bool presentPlayback(double seconds);
+  void finishCalculation();
+  void setCalculating(bool calculating);
 
   SceneModel* m_scene;
   SceneEndEffectors* m_effectors;
@@ -75,6 +85,12 @@ private:
   quint32 m_activePathId = 0;
   bool m_playing = false;
   double m_elapsed = 0.0;
+  double m_resumeTime = 0.0;
   double m_duration = 0.0;
   QString m_phase;
+  QTimer m_calculationTimer;
+  std::future<ChamferMotionResult> m_calculation;
+  quint32 m_calculationInputId = 0;
+  quint64 m_calculationRevision = 0;
+  bool m_calculating = false;
 };

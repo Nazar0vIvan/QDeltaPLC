@@ -101,7 +101,7 @@ QxPanel {
         Layout.fillWidth: true
         visible: root.coordinator.duration > 0
         text: qsTr("%1 · %2\n%3 / %4 s")
-              .arg(root.coordinator.playing ? qsTr("Playing") : qsTr("Stopped"))
+              .arg(root.coordinator.playing ? qsTr("Playing") : root.coordinator.playbackActive ? qsTr("Paused") : qsTr("Stopped"))
               .arg(root.coordinator.phase)
               .arg(root.coordinator.elapsed.toFixed(2)).arg(root.coordinator.duration.toFixed(2))
         wrapMode: Text.Wrap

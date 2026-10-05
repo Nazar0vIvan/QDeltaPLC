@@ -20,8 +20,8 @@ namespace RoboCrap3D {
 class OccViewport final
 {
 public:
-  // Native surface, scene and initial visibility are needed before camera fitting.
-  OccViewport(Aspect_Handle handle, SceneModel* applicationScene, bool showMachiningPaths);
+  // Install the scene before initial camera fitting.
+  OccViewport(Aspect_Handle handle, SceneModel* applicationScene);
   ~OccViewport();
   OccViewport(const OccViewport&) = delete;
   OccViewport& operator=(const OccViewport&) = delete;
@@ -38,7 +38,6 @@ public:
   void synchronizeSceneObject(SceneObject* object);
   void removeSceneObject(quint32 objectId);
   void setSelectedObjects(const QList<quint32>& ids);
-  void setMachiningPathsVisible(bool visible, SceneModel* scene);
   void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   void setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene);
   void setExposed(bool exposed);

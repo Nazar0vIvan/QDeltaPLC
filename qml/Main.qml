@@ -19,9 +19,14 @@ ApplicationWindow {
   id: root
 
   property int workflowMode: WorkflowPanel.Measuring
+  property bool dryScanActive: false
+  property bool dryScanRunning: false
+  onMeasurementSubmodeChanged: { root.dryScanActive = false; root.dryScanRunning = false }
   property int measurementSubmode: WorkflowPanel.Rough
 
   onWorkflowModeChanged: {
+    root.dryScanActive = false
+    root.dryScanRunning = false
     if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
     if (root.workflowMode === WorkflowPanel.Machining) {
       if (measuringSetupWindow) measuringSetupWindow.hide()
@@ -46,7 +51,6 @@ ApplicationWindow {
   // UI display preferences for the imported rough-surface presentations.
   property bool showPoints: false
   property bool showNormals: false
-  property bool showScanPath: false
   property bool chamferEditorOpen: false
   property list<real> selectedObjectIds: []
 
@@ -259,6 +263,43 @@ ApplicationWindow {
   }
 
   Window {
+    id: calculationWindow
+
+    title: qsTr("Calculating trajectory")
+    transientParent: root
+    modality: Qt.ApplicationModal
+    flags: Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint
+    visible: Backend.Machining.calculating
+    color: Colors.background.dp01
+    width: 360
+    height: 110
+    minimumWidth: 360
+    maximumWidth: 360
+    minimumHeight: 110
+    maximumHeight: 110
+    x: root.x + (root.width - width) / 2
+    y: root.y + (root.height - height) / 2
+    onClosing: close => close.accepted = !Backend.Machining.calculating
+
+    ColumnLayout {
+      anchors.fill: parent
+      anchors.margins: Metrics.sp16
+      spacing: Metrics.sp12
+
+      Label {
+        Layout.fillWidth: true
+        text: qsTr("Calculating trajectory…")
+        color: Colors.foreground.high
+        font: Fonts.body
+      }
+      ProgressBar {
+        Layout.fillWidth: true
+        indeterminate: Backend.Machining.calculating
+        palette.highlight: Colors.primary.base
+      }
+    }
+  }
+  Window {
     id: plcPanelWindow
 
     title: qsTr("PLC Panel")
@@ -449,15 +490,27 @@ ApplicationWindow {
         submode: root.measurementSubmode
         showPoints: root.showPoints
         showNormals: root.showNormals
-        showScanPath: root.showScanPath
         planeImportAvailable: root.geometryImportAvailable
         circleImportAvailable: root.geometryImportAvailable
         cylinderImportAvailable: root.geometryImportAvailable
         playbackAvailable: Backend.Machining.canPlay
         playing: Backend.Machining.playing
+        playbackActive: Backend.Machining.playbackActive
+        onPauseRequested: Backend.Machining.pause()
+        scanActive: root.dryScanActive
+        scanRunning: root.dryScanRunning
+        scanAvailable: root.selectedSceneObject !== null
+                       && (root.selectedSceneObject.kind === Backend.SceneObject.Plane
+                           || root.selectedSceneObject.kind === Backend.SceneObject.Cylinder
+                           || root.selectedSceneObject.kind === Backend.SceneObject.Cone)
+        onScanToggleRequested: {
+          root.dryScanActive = true
+          root.dryScanRunning = !root.dryScanRunning
+        }
+        onScanStopRequested: { root.dryScanActive = false; root.dryScanRunning = false }
         onDryRunRequested: Backend.Machining.dryRun()
         onStopRequested: Backend.Machining.stop()
-        generationAvailable: !Backend.Machining.playing && root.selectedSceneObject !== null
+        generationAvailable: !Backend.Machining.playbackActive && root.selectedSceneObject !== null
                              && (root.selectedSceneObject.kind === Backend.SceneObject.Edge
                                  || root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath)
         onToolSetupRequested: root.openToolSetup()
@@ -473,7 +526,6 @@ ApplicationWindow {
         onCylinderImportRequested: cylinderFileDialog.open()
         onPointsToggled: checked => root.showPoints = checked
         onNormalsToggled: checked => root.showNormals = checked
-        onScanPathToggled: checked => root.showScanPath = checked
       }
 
       RobotViewport {

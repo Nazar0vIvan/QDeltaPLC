@@ -31,7 +31,6 @@ public:
   void synchronizeSceneObject(SceneObject* object);
   void removeSceneObject(quint32 objectId);
   void setSelectedObjects(const QList<quint32>& ids);
-  void setMachiningPathsVisible(bool visible);
   void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   void setDiagnosticOverlays(bool showPoints, bool showNormals);
   bool applyPose(const RobotPose& pose);
@@ -74,7 +73,6 @@ private:
   QPointer<SceneModel> m_applicationScene;
   std::unique_ptr<OccViewport> m_viewport;
   bool m_initializationFailed = false;
-  bool m_showMachiningPaths = true;
   std::optional<ChamferPathParameters> m_machiningPreview;
   std::optional<M4d> m_spindleTcpFrame;
   QList<quint32> m_selectedObjects;

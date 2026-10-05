@@ -97,7 +97,7 @@ QList<quint32> SceneModel::intersect(const QList<quint32>& selectedIds)
   }
   const auto classification = first->classification() == second->classification()
       ? first->classification() : SceneObject::Unclassified;
-  auto* object = createObject({tr("Edge E%1").arg(m_nextId), SceneObject::Edge, classification, {}});
+  auto* object = createObject({tr("Edge %1").arg(m_nextEdgeNumber), SceneObject::Edge, classification, {}});
   if (!object) {
     emit intersectionFailed(tr("Cannot create an edge: scene object IDs are exhausted."));
     return {};
@@ -105,6 +105,7 @@ QList<quint32> SceneModel::intersect(const QList<quint32>& selectedIds)
   const std::array<quint32, 2> sources{std::min(first->objectId(), second->objectId()),
                                        std::max(first->objectId(), second->objectId())};
   object->setEdgeGeometry(std::move(*result.edge), sources);
+  ++m_nextEdgeNumber;
   appendObject(object);
   return {object->objectId()};
 }
@@ -119,10 +120,12 @@ SceneObject* SceneModel::createObject(SceneObject::Description description)
 SceneObject* SceneModel::addMachiningPath(SceneMachiningData data, const QString& name)
 {
   if (!data.motion) return nullptr;
-  auto* object = createObject({name.trimmed().isEmpty() ? tr("Machining Path %1").arg(m_nextId) : name,
+  const bool automaticName = name.trimmed().isEmpty();
+  auto* object = createObject({automaticName ? tr("Machining Path %1").arg(m_nextMachiningPathNumber) : name,
                               SceneObject::MachiningPath, SceneObject::Unclassified, {}});
   if (!object) return nullptr;
   object->setMachiningPath(std::move(data));
+  if (automaticName) ++m_nextMachiningPathNumber;
   appendObject(object);
   return object;
 }

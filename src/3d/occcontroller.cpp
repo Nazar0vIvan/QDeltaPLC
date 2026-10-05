@@ -163,14 +163,6 @@ void OccController::setMachining(SceneMachining* machining)
   synchronizeMachiningPreview();
 }
 
-void OccController::setShowMachiningPaths(bool visible)
-{
-  if (m_showMachiningPaths == visible) return;
-  m_showMachiningPaths = visible;
-  if (m_window) m_window->setMachiningPathsVisible(visible);
-  emit showMachiningPathsChanged();
-}
-
 void OccController::synchronizeMachiningPreview()
 {
   if (!m_window) return;
@@ -377,7 +369,6 @@ void OccController::createWindow()
   QObject::connect(m_window, &QObject::destroyed, this, &OccController::onViewWindowDestroyed);
   QObject::connect(m_window, &OccViewWindow::deleteSelectionRequested, this, &OccController::deleteSelectionRequested);
   m_window->setApplicationScene(m_applicationScene);
-  m_window->setMachiningPathsVisible(m_showMachiningPaths);
   synchronizeMachiningPreview();
   if (m_state && m_shapes) m_window->setScene(m_state, m_shapes);
   synchronizeEndEffectors();
@@ -505,7 +496,7 @@ bool OccController::applyPose(const RobotPose& pose)
 
 QVariantList OccController::solve(const QVariantList& values, bool inverse)
 {
-  if (m_machining && m_machining->playing()) {
+  if (m_machining && m_machining->playbackActive()) {
     setError(QStringLiteral("Stop Dry Run before changing the robot pose."));
     return {};
   }
@@ -545,7 +536,7 @@ QVariantList OccController::solveFK(const QVariantList& joints)
 
 void OccController::applyPlaybackPose(QList<double> joints)
 {
-  if (!m_machining || !m_machining->playing()) return;
+  if (!m_machining || !m_machining->playbackActive()) return;
   if (!isReady() || m_loading || !m_state || joints.size() != 6) {
     m_machining->failPlayback(QStringLiteral("Robot preview is not ready for playback."));
     return;

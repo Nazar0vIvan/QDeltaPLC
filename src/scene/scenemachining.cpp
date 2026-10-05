@@ -4,6 +4,7 @@
 
 #include <utility>
 #include <algorithm>
+#include <chrono>
 #include <QCoreApplication>
 #include <QMetaMethod>
 
@@ -67,10 +68,12 @@ SceneMachining::SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, 
   connect(effectors, &SceneEndEffectors::spindleTcpChanged, this, &SceneMachining::calibrationChanged);
   connect(scene, &SceneModel::objectRemoved, this, &SceneMachining::onObjectRemoved);
   connect(scene, &SceneModel::objectAdded, this, &SceneMachining::onObjectAdded);
+  m_calculationTimer.setInterval(30);
+  connect(&m_calculationTimer, &QTimer::timeout, this, &SceneMachining::finishCalculation);
   m_timer.setInterval(16);
   m_timer.setTimerType(Qt::PreciseTimer);
   connect(&m_timer, &QTimer::timeout, this, &SceneMachining::advancePlayback);
-  connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, this, &SceneMachining::stop);
+  connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, this, &SceneMachining::endPlayback);
 }
 
 void SceneMachining::setSettings(const SceneMachiningSettings& settings)
@@ -125,7 +128,8 @@ std::optional<ChamferPathParameters> SceneMachining::sourceParameters() const
 
 QString SceneMachining::unavailableReason() const
 {
-  if (m_playing) return tr("Stop Dry Run before generating a trajectory.");
+  if (m_calculating) return tr("Calculating trajectory…");
+  if (playbackActive()) return tr("Stop Dry Run before generating a trajectory.");
   if (!m_model || !m_robotAvailable) return tr("Robot preview is not ready.");
   if (m_effectors->spindleTcp().size() != 6) return tr("Apply the spindle TCP calibration first.");
   if (!sourceParameters()) return tr("Select an intersection edge with its source plane and cylinder, or a generated machining path.");
@@ -140,32 +144,68 @@ std::optional<ChamferPathParameters> SceneMachining::previewParameters() const
   return source ? std::optional<ChamferPathParameters>{m_settings.applyTo(*source)} : std::nullopt;
 }
 
-quint32 SceneMachining::apply()
+void SceneMachining::apply()
 {
+  if (m_calculating) return;
   const QString reason = unavailableReason();
-  if (!reason.isEmpty()) { setError(reason); return 0; }
+  if (!reason.isEmpty()) { setError(reason); return; }
   const auto source = sourceParameters();
   const auto timing = m_settings.timing();
-  if (!source || !timing) { setError(tr("Six joint speed and acceleration limits are required.")); return 0; }
+  if (!source || !timing) { setError(tr("Six joint speed and acceleration limits are required.")); return; }
   const auto path = ChamferPath::create(m_settings.applyTo(*source));
-  if (!path.path) { setError(path.error); return 0; }
+  if (!path.path) { setError(path.error); return; }
   const auto& tcp = m_effectors->spindleTcp();
   ChamferRobotSetup robot;
   robot.model = *m_model;
   robot.flangeToTcp = makeTransform(euler2rot(tcp[3], tcp[4], tcp[5]), V3d{tcp[0], tcp[1], tcp[2]});
   robot.timing = *timing;
-  auto result = ChamferMotion::create(*path.path, robot);
-  if (!result.motion) { setError(result.error); return 0; }
+  m_calculationInputId = m_inputId;
+  m_calculationRevision = m_revision;
+  setError({});
+  // The worker owns numerical copies only; its result returns through the future.
+  m_calculation = std::async(std::launch::async, &ChamferMotion::create, *path.path, std::move(robot));
+  setCalculating(true);
+  m_calculationTimer.start();
+}
 
-  const auto* previous = m_scene->findObject(m_inputId);
+void SceneMachining::setCalculating(bool calculating)
+{
+  if (m_calculating == calculating) return;
+  m_calculating = calculating;
+  emit calculatingChanged();
+  emit availabilityChanged();
+}
+
+void SceneMachining::finishCalculation()
+{
+  if (!m_calculation.valid()) return;
+  if (m_calculation.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+  m_calculationTimer.stop();
+  auto result = m_calculation.get();
+  const auto* previous = m_scene->findObject(m_calculationInputId);
+  if (!previous || m_inputId != m_calculationInputId || m_revision != m_calculationRevision
+      || !m_robotAvailable || !sourceParameters()) {
+    setError(tr("Scene or robot configuration changed. Apply again."));
+    setCalculating(false);
+    return;
+  }
+  if (!result.motion) {
+    setError(result.error);
+    setCalculating(false);
+    return;
+  }
   const auto* saved = qobject_cast<const SceneMachiningPath*>(previous->geometry());
   const quint32 replaceId = saved ? previous->objectId() : 0;
   const quint32 sourceId = saved ? saved->sourceEdgeId() : previous->objectId();
   const QString name = saved ? previous->name() : QString{};
   const bool visible = previous->visible();
-  SceneMachiningData data{std::make_shared<const ChamferMotion>(std::move(*result.motion)), sourceId, m_revision};
+  SceneMachiningData data{std::make_shared<const ChamferMotion>(std::move(*result.motion)), sourceId, m_calculationRevision};
   auto* inserted = m_scene->addMachiningPath(std::move(data), name);
-  if (!inserted) { setError(tr("Cannot insert trajectory: scene object IDs are exhausted.")); return 0; }
+  if (!inserted) {
+    setError(tr("Cannot insert trajectory: scene object IDs are exhausted."));
+    setCalculating(false);
+    return;
+  }
   const quint32 id = inserted->objectId();
   if (replaceId) {
     m_scene->setObjectVisible(inserted, visible);
@@ -174,7 +214,7 @@ quint32 SceneMachining::apply()
   setInputId(id);
   setError({});
   emit generated(id);
-  return id;
+  setCalculating(false);
 }
 
 void SceneMachining::setRobotModel(const RoboCrap3D::Kr10KinematicModel& model)
@@ -186,14 +226,14 @@ void SceneMachining::setRobotModel(const RoboCrap3D::Kr10KinematicModel& model)
 void SceneMachining::setRobotAvailable(bool available)
 {
   if (m_robotAvailable == available) return;
-  if (!available) stop();
+  if (!available) endPlayback();
   m_robotAvailable = available;
   refreshCompatibility();
 }
 
 void SceneMachining::calibrationChanged()
 {
-  stop();
+  endPlayback();
   ++m_revision;
   refreshCompatibility();
 }
@@ -223,7 +263,7 @@ void SceneMachining::onObjectAdded(SceneObject* object)
 
 void SceneMachining::onObjectRemoved(quint32 id)
 {
-  if (m_activePathId == id) stop();
+  if (m_activePathId == id) endPlayback();
   if (m_inputId == id) setInputId(0);
   else emit availabilityChanged();
 }
@@ -237,7 +277,8 @@ void SceneMachining::setError(const QString& error)
 
 bool SceneMachining::canPlay() const
 {
-  if (m_playing || !m_robotAvailable) return false;
+  if (m_calculating || m_playing || !m_robotAvailable) return false;
+  if (playbackActive()) return true;
   const auto* object = m_scene->findObject(m_inputId);
   const auto* path = object ? qobject_cast<const SceneMachiningPath*>(object->geometry()) : nullptr;
   return path && path->compatible();
@@ -250,11 +291,21 @@ void SceneMachining::dryRun()
     setError(tr("Robot presentation is not connected."));
     return;
   }
+  if (playbackActive()) {
+    m_resumeTime = m_elapsed;
+    m_playing = true;
+    m_clock.start();
+    m_timer.start();
+    emit playbackChanged();
+    emit availabilityChanged();
+    return;
+  }
   const auto* path = qobject_cast<const SceneMachiningPath*>(m_scene->findObject(m_inputId)->geometry());
   m_activeMotion = path->data().motion;
   m_activePathId = m_inputId;
   m_duration = m_activeMotion->duration();
   m_elapsed = 0.0;
+  m_resumeTime = 0.0;
   m_playing = true;
   setError({});
   emit availabilityChanged();
@@ -263,9 +314,9 @@ void SceneMachining::dryRun()
   m_timer.start();
 }
 
-void SceneMachining::stop()
+void SceneMachining::endPlayback()
 {
-  if (!m_playing) return;
+  if (!playbackActive()) return;
   m_timer.stop();
   m_playing = false;
   m_activeMotion.reset();
@@ -276,7 +327,7 @@ void SceneMachining::stop()
 
 void SceneMachining::failPlayback(const QString& error)
 {
-  stop();
+  endPlayback();
   setError(error);
 }
 
@@ -288,7 +339,7 @@ bool SceneMachining::presentPlayback(double seconds)
   for (double value : pose->joints) joints.append(value);
   // GUI-thread direct delivery: presentation failures stop playback before time advances.
   emit playbackPoseRequested(joints);
-  if (!m_playing) return false;
+  if (!playbackActive()) return false;
   m_elapsed = seconds;
   switch (pose->phase) {
   case ChamferMotionPhase::Approach: m_phase = tr("HOME to P_s"); break;
@@ -306,6 +357,25 @@ bool SceneMachining::presentPlayback(double seconds)
 void SceneMachining::advancePlayback()
 {
   if (!m_playing) return;
-  const double seconds = std::min(m_duration, m_clock.nsecsElapsed() / 1.0e9);
-  if (presentPlayback(seconds) && seconds >= m_duration) stop();
+  const double seconds = std::min(m_duration, m_resumeTime + m_clock.nsecsElapsed() / 1.0e9);
+  if (presentPlayback(seconds) && seconds >= m_duration) endPlayback();
+}
+
+void SceneMachining::pause()
+{
+  if (!m_playing) return;
+  advancePlayback();
+  if (!playbackActive()) return;
+  m_timer.stop();
+  m_playing = false;
+  emit playbackChanged();
+  emit availabilityChanged();
+}
+
+void SceneMachining::stop()
+{
+  if (!playbackActive()) return;
+  m_timer.stop();
+  if (m_robotAvailable) (void)presentPlayback(0.0);
+  endPlayback();
 }

@@ -8,7 +8,7 @@
 
 namespace RoboCrap3D {
 
-OccViewport::OccViewport(Aspect_Handle handle, SceneModel* applicationScene, bool showMachiningPaths)
+OccViewport::OccViewport(Aspect_Handle handle, SceneModel* applicationScene)
   : m_viewer(handle),
     m_scene(m_viewer.context(), m_viewer.view()),
     m_robot(m_scene),
@@ -20,7 +20,6 @@ OccViewport::OccViewport(Aspect_Handle handle, SceneModel* applicationScene, boo
   QObject::connect(&m_timer, &QTimer::timeout, &m_timer, std::bind(&OccViewport::flushRender, this));
   if (!m_viewer.isValid()) return;
   m_scene.displayInfrastructure();
-  (void)m_application.setMachiningPathsVisible(showMachiningPaths, nullptr);
   (void)m_application.synchronize(applicationScene);
   fitInitialCamera();
 }
@@ -79,11 +78,6 @@ void OccViewport::setSelectedObjects(const QList<quint32>& ids)
 {
   m_application.setSelectedObjects(ids);
   requestRender();
-}
-
-void OccViewport::setMachiningPathsVisible(bool visible, SceneModel* scene)
-{
-  if (m_application.setMachiningPathsVisible(visible, scene)) requestRender();
 }
 
 void OccViewport::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)

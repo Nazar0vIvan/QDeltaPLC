@@ -4,7 +4,6 @@
 
 - Do not use C++ lambdas; use descriptively named helper functions or member methods.
 - No project test logic is needed; do not add tests, test harnesses, or test build targets.
-
 - Do not use exception-handling syntax in project C++ code: no `try`, `catch`, or `throw`.
   Report expected failures through return values, using existing optional/result conventions.
   This rule does not authorize disabling compiler exception support or changing third-party code.
@@ -157,10 +156,10 @@ and src/main.cpp.
   SceneMachining connects numerical generation to scene ownership. OccSceneAdapter renders
   seven phase polylines under one object ID (purple HOME, blue leads, green machining).
   Machining paths are displayed by default and follow their scene-object visibility.
-  OccViewWindow retains path visibility, selection and axis-preview parameters on recreation.
+  Path visibility is controlled only by each scene object through Scene and Properties panels; no global path-visibility switch remains. OccViewWindow retains selection and axis-preview parameters on recreation.
   The non-selectable magenta outward-axis arrow uses SceneMachining.previewParameters,
   responds to applied settings, and is excluded from camera bounds. New edge inputs default
-  outward toward negative scene X for the current XP/XC workpiece; saved paths retain their Flip. MachiningPanel edits parameters and Apply generates/selects paths. SceneMachining owns a GUI-thread timer and monotonic clock for Dry Run; direct C++ pose requests go through OccController and the existing preview-state FK/commit path. Stop freezes the last displayed pose, restart resets to HOME, and completion ends at HOME. Calibration/model changes, viewport loss, active-path deletion, leaving machining mode and shutdown stop playback. Manual FK/IK and generation are blocked during playback; selection does not replace the active motion.
+  outward toward negative scene X for the current XP/XC workpiece; saved paths retain their Flip. MachiningPanel edits parameters and Apply generates/selects paths. SceneMachining owns a GUI-thread timer and monotonic clock for Dry Run; direct C++ pose requests go through OccController and the existing preview-state FK/commit path. Pause freezes elapsed time and pose; Dry Run resumes the retained motion. User Stop resets the preview to HOME and clears active playback; completion ends at HOME. Internal failure/readiness cleanup ends playback without a HOME request. Calibration/model changes, viewport loss, active-path deletion, leaving machining mode and shutdown stop playback. Manual FK/IK and generation are blocked during running or paused playback; selection does not replace the active motion.
   chamfermotion.h/.cpp compiles a timed seven-stage KR10 simulation using the existing
   numerical IK solver, preceding-joint seeds, bounded alternate starting configurations,
   FK validation and direct synchronized joint-space HOME movements. It owns model/TCP
@@ -177,7 +176,7 @@ and src/main.cpp.
   Cartesian rate and interpolation-error checks are numerical samples, not analytic guarantees.
 
 - main.cpp owns SceneMachining after SceneModel/SceneEndEffectors and before the viewport/QML
-  engine; Backend.Machining exposes typed machiningSettings drafts and synchronous apply().
+  engine; Backend.Machining exposes typed machiningSettings drafts and asynchronous apply().
   One edge with live fitted source surfaces, or an existing generated path, supplies input.
   SceneMachiningPath in scenegeometry.h owns shared immutable ChamferMotion and source-edge
   provenance. SceneModel inserts MachiningPath objects using existing IDs/signals. Regeneration
@@ -185,6 +184,11 @@ and src/main.cpp.
   Saved paths retain geometry/model/TCP/settings snapshots and survive source deletion.
   OccController passes a numerical robot-model copy on successful loading and forwards readiness.
   Model/TCP revisions invalidate old paths until regeneration; viewport unavailability is temporary.
+  Apply runs numerical motion compilation on a standard async worker with copied inputs and a
+  return-value future. A GUI timer collects the result; scene insertion stays on the GUI thread.
+  calculating drives an application-modal native progress window with an indeterminate bar.
+  No percentage is estimated. Changed input/calibration or lost robot readiness rejects the result.
+  The future waits for any remaining calculation during coordinator destruction.
   Scene playback has no OCCT dependency and invokes no devices.
 
 - SceneEndEffectors in src/scene owns both tool configurations on the GUI thread, independently
@@ -361,3 +365,5 @@ cmake --build "$buildDir" --target Components_qmllint
 - Fix failures introduced by the task. Report pre-existing failures separately; change them only
   when necessary to unblock relevant validation. State checks actually run, results, and skipped
   checks with reasons. For reviews, give verified findings with file/line, impact, and correction.
+
+- Precise Measuring uses QML-only Dry Scan/Pause/Stop states in Main.qml. Plane/cylinder/cone selection enables Dry Scan; mode/submode changes reset its state. Machining toolbar uses Backend.Machining playbackActive/playing/canPlay for Dry Run/Pause/Stop. Scan and Start Machining remain disabled.

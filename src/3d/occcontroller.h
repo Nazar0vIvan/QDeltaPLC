@@ -30,7 +30,6 @@ class OccController final : public QObject
   Q_PROPERTY(QWindow* viewWindow READ viewWindow NOTIFY viewWindowChanged)
   Q_PROPERTY(bool ready READ isReady NOTIFY readyChanged)
   Q_PROPERTY(bool showSpindleTcp READ showSpindleTcp WRITE setShowSpindleTcp NOTIFY showSpindleTcpChanged)
-  Q_PROPERTY(bool showMachiningPaths READ showMachiningPaths WRITE setShowMachiningPaths NOTIFY showMachiningPathsChanged)
   Q_PROPERTY(bool viewportReady READ isViewportReady NOTIFY viewportReadyChanged)
   Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged)
   Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
@@ -62,8 +61,6 @@ public:
   void setMachining(SceneMachining* machining);
   bool showSpindleTcp() const { return m_showSpindleTcp; }
   void setShowSpindleTcp(bool visible);
-  bool showMachiningPaths() const { return m_showMachiningPaths; }
-  void setShowMachiningPaths(bool visible);
   bool isMeasuringCadLoading() const;
   bool isSpindleCadLoading() const;
   QString measuringCadError() const;
@@ -80,7 +77,6 @@ public:
 
 signals:
   void showSpindleTcpChanged();
-  void showMachiningPathsChanged();
   void viewWindowChanged();
   void readyChanged();
   void viewportReadyChanged();
@@ -140,7 +136,6 @@ private:
   bool m_loading = false;
   bool m_shuttingDown = false;
   bool m_occtInitialized = false;
-  bool m_showMachiningPaths = true;
   bool m_showSpindleTcp = true;
 };
 

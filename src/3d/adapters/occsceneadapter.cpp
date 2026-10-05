@@ -272,7 +272,7 @@ bool OccSceneAdapter::synchronizeObject(const SceneObject* object, bool overlays
     if (!part) return false;
     it = m_parts.insert(object->objectId(), Presentation{{*part}, true, {}, {}});
   }
-  const bool visible = object->visible() && (!object->machiningPath() || m_showMachiningPaths);
+  const bool visible = object->visible();
   const bool visibilityChanged = it->visible != visible;
   if (!created && !visibilityChanged && !overlaysChanged) return false;
   if (visibilityChanged) {
@@ -340,17 +340,6 @@ quint32 OccSceneAdapter::objectIdFor(const Handle(AIS_InteractiveObject)& picked
       if (m_scene.partHandle(part) == picked) return it.key();
   }
   return {}; // Background or non-application geometry clears UI selection.
-}
-
-bool OccSceneAdapter::setMachiningPathsVisible(bool visible, const SceneModel* scene)
-{
-  if (m_showMachiningPaths == visible) return false;
-  m_showMachiningPaths = visible;
-  bool changed = false;
-  if (scene)
-    for (const auto* object : scene->objectList())
-      if (object->machiningPath()) changed = synchronizeObject(object) || changed;
-  return changed;
 }
 
 bool OccSceneAdapter::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)

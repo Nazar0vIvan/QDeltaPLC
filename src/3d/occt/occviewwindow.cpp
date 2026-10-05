@@ -78,15 +78,6 @@ void OccViewWindow::setSelectedObjects(const QList<quint32>& ids)
   if (m_viewport) m_viewport->setSelectedObjects(ids);
 }
 
-void OccViewWindow::setMachiningPathsVisible(bool visible)
-{
-  m_showMachiningPaths = visible;
-  if (m_viewport) {
-    m_viewport->setMachiningPathsVisible(visible, m_applicationScene);
-    m_viewport->setSelectedObjects(m_selectedObjects);
-  }
-}
-
 void OccViewWindow::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
 {
   m_machiningPreview = parameters;
@@ -228,14 +219,13 @@ void OccViewWindow::initializeViewport()
   if (m_viewport || m_initializationFailed || !isExposed()) return;
   try {
     auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()),
-                                                  m_applicationScene, m_showMachiningPaths);
+                                                  m_applicationScene);
     if (!viewport->isValid()) {
       m_initializationFailed = true;
       emit errorOccurred(QStringLiteral("Cannot create the OCCT viewport."));
       return;
     }
     m_viewport = std::move(viewport);
-    m_viewport->setMachiningPathsVisible(m_showMachiningPaths, m_applicationScene);
     m_viewport->setMachiningPreview(m_machiningPreview);
     m_viewport->setSpindleTcpFrame(m_spindleTcpFrame);
     m_viewport->setSelectedObjects(m_selectedObjects);

@@ -10,7 +10,6 @@ ToolBar {
   required property int submode
   required property bool showPoints
   required property bool showNormals
-  required property bool showScanPath
   property bool planeImportAvailable: false
   property bool circleImportAvailable: false
   property bool cylinderImportAvailable: false
@@ -18,6 +17,13 @@ ToolBar {
   property bool generationAvailable: false
   property bool playbackAvailable: false
   property bool playing: false
+  property bool playbackActive: false
+  property bool scanAvailable: false
+  property bool scanRunning: false
+  property bool scanActive: false
+  signal scanToggleRequested()
+  signal scanStopRequested()
+  signal pauseRequested()
   signal dryRunRequested()
   signal stopRequested()
 
@@ -29,7 +35,6 @@ ToolBar {
   signal toolSetupRequested()
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
-  signal scanPathToggled(bool checked)
 
   readonly property bool measuring: root.mode === WorkflowPanel.Measuring
   readonly property bool rough: root.measuring && root.submode === WorkflowPanel.Rough
@@ -56,6 +61,7 @@ ToolBar {
     property alias checkable: button.checkable
     property alias checked: button.checked
     property bool available: false
+    property bool preserveIconColors: false
 
     signal toggled(bool checked)
     signal triggered()
@@ -79,7 +85,7 @@ ToolBar {
       display: AbstractButton.TextUnderIcon
       icon.width: Metrics.sz24
       icon.height: Metrics.sz24
-      icon.color: button.foregroundColor
+      icon.color: button.enabled && tool.preserveIconColors ? "transparent" : button.foregroundColor
       palette.buttonText: button.foregroundColor
       palette.highlight: button.foregroundColor
       palette.disabled.buttonText: Colors.foreground.disabled
@@ -118,13 +124,20 @@ ToolBar {
     Row {
       id: toolRow
 
-      spacing: Metrics.sp16
+      spacing: Metrics.sp10
 
       Tool {
-        text: root.measuring ? qsTr("Measuring EE") : qsTr("Spindle EE")
+        text: root.measuring ? qsTr("Measuring EE") : qsTr("Machining EE")
         iconSource: "qrc:/pics/settings.svg"
         available: true
         onTriggered: root.toolSetupRequested()
+      }
+
+      Rectangle {
+        width: Metrics.w1
+        height: Metrics.sz36
+        y: Metrics.sp12
+        color: Colors.background.dp12
       }
 
       Row {
@@ -166,45 +179,16 @@ ToolBar {
         onTriggered: root.intersectionRequested()
       }
 
-      Row {
+      Tool {
         visible: !root.measuring
-        spacing: Metrics.sp16
-
-        Tool {
-          text: qsTr("Generate Path")
-          iconSource: "qrc:/pics/generate_path.svg"
-          available: root.generationAvailable
-          onTriggered: root.generationRequested()
-        }
-
-        Tool {
-          text: qsTr("Dry Run")
-          iconSource: "qrc:/pics/dry_run.svg"
-          available: root.playbackAvailable
-          onTriggered: root.dryRunRequested()
-        }
-
-        Tool {
-          text: qsTr("Start Machining")
-          iconSource: "qrc:/pics/run.svg"
-        }
-      }
-
-      Tool {
-        visible: root.precise
-        text: qsTr("Scan")
-        iconSource: "qrc:/pics/scan.svg"
-      }
-
-      Tool {
-        visible: !root.rough
-        text: qsTr("Stop")
-        iconSource: "qrc:/pics/stop.svg"
-        available: root.playing
-        onTriggered: root.stopRequested()
+        text: qsTr("Generate Path")
+        iconSource: "qrc:/pics/generate_path.svg"
+        available: root.generationAvailable
+        onTriggered: root.generationRequested()
       }
 
       Rectangle {
+        visible: !root.rough
         width: Metrics.w1
         height: Metrics.sz36
         y: Metrics.sp12
@@ -212,7 +196,47 @@ ToolBar {
       }
 
       Tool {
-        visible: root.measuring
+        visible: !root.rough
+        text: (root.precise ? root.scanRunning : root.playing) ? qsTr("Pause")
+              : root.precise ? qsTr("Dry Scan") : qsTr("Dry Run")
+        iconSource: (root.precise ? root.scanRunning : root.playing) ? "qrc:/pics/pause.svg" : "qrc:/pics/dry.svg"
+        preserveIconColors: true
+        available: root.precise ? root.scanActive || root.scanAvailable : root.playing || root.playbackAvailable
+        onTriggered: {
+          if (root.precise) root.scanToggleRequested()
+          else if (root.playing) root.pauseRequested()
+          else root.dryRunRequested()
+        }
+      }
+
+      Tool {
+        visible: !root.rough
+        text: qsTr("Stop")
+        iconSource: "qrc:/pics/stop.svg"
+        preserveIconColors: true
+        available: root.precise ? root.scanActive : root.playbackActive
+        onTriggered: {
+          if (root.precise) root.scanStopRequested()
+          else root.stopRequested()
+        }
+      }
+
+      Rectangle {
+        visible: !root.rough
+        width: Metrics.w1
+        height: Metrics.sz36
+        y: Metrics.sp12
+        color: Colors.background.dp12
+      }
+
+      Tool {
+        visible: !root.rough
+        text: root.precise ? qsTr("Scan") : qsTr("Start Machining")
+        iconSource: root.precise ? "qrc:/pics/scan.svg" : "qrc:/pics/run.svg"
+        preserveIconColors: true
+      }
+      Tool {
+        visible: root.rough
         text: qsTr("Show Points")
         iconSource: "qrc:/pics/points.svg"
         available: true
@@ -222,7 +246,7 @@ ToolBar {
       }
 
       Tool {
-        visible: root.measuring
+        visible: root.rough
         text: qsTr("Show Normals")
         iconSource: "qrc:/pics/normals.svg"
         available: true
@@ -231,15 +255,6 @@ ToolBar {
         onToggled: checked => root.normalsToggled(checked)
       }
 
-      Tool {
-        visible: root.precise
-        text: qsTr("Show Path")
-        iconSource: "qrc:/pics/show_path.svg"
-        available: true
-        checkable: true
-        checked: root.showScanPath
-        onToggled: checked => root.scanPathToggled(checked)
-      }
     }
   }
 }

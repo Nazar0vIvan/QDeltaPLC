@@ -32,10 +32,11 @@
         <file>pics/attention.svg</file>
         <file>pics/stop.svg</file>
         <file>pics/run.svg</file>
-        <file>pics/dry_run.svg</file>
         <file>pics/generate_path.svg</file>
         <file>pics/show_path.svg</file>
         <file>pics/intersec.svg</file>
         <file>pics/scan.svg</file>
+        <file>pics/dry.svg</file>
+        <file>pics/pause.svg</file>
     </qresource>
 </RCC>
