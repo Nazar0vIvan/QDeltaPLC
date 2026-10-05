@@ -81,3 +81,11 @@ void SceneObject::setVisible(bool visible)
   m_visible = visible;
   emit visibleChanged();
 }
+
+void SceneObject::setDiagnosticOverlays(bool showPoints, bool showNormals)
+{
+  if (m_showPoints == showPoints && m_showNormals == showNormals) return;
+  m_showPoints = showPoints;
+  m_showNormals = showNormals;
+  emit diagnosticOverlaysChanged();
+}

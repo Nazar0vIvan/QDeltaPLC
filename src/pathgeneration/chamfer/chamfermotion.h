@@ -5,9 +5,9 @@
 
 struct ChamferTimingParameters
 {
-  double leadInFeed = 10.0; // mm/s
+  double leadInFeed = 10.0; // mm/s, including P_s to the first lead-in point.
   double machiningFeed = 5.0;
-  double leadOutFeed = 10.0;
+  double leadOutFeed = 10.0; // mm/s, including the last lead-out point to P_s.
   double cartesianAcceleration = 20.0; // mm/s^2
   // Simulation limits, not calibrated KUKA controller limits.
   V6d jointSpeed = V6d::Constant(30.0); // deg/s

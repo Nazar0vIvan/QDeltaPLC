@@ -8,8 +8,6 @@ ToolBar {
 
   required property int mode
   required property int submode
-  required property bool showPoints
-  required property bool showNormals
   property bool planeImportAvailable: false
   property bool circleImportAvailable: false
   property bool cylinderImportAvailable: false
@@ -33,8 +31,6 @@ ToolBar {
   signal intersectionRequested()
   signal generationRequested()
   signal toolSetupRequested()
-  signal pointsToggled(bool checked)
-  signal normalsToggled(bool checked)
 
   readonly property bool measuring: root.mode === WorkflowPanel.Measuring
   readonly property bool rough: root.measuring && root.submode === WorkflowPanel.Rough
@@ -235,26 +231,6 @@ ToolBar {
         iconSource: root.precise ? "qrc:/pics/scan.svg" : "qrc:/pics/run.svg"
         preserveIconColors: true
       }
-      Tool {
-        visible: root.rough
-        text: qsTr("Show Points")
-        iconSource: "qrc:/pics/points.svg"
-        available: true
-        checkable: true
-        checked: root.showPoints
-        onToggled: checked => root.pointsToggled(checked)
-      }
-
-      Tool {
-        visible: root.rough
-        text: qsTr("Show Normals")
-        iconSource: "qrc:/pics/normals.svg"
-        available: true
-        checkable: true
-        checked: root.showNormals
-        onToggled: checked => root.normalsToggled(checked)
-      }
-
     }
   }
 }

@@ -128,6 +128,7 @@ private:
   QPointer<SceneModel> m_applicationScene;
   QMetaObject::Connection m_sceneCollectionConnection;
   QMetaObject::Connection m_sceneVisibilityConnection;
+  QMetaObject::Connection m_sceneDiagnosticConnection;
   QMetaObject::Connection m_sceneRemovalConnection;
   QMetaObject::Connection m_sceneDestroyedConnection;
   QString m_error;

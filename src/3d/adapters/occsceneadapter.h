@@ -22,7 +22,7 @@ public:
   bool synchronize(const SceneModel* applicationScene);
   bool removeObject(quint32 objectId);
   bool synchronizeObject(const SceneObject* object, bool overlaysChanged = false);
-  bool setDiagnosticOverlays(bool showPoints, bool showNormals, const SceneModel* applicationScene);
+  bool setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene);
   void setSelectedObjects(const QList<quint32>& ids);
   bool setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
   quint32 objectIdFor(const Handle(AIS_InteractiveObject)& picked) const;
@@ -37,12 +37,13 @@ private:
     bool visible;
     std::optional<OccScene::PartId> points;
     std::optional<OccScene::PartId> normals;
+    bool showPoints = false;
+    bool showNormals = false;
   };
 
   OccScene& m_scene;
   QHash<quint32, Presentation> m_parts;
-  bool m_showPoints = false;
-  bool m_showNormals = false;
+  QList<quint32> m_selectedObjects;
   std::optional<OccScene::PartId> m_axisPreview;
   std::optional<ChamferPathParameters> m_previewParameters;
 };

@@ -31,6 +31,8 @@ public:
 	Q_INVOKABLE SceneObject* addObject(const QString& name, SceneObject::Kind kind, SceneObject::Classification classification);
   Q_INVOKABLE bool renameObject(SceneObject* object, const QString& name);
   Q_INVOKABLE bool setObjectVisible(SceneObject* object, bool visible);
+  // The target object and its two diagnostic preferences form one display operation.
+  Q_INVOKABLE bool setObjectDiagnosticOverlays(SceneObject* object, bool showPoints, bool showNormals);
 
 signals:
   void intersectionFailed(const QString& message);
@@ -38,6 +40,7 @@ signals:
   void objectAdded(SceneObject* object);
   void objectRemoved(quint32 objectId);
   void objectVisibilityChanged(SceneObject* object);
+  void objectDiagnosticOverlaysChanged(SceneObject* object);
 
 private:
   std::optional<std::array<const SceneObject*, 2>> intersectionPair(const QList<quint32>& ids) const;
@@ -46,6 +49,7 @@ private:
   void appendObject(SceneObject* object);
   SceneObject* createObject(SceneObject::Description description);
   void onObjectVisibilityChanged();
+  void onObjectDiagnosticOverlaysChanged();
 
   QList<SceneObject*> m_objects;
   QHash<quint32, SceneObject*> m_objectsById;

@@ -137,6 +137,7 @@ void SceneModel::appendObject(SceneObject* object)
   m_objects.append(object);
   m_objectsById.insert(object->objectId(), object);
   connect(object, &SceneObject::visibleChanged, this, &SceneModel::onObjectVisibilityChanged);
+  connect(object, &SceneObject::diagnosticOverlaysChanged, this, &SceneModel::onObjectDiagnosticOverlaysChanged);
   emit objectAdded(object);
   emit objectsChanged();
 }
@@ -218,6 +219,18 @@ SceneObject* SceneModel::addCircle(const QUrl& sourceUrl, const QString& name, C
 void SceneModel::onObjectVisibilityChanged()
 {
   emit objectVisibilityChanged(qobject_cast<SceneObject*>(sender()));
+}
+
+void SceneModel::onObjectDiagnosticOverlaysChanged()
+{
+  emit objectDiagnosticOverlaysChanged(qobject_cast<SceneObject*>(sender()));
+}
+
+bool SceneModel::setObjectDiagnosticOverlays(SceneObject* object, bool showPoints, bool showNormals)
+{
+  if (!object || m_objectsById.value(object->objectId()) != object) return false;
+  object->setDiagnosticOverlays(showPoints, showNormals);
+  return true;
 }
 
 bool SceneModel::renameObject(SceneObject* object, const QString& name)

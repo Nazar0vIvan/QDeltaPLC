@@ -350,6 +350,8 @@ private:
 
   double feed(qsizetype interval) const
   {
+    // TransferIn and LeadIn share leadInFeed; LeadOut and TransferOut
+    // share leadOutFeed. HOME speed scaling applies only in timePtp().
     if (interval < m_data.boundaries[3]) return m_robot.timing.leadInFeed;
     if (interval < m_data.boundaries[4]) return m_robot.timing.machiningFeed;
     return m_robot.timing.leadOutFeed;

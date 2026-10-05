@@ -126,6 +126,7 @@ void OccController::setApplicationScene(SceneModel* scene)
   if (m_applicationScene == scene) return;
   QObject::disconnect(m_sceneCollectionConnection);
   QObject::disconnect(m_sceneVisibilityConnection);
+  QObject::disconnect(m_sceneDiagnosticConnection);
   QObject::disconnect(m_sceneRemovalConnection);
   QObject::disconnect(m_sceneDestroyedConnection);
   m_applicationScene = scene;
@@ -135,6 +136,8 @@ void OccController::setApplicationScene(SceneModel* scene)
     m_sceneRemovalConnection = QObject::connect(scene, &SceneModel::objectRemoved, this, &OccController::removeSceneObject);
     m_sceneVisibilityConnection = QObject::connect(
         scene, &SceneModel::objectVisibilityChanged, this, &OccController::synchronizeSceneObject);
+    m_sceneDiagnosticConnection = QObject::connect(
+        scene, &SceneModel::objectDiagnosticOverlaysChanged, this, &OccController::synchronizeSceneObject);
     m_sceneDestroyedConnection = QObject::connect(
         scene, &QObject::destroyed, this, &OccController::onSceneDestroyed);
   }

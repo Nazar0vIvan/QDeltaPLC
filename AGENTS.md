@@ -274,10 +274,15 @@ and src/main.cpp.
   The coefficient-only addPlane API remains unbounded. Properties displays plane bounds only
   when the PlaneGeometry QML view hasBounds is true. The CylinderGeometry QML view is shown only
   for fitted cylinders; metadata-only cylinder rows have no OCCT presentation.
-  Main.qml owns the selected application IDs and the Show Points/Show Normals preferences.
-  OccController forwards them to each viewport; CAD picks return stable application IDs to QML.
+  Main.qml owns the selected application IDs. SceneObject owns independent Show Points/Show Normals
+  preferences, edited through SceneModel from Properties for a single selected surface or edge.
+  OccController observes targeted overlay changes; viewport recreation restores them from scene
+  objects. Its compatibility overlay setter affects selected objects only. CAD picks return stable
+  application IDs to QML.
   Point overlays use original samples; plane/cylinder normals originate at samples and a circle's
-  single normal originates at its center. Overlays are bounded display-only OCCT parts and do
+  single normal originates at its center. Analytic intersection edges use 64 display-only curve
+  markers and one curve-plane normal at the center, not probe samples or machining normals.
+  Overlays are bounded display-only OCCT parts and do
   not participate in picking. Parent visibility controls overlays.
   Plane and cylinder JSON imports accept {"points": [[x,y,z], ...], "radius": r, "dir": s} for
   probe-ball compensation after fitting. Radius is finite and nonnegative in point units;

@@ -15,6 +15,8 @@ class SceneObject final : public QObject
   Q_PROPERTY(Kind kind READ kind CONSTANT)
   Q_PROPERTY(Classification classification READ classification CONSTANT)
   Q_PROPERTY(bool visible READ visible NOTIFY visibleChanged)
+  Q_PROPERTY(bool showPoints READ showPoints NOTIFY diagnosticOverlaysChanged)
+  Q_PROPERTY(bool showNormals READ showNormals NOTIFY diagnosticOverlaysChanged)
   Q_PROPERTY(QUrl sourceUrl READ sourceUrl CONSTANT)
   Q_PROPERTY(QObject* geometry READ geometry CONSTANT)
 
@@ -41,12 +43,15 @@ public:
   Kind kind() const { return m_kind; }
   Classification classification() const { return m_classification; }
   bool visible() const { return m_visible; }
+  bool showPoints() const { return m_showPoints; }
+  bool showNormals() const { return m_showNormals; }
   QUrl sourceUrl() const { return m_sourceUrl; }
   QObject* geometry() const { return m_geometry; }
 
 signals:
   void nameChanged();
   void visibleChanged();
+  void diagnosticOverlaysChanged();
 
 private:
   friend class SceneModel;
@@ -59,12 +64,15 @@ private:
   void setMachiningPath(SceneMachiningData data);
   void setName(const QString& name);
   void setVisible(bool visible);
+  void setDiagnosticOverlays(bool showPoints, bool showNormals);
 
   const quint32 m_objectId;
   QString m_name;
   const Kind m_kind;
   const Classification m_classification;
   bool m_visible = true;
+  bool m_showPoints = false;
+  bool m_showNormals = false;
   const QUrl m_sourceUrl;
   QObject* m_geometry = nullptr;
 };

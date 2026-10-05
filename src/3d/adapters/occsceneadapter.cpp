@@ -118,10 +118,29 @@ std::optional<TopoDS_Compound> makeDiagnosticShape(const SceneObject* object, bo
   const BoundedPlane* plane = object->plane();
   const BoundedCylinder* cylinder = object->cylinder();
   const Circle* circle = object->circle();
+  const EdgeGeometry* edge = object->edge();
+  QVector<V3d> edgeSamples;
   if (plane) samples = &plane->points();
   else if (cylinder) samples = &cylinder->points();
   else if (circle) samples = &circle->points();
-  else return std::nullopt;
+  else if (edge) {
+    const auto& ellipse = edge->ellipse();
+    if (normals) {
+      edgeSamples.append(ellipse.center);
+    } else {
+      // Analytic edges have no probe samples; these markers sample the displayed curve.
+      constexpr int kEdgeMarkers = 64;
+      const double fullTurn = 2.0 * std::acos(-1.0);
+      edgeSamples.reserve(kEdgeMarkers);
+      for (int i = 0; i < kEdgeMarkers; ++i) {
+        const double angle = fullTurn * i / kEdgeMarkers;
+        edgeSamples.append(ellipse.center
+            + ellipse.majorRadius * std::cos(angle) * ellipse.majorAxis
+            + ellipse.minorRadius * std::sin(angle) * ellipse.minorAxis);
+      }
+    }
+    samples = &edgeSamples;
+  } else return std::nullopt;
   if (samples->empty()) return std::nullopt;
 
   constexpr qsizetype kMaxMarkers = 256;
@@ -129,9 +148,11 @@ std::optional<TopoDS_Compound> makeDiagnosticShape(const SceneObject* object, bo
   const qsizetype limit = normals ? kMaxNormals : kMaxMarkers;
   const qsizetype sampleCount = circle && normals ? 1 : samples->size();
   const qsizetype stride = 1 + (sampleCount - 1) / limit;
+  const double radius = cylinder ? cylinder->radius()
+      : circle ? circle->radius() : edge ? edge->ellipse().minorRadius : 0.0;
   const double length = plane
       ? std::clamp(0.05 * std::min(plane->width(), plane->height()), 1.0, 20.0)
-      : std::clamp(0.25 * (cylinder ? cylinder->radius() : circle->radius()), 1.0, 20.0);
+      : std::clamp(0.25 * radius, 1.0, 20.0);
   BRep_Builder builder;
   TopoDS_Compound compound;
   builder.MakeCompound(compound);
@@ -151,6 +172,10 @@ std::optional<TopoDS_Compound> makeDiagnosticShape(const SceneObject* object, bo
       direction = {plane->coefficients()[0], plane->coefficients()[1], plane->coefficients()[2]};
     } else if (circle) {
       direction = {circle->normal().x(), circle->normal().y(), circle->normal().z()};
+    } else if (edge) {
+      const auto& ellipse = edge->ellipse();
+      const V3d normal = ellipse.majorAxis.cross(ellipse.minorAxis).normalized();
+      direction = {normal.x(), normal.y(), normal.z()};
     } else {
       double axial = 0.0;
       for (int j = 0; j < 3; ++j)
@@ -274,7 +299,11 @@ bool OccSceneAdapter::synchronizeObject(const SceneObject* object, bool overlays
   }
   const bool visible = object->visible();
   const bool visibilityChanged = it->visible != visible;
+  overlaysChanged = overlaysChanged || it->showPoints != object->showPoints()
+      || it->showNormals != object->showNormals();
   if (!created && !visibilityChanged && !overlaysChanged) return false;
+  it->showPoints = object->showPoints();
+  it->showNormals = object->showNormals();
   if (visibilityChanged) {
     for (auto id : it->surfaces) (void)m_scene.setPartVisible(id, visible);
     it->visible = visible;
@@ -287,7 +316,7 @@ bool OccSceneAdapter::synchronizeObject(const SceneObject* object, bool overlays
 std::optional<OccScene::PartId> OccSceneAdapter::synchronizeOverlay(
     const SceneObject* object, std::optional<OccScene::PartId> partId, bool normals)
 {
-  const bool enabled = object->visible() && (normals ? m_showNormals : m_showPoints);
+  const bool enabled = object->visible() && (normals ? object->showNormals() : object->showPoints());
   if (partId) {
     (void)m_scene.setPartVisible(*partId, enabled);
     return partId;
@@ -306,21 +335,24 @@ std::optional<OccScene::PartId> OccSceneAdapter::synchronizeOverlay(
   return m_scene.addShapePartWithId(*shape, props);
 }
 
-bool OccSceneAdapter::setDiagnosticOverlays(bool showPoints, bool showNormals, const SceneModel* applicationScene)
+// Selection and the two diagnostic preferences define this compatibility operation.
+bool OccSceneAdapter::setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene)
 {
-  if (m_showPoints == showPoints && m_showNormals == showNormals) return false;
-  m_showPoints = showPoints;
-  m_showNormals = showNormals;
   bool changed = false;
   if (applicationScene) {
-    for (const SceneObject* object : applicationScene->objectList())
-      changed = synchronizeObject(object, true) || changed;
+    const QList<quint32> selectedObjects = m_selectedObjects;
+    for (quint32 id : selectedObjects) {
+      SceneObject* object = applicationScene->findObject(id);
+      if (!object || (object->showPoints() == showPoints && object->showNormals() == showNormals)) continue;
+      changed = applicationScene->setObjectDiagnosticOverlays(object, showPoints, showNormals) || changed;
+    }
   }
   return changed;
 }
 
 void OccSceneAdapter::setSelectedObjects(const QList<quint32>& ids)
 {
+  m_selectedObjects = ids;
   std::vector<OccScene::PartId> parts;
   parts.reserve(static_cast<std::size_t>(ids.size()));
   for (quint32 id : ids) {

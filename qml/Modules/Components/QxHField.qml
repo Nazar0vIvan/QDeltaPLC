@@ -8,6 +8,7 @@ RowLayout {
   id: root
 
   property int labelWidth: 0
+  property bool fixedLabelWidth: false
   property alias labelText: label.text
   property alias color: label.color
 
@@ -16,7 +17,10 @@ RowLayout {
   Label {
     id: label
 
-    Layout.preferredWidth: Math.max(root.labelWidth, label.implicitWidth)
+    Layout.minimumWidth: root.fixedLabelWidth ? root.labelWidth : 0
+    Layout.preferredWidth: root.fixedLabelWidth ? root.labelWidth
+                                              : Math.max(root.labelWidth, label.implicitWidth)
+    Layout.maximumWidth: root.fixedLabelWidth ? root.labelWidth : Number.POSITIVE_INFINITY
     Layout.alignment: Qt.AlignVCenter
 
     verticalAlignment: Text.AlignVCenter

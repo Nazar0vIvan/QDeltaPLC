@@ -11,6 +11,25 @@ QxPanel {
 
   required property int selectionCount
   required property Backend.SceneObject selectedObject
+  required property bool showPoints
+  required property bool showNormals
+  readonly property int labelColumnWidth: Math.ceil(Math.max(Metrics.w120,
+      ...[qsTr("Name"), qsTr("Type"), qsTr("State"), qsTr("Source"), qsTr("Visible"),
+          qsTr("Show Points"), qsTr("Show Normals"), qsTr("Normal"), qsTr("Origin"),
+          qsTr("Width"), qsTr("Height"), qsTr("Points"), qsTr("Offset (d)"),
+          qsTr("Center"), qsTr("Radius"), qsTr("Fit RMS"), qsTr("Axis"),
+          qsTr("Diameter"), qsTr("Length")].map(label => labelMetrics.advanceWidth(label))))
+
+  FontMetrics {
+    id: labelMetrics
+    font: Fonts.body
+  }
+  readonly property bool diagnosticControlsVisible: root.selectedObject !== null
+      && (root.selectedObject.kind === Backend.SceneObject.Plane
+          || root.selectedObject.kind === Backend.SceneObject.Cylinder
+          || root.selectedObject.kind === Backend.SceneObject.Cone
+          || root.selectedObject.kind === Backend.SceneObject.Circle
+          || root.selectedObject.kind === Backend.SceneObject.Edge)
   readonly property Backend.PlaneGeometry planeGeometry: root.selectedObject
                                                          ? root.selectedObject.geometry as Backend.PlaneGeometry : null
   readonly property Backend.CylinderGeometry cylinderGeometry: root.selectedObject
@@ -21,6 +40,16 @@ QxPanel {
 
   signal renameRequested(Backend.SceneObject object, string name)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
+  signal pointsToggled(bool checked)
+  signal normalsToggled(bool checked)
+
+  function formatReal(value: real): string {
+    return (Math.abs(value) < 0.00005 ? 0 : value).toFixed(4)
+  }
+
+  function formatVector(values: list<real>): string {
+    return "[" + values.map(value => root.formatReal(value)).join("; ") + "]"
+  }
 
   function typeLabel(kind: int): string {
     switch (kind) {
@@ -38,17 +67,23 @@ QxPanel {
   component PropertyValue: QxHField {
     property alias valueText: valueLabel.text
     property alias valueObjectName: valueLabel.objectName
-    property alias wrapMode: valueLabel.wrapMode
 
     Layout.fillWidth: true
-    labelWidth: Metrics.w80
+    labelWidth: root.labelColumnWidth
+    fixedLabelWidth: true
 
-    Label {
+    TextEdit {
       id: valueLabel
 
       Layout.fillWidth: true
       Layout.minimumWidth: 0
-      wrapMode: Text.WrapAnywhere
+      clip: true
+      readOnly: true
+      selectByMouse: true
+      textFormat: TextEdit.PlainText
+      wrapMode: TextEdit.NoWrap
+      selectionColor: Colors.primary.highlight
+      selectedTextColor: Colors.foreground.high
       color: Colors.foreground.high
       font: Fonts.body
     }
@@ -73,7 +108,7 @@ QxPanel {
                                    : qsTr("%1 objects selected.").arg(root.selectionCount)
     color: Colors.foreground.medium
     font: Fonts.body
-    wrapMode: Text.WordWrap
+    wrapMode: Text.NoWrap
   }
 
   ScrollView {
@@ -83,17 +118,21 @@ QxPanel {
     Layout.fillHeight: true
     clip: true
     contentWidth: availableWidth
+    contentHeight: root.selectedObject ? propertiesContent.implicitHeight : 0
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: root.selectedObject ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
     ColumnLayout {
-      width: propertiesScroll.availableWidth
+      id: propertiesContent
+      width: propertiesScroll.contentWidth
       visible: root.selectedObject !== null
       spacing: Metrics.sp8
 
       // General object properties.
       QxHField {
         Layout.fillWidth: true
-        labelWidth: Metrics.w80
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
         labelText: qsTr("Name")
 
         QxTextInput {
@@ -106,6 +145,8 @@ QxPanel {
 
           Layout.fillWidth: true
           Layout.minimumWidth: 0
+          Layout.preferredWidth: Metrics.w120
+          clip: true
           leftPadding: Metrics.sp6
           rightPadding: Metrics.sp6
           topPadding: Metrics.sp4
@@ -148,25 +189,31 @@ QxPanel {
 
       QxHField {
         Layout.fillWidth: true
-        labelWidth: Metrics.w80
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
         labelText: qsTr("Type")
 
         Label {
           Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          elide: Text.ElideRight
           text: root.selectedObject ? root.typeLabel(root.selectedObject.kind) : ""
           color: Colors.foreground.high
           font: Fonts.body
-          wrapMode: Text.WordWrap
+          wrapMode: Text.NoWrap
         }
       }
 
       QxHField {
         Layout.fillWidth: true
-        labelWidth: Metrics.w80
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
         labelText: qsTr("State")
 
         Label {
           Layout.fillWidth: true
+          Layout.minimumWidth: 0
+          elide: Text.ElideRight
           text: !root.selectedObject ? ""
                 : root.selectedObject.classification === Backend.SceneObject.Rough ? qsTr("Rough")
                 : root.selectedObject.classification === Backend.SceneObject.Precise ? qsTr("Precise")
@@ -179,23 +226,38 @@ QxPanel {
       QxHField {
         Layout.fillWidth: true
         visible: root.selectedObject !== null && root.selectedObject.sourceUrl.toString().length > 0
-        labelWidth: Metrics.w80
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
         labelText: qsTr("Source")
 
         QxTextInput {
+          id: sourceInput
           objectName: "objectSourceField"
           Layout.fillWidth: true
           Layout.minimumWidth: 0
+          Layout.preferredWidth: Metrics.w120
+          clip: true
           readOnly: true
-          padding: Metrics.sp4
+          leftPadding: Metrics.sp6
+          rightPadding: Metrics.sp6
+          topPadding: Metrics.sp4
+          bottomPadding: Metrics.sp4
           text: root.selectedObject ? root.selectedObject.sourceUrl.toString() : ""
           Accessible.name: qsTr("Source JSON")
+
+          background: Rectangle {
+            color: "transparent"
+            radius: sourceInput.radius
+            border.width: Metrics.w1
+            border.color: sourceInput.activeFocus ? Colors.primary.base : Colors.background.dp12
+          }
         }
       }
 
       QxHField {
         Layout.fillWidth: true
-        labelWidth: Metrics.w80
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
         labelText: qsTr("Visible")
 
         QxCheckBox {
@@ -205,6 +267,40 @@ QxPanel {
           Accessible.name: qsTr("Object visible")
 
           onClicked: root.visibilityRequested(root.selectedObject, checked)
+        }
+
+        Item { Layout.fillWidth: true }
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.diagnosticControlsVisible
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
+        labelText: qsTr("Show Points")
+
+        QxCheckBox {
+          objectName: "showPointsCheckBox"
+          checked: root.showPoints
+          Accessible.name: qsTr("Show Points")
+          onClicked: root.pointsToggled(checked)
+        }
+
+        Item { Layout.fillWidth: true }
+      }
+
+      QxHField {
+        Layout.fillWidth: true
+        visible: root.diagnosticControlsVisible
+        labelWidth: root.labelColumnWidth
+        fixedLabelWidth: true
+        labelText: qsTr("Show Normals")
+
+        QxCheckBox {
+          objectName: "showNormalsCheckBox"
+          checked: root.showNormals
+          Accessible.name: qsTr("Show Normals")
+          onClicked: root.normalsToggled(checked)
         }
 
         Item { Layout.fillWidth: true }
@@ -225,8 +321,8 @@ QxPanel {
         labelText: qsTr("Normal")
         valueObjectName: "planeNormalValue"
         valueText: root.planeGeometry
-              ? [root.planeGeometry.normalX, root.planeGeometry.normalY,
-                 root.planeGeometry.normalZ].map(value => value.toPrecision(6)).join(", ") : ""
+              ? root.formatVector([root.planeGeometry.normalX, root.planeGeometry.normalY,
+                 root.planeGeometry.normalZ]) : ""
       }
 
       PropertyValue {
@@ -234,22 +330,22 @@ QxPanel {
         labelText: qsTr("Origin")
         valueObjectName: "planeOriginValue"
         valueText: root.planeGeometry && root.planeGeometry.hasBounds
-              ? [root.planeGeometry.originX, root.planeGeometry.originY,
-                 root.planeGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
+              ? root.formatVector([root.planeGeometry.originX, root.planeGeometry.originY,
+                 root.planeGeometry.originZ]) : ""
       }
 
       PropertyValue {
         visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
         labelText: qsTr("Width")
         valueObjectName: "planeWidthValue"
-        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.planeGeometry.width.toPrecision(6) : ""
+        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.formatReal(root.planeGeometry.width) : ""
       }
 
       PropertyValue {
         visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
         labelText: qsTr("Height")
         valueObjectName: "planeHeightValue"
-        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.planeGeometry.height.toPrecision(6) : ""
+        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.formatReal(root.planeGeometry.height) : ""
       }
 
       PropertyValue {
@@ -263,16 +359,7 @@ QxPanel {
         visible: root.planeGeometry !== null
         labelText: qsTr("Offset (d)")
         valueObjectName: "planeOffsetValue"
-        valueText: root.planeGeometry ? root.planeGeometry.offset.toPrecision(6) : ""
-      }
-
-      Label {
-        Layout.fillWidth: true
-        visible: root.planeGeometry !== null
-        text: qsTr("nx·x + ny·y + nz·z + d = 0")
-        wrapMode: Text.WordWrap
-        color: Colors.foreground.medium
-        font: Fonts.caption
+        valueText: root.planeGeometry ? root.formatReal(root.planeGeometry.offset) : ""
       }
 
       // Circle geometry.
@@ -281,15 +368,15 @@ QxPanel {
         labelText: qsTr("Center")
         valueObjectName: "circleCenterValue"
         valueText: root.circleGeometry
-                   ? [root.circleGeometry.centerX, root.circleGeometry.centerY,
-                      root.circleGeometry.centerZ].map(value => value.toPrecision(6)).join(", ") : ""
+                   ? root.formatVector([root.circleGeometry.centerX, root.circleGeometry.centerY,
+                      root.circleGeometry.centerZ]) : ""
       }
 
       PropertyValue {
         visible: root.circleGeometry !== null
         labelText: qsTr("Radius")
         valueObjectName: "circleRadiusValue"
-        valueText: root.circleGeometry ? root.circleGeometry.radius.toPrecision(6) : ""
+        valueText: root.circleGeometry ? root.formatReal(root.circleGeometry.radius) : ""
       }
 
       PropertyValue {
@@ -297,8 +384,8 @@ QxPanel {
         labelText: qsTr("Normal")
         valueObjectName: "circleNormalValue"
         valueText: root.circleGeometry
-                   ? [root.circleGeometry.normalX, root.circleGeometry.normalY,
-                      root.circleGeometry.normalZ].map(value => value.toPrecision(6)).join(", ") : ""
+                   ? root.formatVector([root.circleGeometry.normalX, root.circleGeometry.normalY,
+                      root.circleGeometry.normalZ]) : ""
       }
 
       PropertyValue {
@@ -312,7 +399,7 @@ QxPanel {
         visible: root.circleGeometry !== null
         labelText: qsTr("Fit RMS")
         valueObjectName: "circleResidualValue"
-        valueText: root.circleGeometry ? root.circleGeometry.rmsResidual.toPrecision(6) : ""
+        valueText: root.circleGeometry ? root.formatReal(root.circleGeometry.rmsResidual) : ""
       }
 
       // Cylinder geometry.
@@ -321,8 +408,8 @@ QxPanel {
         labelText: qsTr("Origin")
         valueObjectName: "cylinderOriginValue"
         valueText: root.cylinderGeometry
-              ? [root.cylinderGeometry.originX, root.cylinderGeometry.originY,
-                 root.cylinderGeometry.originZ].map(value => value.toPrecision(6)).join(", ") : ""
+              ? root.formatVector([root.cylinderGeometry.originX, root.cylinderGeometry.originY,
+                 root.cylinderGeometry.originZ]) : ""
       }
 
       PropertyValue {
@@ -330,32 +417,29 @@ QxPanel {
         labelText: qsTr("Axis")
         valueObjectName: "cylinderAxisValue"
         valueText: root.cylinderGeometry
-              ? [root.cylinderGeometry.axisX, root.cylinderGeometry.axisY,
-                 root.cylinderGeometry.axisZ].map(value => value.toPrecision(6)).join(", ") : ""
+              ? root.formatVector([root.cylinderGeometry.axisX, root.cylinderGeometry.axisY,
+                 root.cylinderGeometry.axisZ]) : ""
       }
 
       PropertyValue {
         visible: root.cylinderGeometry !== null
         labelText: qsTr("Radius")
         valueObjectName: "cylinderRadiusValue"
-        valueText: root.cylinderGeometry ? root.cylinderGeometry.radius.toPrecision(6) : ""
-        wrapMode: Text.NoWrap
+        valueText: root.cylinderGeometry ? root.formatReal(root.cylinderGeometry.radius) : ""
       }
 
       PropertyValue {
         visible: root.cylinderGeometry !== null
         labelText: qsTr("Diameter")
         valueObjectName: "cylinderDiameterValue"
-        valueText: root.cylinderGeometry ? (2 * root.cylinderGeometry.radius).toPrecision(6) : ""
-        wrapMode: Text.NoWrap
+        valueText: root.cylinderGeometry ? root.formatReal(2 * root.cylinderGeometry.radius) : ""
       }
 
       PropertyValue {
         visible: root.cylinderGeometry !== null
         labelText: qsTr("Length")
         valueObjectName: "cylinderLengthValue"
-        valueText: root.cylinderGeometry ? root.cylinderGeometry.length.toPrecision(6) : ""
-        wrapMode: Text.NoWrap
+        valueText: root.cylinderGeometry ? root.formatReal(root.cylinderGeometry.length) : ""
       }
 
       PropertyValue {
@@ -363,7 +447,6 @@ QxPanel {
         labelText: qsTr("Points")
         valueObjectName: "cylinderPointCountValue"
         valueText: root.cylinderGeometry ? String(root.cylinderGeometry.pointCount) : ""
-        wrapMode: Text.NoWrap
       }
     }
   }

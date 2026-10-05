@@ -48,9 +48,7 @@ ApplicationWindow {
     window.requestActivate()
   }
 
-  // UI display preferences for the imported rough-surface presentations.
-  property bool showPoints: false
-  property bool showNormals: false
+  // Editor state and selected application objects.
   property bool chamferEditorOpen: false
   property list<real> selectedObjectIds: []
 
@@ -116,24 +114,17 @@ ApplicationWindow {
     Viewport3D.OccController.setSelectedObjects(root.selectedObjectIds)
   }
 
-  function syncViewportOverlays() {
-    Viewport3D.OccController.setDiagnosticOverlays(root.showPoints, root.showNormals)
-  }
-
   function setSceneObjectVisible(object, visible) {
     if (root.sceneModel.setObjectVisible(object, visible))
       root.syncViewportSelection()
   }
 
   onSelectedObjectIdsChanged: root.syncViewportSelection()
-  onShowPointsChanged: root.syncViewportOverlays()
-  onShowNormalsChanged: root.syncViewportOverlays()
   Component.onCompleted: {
     if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
     root.syncEndEffector()
     root.syncMachiningInput()
     root.syncViewportSelection()
-    root.syncViewportOverlays()
   }
 
   Connections {
@@ -144,7 +135,6 @@ ApplicationWindow {
     function onViewportReadyChanged() {
       if (Viewport3D.OccController.viewportReady) {
         root.syncViewportSelection()
-        root.syncViewportOverlays()
       }
     }
 
@@ -488,8 +478,6 @@ ApplicationWindow {
 
         mode: root.workflowMode
         submode: root.measurementSubmode
-        showPoints: root.showPoints
-        showNormals: root.showNormals
         planeImportAvailable: root.geometryImportAvailable
         circleImportAvailable: root.geometryImportAvailable
         cylinderImportAvailable: root.geometryImportAvailable
@@ -524,8 +512,6 @@ ApplicationWindow {
         onPlaneImportRequested: planeFileDialog.open()
         onCircleImportRequested: circleFileDialog.open()
         onCylinderImportRequested: cylinderFileDialog.open()
-        onPointsToggled: checked => root.showPoints = checked
-        onNormalsToggled: checked => root.showNormals = checked
       }
 
       RobotViewport {
@@ -541,11 +527,22 @@ ApplicationWindow {
     Item {
       SplitView.preferredWidth: 330
       SplitView.minimumWidth: 280
+      SplitView.maximumWidth: 330
       PropertiesPanel {
         anchors.fill: parent
         visible: !root.chamferEditorOpen
         selectionCount: root.selectedObjectIds.length
         selectedObject: root.selectedSceneObject
+        showPoints: root.selectedSceneObject ? root.selectedSceneObject.showPoints : false
+        showNormals: root.selectedSceneObject ? root.selectedSceneObject.showNormals : false
+        onPointsToggled: checked => {
+          if (root.selectedSceneObject)
+            root.sceneModel.setObjectDiagnosticOverlays(root.selectedSceneObject, checked, root.selectedSceneObject.showNormals)
+        }
+        onNormalsToggled: checked => {
+          if (root.selectedSceneObject)
+            root.sceneModel.setObjectDiagnosticOverlays(root.selectedSceneObject, root.selectedSceneObject.showPoints, checked)
+        }
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
         onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
       }
