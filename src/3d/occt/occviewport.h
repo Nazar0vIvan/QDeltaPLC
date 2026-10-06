@@ -32,6 +32,8 @@ public:
   bool applyPose(const RobotPose& pose);
   // Applied flange-relative calibration; empty hides the TCP decoration.
   void setSpindleTcpFrame(const std::optional<M4d>& frame);
+  // Applied flange-relative ER calibration; empty hides the collet decoration.
+  void setSpindleColletFrame(const std::optional<M4d>& frame);
   bool setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
                       SceneEndEffectors::Tool active);
   void synchronizeApplicationScene(SceneModel* applicationScene);

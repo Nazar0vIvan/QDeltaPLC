@@ -47,13 +47,16 @@ public:
   void updateCameraDependentObjects();
   // BASE-relative frame; empty hides the non-selectable TCP axes.
   void setSpindleTcpFrame(const std::optional<gp_Trsf>& frame);
+  // BASE-relative frame; empty hides the non-selectable ER axes.
+  void setSpindleColletFrame(const std::optional<gp_Trsf>& frame);
   void displayInfrastructure();
   void clearParts();
 
 private:
   void displayWorldAxes();
   void redisplayWorldAxes();
-  void resizeSpindleTcpAxes();
+  void setFrameAxes(OccWorldAxes& axes, const std::optional<gp_Trsf>& frame);
+  void resizeFrameAxes(OccWorldAxes& axes);
   void displayViewCube();
   bool displayPart(OccPart& part);
   void activateAllSelectionModes(const OccPart& part);
@@ -68,9 +71,9 @@ private:
   std::map<PartId, Handle(AIS_Shape)> m_selectionOutlines;
   OccWorldAxes m_worldAxes;
   OccWorldAxes m_spindleTcpAxes;
+  OccWorldAxes m_spindleColletAxes;
   OccViewCube m_viewCube;
   bool m_worldAxesDisplayed = false;
-  bool m_spindleTcpAxesDisplayed = false;
   bool m_viewCubeDisplayed = false;
 };
 

@@ -80,9 +80,13 @@
   succeeds. OccViewWindow retains const access to preview state for restoration.
   resources/json/kr10.json is embedded by json.qrc. cmake/DeployOcct.cmake stages OCCT DLLs,
   runtime resources, and resources/cad/kr10 beside the executable and during installation.
-  Generated BREP caches belong under QStandardPaths::CacheLocation, not beside source CAD.
-  CachedShapeLoader accepts STEP/STP basenames in a selected directory. Its content/OCCT-version
-  hash selects a BREP before STEP conversion; absent/invalid caches are regenerated atomically.
+  Generated BREP files belong in applicationDirPath()/resources/cad/kr10 beside deployed CAD;
+  CAD loading does not use QStandardPaths system cache folders. CachedShapeLoader accepts STEP/STP
+  basenames in a selected source directory and first reads <completeBaseName>.brep from the deployed
+  CAD directory, without requiring or hashing the STEP source. Missing/unreadable/invalid BREPs
+  fall back to STEP conversion and are saved atomically with QSaveFile. A valid BREP takes priority;
+  STEP/content/OCCT-version changes require removing that BREP to regenerate it. Cache identity
+  is the source basename, so sources with the same basename share the same deployed BREP.
 - USE_HOT_RELOAD=ON requires Felgo/FelgoHotReload. OFF embeds application QML using
   qt_add_qml_module(). Preserve both paths; use OFF for verification when Felgo is unavailable.
 - FAST_QML_BUILD=ON applies NO_CACHEGEN to the application, UI, and viewport modules. Check OFF too
@@ -205,8 +209,16 @@ and src/main.cpp.
   through backendqmltypes.h. CAD URLs default to deployed MEE.stp and SEE.stp via ViewportAssets.
   MEE is WP-500 V6 with constant 3 mm ball diameter and 37.2 mm stylus length. Spindle TCP is an
   initially empty QList<double>, set atomically to six finite flange-relative XYZABC values
-  (mm/degrees, Z-Y-X rotation). Active tool defaults to Measuring. OccController observes CAD
-  source changes and retains separate MEE/SEE shapes, successful source URLs, loading states and
+  (mm/degrees, Z-Y-X rotation). spindleTcpInCollet derives the ER-relative editor pose;
+  spindleColletPose exposes the flange-relative ER XYZABC. applySpindlePoses validates ER and
+  ER-relative TCP together, composes FLANGE_ER * ER_TCP, and commits both before notifications.
+  setSpindleTcpInCollet delegates to that operation with the current ER. Only an effective ER
+  change emits spindleColletChanged; ER changes also notify TCP consumers once. TCP-only changes
+  preserve the exact ER matrix, and unchanged poses do not notify or invalidate machining paths.
+  The hardcoded initial ER origin in flange coordinates is (142.187099, -0.182323, 122.895995) mm;
+  ER Y follows normalized (0.999995, -0.000312, -0.003129), provisional ER Z is projected
+  flange +Z perpendicular to ER Y, and ER X is Y cross Z. Active tool defaults to Measuring.
+  OccController observes CAD source changes and retains separate MEE/SEE shapes, successful source URLs, loading states and
   errors. Superseded load results are discarded; failed replacements retain the last good shape.
   OccRobotAdapter retains both tool presentations, updating both at the flange during pose changes;
   switching only changes visibility. OccViewWindow retains tool shapes/selection across surface
@@ -218,24 +230,31 @@ and src/main.cpp.
   readiness gates Apply, with the reason displayed in the editor. Successful Apply returns to Properties; Cancel discards the draft, restores settings
   after unsuccessful Apply, and returns to Properties. Selection/mode changes close the editor.
   Properties shows cylinder diameter as twice its compensated radius. Tool windows retain drafts
-  when closed and hide when leaving their mode. EndEffectorPanel shows fixed MEE data or six SEE
-  TCP draft fields with Apply TCP and no Reset action. HOME PTP simulation is displayed as a
-  percentage of configured joint speed/acceleration limits; the backend auxiliaryScale remains in (0,1].
-  Timing/sampling limits remain numerical defaults without a tuning UI. Apply TCP remains enabled
-  for valid six-value drafts and shows the spindle TCP trihedron; its Visible checkbox controls OccController.showSpindleTcp.
-  OccViewWindow retains the optional flange-relative TCP frame across surface recreation.
-  OccRobotAdapter places RGB axes at BASE_FLANGE * FLANGE_TCP and updates them with robot poses.
-  OccScene reuses OccWorldAxes sizing (5% of camera scale); TCP axes are non-selectable, excluded
-  from fit bounds, and hidden without a robot or while Measuring is active. The visibility preference
-  survives mode changes. Reapplying unchanged TCP does not invalidate paths. Main.qml owns the STEP/STP
+  when closed and hide when leaving their mode. EndEffectorPanel shows fixed MEE data or disabled
+  flange-relative ER XYZABC fields under "ER collet pose relative to flange", ER visibility,
+  then editable ER-relative TCP XYZABC fields and TCP visibility. One Apply button validates
+  and submits both pose drafts; no Reset action remains. HOME PTP simulation is displayed
+  as a percentage of configured joint speed/acceleration limits; the backend auxiliaryScale remains in (0,1].
+  Timing/sampling limits remain numerical defaults without a tuning UI. Apply remains enabled
+  for valid six-value ER and TCP drafts and shows the spindle TCP trihedron; its Visible checkbox controls OccController.showSpindleTcp.
+  The separate ER trihedron Visible checkbox controls OccController.showSpindleCollet, initially
+  true and usable before TCP calibration; closing Spindle EE does not affect either preference.
+  OccViewWindow retains optional flange-relative TCP and ER frames across surface recreation.
+  OccRobotAdapter places RGB axes at BASE_FLANGE * FLANGE_TCP and BASE_FLANGE * FLANGE_ER,
+  updating both with robot poses. Individual calibration/visibility frame setters refresh only
+  the affected trihedron; robot movement, load/clear and tool switching refresh both.
+  OccScene shares OccWorldAxes display/sizing operations
+  (5% of camera scale); both trihedra are non-selectable, excluded from fit bounds, and hidden
+  without a robot or while Measuring is active. Visibility preferences survive mode changes.
+  Reapplying unchanged ER-relative TCP does not invalidate paths. Main.qml owns the STEP/STP
   dialog and captures its destination tool when opened. The panel displays per-tool load errors
   and retry; selecting the same source explicitly reloads through the existing cache.
   SceneEndEffectors converts spindle TCP/flange XYZABC poses with existing geometry helpers.
   OccController.tcpPose derives the base-relative TCP pose from committed flange state;
   solveTcpIK converts a TCP target to a flange target and delegates to existing IK.
   These generically named APIs currently use spindleTcp calibration, independently of activeTool.
-  Calibration edits notify the derived
-  TCP only, without moving CAD/robot or reloading files. Missing calibration yields empty results;
+  ER calibration changes update the ER decoration and derived TCP; TCP-only edits update TCP.
+  Calibration edits do not move CAD/robot or reload files. Missing calibration yields empty results;
   no MEE TCP is inferred from stylus length. Existing solveFK/solveIK remain flange-based.
 
 - Numerical intersections live in geometry/surfaceintersection.h/.cpp in RoboCrapGeometry.

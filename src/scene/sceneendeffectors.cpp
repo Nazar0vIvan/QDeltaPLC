@@ -1,4 +1,5 @@
 #include "sceneendeffectors.h"
+#include "geometry/pose.h"
 #include "geometry/utils.h"
 
 #include <QFileInfo>
@@ -6,6 +7,18 @@
 #include <cmath>
 
 namespace {
+
+std::optional<M4d> spindleColletTransform()
+{
+  const auto y = normalize(V3d{0.999995, -0.000312, -0.003129});
+  if (!y) return std::nullopt;
+  // Provisional roll: ER Z is the flange's positive Z projected perpendicular to ER Y.
+  const auto z = prjUnitOnPlane(V3d::UnitZ(), *y);
+  if (!z) return std::nullopt;
+  const auto frame = Pose::fromAxes(y->cross(*z), *y, *z,
+                                   V3d{142.187099, -0.182323, 122.895995});
+  return frame ? std::optional<M4d>{frame->transform()} : std::nullopt;
+}
 
 std::optional<M4d> poseTransform(const QList<double>& pose)
 {
@@ -28,6 +41,11 @@ QList<double> transformPose(const M4d& transform)
   return pose;
 }
 
+bool matchesTransform(const std::optional<M4d>& current, const M4d& candidate)
+{
+  return current && (candidate - *current).cwiseAbs().maxCoeff() <= GeomConst::Eps;
+}
+
 bool isLocalCadSource(const QUrl& source)
 {
   // File readability and CAD decoding are the loader's responsibility.
@@ -37,7 +55,8 @@ bool isLocalCadSource(const QUrl& source)
 
 } // namespace
 
-SceneEndEffectors::SceneEndEffectors(QObject* parent) : QObject(parent)
+SceneEndEffectors::SceneEndEffectors(QObject* parent)
+    : QObject(parent), m_spindleColletFrame(spindleColletTransform())
 {}
 
 bool SceneEndEffectors::setMeasuringCadSource(const QUrl& source)
@@ -65,6 +84,52 @@ bool SceneEndEffectors::setSpindleTcp(const QList<double>& pose)
     if (!std::isfinite(value)) return false;
   if (m_spindleTcp == pose) return true;
   m_spindleTcp = pose;
+  emit spindleTcpChanged();
+  return true;
+}
+
+QList<double> SceneEndEffectors::spindleColletPose() const
+{
+  return m_spindleColletFrame ? transformPose(*m_spindleColletFrame) : QList<double>{};
+}
+
+QList<double> SceneEndEffectors::spindleTcpInCollet() const
+{
+  const auto flangeToTcp = poseTransform(m_spindleTcp);
+  if (!m_spindleColletFrame || !flangeToTcp) return {};
+  const M4d colletToTcp = inverseRigidTransform(*m_spindleColletFrame) * *flangeToTcp;
+  // Normalize the composed basis before Euler extraction, including at pitch +/-90 degrees.
+  const auto frame = Pose::fromAxes(colletToTcp.block<3, 1>(0, 0), colletToTcp.block<3, 1>(0, 1),
+                                   colletToTcp.block<3, 1>(0, 2), colletToTcp.block<3, 1>(0, 3));
+  return frame ? transformPose(frame->transform()) : QList<double>{};
+}
+
+bool SceneEndEffectors::setSpindleTcpInCollet(const QList<double>& pose)
+{
+  return applySpindlePoses(spindleColletPose(), pose);
+}
+
+bool SceneEndEffectors::applySpindlePoses(const QList<double>& colletPose, const QList<double>& tcpInCollet)
+{
+  const auto flangeToCollet = poseTransform(colletPose);
+  const auto colletToTcp = poseTransform(tcpInCollet);
+  if (!flangeToCollet || !colletToTcp) return false;
+
+  const bool colletChanged = !m_spindleColletFrame
+      || (colletPose != spindleColletPose() && !matchesTransform(m_spindleColletFrame, *flangeToCollet));
+  if (!colletChanged && tcpInCollet == spindleTcpInCollet()) return true;
+
+  // Keep the exact committed ER matrix when only TCP changes.
+  const M4d flangeToTcp = (colletChanged ? *flangeToCollet : *m_spindleColletFrame) * *colletToTcp;
+  const QList<double> flangePose = transformPose(flangeToTcp);
+  if (flangePose.size() != 6) return false;
+  const bool tcpChanged = !matchesTransform(poseTransform(m_spindleTcp), flangeToTcp);
+  if (!colletChanged) return tcpChanged ? setSpindleTcp(flangePose) : true;
+
+  // ER changes redefine the TCP conversion; commit both before either notification.
+  m_spindleColletFrame = *flangeToCollet;
+  if (tcpChanged) m_spindleTcp = flangePose;
+  emit spindleColletChanged();
   emit spindleTcpChanged();
   return true;
 }

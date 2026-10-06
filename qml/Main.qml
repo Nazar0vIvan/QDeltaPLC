@@ -382,8 +382,10 @@ ApplicationWindow {
       measuringName: Backend.EndEffectors.measuringName
       ballDiameter: Backend.EndEffectors.rubyBallDiameter
       stylusLength: Backend.EndEffectors.stylusLength
+      colletPose: Backend.EndEffectors.spindleColletPose
       tcp: Backend.EndEffectors.spindleTcp
       tcpVisible: false
+      colletVisible: false
       onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Measuring)
       onBrowseRequested: {
         endEffectorFileDialog.measuring = true
@@ -414,11 +416,14 @@ ApplicationWindow {
       measuringName: Backend.EndEffectors.measuringName
       ballDiameter: Backend.EndEffectors.rubyBallDiameter
       stylusLength: Backend.EndEffectors.stylusLength
-      tcp: Backend.EndEffectors.spindleTcp
+      colletPose: Backend.EndEffectors.spindleColletPose
+      tcp: Backend.EndEffectors.spindleTcpInCollet
       tcpVisible: Viewport3D.OccController.showSpindleTcp
+      colletVisible: Viewport3D.OccController.showSpindleCollet
       onTcpVisibilityRequested: visible => Viewport3D.OccController.showSpindleTcp = visible
-      onTcpRequested: values => {
-        if (Backend.EndEffectors.setSpindleTcp(values))
+      onColletVisibilityRequested: visible => Viewport3D.OccController.showSpindleCollet = visible
+      onPosesRequested: (colletValues, tcpValues) => {
+        if (Backend.EndEffectors.applySpindlePoses(colletValues, tcpValues))
           Viewport3D.OccController.showSpindleTcp = true
       }
       onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)

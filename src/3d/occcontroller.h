@@ -30,6 +30,7 @@ class OccController final : public QObject
   Q_PROPERTY(QWindow* viewWindow READ viewWindow NOTIFY viewWindowChanged)
   Q_PROPERTY(bool ready READ isReady NOTIFY readyChanged)
   Q_PROPERTY(bool showSpindleTcp READ showSpindleTcp WRITE setShowSpindleTcp NOTIFY showSpindleTcpChanged)
+  Q_PROPERTY(bool showSpindleCollet READ showSpindleCollet WRITE setShowSpindleCollet NOTIFY showSpindleColletChanged)
   Q_PROPERTY(bool viewportReady READ isViewportReady NOTIFY viewportReadyChanged)
   Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged)
   Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
@@ -61,6 +62,8 @@ public:
   void setMachining(SceneMachining* machining);
   bool showSpindleTcp() const { return m_showSpindleTcp; }
   void setShowSpindleTcp(bool visible);
+  bool showSpindleCollet() const { return m_showSpindleCollet; }
+  void setShowSpindleCollet(bool visible);
   bool isMeasuringCadLoading() const;
   bool isSpindleCadLoading() const;
   QString measuringCadError() const;
@@ -77,6 +80,7 @@ public:
 
 signals:
   void showSpindleTcpChanged();
+  void showSpindleColletChanged();
   void viewWindowChanged();
   void readyChanged();
   void viewportReadyChanged();
@@ -98,6 +102,7 @@ private:
   void applyPlaybackPose(QList<double> joints);
   void synchronizeEndEffectors();
   void synchronizeSpindleTcp();
+  void synchronizeSpindleCollet();
   void synchronizeSceneObject(SceneObject* object);
   void removeSceneObject(quint32 objectId);
   void onSceneDestroyed();
@@ -138,6 +143,7 @@ private:
   bool m_shuttingDown = false;
   bool m_occtInitialized = false;
   bool m_showSpindleTcp = true;
+  bool m_showSpindleCollet = true;
 };
 
 } // namespace RoboCrap3D

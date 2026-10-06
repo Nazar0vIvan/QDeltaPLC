@@ -214,6 +214,8 @@ void OccController::setEndEffectors(SceneEndEffectors* effectors)
                      this, &OccController::tcpPoseChanged);
     QObject::connect(effectors, &SceneEndEffectors::spindleTcpChanged,
                      this, &OccController::synchronizeSpindleTcp);
+    QObject::connect(effectors, &SceneEndEffectors::spindleColletChanged,
+                     this, &OccController::synchronizeSpindleCollet);
     QObject::connect(effectors, &SceneEndEffectors::measuringCadSourceChanged, this,
                      std::bind(&OccController::reloadEndEffector, this, SceneEndEffectors::Measuring));
     QObject::connect(effectors, &SceneEndEffectors::spindleCadSourceChanged, this,
@@ -237,6 +239,7 @@ void OccController::synchronizeEndEffectors()
   m_window->setEndEffectors({m_toolCad[0].shapes, m_toolCad[1].shapes},
       m_endEffectors ? m_endEffectors->activeTool() : SceneEndEffectors::Measuring);
   synchronizeSpindleTcp();
+  synchronizeSpindleCollet();
 }
 
 void OccController::setShowSpindleTcp(bool visible)
@@ -245,6 +248,14 @@ void OccController::setShowSpindleTcp(bool visible)
   m_showSpindleTcp = visible;
   synchronizeSpindleTcp();
   emit showSpindleTcpChanged();
+}
+
+void OccController::setShowSpindleCollet(bool visible)
+{
+  if (m_showSpindleCollet == visible) return;
+  m_showSpindleCollet = visible;
+  synchronizeSpindleCollet();
+  emit showSpindleColletChanged();
 }
 
 void OccController::synchronizeSpindleTcp()
@@ -261,6 +272,16 @@ void OccController::synchronizeSpindleTcp()
     }
   }
   m_window->setSpindleTcpFrame(frame);
+}
+
+void OccController::synchronizeSpindleCollet()
+{
+  if (!m_window) return;
+  std::optional<M4d> frame;
+  if (m_showSpindleCollet && m_endEffectors
+      && m_endEffectors->activeTool() == SceneEndEffectors::Spindle)
+    frame = m_endEffectors->spindleColletFrame();
+  m_window->setSpindleColletFrame(frame);
 }
 
 void OccController::reloadEndEffector(SceneEndEffectors::Tool tool)

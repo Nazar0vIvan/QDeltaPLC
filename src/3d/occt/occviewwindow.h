@@ -36,6 +36,8 @@ public:
   bool applyPose(const RobotPose& pose);
   // Applied flange-relative calibration; empty hides the TCP decoration.
   void setSpindleTcpFrame(const std::optional<M4d>& frame);
+  // Applied flange-relative ER calibration; empty hides the collet decoration.
+  void setSpindleColletFrame(const std::optional<M4d>& frame);
   void setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
                       SceneEndEffectors::Tool active);
   bool isReady() const;
@@ -75,6 +77,7 @@ private:
   bool m_initializationFailed = false;
   std::optional<ChamferPathParameters> m_machiningPreview;
   std::optional<M4d> m_spindleTcpFrame;
+  std::optional<M4d> m_spindleColletFrame;
   QList<quint32> m_selectedObjects;
 };
 

@@ -25,6 +25,7 @@ OccScene::OccScene(
       , m_view(view)
       , m_worldAxes(currentWorldAxisLength())
       , m_spindleTcpAxes(currentWorldAxisLength())
+      , m_spindleColletAxes(currentWorldAxisLength())
       , m_viewCube()
 {}
 
@@ -52,39 +53,47 @@ void OccScene::updateCameraDependentObjects()
     m_worldAxes.setLength(currentWorldAxisLength());
     redisplayWorldAxes();
   }
-  resizeSpindleTcpAxes();
+  resizeFrameAxes(m_spindleTcpAxes);
+  resizeFrameAxes(m_spindleColletAxes);
 }
 
 void OccScene::setSpindleTcpFrame(const std::optional<gp_Trsf>& frame)
 {
-  if (!isValid() || !m_spindleTcpAxes.isValid()) return;
+  setFrameAxes(m_spindleTcpAxes, frame);
+}
+
+void OccScene::setSpindleColletFrame(const std::optional<gp_Trsf>& frame)
+{
+  setFrameAxes(m_spindleColletAxes, frame);
+}
+
+void OccScene::setFrameAxes(OccWorldAxes& axes, const std::optional<gp_Trsf>& frame)
+{
+  if (!isValid() || !axes.isValid()) return;
+  const bool displayed = m_context->IsDisplayed(axes.xAxis());
   if (!frame) {
-    if (!m_spindleTcpAxesDisplayed) return;
-    m_context->Erase(m_spindleTcpAxes.xAxis(), false);
-    m_context->Erase(m_spindleTcpAxes.yAxis(), false);
-    m_context->Erase(m_spindleTcpAxes.zAxis(), false);
-    m_spindleTcpAxesDisplayed = false;
+    if (!displayed) return;
+    for (const auto& axis : {axes.xAxis(), axes.yAxis(), axes.zAxis()})
+      m_context->Erase(axis, false);
     return;
   }
-  for (const auto& axis : {m_spindleTcpAxes.xAxis(), m_spindleTcpAxes.yAxis(), m_spindleTcpAxes.zAxis()})
+  for (const auto& axis : {axes.xAxis(), axes.yAxis(), axes.zAxis()})
     axis->SetLocalTransformation(*frame);
-  if (m_spindleTcpAxesDisplayed) return;
-  m_spindleTcpAxes.setLength(currentWorldAxisLength());
-  for (const auto& axis : {m_spindleTcpAxes.xAxis(), m_spindleTcpAxes.yAxis(), m_spindleTcpAxes.zAxis()}) {
+  if (displayed) return;
+  axes.setLength(currentWorldAxisLength());
+  for (const auto& axis : {axes.xAxis(), axes.yAxis(), axes.zAxis()}) {
     m_context->Display(axis, 0, -1, false);
     m_context->Deactivate(axis);
     m_context->Redisplay(axis, false);
   }
-  m_spindleTcpAxesDisplayed = true;
 }
 
-void OccScene::resizeSpindleTcpAxes()
+void OccScene::resizeFrameAxes(OccWorldAxes& axes)
 {
-  if (!m_spindleTcpAxesDisplayed) return;
-  m_spindleTcpAxes.setLength(currentWorldAxisLength());
-  m_context->Redisplay(m_spindleTcpAxes.xAxis(), false);
-  m_context->Redisplay(m_spindleTcpAxes.yAxis(), false);
-  m_context->Redisplay(m_spindleTcpAxes.zAxis(), false);
+  if (!axes.isValid() || !m_context->IsDisplayed(axes.xAxis())) return;
+  axes.setLength(currentWorldAxisLength());
+  for (const auto& axis : {axes.xAxis(), axes.yAxis(), axes.zAxis()})
+    m_context->Redisplay(axis, false);
 }
 
 void OccScene::displayInfrastructure()

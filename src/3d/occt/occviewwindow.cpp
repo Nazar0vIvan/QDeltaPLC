@@ -95,6 +95,12 @@ void OccViewWindow::setSpindleTcpFrame(const std::optional<M4d>& frame)
   if (m_viewport) m_viewport->setSpindleTcpFrame(frame);
 }
 
+void OccViewWindow::setSpindleColletFrame(const std::optional<M4d>& frame)
+{
+  m_spindleColletFrame = frame;
+  if (m_viewport) m_viewport->setSpindleColletFrame(frame);
+}
+
 bool OccViewWindow::applyPose(const RobotPose& pose)
 {
   return isReady() && m_viewport->applyPose(pose);
@@ -228,6 +234,7 @@ void OccViewWindow::initializeViewport()
     m_viewport = std::move(viewport);
     m_viewport->setMachiningPreview(m_machiningPreview);
     m_viewport->setSpindleTcpFrame(m_spindleTcpFrame);
+    m_viewport->setSpindleColletFrame(m_spindleColletFrame);
     m_viewport->setSelectedObjects(m_selectedObjects);
     m_viewport->setExposed(true);
   } catch (const Standard_Failure& failure) {

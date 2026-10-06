@@ -1,6 +1,5 @@
 #include "cachedshapeloader.h"
 
-#include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -10,7 +9,6 @@
 #include <BRep_Builder.hxx>
 #include <BRepTools.hxx>
 #include <Standard_Failure.hxx>
-#include <Standard_Version.hxx>
 
 #include <sstream>
 #include <string>
@@ -34,19 +32,13 @@ CadImportResult CachedShapeLoader::loadStpWithCache(const QString& fileName) con
   if (suffix != QStringLiteral("stp") && suffix != QStringLiteral("step"))
     return CadImportResult::failure(QStringLiteral("Choose a STEP or STP file: %1").arg(fileName));
 
+  const QString baseName = QFileInfo(fileName).completeBaseName();
+  if (baseName.isEmpty())
+    return CadImportResult::failure(QStringLiteral("Invalid CAD filename: %1").arg(fileName));
+
   const QString sourcePath = QDir(m_cadDirectory).filePath(fileName);
-  QFile source(sourcePath);
-  if (!source.open(QIODevice::ReadOnly)) {
-    return CadImportResult::failure(QStringLiteral("Cannot read %1: %2").arg(sourcePath, source.errorString()));
-  }
-  QCryptographicHash hash(QCryptographicHash::Sha256);
-  hash.addData(QByteArrayLiteral("robocrap-step-cache-v1:" OCC_VERSION_COMPLETE));
-  if (!hash.addData(&source)) {
-    return CadImportResult::failure(QStringLiteral("Cannot hash CAD file: %1").arg(sourcePath));
-  }
-  source.close();
-  const QString cachePath = QDir(m_cacheDirectory).filePath(QString::fromLatin1(hash.result().toHex())
-                                                         + QStringLiteral(".brep"));
+  // Prefer the deployed BREP without opening or hashing the STEP source.
+  const QString cachePath = QDir(m_cacheDirectory).filePath(baseName + QStringLiteral(".brep"));
   QFile cache(cachePath);
   if (!m_cacheDirectory.isEmpty() && cache.open(QIODevice::ReadOnly)) {
     try {

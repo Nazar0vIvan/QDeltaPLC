@@ -101,6 +101,12 @@ void OccViewport::setSpindleTcpFrame(const std::optional<M4d>& frame)
   requestRender();
 }
 
+void OccViewport::setSpindleColletFrame(const std::optional<M4d>& frame)
+{
+  m_robot.setSpindleColletFrame(frame);
+  requestRender();
+}
+
 bool OccViewport::applyPose(const RobotPose& pose)
 {
   if (!isValid() || !m_robot.applyTransforms(pose.transforms())) return false;

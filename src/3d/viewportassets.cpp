@@ -2,7 +2,6 @@
 
 #include <QCoreApplication>
 #include <QDir>
-#include <QStandardPaths>
 
 #include <Font_FontMgr.hxx>
 #include <Standard_Failure.hxx>
@@ -21,11 +20,11 @@ void setResource(const QDir& resources, const char* variable, const QString& dir
 ViewportAssets ViewportAssets::applicationAssets()
 {
   const QDir executable(QCoreApplication::applicationDirPath());
-  const QString cacheRoot = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+  const QString cadDirectory = executable.filePath(QStringLiteral("resources/cad/kr10"));
   return {
     QStringLiteral(":/json/kr10.json"),
-    executable.filePath(QStringLiteral("resources/cad/kr10")),
-    cacheRoot.isEmpty() ? QString{} : QDir(cacheRoot).filePath(QStringLiteral("occt/kr10")),
+    cadDirectory,
+    cadDirectory,
     executable.filePath(QStringLiteral("resources/occt"))
   };
 }

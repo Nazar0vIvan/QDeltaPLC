@@ -21,11 +21,14 @@ public:
   bool applyTransforms(const std::array<M4d, LinkCount>& transforms);
   // Applied flange-relative calibration; empty hides the TCP decoration.
   void setSpindleTcpFrame(const std::optional<M4d>& frame);
+  // Applied flange-relative ER calibration; empty hides the collet decoration.
+  void setSpindleColletFrame(const std::optional<M4d>& frame);
   bool setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
                       SceneEndEffectors::Tool active);
 
 private:
-  void synchronizeSpindleTcp();
+  std::optional<gp_Trsf> baseSpindleFrame(const std::optional<M4d>& frame) const;
+  void synchronizeSpindleFrames();
 
   OccScene& m_scene;
   std::array<OccScene::PartId, LinkCount> m_linkIds{};
@@ -38,6 +41,7 @@ private:
   std::array<ToolPart, 2> m_tools;
   M4d m_flange = M4d::Identity();
   std::optional<M4d> m_spindleTcpFrame;
+  std::optional<M4d> m_spindleColletFrame;
   SceneEndEffectors::Tool m_activeTool = SceneEndEffectors::Measuring;
 };
 

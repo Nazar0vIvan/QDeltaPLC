@@ -13,30 +13,53 @@ QxPanel {
   required property string measuringName
   required property real ballDiameter
   required property real stylusLength
+  required property list<double> colletPose
   required property list<double> tcp
   required property bool tcpVisible
+  required property bool colletVisible
   signal browseRequested()
   signal retryRequested()
-  signal tcpRequested(var values)
+  signal posesRequested(var colletValues, var tcpValues)
   signal tcpVisibilityRequested(bool visible)
+  signal colletVisibilityRequested(bool visible)
 
+  property list<string> colletDrafts: []
   property list<string> drafts: []
-  readonly property bool validDraft: root.drafts.length === 6 && root.drafts.every(
-      value => value.trim().length > 0 && isFinite(Number(value)))
+  readonly property bool validDraft: root.validPoseDraft(root.colletDrafts)
+                                    && root.validPoseDraft(root.drafts)
 
-  function loadTcpDraft() {
-    const values = []
+  function validPoseDraft(values) {
+    return values.length === 6 && values.every(
+        value => value.trim().length > 0 && isFinite(Number(value)))
+  }
+  function poseDraft(values) {
+    const result = []
     for (let i = 0; i < 6; ++i)
-      values.push(root.tcp.length === 6 ? (root.tcp[i] === 0 ? "0.00" : String(root.tcp[i])) : "0.00")
-    root.drafts = values
+      result.push(values.length === 6 ? (values[i] === 0 ? "0.00" : String(values[i])) : "0.00")
+    return result
+  }
+  function loadColletDraft() {
+    root.colletDrafts = root.poseDraft(root.colletPose)
+  }
+  function loadTcpDraft() {
+    root.drafts = root.poseDraft(root.tcp)
+  }
+  function editColletValue(index, value) {
+    const values = root.colletDrafts.slice()
+    values[index] = value
+    root.colletDrafts = values
   }
   function editValue(index, value) {
     const values = root.drafts.slice()
     values[index] = value
     root.drafts = values
   }
+  onColletPoseChanged: root.loadColletDraft()
   onTcpChanged: root.loadTcpDraft()
-  Component.onCompleted: root.loadTcpDraft()
+  Component.onCompleted: {
+    root.loadColletDraft()
+    root.loadTcpDraft()
+  }
   title: root.measuring ? qsTr("Measuring End Effector") : qsTr("Spindle End Effector")
   implicitHeight: fields.implicitHeight + topPadding + bottomPadding
 
@@ -119,7 +142,60 @@ QxPanel {
       Label {
         Layout.fillWidth: true
         visible: !root.measuring
-        text: qsTr("TCP pose relative to flange")
+        text: qsTr("ER collet pose relative to flange")
+        wrapMode: Text.Wrap
+        font: Fonts.caption
+        color: Colors.foreground.medium
+      }
+      Repeater {
+        model: 6
+        delegate: QxHField {
+          id: colletCoordinate
+          required property int index
+          Layout.fillWidth: true
+          visible: !root.measuring
+          enabled: false
+          opacity: colletCoordinate.enabled ? 1.0 : Colors.overlays.disabled
+          labelWidth: Metrics.sp24
+          labelText: ["X", "Y", "Z", "A", "B", "C"][colletCoordinate.index]
+          QxTextInput {
+            id: colletInput
+            Layout.fillWidth: true
+            Layout.preferredHeight: Metrics.h32
+            Layout.minimumWidth: 0
+            text: root.colletDrafts[colletCoordinate.index] ?? ""
+            font: Fonts.caption
+            Accessible.name: qsTr("ER %1").arg(colletCoordinate.labelText)
+            validator: DoubleValidator { locale: "C"; decimals: 8 }
+            onTextEdited: root.editColletValue(colletCoordinate.index, colletInput.text)
+          }
+          Label {
+            text: colletCoordinate.index < 3 ? qsTr("mm") : qsTr("deg")
+            font: Fonts.caption
+            color: Colors.foreground.medium
+          }
+        }
+      }
+      QxHField {
+        Layout.fillWidth: true
+        visible: !root.measuring
+        labelText: qsTr("ER trihedron")
+        QxCheckBox {
+          checked: root.colletVisible
+          Accessible.name: qsTr("ER trihedron visible")
+          onClicked: root.colletVisibilityRequested(checked)
+        }
+        Label {
+          text: qsTr("Visible")
+          color: Colors.foreground.high
+          font: Fonts.body
+        }
+        Item { Layout.fillWidth: true }
+      }
+      Label {
+        Layout.fillWidth: true
+        visible: !root.measuring
+        text: qsTr("TCP pose relative to ER")
         wrapMode: Text.Wrap
         font: Fonts.caption
         color: Colors.foreground.medium
@@ -171,9 +247,10 @@ QxPanel {
       RowLayout {
         visible: !root.measuring
         QxButton {
-          text: qsTr("Apply TCP")
+          text: qsTr("Apply")
           enabled: root.validDraft
-          onClicked: root.tcpRequested(root.drafts.map(value => Number(value)))
+          onClicked: root.posesRequested(root.colletDrafts.map(value => Number(value)),
+                                         root.drafts.map(value => Number(value)))
         }
       }
     }
