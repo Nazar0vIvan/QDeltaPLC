@@ -19,7 +19,7 @@ constexpr double Kr10RotEps = 1e-6;
 // Temporary offline diagnostic: bypass A1-A6 position limits in IK, chamfer
 // generation/evaluation and preview FK. Set false to restore enforcement.
 // Model limits remain intact for seed selection; device control does not use this.
-constexpr bool IgnorePreviewJointPositionLimits = true;
+constexpr bool IgnorePreviewJointPositionLimits = false;
 
 struct JointModel
 {

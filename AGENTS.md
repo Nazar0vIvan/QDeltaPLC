@@ -114,6 +114,16 @@ and src/main.cpp.
   bindings when values change. Keep QML-facing model mutations on the model's owning thread.
 - Device log signals are connected to Logger in main.cpp before devices start, using queued
   connections. Devices depend only on network/common/loggermessage.h, not the Logger singleton.
+- Main.qml owns nonmodal PLC and FTS panel windows opened from the Views menu. FTS commands
+  remain queued through DeviceRunner. Its UDP connection state means a configured bound socket;
+  streaming requires parsed data from the configured peer address/port and ends after 300 ms
+  without data. Start waits for data; Record requires a requested active stream. Stop ends recording,
+  and Save requires a successful Stop request, confirmed quiet reception and nonempty samples.
+  All panel actions require a connected socket. Recording retains the latest sample per 16 ms
+  batch and the 7,500-sample cap. JSON retains raw RDT fields with counts_per_unit metadata.
+  Saving uses a copied-input async worker and QSaveFile under applicationDirPath()/records with
+  unique timestamped names. A device-thread timer collects the return-value result; shutdown
+  finishes any outstanding save before deleting the device's timers.
 - Methods dispatched by DeviceRunner::invoke(name, args) must be public Q_INVOKABLE methods on
   an AbstractDevice-derived class, return void, and take zero arguments or one QVariantMap.
   Names must be unique: buildApi() indexes by name, not overload signature. Inspect string call sites.
@@ -167,11 +177,10 @@ and src/main.cpp.
   Central motion uses monotone cubic joint interpolation, feed/acceleration timing and
   a reported uniform time scale for rate limits. HOME movements use synchronized quintic
   progress. evaluate(seconds) returns a pose independently of display refresh rate.
-  Temporary offline diagnostic: IgnorePreviewJointPositionLimits in kr10kinematicmodel.h is true.
-  It bypasses A1-A6 position checks in analytical IK, chamfer generation/evaluation and preview FK,
-  including manual preview. Original model limits remain for seed selection and model validation.
-  Set the constant false to restore enforcement. Finite, singularity, FK accuracy, continuity,
-  speed and acceleration checks remain active; device control is unaffected.
+  IgnorePreviewJointPositionLimits in kr10kinematicmodel.h is false. A1-A6 position checks are
+  enforced in analytical IK, chamfer generation/evaluation and preview FK, including manual preview.
+  Model limits also guide seed selection and model validation. Finite, singularity, FK accuracy,
+  continuity, speed and acceleration checks remain active; device control is unaffected.
   Simulation joint limits for speed/acceleration are explicit settings, not KUKA ratings;
   Cartesian rate and interpolation-error checks are numerical samples, not analytic guarantees.
 

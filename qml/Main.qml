@@ -8,6 +8,7 @@ import RoboCrap.Viewport3D 1.0 as Viewport3D
 
 import "MenuBar"
 import "Views/Dashboard/DeltaPanel"
+import "Views/Dashboard/FtsPanel"
 import "Views/Network"
 import "Views/Viewport3D"
 import "Views/Workspace"
@@ -250,6 +251,11 @@ ApplicationWindow {
       plcPanelWindow.raise()
       plcPanelWindow.requestActivate()
     }
+    onFtsPanelRequested: {
+      ftsPanelWindow.show()
+      ftsPanelWindow.raise()
+      ftsPanelWindow.requestActivate()
+    }
   }
 
   Window {
@@ -309,6 +315,29 @@ ApplicationWindow {
       anchors.fill: parent
       anchors.margins: Metrics.sp16
       title: qsTr("PLC AS332T-A")
+    }
+  }
+
+  Window {
+    id: ftsPanelWindow
+
+    title: qsTr("FTS Panel")
+    transientParent: root
+    flags: Qt.Tool
+    color: Colors.background.dp00
+    width: minimumWidth
+    height: minimumHeight
+    minimumWidth: ftsPanel.implicitWidth + 2 * Metrics.sp16
+    minimumHeight: ftsPanel.implicitHeight + 2 * Metrics.sp16
+    maximumWidth: minimumWidth
+    maximumHeight: minimumHeight
+
+    FtsPanel {
+      id: ftsPanel
+
+      anchors.fill: parent
+      anchors.margins: Metrics.sp16
+      title: qsTr("FTS Delta-IP68-SI-660-60")
     }
   }
 

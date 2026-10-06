@@ -3,15 +3,21 @@
 #include "network/fts/ftsdevice.h"
 #include "network/common/socketconfigutils.h"
 
-#include <QFile>
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QDir>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkDatagram>
+#include <QSaveFile>
 #include <QTimer>
 #include <QUdpSocket>
+#include <QUuid>
 #include <QtEndian>
 
+#include <chrono>
 #include <cstdlib>
 #include <optional>
 #include <utility>
@@ -76,19 +82,22 @@ void FtsDevice::startDevice()
 {
 	Q_ASSERT(!m_sock);
 	Q_ASSERT(!m_rxTimeout);
+	Q_ASSERT(!m_savePoll);
 
 	m_sock = new QUdpSocket(this);
 	m_rxTimeout = new QTimer(this);
 	m_rxTimeout->setSingleShot(true);
 	m_rxTimeout->setInterval(kRxTimeout);
+	m_savePoll = new QTimer(this);
+	m_savePoll->setInterval(kBatchMs);
 
 	attachSocket(m_sock);
 
 	QObject::connect(m_sock, &QUdpSocket::readyRead, this, &FtsDevice::onReadyRead);
 	QObject::connect(m_rxTimeout, &QTimer::timeout, this, &FtsDevice::onRxTimeout);
+	QObject::connect(m_savePoll, &QTimer::timeout, this, &FtsDevice::onLogSaveFinished);
 
   emit stateReady({
-    {"streaming", false},
     {"fx", 0.0},
     {"fy", 0.0},
     {"fz", 0.0},
@@ -96,6 +105,7 @@ void FtsDevice::startDevice()
     {"ty", 0.0},
     {"tz", 0.0}
   });
+	publishControlState();
 }
 
 void FtsDevice::stopDevice()
@@ -103,7 +113,12 @@ void FtsDevice::stopDevice()
 	if (!m_sock) return;
 
 	disconnect();
+	if (m_saveFuture.valid()) {
+		m_saveFuture.wait();
+		onLogSaveFinished();
+	}
 
+	delete std::exchange(m_savePoll, nullptr);
 	delete std::exchange(m_rxTimeout, nullptr);
 	delete std::exchange(m_sock, nullptr);
 }
@@ -128,6 +143,7 @@ void FtsDevice::connect(const QVariantMap& config)
 			return;
 		}
 
+		if (m_sock->state() != QAbstractSocket::UnconnectedState) disconnect();
 		m_la = localAddr;
 		m_lp = *localPort;
 		m_pa = peerAddr;
@@ -154,6 +170,7 @@ void FtsDevice::connect(const QVariantMap& config)
 		});
 		return;
 	}
+	publishControlState();
 
 	emit logMessage({
 		QString("Socket connected:<br/>"
@@ -182,10 +199,14 @@ void FtsDevice::disconnect()
 	m_batch.clear();
 	m_needBase = true;
 	m_hasPub = false;
+	m_streaming = false;
+	m_streamRequested = false;
+	m_startPending = false;
+	m_stopRequested = false;
 
 	stopLogRecording();
 
-	emit stateReady({{"streaming", false}});
+	publishControlState();
 	emit logMessage({"Socket disconnected", 1, objectName()});
 }
 
@@ -200,43 +221,64 @@ void FtsDevice::startStreaming()
 		emit logMessage({"FTS peer is not configured", 0, objectName()});
 		return;
 	}
+	if (m_saveFuture.valid()) {
+		emit logMessage({"Wait for the FTS recording to finish saving", 0, objectName()});
+		return;
+	}
+	if (m_startPending || (m_streamRequested && m_streaming)) return;
+	if (!sendRequest(kStartCmd)) return;
 
 	m_needBase = true;
 	m_batch.clear();
 	m_hasPub = false;
+	m_streamRequested = true;
+	m_startPending = true;
+	m_stopRequested = false;
+	m_rxTimeout->start();
+	publishControlState();
 
 	emit streamReset();
-
-	sendRequest(kStartCmd);
 }
 
 void FtsDevice::stopStreaming()
 {
+	if (!sendRequest(kStopCmd)) return;
+	if (m_logEnabled) processBatch();
+	m_streamRequested = false;
+	m_startPending = false;
+	m_stopRequested = true;
 	stopLogRecording();
-	sendRequest(kStopCmd);
+	m_rxTimeout->start();
+	publishControlState();
 
 	emit streamReset();
 }
 
 void FtsDevice::bias()
 {
+	if (!isSocketReady() || !m_streaming || m_startPending || m_stopRequested) {
+		emit logMessage({"Start the connected FTS stream before biasing", 0, objectName()});
+		return;
+	}
+	if (!sendRequest(kBiasCmd)) return;
 	m_batch.clear();
 	m_hasPub = false;
 
 	if (m_batchClock.isValid()) m_batchClock.restart();
-
-	sendRequest(kBiasCmd);
 
 	emit streamReset();
 }
 
 void FtsDevice::onReadyRead()
 {
+	bool receivedSample = false;
 	while (m_sock && m_sock->hasPendingDatagrams()) {
 		const QNetworkDatagram datagram = m_sock->receiveDatagram(m_sock->pendingDatagramSize());
+		if (datagram.senderAddress() != m_pa || datagram.senderPort() != m_pp) continue;
 
 		const auto parsed = parseResponse(datagram.data());
 		if (!parsed) continue;
+		receivedSample = true;
 
 		RDTResponse sample = *parsed;
 
@@ -244,10 +286,12 @@ void FtsDevice::onReadyRead()
 			m_baseSeq = sample.rdt_sequence;
 			m_batch.clear();
 			m_batchClock.start();
-			m_rxTimeout->start();
 			m_needBase = false;
-
-			emit stateReady({{"streaming", true}});
+		}
+		if (!m_streaming || m_startPending) {
+			m_streaming = true;
+			m_startPending = false;
+			publishControlState();
 		}
 
 		sample.timestamp = double(quint32(sample.rdt_sequence - m_baseSeq)) * kDt;
@@ -259,17 +303,56 @@ void FtsDevice::onReadyRead()
 		if (m_batchClock.elapsed() >= kBatchMs)
 			processBatch();
 	}
+	if (receivedSample) m_rxTimeout->start();
 }
 
 void FtsDevice::onRxTimeout()
 {
+	if (m_logEnabled) processBatch();
+	if (m_startPending)
+		emit logMessage({"No FTS data received after Start; check the sensor connection", 0, objectName()});
 	m_batch.clear();
 	m_needBase = true;
 	m_hasPub = false;
+	m_streaming = false;
+	m_streamRequested = false;
+	m_startPending = false;
 
 	stopLogRecording();
 
-	emit stateReady({{"streaming", false}});
+	publishControlState();
+}
+
+bool FtsDevice::isSocketReady() const
+{
+	return m_sock && m_sock->state() == QAbstractSocket::BoundState
+			&& !m_pa.isNull() && m_pp != 0;
+}
+
+bool FtsDevice::canRecord() const
+{
+	return isSocketReady() && m_streaming && m_streamRequested
+			&& !m_startPending && !m_stopRequested && !m_logEnabled && !m_saveFuture.valid();
+}
+
+bool FtsDevice::canSave() const
+{
+	return isSocketReady() && m_stopRequested && !m_streaming && !m_startPending
+			&& m_rxTimeout && !m_rxTimeout->isActive() && !m_logEnabled
+			&& !m_log.isEmpty() && !m_saveFuture.valid();
+}
+
+void FtsDevice::publishControlState()
+{
+	emit stateReady({
+		{"streaming", m_streaming},
+		{"startPending", m_startPending},
+		{"stopRequested", m_stopRequested},
+		{"recording", m_logEnabled},
+		{"saving", m_saveFuture.valid()},
+		{"canRecord", canRecord()},
+		{"canSave", canSave()}
+	});
 }
 
 void FtsDevice::publishState(const RDTResponse& sample)
@@ -313,9 +396,12 @@ void FtsDevice::publishState(const RDTResponse& sample)
 	if (!vals.isEmpty()) emit stateReady(vals);
 }
 
-void FtsDevice::sendRequest(quint16 cmd, quint32 count)
+bool FtsDevice::sendRequest(quint16 cmd, quint32 count)
 {
-	if (!m_sock || m_pa.isNull() || m_pp == 0) return;
+	if (!isSocketReady()) {
+		emit logMessage({"Connect the FTS socket before sending a command", 0, objectName()});
+		return false;
+	}
 
 	QByteArray data(kReqLen, '\0');
 	auto* raw = reinterpret_cast<uchar*>(data.data());
@@ -324,7 +410,12 @@ void FtsDevice::sendRequest(quint16 cmd, quint32 count)
 	qToBigEndian<quint16>(cmd, raw + 2);
 	qToBigEndian<quint32>(count, raw + 4);
 
-	m_sock->writeDatagram(data, m_pa, m_pp);
+	if (m_sock->writeDatagram(data, m_pa, m_pp) != data.size()) {
+		emit logMessage({QString("Failed to send FTS command: %1").arg(m_sock->errorString()),
+				0, objectName()});
+		return false;
+	}
+	return true;
 }
 
 void FtsDevice::processBatch()
@@ -341,14 +432,13 @@ void FtsDevice::processBatch()
 
 	m_batch.clear();
 	m_batchClock.restart();
-	m_rxTimeout->start();
 }
 
 void FtsDevice::startLogRecording()
 {
   if (m_logEnabled) return;
 
-  if (!m_rxTimeout->isActive()) {
+  if (!canRecord() || !m_rxTimeout || !m_rxTimeout->isActive()) {
     emit logMessage({
       "Cannot record FTS log: no data is being received",
       0,
@@ -359,7 +449,10 @@ void FtsDevice::startLogRecording()
 
   m_log.clear();
   m_log.reserve(kLogCap);
+  m_batch.clear();
+  m_batchClock.start();
   m_logEnabled = true;
+  publishControlState();
 
   emit logMessage({
     QString("LF log recording started (capacity=%1 samples)").arg(kLogCap),
@@ -373,6 +466,7 @@ void FtsDevice::stopLogRecording()
   if (!m_logEnabled) return;
 
   m_logEnabled = false;
+  publishControlState();
 
   emit logMessage({
     "LF log recording stopped",
@@ -398,19 +492,35 @@ void FtsDevice::appendLogSample(const RDTResponse& sample)
 
 void FtsDevice::saveLogToDefaultFile()
 {
-	if (m_rxTimeout->isActive()) {
-		emit logMessage({"Cannot save FTS log while data is being received", 0, objectName()});
+	if (!canSave()) {
+		emit logMessage({"Connect FTS, record samples and Stop before saving", 0, objectName()});
 		return;
 	}
 
-	saveLogToFileImpl(QStringLiteral("record.json"));
+	const QString fileName = QStringLiteral("fts_%1_%2.json")
+			.arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")),
+				 QUuid::createUuid().toString(QUuid::WithoutBraces));
+	const QDir records(QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("records")));
+	saveLogToFileImpl(records.filePath(fileName));
 }
 
 void FtsDevice::saveLogToFileImpl(const QString& filePath)
 {
-	QJsonArray samples;
+	m_saveFuture = std::async(std::launch::async, &FtsDevice::writeLogFile, m_log, filePath);
+	m_savePoll->start();
+	publishControlState();
+}
 
-	for (const RDTResponse& sample : std::as_const(m_log)) {
+FtsDevice::LogSaveResult FtsDevice::writeLogFile(QVector<RDTResponse> samples, QString filePath)
+{
+	LogSaveResult result{std::move(filePath), {}, samples.size(), 0};
+	if (!QDir().mkpath(QFileInfo(result.filePath).absolutePath())) {
+		result.error = QString("Cannot create the FTS records directory for '%1'").arg(result.filePath);
+		return result;
+	}
+	QJsonArray jsonSamples;
+
+	for (const RDTResponse& sample : std::as_const(samples)) {
 		const QJsonObject item{
 			{"rdt_sequence", static_cast<qint64>(sample.rdt_sequence)},
 			{"ft_sequence", static_cast<qint64>(sample.ft_sequence)},
@@ -424,53 +534,65 @@ void FtsDevice::saveLogToFileImpl(const QString& filePath)
 			{"timestamp", sample.timestamp}
 		};
 
-		samples.append(item);
+		jsonSamples.append(item);
 	}
 
 	const QJsonObject meta{
 		{"capacity", kLogCap},
-		{"count", m_log.size()},
+		{"count", samples.size()},
 		{"emit_interval_ms", kBatchMs},
+		{"counts_per_unit", kCount},
 		{"note", QStringLiteral("Low-frequency FTS samples.")}
 	};
 
 	const QJsonObject root{
 		{"meta", meta},
-		{"samples", samples}
+		{"samples", jsonSamples}
 	};
 
 	const QByteArray json = QJsonDocument(root).toJson(QJsonDocument::Indented);
 
-	QFile file(filePath);
+	QSaveFile file(result.filePath);
 
-	if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-		emit logMessage({
-			QString("Failed to write log file '%1': %2").arg(filePath, file.errorString()),
-			0,
-			objectName()
-		});
-		return;
+	if (!file.open(QIODevice::WriteOnly)) {
+		result.error = QString("Failed to write log file '%1': %2").arg(result.filePath, file.errorString());
+		return result;
 	}
 
 	const qint64 written = file.write(json);
 
 	if (written != json.size()) {
-		emit logMessage({
-			QString("Partial write to '%1': wrote %2 of %3 bytes")
-				.arg(filePath)
-				.arg(written)
-				.arg(json.size()),
-			0,
-			objectName()
-		});
+		result.error = QString("Partial write to '%1': wrote %2 of %3 bytes")
+				.arg(result.filePath).arg(written).arg(json.size());
+		return result;
+	}
+	if (!file.commit()) {
+		result.error = QString("Failed to finish log file '%1': %2").arg(result.filePath, file.errorString());
+		return result;
+	}
+	result.byteCount = written;
+	return result;
+}
+
+void FtsDevice::onLogSaveFinished()
+{
+	if (!m_saveFuture.valid()) {
+		m_savePoll->stop();
 		return;
 	}
-
+	if (m_saveFuture.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) return;
+	const LogSaveResult result = m_saveFuture.get();
+	m_savePoll->stop();
+	publishControlState();
+	if (!result.error.isEmpty()) {
+		emit logMessage({result.error, 0, objectName()});
+		return;
+	}
 	emit logMessage({
 		QString("Saved LF log to '%1' (%2 samples, %3 bytes)")
-			.arg(filePath)
-			.arg(m_log.size())
-			.arg(json.size()),
+			.arg(result.filePath)
+			.arg(result.sampleCount)
+			.arg(result.byteCount),
 		1,
 		objectName()
 	});

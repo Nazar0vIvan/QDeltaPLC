@@ -9,6 +9,7 @@ MenuBar {
 
   signal quitRequested()
   signal plcPanelRequested()
+  signal ftsPanelRequested()
   signal settingsRequested()
 
   leftPadding: Metrics.sp36
@@ -104,12 +105,17 @@ MenuBar {
   }
 
   Menu {
-    title: qsTr("Tools")
+    title: qsTr("Views")
     popupType: Popup.Window
 
     Action {
       text: qsTr("PLC Panel")
       onTriggered: root.plcPanelRequested()
+    }
+
+    Action {
+      text: qsTr("FTS Panel")
+      onTriggered: root.ftsPanelRequested()
     }
   }
 

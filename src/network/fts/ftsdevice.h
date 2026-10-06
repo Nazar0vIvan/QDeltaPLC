@@ -7,6 +7,8 @@
 #include <QHostAddress>
 #include <QVector>
 
+#include <future>
+
 class QTimer;
 class QUdpSocket;
 
@@ -39,16 +41,36 @@ protected:
 private slots:
 	void onReadyRead();
 	void onRxTimeout();
+	void onLogSaveFinished();
 
 private:
+	struct LogSaveResult {
+		QString filePath;
+		QString error;
+		qsizetype sampleCount = 0;
+		qint64 byteCount = 0;
+	};
+
+	bool isSocketReady() const;
+	bool canRecord() const;
+	bool canSave() const;
+	void publishControlState();
 	void appendLogSample(const RDTResponse& sample);
 	void saveLogToFileImpl(const QString& filePath);
+	static LogSaveResult writeLogFile(QVector<RDTResponse> samples, QString filePath);
 	void publishState(const RDTResponse& sample);
-	void sendRequest(quint16 cmd, quint32 count = 0);
+	bool sendRequest(quint16 cmd, quint32 count = 0);
 	void processBatch();
 
 	QUdpSocket* m_sock = nullptr;
 	QTimer* m_rxTimeout = nullptr;
+	QTimer* m_savePoll = nullptr;
+	std::future<LogSaveResult> m_saveFuture;
+
+	bool m_streaming = false;
+	bool m_streamRequested = false;
+	bool m_startPending = false;
+	bool m_stopRequested = false;
 
 	QVector<RDTResponse> m_batch;
 	QElapsedTimer m_batchClock;
