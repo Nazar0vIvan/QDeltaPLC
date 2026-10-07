@@ -204,6 +204,61 @@ and src/main.cpp.
   The future waits for any remaining calculation during coordinator destruction.
   Scene playback has no OCCT dependency and invokes no devices.
 
+- PreparedChamferJob in pathgeneration/chamfer/chamferjob.h/.cpp retains an immutable
+  ChamferMotion and source/job/calibration identity in RoboCrapGeometry. It validates saved
+  boundaries and evaluated poses, records job-relative LeadIn/Machining/LeadOut times,
+  staging/clear-end/HOME poses and a 0.004 s cycle. sampleChamferCartesian evaluates
+  analytic LeadIn/Machining/LeadOut Cartesian frames. Bounded local projection of the saved
+  timed FK reference recovers curve progress without changing timestamps or centralTimeScale.
+  It stores the initial pose, clock samples and exact terminal once, plus machining-time
+  overlap and separate full-turn/junction poses. Continuous seeded IK/FK, joint positions,
+  sampled rates and interpolation error are checked; failure rejects preparation rather than
+  retiming. Extra validation points do not add controller cycles. Rate estimates merge
+  intervals below 100 us at the 4 ms clock; the sample vector is capped at 200,000 entries.
+  These are numerical sampled checks, not analytic guarantees or controller encoding.
+  rsiposeencoder.h/.cpp prepares nominal BASE XYZABC increments using C-locale max_digits10
+  strings. A/B/C add directly to the starting TCP Euler angles; no separate correction-frame
+  composition is used. The encoder retains initialCoordinates, unwraps both Z-Y-X branches
+  against serialized state, handles the coupled A/C gauge at B=+/-90 degrees and rejects
+  unresolved per-coordinate jumps of 90 degrees or more. This is a continuity guard, not a
+  controller limit. Cumulative state is reconciled to parsed values; every serialized pose
+  is reconstructed within KR10 position/rotation tolerances. The immutable job retains
+  six-channel corrections, sampled XYZ and unwrapped ABC increment/offset bounds, translation
+  norms, principal rotation magnitudes and total rotation travel. These are required geometric
+  envelopes, not installed controller limits. rsicorrectionlimits.h/.cpp loads an explicit
+  schema-1 rsi-correction-limits.json beside the executable (maximum 64 KiB). The immutable
+  encoding retains the profile/content revision and validation result. It checks serialized
+  per-cycle and cumulative XYZABC against application bounds, cumulative XYZ against POSCORR
+  lower/upper limits, and each cumulative ABC component against MaxRotAngle. POSCORRMON checks
+  each cumulative XYZ component against MaxTrans and ABC component against MaxRotAngle.
+  Bounds include zero; scalar maxima are finite and nonnegative. A violation retains its
+  sample/channel/value/bounds. Missing/invalid/exceeded limits keep encodingReady false;
+  readiness requires successful numerical encoding and every configured nominal bound check.
+  resources/files/RSI_CorrectionLimits.example.json has unset values, not accepted defaults.
+  These checks do not install controller settings or include later force retreat.
+  Future session validation must match the controller's initial TCP Euler branch;
+  matching only its rotation matrix is insufficient.
+  Numerical encoding failure preserves valid nominal samples and reports its own error.
+  SceneMachiningPreparation in RoboCrapScene uses SceneMachining.inputId and saved-path
+  compatibility to capture input; copied-input async work returns a cohesive result through
+  a future collected by a GUI timer. Limit-file/directory watches invalidate prepared input on
+  changed content; direct rereads before dispatch/acceptance also reject stale worker profiles.
+  Future arming must revalidate the profile and matching installed controller configuration.
+  Selection, path deletion, calibration or readiness changes
+  invalidate the selected prepared job and reject pending stale results; draft edits do not
+  change its saved snapshot. main.cpp owns it after SceneMachining, exposes the typed
+  Backend.MachiningPreparation singleton and connects preparedJobReady to RsiDevice::setPreparedJob
+  through a registered PreparedChamferJobPtr and Qt::QueuedConnection. It shuts down before
+  DeviceHub::stopAll and waits for any worker before destruction. RsiDevice stores/clears this
+  immutable input on ControlIO and publishes separate preparedJob* keys through DeviceRunner.
+  The typed receiver is a public slot, excluded from string invoke dispatch, and refuses a
+  nonempty replacement during demonstration motion. Preparation requires no sensor/controller
+  connection, starts no socket or motion, and leaves demonstration offsets/trajectoryReady intact.
+  Main.qml binds ModeToolBar's Prepare action and preparation/error/timing/sample-count status,
+  plus separate encoding readiness/reason. RsiDevice publishes preparedJobEncodingReady
+  and preparedJobEncodingReason with its existing prepared-job state.
+  Start Machining remains disabled; preparation does not establish controller readiness.
+
 - SceneEndEffectors in src/scene owns both tool configurations on the GUI thread, independently
   of scene-object selection. main.cpp owns it before the QML engine and exposes Backend.EndEffectors
   through backendqmltypes.h. CAD URLs default to deployed MEE.stp and SEE.stp via ViewportAssets.

@@ -31,6 +31,14 @@ qt_add_library(RoboCrapGeometry STATIC
   pathgeneration/chamfer/chamferpath.cpp
   pathgeneration/chamfer/chamfermotion.h
   pathgeneration/chamfer/chamfermotion.cpp
+  pathgeneration/chamfer/chamferjob.h
+  pathgeneration/chamfer/chamferjob.cpp
+  pathgeneration/chamfer/chamfercartesiansampler.h
+  pathgeneration/chamfer/chamfercartesiansampler.cpp
+  pathgeneration/chamfer/rsiposeencoder.h
+  pathgeneration/chamfer/rsiposeencoder.cpp
+  pathgeneration/chamfer/rsicorrectionlimits.h
+  pathgeneration/chamfer/rsicorrectionlimits.cpp
   pathgeneration/rsi/motionprofile.h
   pathgeneration/rsi/offsetjsonwriter.h
   pathgeneration/rsi/offsetjsonwriter.cpp
@@ -45,6 +53,8 @@ qt_add_library(RoboCrapScene STATIC
   scene/sceneendeffectors.cpp
   scene/scenemachining.h
   scene/scenemachining.cpp
+  scene/scenemachiningpreparation.h
+  scene/scenemachiningpreparation.cpp
   scene/scenemodel.h
   scene/scenemodel.cpp
   scene/sceneobject.h

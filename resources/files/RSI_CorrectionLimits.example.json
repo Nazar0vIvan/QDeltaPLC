@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "profileId": "",
+  "cyclePeriodSeconds": 0.004,
+  "reference": "BASE",
+  "rotationRule": "startingTcpAngleAddition",
+  "increment": {
+    "minimum": [null, null, null, null, null, null],
+    "maximum": [null, null, null, null, null, null]
+  },
+  "cumulative": {
+    "minimum": [null, null, null, null, null, null],
+    "maximum": [null, null, null, null, null, null]
+  },
+  "poscorr": {
+    "minimumTranslation": [null, null, null],
+    "maximumTranslation": [null, null, null],
+    "maxRotAngleDegrees": null
+  },
+  "poscorrmon": {
+    "maxTransMillimetres": null,
+    "maxRotAngleDegrees": null
+  }
+}

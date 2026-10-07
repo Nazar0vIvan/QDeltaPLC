@@ -60,6 +60,7 @@ int main(int argc, char* argv[])
   qRegisterMetaType<RDTResponse>("RDTResponse");
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
   qRegisterMetaType<LoggerMessage>("LoggerMessage");
+  qRegisterMetaType<PreparedChamferJobPtr>("PreparedChamferJobPtr");
 
   auto* plcDev = new PlcDevice(QStringLiteral("PLC_AS332T"));
   auto* ftsDev = new FtsDevice(QStringLiteral("FTS_Delta"));
@@ -81,8 +82,6 @@ int main(int argc, char* argv[])
 
   hub.startAll();
 
-  QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);
-
   // QmlChartBridge chartBridge;
   // QObject::connect(SocketFTS, &SocketFTS::bufferReady, &chartBridge, &QmlChartBridge::onBatch, Qt::QueuedConnection);
   // QObject::connect(SocketFTS, &SocketFTS::streamReset, &chartBridge, &QmlChartBridge::reset, Qt::QueuedConnection);
@@ -98,6 +97,14 @@ int main(int argc, char* argv[])
 
   SceneMachining machining(&scene, &endEffectors);
   SceneMachiningQml::s_inst = &machining;
+
+  SceneMachiningPreparation preparation(&scene, &machining);
+  SceneMachiningPreparationQml::s_inst = &preparation;
+  QObject::connect(&preparation, &SceneMachiningPreparation::preparedJobReady,
+                   rsiDev, &RsiDevice::setPreparedJob, Qt::QueuedConnection);
+  // Disable result dispatch and finish the worker before shutting down ControlIO.
+  QObject::connect(&app, &QApplication::aboutToQuit, &preparation, &SceneMachiningPreparation::shutdown);
+  QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);
 
   RoboCrap3D::OccController viewportController;
   viewportController.setApplicationScene(&scene);

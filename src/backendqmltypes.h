@@ -9,6 +9,7 @@
 #include "scene/scenegeometry.h"
 #include "scene/sceneendeffectors.h"
 #include "scene/scenemachining.h"
+#include "scene/scenemachiningpreparation.h"
 
 #include <QJSEngine>
 #include <QPointer>
@@ -27,6 +28,26 @@ public:
   {
     if (!s_inst || engine->thread() != s_inst->thread() || (s_engine && s_engine != engine))
       qFatal("Machining must be used by one GUI-thread QML engine at a time");
+    s_engine = engine;
+    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
+    return s_inst;
+  }
+private:
+  inline static QPointer<QJSEngine> s_engine;
+};
+
+struct SceneMachiningPreparationQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneMachiningPreparation)
+  QML_NAMED_ELEMENT(MachiningPreparation)
+  QML_SINGLETON
+public:
+  inline static SceneMachiningPreparation* s_inst = nullptr;
+  static SceneMachiningPreparation* create(QQmlEngine*, QJSEngine* engine)
+  {
+    if (!s_inst || engine->thread() != s_inst->thread() || (s_engine && s_engine != engine))
+      qFatal("MachiningPreparation must be used by one GUI-thread QML engine at a time");
     s_engine = engine;
     QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
     return s_inst;

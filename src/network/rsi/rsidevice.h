@@ -4,6 +4,7 @@
 #include "network/abstractdevice.h"
 #include "network/fts/rdtmessage.h"
 #include "network/rsi/rsiprotocol.h"
+#include "pathgeneration/chamfer/chamferjob.h"
 
 #include <QByteArray>
 #include <QHostAddress>
@@ -30,6 +31,7 @@ public:
 
 public slots:
   void setForce(const RDTResponse& sample);
+  void setPreparedJob(PreparedChamferJobPtr job);
 
 protected:
   void startDevice() override;
@@ -48,6 +50,7 @@ private:
 
   void setMotionState(MotionState state);
   void finishMotion(bool cooldown);
+  void publishPreparedJob();
 
   std::array<double, 6> tickMotion(bool& stop);
   RsiTxFrame makeTxFrame(quint64 ipoc);
@@ -64,6 +67,9 @@ private:
 
   QVector<V6d> m_offsets;
   int m_offIdx = 0;
+
+  PreparedChamferJobPtr m_preparedJob;
+  QString m_preparedJobError;
 
   double m_fz = 0.0;
 };

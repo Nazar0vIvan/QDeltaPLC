@@ -518,6 +518,9 @@ ApplicationWindow {
         playbackAvailable: Backend.Machining.canPlay
         playing: Backend.Machining.playing
         playbackActive: Backend.Machining.playbackActive
+        preparationAvailable: !root.chamferEditorOpen && Backend.MachiningPreparation.canPrepare
+        preparing: Backend.MachiningPreparation.preparing
+        onPreparationRequested: Backend.MachiningPreparation.prepare()
         onPauseRequested: Backend.Machining.pause()
         scanActive: root.dryScanActive
         scanRunning: root.dryScanRunning
@@ -546,6 +549,28 @@ ApplicationWindow {
         onPlaneImportRequested: planeFileDialog.open()
         onCircleImportRequested: circleFileDialog.open()
         onCylinderImportRequested: cylinderFileDialog.open()
+      }
+
+      Label {
+        Layout.fillWidth: true
+        visible: root.workflowMode === WorkflowPanel.Machining && !root.chamferEditorOpen
+        font: Fonts.caption
+        color: Backend.MachiningPreparation.error.length > 0 ? Colors.maxColor : Colors.foreground.medium
+        wrapMode: Text.WordWrap
+        text: {
+          if (Backend.MachiningPreparation.preparing) return qsTr("Preparing job…")
+          if (Backend.MachiningPreparation.error.length > 0) return Backend.MachiningPreparation.error
+          if (Backend.MachiningPreparation.prepared) {
+            const duration = Backend.MachiningPreparation.duration.toFixed(2)
+            const scale = Backend.MachiningPreparation.centralTimeScale
+            const samples = Backend.MachiningPreparation.sampleCount
+            const status = scale > 1.000001 ? qsTr("Job prepared · %1 samples · %2 s · timing ×%3").arg(samples).arg(duration).arg(scale.toFixed(2))
+                                           : qsTr("Job prepared · %1 samples · %2 s").arg(samples).arg(duration)
+            return status + "\n" + (Backend.MachiningPreparation.encodingReady ? qsTr("Encoding ready.")
+                                   : Backend.MachiningPreparation.encodingUnavailableReason)
+          }
+          return Backend.MachiningPreparation.unavailableReason || qsTr("Ready to prepare.")
+        }
       }
 
       RobotViewport {

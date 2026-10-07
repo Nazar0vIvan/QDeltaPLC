@@ -13,6 +13,8 @@ ToolBar {
   property bool cylinderImportAvailable: false
   property bool intersectionAvailable: false
   property bool generationAvailable: false
+  property bool preparationAvailable: false
+  property bool preparing: false
   property bool playbackAvailable: false
   property bool playing: false
   property bool playbackActive: false
@@ -30,6 +32,7 @@ ToolBar {
   signal cylinderImportRequested()
   signal intersectionRequested()
   signal generationRequested()
+  signal preparationRequested()
   signal toolSetupRequested()
 
   readonly property bool measuring: root.mode === WorkflowPanel.Measuring
@@ -181,6 +184,14 @@ ToolBar {
         iconSource: "qrc:/pics/generate_path.svg"
         available: root.generationAvailable
         onTriggered: root.generationRequested()
+      }
+
+      Tool {
+        visible: !root.measuring
+        text: root.preparing ? qsTr("Preparing…") : qsTr("Prepare")
+        iconSource: "qrc:/pics/generate_path.svg"
+        available: root.preparationAvailable
+        onTriggered: root.preparationRequested()
       }
 
       Rectangle {

@@ -12,6 +12,7 @@
 
 #include <QNetworkDatagram>
 #include <QTimer>
+#include <QThread>
 #include <QUdpSocket>
 
 #include <iostream>
@@ -45,10 +46,12 @@ void RsiDevice::startDevice()
     {"motionActive", false},
     {"trajectoryReady", false}
   });
+  publishPreparedJob();
 }
 
 void RsiDevice::stopDevice()
 {
+  setPreparedJob({});
   if (!m_sock) return;
 
   disconnect();
@@ -256,6 +259,36 @@ void RsiDevice::stopStreaming()
 void RsiDevice::setForce(const RDTResponse& sample)
 {
   m_fz = sample.Fz / kCount;
+}
+
+void RsiDevice::setPreparedJob(PreparedChamferJobPtr job)
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  if (job && m_state == MotionState::Moving) {
+    m_preparedJobError = QStringLiteral("Cannot replace a prepared job while RSI motion is active.");
+    publishPreparedJob();
+    emit logMessage({m_preparedJobError, 0, objectName()});
+    return;
+  }
+  m_preparedJob = std::move(job);
+  m_preparedJobError.clear();
+  publishPreparedJob();
+}
+
+void RsiDevice::publishPreparedJob()
+{
+  // Separate from the demonstration trajectory; storing a job never arms motion.
+  emit stateReady({
+    {"preparedJobAvailable", bool(m_preparedJob)},
+    {"preparedJobId", m_preparedJob ? m_preparedJob->source().jobId : QString{}},
+    {"preparedJobDuration", m_preparedJob ? m_preparedJob->duration() : 0.0},
+    {"preparedJobTimeScale", m_preparedJob ? m_preparedJob->centralTimeScale() : 1.0},
+    {"preparedJobCyclePeriod", m_preparedJob ? m_preparedJob->cyclePeriod() : 0.0},
+    {"preparedJobSampleCount", m_preparedJob ? m_preparedJob->sampleCount() : 0},
+    {"preparedJobEncodingReady", m_preparedJob && m_preparedJob->encodingReady()},
+    {"preparedJobEncodingReason", m_preparedJob ? m_preparedJob->encodingUnavailableReason() : QString{}},
+    {"preparedJobError", m_preparedJobError}
+  });
 }
 
 void RsiDevice::onReadyRead()
