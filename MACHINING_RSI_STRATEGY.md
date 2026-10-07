@@ -134,7 +134,7 @@ The future hardware action should prepare a numerical execution job from a selec
 
 The final user workflow remains surface JSON import -> Intersect Selected -> select edge -> configure TCP -> Generate Path/Apply -> prepare that saved path for machining. In the present UI, Generate Path opens the settings editor and Apply creates the path. Do not replace this with mandatory manual point entry or the separate KukaPanel demonstration button. Actual machining execution remains a distinct deliberate action; generating or selecting a path must not start hardware motion.
 
-Stage A now supplies the separate Prepare action for a selected compatible saved path. Backend.MachiningPreparation captures that immutable motion, validates its boundaries on a numerical worker, reports the central duration/time scale and sends a typed job to RSI through a queued connection in main.cpp. Selection or compatibility loss invalidates that prepared job. RsiDevice stores it using separate preparedJob* state; the job is not consumed by the demonstration motion or any execution session. This implements offline preparation only; complete 4 ms sampling and controller encoding remain subsequent work.
+Stage A supplies the separate Prepare action for a selected compatible saved path. Backend.MachiningPreparation captures that immutable motion, validates its boundaries on a numerical worker, reports the central duration/time scale and sends a typed job to RSI through a queued connection in main.cpp. Selection or compatibility loss invalidates that prepared job. Milestones 3-4 add 4 ms analytic samples, continuous nominal XYZABC encoding/reconstruction and configured component-limit checks. RsiDevice stores these using separate preparedJob* state; the job is not consumed by the demonstration motion or any execution session. Step 5 supplies a separate nominal wire contract/audit for later session integration.
 
 ### 4.4 Verified gaps in the current RSI implementation
 
@@ -441,7 +441,9 @@ rsicorrectionlimits.h/.cpp reads schema-1 rsi-correction-limits.json beside the 
 
 ### 10.3 Existing Ethernet configuration
 
-The user supplied this configuration. It is a reference to preserve while designing explicit extensions, not evidence of a complete configured controller:
+The current minimal experiment uses resources/files/RSI_Hole_EthernetConfig.xml and RSI_Hole_DIAGRAM.md: two SEND signal inputs (Start from PINT[1], Result echo from PINT[2]), internal RIst, and eight RECEIVE outputs (XYZABC, Stop, Result). Out8 writes PINT[2]. Result is 0 during execution/unsuccessful stop and 1 on normal completion. There is no Job/Sample exchange, active-motion STATUS/AND gate or clamping-status branch. The older C++ RsiHoleProtocol State schema must be aligned during the later PC integration; it is not the minimal XML's current peer.
+
+The user originally supplied the following configuration. It is retained here as historical reference, not the current experiment template:
 
 ```xml
 <ROOT>
@@ -525,7 +527,9 @@ Stop concerns robot movement here. Automatic spindle shutdown policy has not bee
 
 ## 12. KRL control-flow template
 
-This is a **design skeleton, not a deployable .src program**. Symbolic positions and helper calls below are not existing KRL APIs. Their data, signal mappings, declarations and result checks must be supplied and reviewed for the installed controller. Only the named RSI functions are the documented RSI command interface.
+The concrete nominal experiment is `resources/files/RSI_Hole.src` with `RSI_Hole.dat`: HOME -> Ps -> clear start -> RSI lead-in/machining/lead-out -> Ps -> HOME. It uses existing READ_FRAME/CLOSE_FILES, the user's condensed INI/HOME notation and relative IPO_FAST MOVECORR with #RSIBRAKE. File/API errors or a non-completed result end the routine before return motion. There are no recovery/re-entry paths, tokens, stage tracking or new helpers. PINT[1] supplies the Start request directly; PINT[2]=1 is the single normal-completion check. Three frames and the context ID are the entire data list. The source now selects tool/load slot 6 after HOME; BASE_DATA[0] still needs the previously identified correction and CP rates are implicit. The return Ps uses the clear lead-out attitude. Native RSI_RESET initializes exclusive RSI use. Minimal XML/diagram channel installation and PC nominal streaming remain pending; no active-motion detector is required by this experiment contract.
+
+The following full-job flow is a **deferred production design**, outside the simple experiment. Symbolic positions and helper calls below are not existing KRL APIs. Their data, signal mappings, declarations and result checks must be supplied and reviewed for the installed controller. Only the named RSI functions are the documented RSI command interface.
 
 ```text
 DEF HOLE_EDGE_JOB()
@@ -555,7 +559,7 @@ DEF HOLE_EDGE_JOB()
    LIN PIN
    ; Exact stop at PIN; establish readiness, without consuming path samples.
 
-   Ret = RSI_CREATE("HoleEdge", ContextId, TRUE)
+   Ret = RSI_CREATE("RSI_Hole.rsi", ContextId, TRUE)
    IF Ret <> RSIOK THEN
       RETURN
    ENDIF
@@ -600,6 +604,8 @@ The user has a functioning shared folder mounted as /RoboCrapJobs, backed by //1
     X;Y;Z;A;B;C
 
 It constructs a FRAME and reports #DATA_OK through the existing KRL helper's Ok output. CLOSE_FILES uses krl_fclose_all. The C++ result-return style rules do not prohibit output arguments required by KRL APIs.
+
+The user subsequently supplied PC path C:\RoboCrapJobs\points.txt, controller path /RoboCrapJobs/points.txt and exact calls `Frame=READ_FRAME(FileHandle,ReadOk)` and `CloseOk=CLOSE_FILES()`. RSI_Hole.src uses synchronous CWRITE for read-mode open and explicit close, checking State.RET1 == #DATA_OK. Its first three records are staging-in, clear lead-in start and expected clear lead-out end. Example numbers establish the six-value format, not actual saved-job geometry. Extra records are not rejected by this consumer. The existing mount must already be configured; credentials are not included. Full identity/atomic PC publication and installed-cell initialization remain later integration.
 
 When file integration is requested, load/validate all auxiliary data before motion and close handles on every path. Check mount/open/read/close results, all six values, record count and job/calibration identity. Keep the points and PC central path from the same preparation snapshot; use an atomic completed-file publication rather than reading a partially written job. Do not perform shared-folder I/O in a 4 ms loop. Existing CWRITE file functions are synchronous and affect advance-run behavior.
 
@@ -648,6 +654,8 @@ Acceptance: reconstruction through the chosen controller correction rule follows
 ### Stage C: Integrate protocol/session control and the matching RSI/KRL design
 
 Define the exact start, normal-completion and abort handshake; extend C++ wire types, XML and RSI graph together. Serialize Stop, gate new cycles, handle duplicate/order/gap behavior, and preserve terminal reasons. Replace the demonstration action only within the authorized UI/API scope and update all string-dispatched call sites affected by changes.
+
+Step 5 is a simple nominal experiment using RSI_Hole.rsi. Concrete RSI_Hole.src/.dat execute the single HOME/Ps/nominal-RSI/Ps/HOME sequence with direct failure exits and one completion check. RSI_Hole_EthernetConfig.xml and RSI_Hole_DIAGRAM.md now contain only the minimal Start/Result/XYZABC/Stop exchange; Job/Sample and the unverified active-motion gate have been removed. The separate RsiHoleProtocol serializer/decoder still has its earlier extended schema and must be aligned before nominal PC integration; its prepared-correction audit remains available. The active device demonstration is unchanged. Step 6 connects the single nominal stream without restoring full-session or recovery machinery. No controller compilation or equipment run is claimed.
 
 Acceptance: a duplicate valid request does not consume another target; invalid peers/XML do not advance the job; armed waiting produces zero increments; missing/ambiguous terminal information cannot enter the KRL return path; application Stop cannot trigger preview-style HOME motion. A final target is not discarded by early termination. Validation starts with offline reasoning/captured data or approved existing local facilities; live controller checks need separate authorization.
 
@@ -717,6 +725,8 @@ This document defines the agreed strategy, verified current integration points, 
 
 Under the subsequent authorized Stage A and Milestones 3-4 / Stage B tasks, C++/QML/CMake implement PreparedChamferJob, SceneMachiningPreparation, queued RSI storage, the workspace Prepare action and nominal analytic Cartesian sampling at 4 ms. The immutable job retains validated samples, phase/junction poses, machining-time overlap and saved effective timing; the workspace reports sample count. Milestone 4 implements XYZABC serialization/reconstruction, sampled envelopes and explicit nominal correction-limit configuration/comparison under the user-confirmed direct TCP-angle addition and component-wise limit contracts. GUI/device encoding readiness and reason remain separate from sampling success. Engineering numerical profile values, matching installed controller settings/ranges and execution evidence remain pending. MACHINING_RSI_EXECPLAN.md records implementation and source-review evidence. No build, runtime or hardware verification has been performed. Commissioned execution and force retreat remain later work. Preserve the distinction between an offline prepared nominal job and commissioned robot execution. Update factual claims when implementation changes them; do not erase the final direction or Stop decisions when resolving lower-level details.
 
+Nominal Step 5 has the concrete three-record KRL experiment and the minimal Ethernet XML plus six-object diagram. PINT[1] is Start; Out8 writes Result to PINT[2], and a SEN_PINT read supplies the result echo before Stop. No Job/Sample, STATUS/AND, correction-status field or second STOP branch remains in the current graph contract. The earlier RsiHoleProtocol C++ wire schema is now incompatible with this minimal XML and awaits alignment in Step 6; the active demonstration and UI are unchanged. Source/XML/whitespace review only; no build, controller compilation or equipment operation has been performed.
+
 ## 18. Complete answer record: do not re-ask these questions
 
 This table accounts for every numbered answer in clarifications.txt. Later changes are identified explicitly. It records task facts, not permission to contact hardware.
@@ -767,5 +777,6 @@ Additional decisions from the follow-up conversation are fully incorporated:
 - Stop means terminate robot movement for the job; there is no automatic return/recovery sequence. Controller stop wiring still needs implementation.
 - Joint-position checks are deliberately enabled to avoid unreasonable animation/PTP constructions. Do not disable them to bypass preparation failures.
 - Relative RSI A/B/C values add directly to the starting TCP A/B/C angles, explicitly confirmed by the user on 2026-10-07. This applies to nonzero starting attitudes. Incremental rotation-matrix composition and a separately applied accumulated rotation are excluded. The rotation rule is settled; correction-limit semantics and accepted settings remain separate unresolved facts.
+- PC auxiliary file is C:\RoboCrapJobs\points.txt; KRL opens /RoboCrapJobs/points.txt through the existing mount and reuses READ_FRAME/CLOSE_FILES. Records are Ps, clear lead-in start and clear lead-out end. The user narrowed KRL to one nominal experiment with no recovery, retry or return-to-trajectory logic. Direct file/API failures end the program; one Completed flag distinguishes normal Ps/HOME return from an abort. Full production job/session machinery is deferred.
 
 If a future model believes another broad clarification is necessary, it should first identify the exact uncovered fact and why neither this record, current code nor the supplied manuals answers it. Research/design work and commissioning measurements must not be sent back as repeated strategy questions.

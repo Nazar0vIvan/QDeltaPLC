@@ -1,0 +1,9 @@
+&ACCESS RVP
+&REL 1
+DEFDAT RSI_Hole
+   ; points.txt: Ps, clear lead-in start, clear lead-out end (XYZABC).
+   DECL FRAME Ps
+   DECL FRAME LeadStart
+   DECL FRAME LeadEnd
+   DECL INT RsiContext=0
+ENDDAT

@@ -90,6 +90,8 @@ qt_add_library(RoboCrapDevices STATIC
   network/rsi/rsidevice.cpp
   network/rsi/rsiprotocol.h
   network/rsi/rsiprotocol.cpp
+  network/rsi/rsiholeprotocol.h
+  network/rsi/rsiholeprotocol.cpp
   network/common/loggermessage.h
 )
 target_include_directories(RoboCrapDevices PUBLIC ${SRC_DIR})

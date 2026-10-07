@@ -259,6 +259,40 @@ and src/main.cpp.
   and preparedJobEncodingReason with its existing prepared-job state.
   Start Machining remains disabled; preparation does not establish controller readiness.
 
+- Nominal Step 5 wire-contract code lives in network/rsi/rsiholeprotocol.h/.cpp in
+  RoboCrapDevices, separately from the active demonstration RsiProtocol/RsiDevice path.
+  RsiHoleProtocol preserves prepared RKorr strings and encodes Stop and Job/Sample/Result;
+  decoding reuses basic RSI framing/robot validation and requires Ready and POSCORR Stat.
+  auditNominalJob serializes/parses actual nominal replies and reconstructs saved TCP
+  samples from parsed cumulative XYZABC, returning counts/errors/timing and separate
+  correction-limit status. It is not dispatched by current preparation/device code;
+  future integration must run it outside ControlIO receive callbacks. Arithmetic success
+  never bypasses configured-limit or controller readiness. resources/files contains
+  RSI_Hole_CONTRACT.md and concrete RSI_Hole.src/.dat source inputs, not embedded/deployed
+  controller artifacts. The KRL program opens /RoboCrapJobs/points.txt on the existing mount
+  (PC C:\RoboCrapJobs\points.txt), reuses READ_FRAME/CLOSE_FILES and reads Ps,
+  clear lead-in start and clear lead-out end. One routine executes standard HOME,
+  PTP Ps, LIN to the clear start, nominal lead-in/machining/lead-out through relative
+  IPO_FAST MOVECORR, LIN Ps and standard HOME. The current source selects TOOL_DATA[6]
+  and LOAD_DATA[6] after HOME, using BASE interpolation and VAR orientation. Its
+  BASE_DATA[0] selection still needs correction; CP rates are not set explicitly.
+  PINT[1] requests RSI execution; PINT[2]=1 marks normal completion. Missing/abnormal
+  result or file/RSI API failure ends the program without return motions. There is
+  no recovery/re-entry logic, job token, stage tracking or automatic resume.
+  The data list contains only three input frames and the RSI context ID. The return
+  Ps uses its original origin with the clear lead-out attitude. Standard interrupt 3
+  remains IR_STOPM. RSI_Hole_EthernetConfig.xml is the minimal experiment schema:
+  RIst plus Start/Result are sent; XYZABC, Stop and Result are received. Ethernet
+  has two signal inputs and eight outputs; Out8 writes PINT[2], whose readback
+  supplies the result echo. Start directly reports PINT[1], a KRL request rather
+  than verified active motion. RSI_Hole_DIAGRAM.md is the six-object wiring reference.
+  No Job/Sample, active-motion STATUS/AND gate or clamping-status branch is included.
+  The existing C++ RsiHoleProtocol still has the earlier extended State schema and
+  must be aligned with this XML during nominal PC integration. The native context
+  export, channel installation and equipment verification remain pending; earlier
+  KRL templates and RSI_EthernetConfig.xml remain absent from the current tree.
+  No force correction or nominal execution session is connected yet.
+
 - SceneEndEffectors in src/scene owns both tool configurations on the GUI thread, independently
   of scene-object selection. main.cpp owns it before the QML engine and exposes Backend.EndEffectors
   through backendqmltypes.h. CAD URLs default to deployed MEE.stp and SEE.stp via ViewportAssets.

@@ -1,0 +1,87 @@
+&ACCESS RVP
+&REL 1
+DEF RSI_Hole()
+   DECL STATE_T OpenState
+   DECL STATE_T CloseState
+   DECL MODUS_T Mode
+   DECL INT FileHandle
+   DECL INT Ret
+   DECL BOOL ReadPsOk
+   DECL BOOL ReadStartOk
+   DECL BOOL ReadEndOk
+   DECL BOOL CloseOk
+   DECL BOOL Completed
+   DECL FRAME PsOut
+
+   INI
+   $ADVANCE=0
+   Ret=RSI_RESET()
+   $SEN_PINT[1]=0
+
+   PTP HOME  Vel= 100 % DEFAULT
+
+   $TOOL=TOOL_DATA[6]
+	 $LOAD=LOAD_DATA[6]
+   $BASE=BASE_DATA[0]
+   $IPO_MODE=#BASE
+   $ORI_TYPE=#VAR
+   Mode=#SYNC
+   FileHandle=0
+   ReadPsOk=FALSE
+   ReadStartOk=FALSE
+   ReadEndOk=FALSE
+
+   ; Existing mount and READ_FRAME/CLOSE_FILES helpers.
+   CWRITE($FCT_CALL,OpenState,Mode,"krl_fopen","/RoboCrapJobs/points.txt","r",FileHandle)
+   IF OpenState.RET1 <> #DATA_OK THEN
+      CloseOk=CLOSE_FILES()
+      RETURN
+   ENDIF
+   Ps=READ_FRAME(FileHandle,ReadPsOk)
+   LeadStart=READ_FRAME(FileHandle,ReadStartOk)
+   LeadEnd=READ_FRAME(FileHandle,ReadEndOk)
+   CWRITE($FCT_CALL,CloseState,Mode,"krl_fclose",FileHandle)
+   CloseOk=CLOSE_FILES()
+   IF (NOT (ReadPsOk AND ReadStartOk AND ReadEndOk AND CloseOk)) OR (CloseState.RET1 <> #DATA_OK) THEN
+      RETURN
+   ENDIF
+
+   Ret=RSI_CREATE("RSI_Hole.rsi",RsiContext,TRUE)
+   IF Ret <> RSIOK THEN
+      RETURN
+   ENDIF
+
+   PTP Ps
+   LIN LeadStart
+
+   ; RSI executes the nominal lead-in, machining and lead-out.
+   $SEN_PINT[2]=0
+   Ret=RSI_ON(#RELATIVE,#IPO_FAST)
+   IF Ret <> RSIOK THEN
+      Ret=RSI_DELETE(RsiContext)
+      RETURN
+   ENDIF
+   $SEN_PINT[1]=1
+   RSI_MOVECORR(#RSIBRAKE)
+   $SEN_PINT[1]=0
+   Completed=($SEN_PINT[2]==1)
+   Ret=RSI_OFF()
+   IF Ret <> RSIOK THEN
+      RETURN
+   ENDIF
+   Ret=RSI_DELETE(RsiContext)
+   IF (Ret <> RSIOK) OR (NOT Completed) THEN
+      RETURN
+   ENDIF
+
+   ; Same Ps origin, with the clear lead-out attitude for the LIN transfer.
+   
+	 PsOut=Ps
+   PsOut.A=LeadEnd.A
+   PsOut.B=LeadEnd.B
+   PsOut.C=LeadEnd.C
+   
+	 LIN PsOut
+
+   PTP HOME  Vel= 100 % DEFAULT
+END
