@@ -1,5 +1,40 @@
 # RoboCrap — agent instructions
 
+## Mandatory explanation style
+
+- Answer the exact question first. When asked for the next step, explain only that step.
+  Be concise by removing repetition, never by omitting the mechanics needed to understand it.
+- Be concrete: identify the inputs and where they come from, the actual operations in order,
+  and the result and where it is used. Do not substitute abstract labels such as "adaptive",
+  "validation", or "decoupling" for an explanation of what the code actually does.
+- Use established mathematical and project terminology; do not invent terminology. Define
+  every new symbol, index, technical term and quantity immediately, including units where relevant.
+  Do not use arrows as a substitute for explaining a calculation or relationship.
+- Always denote vectors in explanations with lowercase, regular (non-bold) letters and an overbar,
+  for example `\bar{p}`, `\bar{k}`, `\bar{r}`. Do not use uppercase or bold letters or arrow accents
+  for vectors.
+- Always denote axis unit vectors with lowercase e, an overbar, and the axis subscript x, y,
+  or z: `\bar{e}_x`, `\bar{e}_y`, `\bar{e}_z`.
+- In formulas, always show all arguments on which each function depends; never omit them
+  for brevity (for example, write `\bar{p}_M(\theta)`, not `\bar{p}_M`). Show dependent
+  arguments explicitly: if `\theta=\theta(u)`, write `\bar{p}_L(u,\theta(u))` when using
+  the two-argument definition, and `\bar{p}_M(\theta(u))` inside it. Distinguish independent
+  arguments from dependent quantities and explicitly identify any fixed parameters.
+- In Russian answers, use accepted Russian engineering terminology, not literal translations.
+  A robot joint is "сочленение", never "сустав". Check unfamiliar terms before using them;
+  if uncertain, retain and define the original technical term rather than inventing a translation.
+- For proposed changes, state exactly what happens now and what calculation will replace it.
+  For failures, identify the failing operation, its inputs, the rejected condition and the reason.
+  Ground implementation claims in inspected code; explicitly distinguish uncertainty from fact.
+- Use a concrete calculation or example when explaining an algorithm. Prefer actual project
+  values; label hypothetical values. Distinguish computation time from movement duration,
+  stored animation points from temporary checks and RSI samples, and measurements from estimates.
+- Before every answer, check for undefined terms, ambiguous references and missing calculation
+  steps. Correct them before replying. These requirements take precedence over default brevity;
+  do not make the user repeatedly request specifics or repeat an explanation they already accepted.
+  Re-read this section before technical explanations. Explicitly distinguish existing code from
+  proposals; explain how example intervals are selected and how many values each operation returns.
+
 ## Mandatory C++ style
 
 - Do not use C++ lambdas; use descriptively named helper functions or member methods.
@@ -21,6 +56,9 @@
 
 ## Scope and workflow
 
+- Current machining work is limited to animation preparation and playback. Do not change
+  or run RSI preparation unless the user explicitly reopens that scope.
+
 - Read the files you will change and inspect affected callers before changing behavior or an API.
   For a changed QML component or component use, inspect its definition and custom base types;
   verify properties, signals, default content, and sizing instead of inferring them from examples.
@@ -35,6 +73,8 @@
   require an explicit user request. This also applies when following PLANS.md.
 - For complex features or significant code refactors, read PLANS.md and maintain an ExecPlan.
   Simple edits, documentation-only work, and read-only analysis do not need an ExecPlan.
+- All task plans and strategy documents (including ExecPlans) must be stored in the
+  repository-root `codex_plans/` folder, never in the repository root or other folders.
 - Edit source inputs, not generated build outputs. Treat libs/eigen-5.0.0 as vendored code and
   CMakeLists.txt.user* as local IDE settings; change them only when the task specifically requires it.
 - Update factual statements in this file when an implementation makes them stale; keep research,
@@ -140,8 +180,20 @@ and src/main.cpp.
 
 ## QML components and geometry
 
+- Measuring EE and Machining EE toolbar actions open their settings in the right-hand
+  Properties area; Close restores object properties. End-effector numeric fields display four
+  decimal places and accept at most four fractional digits. Read-only ER display rounding
+  does not change the stored calibration.
+
 - Do not add explanatory or tutorial labels to the UI. Use concise field names, units,
   status messages and actionable errors; keep explanations in documentation or chat.
+
+- MachiningPanel exposes one shared leadRadius (mm, default 5), replacing the four
+  lead clearance/span settings. SceneMachiningSettings and ChamferPathParameters retain it
+  in generated snapshots; ChamferPath::create rejects nonfinite/nonpositive values.
+  leadRadius now defines two planar circular TCP-origin leads. The internal clearance/span
+  inputs are removed; per-lead sampling interval settings remain. Profiling inputs require
+  a numeric leadRadius; no legacy clearance/span parsing or migration remains.
 
 - Numerical internal-chamfer geometry lives in pathgeneration/chamfer/chamferpath.h/.cpp
   in RoboCrapGeometry. ChamferPath validates an ellipse against a cylinder axis line and
@@ -153,19 +205,32 @@ and src/main.cpp.
   be finite and strictly between 0 and 90 degrees. TCP origin is the midpoint of the endpoints.
   Local Y follows the section diagonal toward the end plane; local Z points inward/toward the opening; local X is radial cross outward axis.
   TCP = local frame * Rx(180 degrees), with coincident origins and opposite Y/Z axes.
-  flipAxis reverses the outward axis and traversal. Lead-in/out follow quarter circles
-  in normalized angular/axial coordinates, with phi=pi*progress/2: lead-in angle is
-  -span*cos(phi) and clear amount is 1-sin(phi); lead-out angle is 2*pi+span*sin(phi)
-  and clear amount is 1-cos(phi). Axial clearance and quaternion-interpolated orientation
-  use that same clear amount; their clear-end burr Y is opposite the outward
-  axis and TCP Z is radially outward. Evaluated lead TCP Y must project negatively on
-  the outward axis. The section frame X need not follow the tilted ellipse tangent.
+  flipAxis reverses the outward axis and traversal. Lead circles are cached during
+  ChamferPath::create in the plane spanned by the analytical machining TCP tangent and
+  outward hole axis. The center lies leadRadius along the normalized outward-axis
+  projection perpendicular to that tangent. With c=tangent.dot(outwardAxis), sweeps
+  are acos(-c) for lead-in and acos(c) for lead-out, evaluated with atan2 for stability.
+  Lead-in starts along the inward axis and ends along machining; lead-out starts along
+  machining and ends along the outward axis. Progress is the length fraction for leads.
+  Endpoints retain exact machining poses; lead edgePoint/radialNormal describe that fixed
+  junction, not a moving contact point. Degenerate tangent/axis planes fail construction.
+  Each lead retains its machining junction rotation over the entire circular arc.
+  Machining still follows the radial section around the opening at chamferAngleDegrees;
+  BASE ABC is not frozen for the full ellipse. The old lead ABC cubics, Euler-branch
+  selection and angular-derivative helpers are removed. Staging rotation is cached
+  separately with TCP Y opposite the outward axis and TCP Z radially outward.
+  Evaluated lead TCP Y must project negatively on the outward axis.
+  The section frame X need not follow the tilted ellipse tangent.
   ChamferPath stores positive finite stagingDistance (default 10 mm). stagingPoint returns
   ellipse center + stagingDistance*outwardAxis; stagingPose(LeadIn/LeadOut) returns that
-  origin with the corresponding clear-lead orientation (Y opposite hole Z). Machining
+  origin with the cached staging rotation directly (Y opposite hole Z). Machining
   is not a valid staging side. Scene settings and MachiningPanel preserve the distance
-  through Apply and saved-path selection. HOME PTP terminates/starts at P_s; straight fixed-attitude Cartesian transfers connect
-  it to the clear lead endpoints using lead-in/out feeds. Transfer/lead corners stop.
+  through Apply and saved-path selection. HOME PTP terminates/starts at P_s; straight
+  Cartesian transfers connect it to the free lead endpoints using transferFeed and
+  transferAcceleration. First LIN tilts from staging to machining orientation; return
+  LIN restores staging orientation. Preview transfer targets use normalized quaternion
+  slerp at the traveled-distance fraction, with exact endpoint rotations; this is not
+  a claim about the controller's internal #VAR interpolation. Transfer/lead corners stop.
   Phase evaluation and adaptive sampling retain shared junctions and the full-turn endpoint.
   SceneMachining connects numerical generation to scene ownership. OccSceneAdapter renders
   seven phase polylines under one object ID (purple HOME, blue leads, green machining).
@@ -174,18 +239,119 @@ and src/main.cpp.
   The non-selectable magenta outward-axis arrow uses SceneMachining.previewParameters,
   responds to applied settings, and is excluded from camera bounds. New edge inputs default
   outward toward negative scene X for the current XP/XC workpiece; saved paths retain their Flip. MachiningPanel edits parameters and Apply generates/selects paths. SceneMachining owns a GUI-thread timer and monotonic clock for Dry Run; direct C++ pose requests go through OccController and the existing preview-state FK/commit path. Pause freezes elapsed time and pose; Dry Run resumes the retained motion. User Stop resets the preview to HOME and clears active playback; completion ends at HOME. Internal failure/readiness cleanup ends playback without a HOME request. Calibration/model changes, viewport loss, active-path deletion, leaving machining mode and shutdown stop playback. Manual FK/IK and generation are blocked during running or paused playback; selection does not replace the active motion.
+  chamferarclength.h/.cpp provides independent per-phase TCP-origin arc-length maps.
+  ChamferPath::phaseArcDifferential returns exact constant R*sweep and zero derivative
+  for circular leads. Machining uses analytical first/second TCP position derivatives,
+  also reused to construct lead tangents. Neither differential path evaluates orientations.
+  Circular lead maps store only the cached length L=R*sweep: progressAtDistance(s)=s/L
+  and distanceAt(u)=L*u, with exact endpoints and finite/range checks. No lead quadrature,
+  knots, inverse polynomials or query searches are constructed or used. ArcTableBuilder
+  accepts only machining geometry; there is no numerical lead fallback.
+  For machining, embedded Gauss-7/Kronrod-15 quadrature and adaptive quintic Hermite inverse
+  polynomials replace chords and linear lookup. Defaults are 1e-9 mm total integration error estimate,
+  1e-10 mm local inverse distance residual, 1e-8 relative speed-ratio error and 1e-7/mm
+  speed-ratio derivative error. Sampled refinement criteria are numerical estimates,
+  not analytic guarantees. Positive derivative Bernstein coefficients, with bounded subdivision,
+  check polynomial monotonicity in floating point. Strictly increasing knots preserve exact
+  endpoints/full turns. Queries use binary search and Horner evaluation; distanceAt reverses
+  the same polynomial by bounded bisection and is not on the RSI sampling path. Construction
+  fails on invalid/degenerate/unresolved curves, nonfinite values or exhausted limits of
+  20 adaptive levels, 200000 knots and 800000 differential evaluations per phase.
+  Knots are neither animation points nor RSI cycles. Recover original analytical poses with
+  evaluatePhase at the returned progress. ChamferCentralMotion retains these immutable maps
+  in generated ChamferMotion snapshots; RSI preparation uses that same central evaluator.
+  chamfercentralmotion.h/.cpp defines an immutable analytical central trajectory using
+  machiningFeed and accelerationDistanceFraction from ChamferTimingParameters. Each lead
+  derives ramp distance f*L, ramp duration 2*f*L/V and acceleration magnitude V^2/(2*f*L).
+  Lead-in accelerates then cruises; machining cruises; lead-out cruises then decelerates.
+  evaluate(seconds) maps time to distance, then progress, then the existing analytical
+  TCP position/orientation. Phase-local evaluation preserves explicit junction/full-turn
+  endpoints. Returned acceleration is signed tangential acceleration, not total XYZ
+  acceleration. Fractions in (0,1] include all-ramp leads; unequal lengths give different
+  ramp accelerations. Invalid/unrepresentable profiles fail, and no automatic time scale
+  is applied. This definition owns geometry/tables. Generation validates it through
+  validateChamferCentral and retains it alongside Dry Run joint samples. RSI Sampling
+  directly uses this same evaluator; controller execution integration remains pending.
+  Temporary Dry Run diagnostic: per-joint acceleration magnitude rejection is commented out
+  in central validation and staging-transfer validation, including terminal-stop checks.
+  Acceleration finiteness, joint positions/speeds and central XYZ acceleration checks remain
+  active; interpolation checks remain only on LIN transfers, not central animation phases. HOME timing still uses configured joint acceleration values.
+  RSI sampling retains its separate joint-acceleration rejection checks. The central and
+  transfer acceleration-validation descriptions below are subject to this temporary exception.
+  chamfercentralvalidation.h/.cpp provides validateChamferCentral(path, robot, initialSeed).
+  It constructs the prescribed central motion from the same saved setup and returns owned
+  motion/model/calibration snapshots and continuous IK samples, or an error with no partial
+  successful result. The initial seed selects configuration/winding; its transfer to the
+  clear lead-in endpoint is not validated here. Each TCP target is converted to flange,
+  solved with preceding joints and checked through TCP FK (KR10 tolerances) and positions.
+  Before any central IK, exact phase/ramp boundaries partition the motion into constant
+  tangential-acceleration spans. Each span gets N=max(1,ceil(T*sqrt(Amax/(8*0.01mm))))
+  uniform time intervals, with shared endpoints retained once. Circular leads use
+  Amax=hypot(tangentialAcceleration,V^2/leadRadius); machining uses V^2 times a conservative
+  analytical curvature bound of the chamfer-offset TCP curve, including plane tilt and
+  chamfer size/angle. No sampled curvature maximum search is used. Each assigned point
+  gets one seeded IK and TCP FK check per candidate attempt. No 4 ms grid, quarter samples,
+  5-degree subdivision or joint-interpolation error refinement remains in central preview.
+  The budget is 200000 predetermined central points; failures do not add points.
+  Diagnostics include plannedSamples, per-phase plannedIntervals and accelerationBound.
+  Every retained interval checks joint speed against min(configured, rated-payload).
+  Sampled acceleration uses windows of at least 100 us, includes initial/final rest, and
+  checks configured joint and total XYZ simulation acceleration bounds. These remain
+  assumptions, not controller ratings or analytic guarantees. Failures do not retime.
+  ChamferMotion generation calls this validator with the incoming transfer endpoint seed.
+  Central animation does not check TCP error between assigned points.
+  The 0.01 mm criterion bounds Cartesian chord approximation for the analytical geometry,
+  not actual TCP error after joint interpolation; numerical arc-length errors remain.
+  Central cubic joint playback is a display approximation; the central validator's
+  rate checks apply to sampled prescribed IK motion, not continuous analytical IK rates.
   chamfermotion.h/.cpp compiles a timed seven-stage KR10 simulation using the existing
   numerical IK solver, preceding-joint seeds, bounded alternate starting configurations,
   FK validation and direct synchronized joint-space HOME movements. It owns model/TCP
   snapshots and continuous joint angles; it does not call viewport or device APIs.
-  Central motion uses monotone cubic joint interpolation, feed/acceleration timing and
-  a reported uniform time scale for rate limits. HOME movements use synchronized quintic
-  progress. evaluate(seconds) returns a pose independently of display refresh rate.
+  Central motion uses prescribed ChamferCentralMotion timing and predetermined IK samples.
+  Staging transfers use straight-line trapezoidal profiles, or triangular
+  profiles when too short to reach transferFeed, with transferAcceleration for both ramps.
+  Straight LIN preview transfers retain exact acceleration/cruise/deceleration boundaries
+  and adaptively halve time intervals using 0.01 mm/0.1 degree quarter-time FK error and
+  5-degree joint continuity. They no longer start from a 1 ms grid. Right children solve IK
+  again using the committed left endpoint seed; unresolved IK/winding also subdivides.
+  Limits are 20 subdivision levels and 200000 interval evaluations per transfer. Temporary
+  chronological quarter-interval IK/FK samples feed joint speed/finite-acceleration checks;
+  these are not stored playback points. The existing joint-acceleration magnitude bypass
+  remains. These are sampled checks, not continuous guarantees. Transfers validate seeded
+  IK, TCP FK, joint positions and interpolation, including rest endpoints. LIN transfers
+  retain linear joint display interpolation and analytical target-error checks.
+  Generate prepares one clamped cubic spline per joint across all three central phases,
+  with zero speed at the free lead endpoints and shared first/second derivatives at knots.
+  The tridiagonal solve retains existing points/times and makes no extra IK/FK calls.
+  Private normalized-time interval coefficients are retained in ChamferMotion; playback
+  evaluates them and FK only, preserving exact joint values at saved knots. Polynomial
+  derivative roots check central spline position/speed extrema, including endpoints, before
+  accepting a motion; failures reject a candidate without retiming or adding points.
+  Acceleration finiteness remains checked; its temporary magnitude bypass remains in force.
+  centralSplineAttempts records computationMs, interval count, zero-based attemptIndex and
+  error separately from IK compilation diagnostics. Spline smoothness does not guarantee
+  Cartesian interpolation accuracy and does not change RSI analytical target generation.
+  HOME movements retain synchronized quintic progress and auxiliaryScale. Central samples
+  keep their original relative times; only preceding phase durations offset timestamps.
+  centralMotion() exposes a const optional evaluator snapshot; centralTimeScale() remains
+  1 for API compatibility. The old automatic time stretch and 5% margin are removed.
+  Generation rejects failed candidates instead of retiming and keeps the existing bounded
+  staging-branch search. A complete motion is capped at 400000 points. evaluate(seconds)
+  uses stored joints plus FK, with no IK or geometry construction in the playback timer.
   IgnorePreviewJointPositionLimits in kr10kinematicmodel.h is false. A1-A6 position checks are
   enforced in analytical IK, chamfer generation/evaluation and preview FK, including manual preview.
   Model limits also guide seed selection and model validation. Finite, singularity, FK accuracy,
   continuity, speed and acceleration checks remain active; device control is unaffected.
-  Simulation joint limits for speed/acceleration are explicit settings, not KUKA ratings;
+  kr10.json also records ratedPayloadSpeedDegreesPerSecond per joint from the KR 10 R1420
+  datasheet (0000-255-784 / V20.0 / 24.10.2017): 220, 210, 270, 381, 311, 492 deg/s.
+  The loader requires positive finite values and retains them in JointModel. Motion generation
+  resolves all six joint speeds directly from the model before timing and retains them in the
+  saved setup; RSI sampling also checks this saved bound. The old fixed 30 deg/s simulation
+  cap is removed. Generation overrides legacy saved speed caps on regeneration. QML-facing
+  jointSpeed remains a model-derived snapshot; zero defaults are unresolved until model loading.
+  HOME auxiliaryScale still scales HOME timing. The datasheet supplies no joint acceleration
+  values; configured joint acceleration bounds remain simulation assumptions, not KUKA ratings;
   Cartesian rate and interpolation-error checks are numerical samples, not analytic guarantees.
 
 - main.cpp owns SceneMachining after SceneModel/SceneEndEffectors and before the viewport/QML
@@ -203,15 +369,40 @@ and src/main.cpp.
   No percentage is estimated. Changed input/calibration or lost robot readiness rejects the result.
   The future waits for any remaining calculation during coordinator destruction.
   Scene playback has no OCCT dependency and invokes no devices.
+  Preparation result values also carry worker-local timing and IK/FK/sample counts; GUI
+  coordinators print one compact Qt diagnostic summary per result, including failures.
+  IK time includes internal solver FK; explicit FK counts exclude those internal calls.
+  Per-attempt diagnostics include Ps joint angles and each reached movement segment’s
+  computation time, IK/FK counts and added points. Shared rate passes, analytical construction,
+  point assembly and HOME timestamp assignment are accounted for separately.
+  The --profile-chamfer input.json report.json application mode runs the production numerical
+  preview and RSI preparation functions before Felgo/device startup, without scene insertion,
+  sockets or shared_data.txt export. Input previewOnly=true skips RSI preparation entirely;
+  the planar-leads profiling input enables it. Reports identify scope and record geometric
+  construction time separately from motion preparation. Its adapter lives in src/3d/chamferprofile.cpp so the
+  existing robot-model loader's OCCT dependencies stay inside RoboCrap3D. Inputs/reports for
+  the preview/RSI separation baseline are in codex_plans/. Profiling does not relax limits.
 
 - PreparedChamferJob in pathgeneration/chamfer/chamferjob.h/.cpp retains an immutable
   ChamferMotion and source/job/calibration identity in RoboCrapGeometry. It validates saved
   boundaries and evaluated poses, records job-relative LeadIn/Machining/LeadOut times,
   staging/clear-end/HOME poses and a 0.004 s cycle. sampleChamferCartesian evaluates
-  analytic LeadIn/Machining/LeadOut Cartesian frames. Bounded local projection of the saved
-  timed FK reference recovers curve progress without changing timestamps or centralTimeScale.
+  the saved ChamferCentralMotion at job-relative times for LeadIn/Machining/LeadOut.
+  No playback FK, joint interpolation or closest-point projection determines targets.
+  Saved joint knots witness IK branch/winding only at matching timestamps (1e-9 s
+  arithmetic tolerance), with the existing 5-degree branch guard. A preceding knot no
+  longer limits joint travel at later RSI times. Each RSI IK uses the preceding solved
+  configuration; saved knot times plus exact analytical phase/ramp switches supply
+  extra validation points without adding controller cycles. Missing analytical timing
+  rejects preparation with a regeneration instruction. All central feed checks use machiningFeed.
   It stores the initial pose, clock samples and exact terminal once, plus machining-time
-  overlap and separate full-turn/junction poses. Continuous seeded IK/FK, joint positions,
+  overlap and separate full-turn/junction poses. Sample time is analytical evaluation time;
+  controllerTime is the cycle end j*period and may exceed it only for the terminal sample.
+  PreparedChamferJob duration/phaseTimes retain exact analytical times; controllerDuration
+  reports the final complete cycle. No epsilon snapping advances a future endpoint to an
+  earlier tick. Mathematical-rate checks and separate complete-cycle speed/acceleration,
+  final-stop and final-cycle interpolation checks remain numerical estimates. The wire
+  audit cross-checks controllerTime and correction-count duration. Continuous seeded IK/FK, joint positions,
   sampled rates and interpolation error are checked; failure rejects preparation rather than
   retiming. Extra validation points do not add controller cycles. Rate estimates merge
   intervals below 100 us at the 4 ms clock; the sample vector is capped at 200,000 entries.
@@ -244,7 +435,9 @@ and src/main.cpp.
   a future collected by a GUI timer. Limit-file/directory watches invalidate prepared input on
   changed content; direct rereads before dispatch/acceptance also reject stale worker profiles.
   Future arming must revalidate the profile and matching installed controller configuration.
-  Selection, path deletion, calibration or readiness changes
+  Starting trajectory regeneration clears the prepared RSI job immediately, including its
+  queued copy in RsiDevice; failed regeneration does not restore it. Selection, path deletion,
+  calibration or readiness changes
   invalidate the selected prepared job and reject pending stale results; draft edits do not
   change its saved snapshot. main.cpp owns it after SceneMachining, exposes the typed
   Backend.MachiningPreparation singleton and connects preparedJobReady to RsiDevice::setPreparedJob
@@ -254,10 +447,30 @@ and src/main.cpp.
   The typed receiver is a public slot, excluded from string invoke dispatch, and refuses a
   nonempty replacement during demonstration motion. Preparation requires no sensor/controller
   connection, starts no socket or motion, and leaves demonstration offsets/trajectoryReady intact.
-  Main.qml binds ModeToolBar's Prepare action and preparation/error/timing/sample-count status,
-  plus separate encoding readiness/reason. RsiDevice publishes preparedJobEncodingReady
-  and preparedJobEncodingReason with its existing prepared-job state.
-  Start Machining remains disabled; preparation does not establish controller readiness.
+  SceneMachiningPath exposes total Dry Run duration, centralDuration and eight HOME-relative
+  phaseTimes from its immutable motion. MachiningPanel displays total and central duration.
+  SceneMachiningPreparation exposes analytical duration, controllerDuration, cyclePeriod,
+  four central-relative phaseTimes and correctionCount (sampleCount minus the initial pose).
+  These values use preparedChanged and clear to zero/empty with the prepared job.
+  RsiDevice publishes matching preparedJobControllerDuration, preparedJobPhaseTimes and
+  preparedJobCorrectionCount alongside existing duration/cycle/sample and encoding state.
+  Main.qml binds ModeToolBar's RSI Sampling action and displays sample/correction counts,
+  analytical/controller durations and separate encoding readiness/reason. Legacy time-scale
+  properties and device keys remain 1 for compatibility; no multiplier is displayed.
+  scene/chamfershareddata.h/.cpp builds the five-row KRL payload alongside numerical
+  preparation on the copied-input worker. After current-result acceptance, the coordinator
+  writes C:/RoboCrapJobs/shared_data.txt atomically with QSaveFile (no direct-write fallback),
+  creating the directory if necessary. Only encodingReady jobs produce exportable bytes.
+  Rows are Ps XYZABC, clear start XYZABC, clear end XYZABC, transferFeed/1000 and
+  transferAcceleration/1000, with C-locale numbers and CRLF, without keys or headers.
+  Start/staging ABC use the encoder's initial branch; terminal ABC use cumulative encoded
+  increments. Saved boundary poses are checked. sharedDataExported/sharedDataStatus use
+  preparedChanged and reset on job invalidation. Export failure retains the sampled job
+  and is displayed separately; an earlier disk file is preserved and has no freshness token.
+  Publication is not controller readiness; actual initial RIst ABC still needs session validation.
+  The preparation toolbar action is labelled RSI Sampling (Sampling… while busy) and sits
+  immediately before Start Machining. Start Machining remains disabled; preparation does not
+  establish controller readiness.
 
 - Nominal Step 5 wire-contract code lives in network/rsi/rsiholeprotocol.h/.cpp in
   RoboCrapDevices, separately from the active demonstration RsiProtocol/RsiDevice path.
@@ -267,19 +480,22 @@ and src/main.cpp.
   samples from parsed cumulative XYZABC, returning counts/errors/timing and separate
   correction-limit status. It is not dispatched by current preparation/device code;
   future integration must run it outside ControlIO receive callbacks. Arithmetic success
-  never bypasses configured-limit or controller readiness. resources/files contains
+  never bypasses configured-limit or controller readiness. resources/files/rsi contains
   RSI_Hole_CONTRACT.md and concrete RSI_Hole.src/.dat source inputs, not embedded/deployed
-  controller artifacts. The KRL program opens /RoboCrapJobs/points.txt on the existing mount
-  (PC C:\RoboCrapJobs\points.txt), reuses READ_FRAME/CLOSE_FILES and reads Ps,
-  clear lead-in start and clear lead-out end. One routine executes standard HOME,
+  controller artifacts. The KRL program opens /RoboCrapJobs/shared_data.txt on the existing
+  mount (PC C:\RoboCrapJobs\shared_data.txt), reuses READ_FRAME/CLOSE_FILES and reads Ps,
+  clear lead-in start and clear lead-out end, followed by transfer velocity and acceleration.
+  The two scalar krl_fscanf results and file-close results are checked; rates must be positive
+  and not exceed $VEL_MA.CP/$ACC_MA.CP before PTP Ps. Each LIN explicitly sets $VEL.CP and
+  $ACC.CP in m/s and m/s squared. The initial HOME remains before the file read. One routine executes standard HOME,
   PTP Ps, LIN to the clear start, nominal lead-in/machining/lead-out through relative
   IPO_FAST MOVECORR, LIN Ps and standard HOME. The current source selects TOOL_DATA[6]
   and LOAD_DATA[6] after HOME, using BASE interpolation and VAR orientation. Its
-  BASE_DATA[0] selection still needs correction; CP rates are not set explicitly.
+  BASE_DATA[1] selection must match the application's saved BASE-relative geometry.
   PINT[1] requests RSI execution; PINT[2]=1 marks normal completion. Missing/abnormal
   result or file/RSI API failure ends the program without return motions. There is
   no recovery/re-entry logic, job token, stage tracking or automatic resume.
-  The data list contains only three input frames and the RSI context ID. The return
+  The data list contains three input frames, two transfer rates and the RSI context ID. The return
   Ps uses its original origin with the clear lead-out attitude. Standard interrupt 3
   remains IR_STOPM. RSI_Hole_EthernetConfig.xml is the minimal experiment schema:
   RIst plus Start/Result are sent; XYZABC, Stop and Result are received. Ethernet
@@ -324,7 +540,18 @@ and src/main.cpp.
   then editable ER-relative TCP XYZABC fields and TCP visibility. One Apply button validates
   and submits both pose drafts; no Reset action remains. HOME PTP simulation is displayed
   as a percentage of configured joint speed/acceleration limits; the backend auxiliaryScale remains in (0,1].
-  Timing/sampling limits remain numerical defaults without a tuning UI. Apply remains enabled
+  Internal Chamfer exposes machiningFeed as Machining speed, accelerationDistanceFraction
+  as Acceleration/deceleration distance percent (default 30%, stored as 0.30), transferFeed
+  (default 10 mm/s), and transferAcceleration (default 20 mm/s^2). Separate lead speed fields
+  are removed from the panel, but existing C++/QML leadInFeed/leadOutFeed APIs are retained for
+  compatibility only. The three new values are validated, captured in ChamferTimingParameters
+  and restored on saved-path selection/Cancel. They now control generation and Dry Run:
+  the fraction controls central ramps and transfer fields control staging motion. Separate
+  leadInFeed/leadOutFeed no longer control generation or RSI sampling. RSI preparation
+  uses the same saved analytical central trajectory at the 4 ms controller clock.
+  Transfer defaults and the retained 20 mm/s^2 Cartesian/60 deg/s^2 joint acceleration bounds
+  are simulation assumptions, not controller $ACC_MA or verified joint accelerations.
+  Other timing/sampling limits remain numerical defaults without a tuning UI. Apply remains enabled
   for valid six-value ER and TCP drafts and shows the spindle TCP trihedron; its Visible checkbox controls OccController.showSpindleTcp.
   The separate ER trihedron Visible checkbox controls OccController.showSpindleCollet, initially
   true and usable before TCP calibration; closing Spindle EE does not affect either preference.

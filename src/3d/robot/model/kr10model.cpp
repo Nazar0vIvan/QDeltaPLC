@@ -118,8 +118,9 @@ std::optional<JointModel> readJoint(const QJsonObject& obj)
   const std::optional<V3d> axis = readAxis(obj);
   const std::optional<double> qMin = readDouble(obj, QStringLiteral("min"));
   const std::optional<double> qMax = readDouble(obj, QStringLiteral("max"));
+  const auto ratedSpeed = readDouble(obj, QStringLiteral("ratedPayloadSpeedDegreesPerSecond"));
 
-  if (!dx || !dy || !dz || !da || !db || !dc || !axis || !qMin || !qMax) {
+  if (!dx || !dy || !dz || !da || !db || !dc || !axis || !qMin || !qMax || !ratedSpeed) {
     return std::nullopt;
   }
 
@@ -128,12 +129,23 @@ std::optional<JointModel> readJoint(const QJsonObject& obj)
     return std::nullopt;
   }
 
+  if (*ratedSpeed <= 0.0) {
+    qWarning() << "KR10 rated-payload joint speed must be positive";
+    return std::nullopt;
+  }
+
   const M4d T = makeTranslation(V3d{*dx, *dy, *dz})
           * makeRotation(*da, V3d{0.0, 0.0, 1.0})
           * makeRotation(*db, V3d{0.0, 1.0, 0.0})
           * makeRotation(*dc, V3d{1.0, 0.0, 0.0});
 
-  return JointModel{*axis, T, *qMin, *qMax};
+  JointModel result;
+  result.axis = *axis;
+  result.localTransform = T;
+  result.qMin = *qMin;
+  result.qMax = *qMax;
+  result.ratedPayloadSpeedDegreesPerSecond = *ratedSpeed;
+  return result;
 }
 
 std::optional<Kr10KinematicModel::IkParams> readIk(const QJsonObject& obj)

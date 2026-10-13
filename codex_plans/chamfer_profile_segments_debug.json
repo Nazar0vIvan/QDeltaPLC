@@ -1,0 +1,871 @@
+{
+    "architecture": "x86_64",
+    "build": "Debug",
+    "cartesianAccelerationBound": 20,
+    "flangeToTcpXYZABC": [
+        157.19171833995523,
+        -0.18700446464138926,
+        124.34905265437233,
+        -90.01787637200988,
+        0,
+        -0.17927879667836852
+    ],
+    "host": "DESKTOP-KJ1C5LO",
+    "input": {
+        "cylinder": "../resources/json/edge_cyl_plane/XC.json",
+        "plane": "../resources/json/edge_cyl_plane/XP.json",
+        "repetitions": 2,
+        "robot": "../resources/json/kr10.json",
+        "settings": {
+            "accelerationDistanceFraction": 1,
+            "auxiliaryScale": 1,
+            "chamferAngle": 45,
+            "chamferSize": 0.5,
+            "flipAxis": true,
+            "leadInClearance": 5,
+            "leadInSpan": 30,
+            "leadOutClearance": 5,
+            "leadOutSpan": 30,
+            "machiningFeed": 1,
+            "stagingDistance": 30,
+            "transferAcceleration": 1,
+            "transferFeed": 1
+        },
+        "tcpInCollet": [
+            0,
+            15,
+            1.5,
+            0,
+            0,
+            0
+        ]
+    },
+    "jointAccelerationBound": 60,
+    "qtVersion": "6.8.3",
+    "runs": [
+        {
+            "centralDurationSeconds": 76.77219975533788,
+            "encodingReady": false,
+            "encodingStatus": "Configure RSI limits in rsi-correction-limits.json.",
+            "preview": {
+                "attempts": [
+                    {
+                        "assembledPoints": 27595,
+                        "central": {
+                            "analyticalConstructionMs": 120.0931,
+                            "explicitFkCalls": 86197,
+                            "explicitFkMs": 1778.4573,
+                            "ikCalls": 21553,
+                            "ikMs": 1516.6964,
+                            "interpolationChecks": 64644,
+                            "retainedSamples": 21549,
+                            "samplingAndValidationMs": 4514.0312,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1676,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0203,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.088
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3053.2233,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1177.2971,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1004.1457,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 7300,
+                                    "complete": false,
+                                    "computationMs": 1460.5832,
+                                    "error": "A4 speed 359999.68283 deg/s exceeds effective bound 381. (central t=21.5509036095 s) (central t=21.5509036095 s)",
+                                    "explicitFkCalls": 29204,
+                                    "explicitFkMs": 601.1399000000001,
+                                    "ikCalls": 7304,
+                                    "ikMs": 512.4627,
+                                    "interpolationChecks": 21900
+                                }
+                            }
+                        },
+                        "error": "A4 speed 359999.68283 deg/s exceeds effective bound 381. (central t=21.5509036095 s) (central t=21.5509036095 s)",
+                        "homeToPs": {
+                            "addedPoints": 59,
+                            "complete": true,
+                            "computationMs": 1.3016,
+                            "explicitFkCalls": 59,
+                            "explicitFkMs": 1.2124000000000001,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0386,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.021399999999999975,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            -81.42440001510555,
+                            93.72864417864027,
+                            -117.32205645173404
+                        ],
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5260.595,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2850.6224,
+                            "ikCalls": 27535,
+                            "ikMs": 1932.9164999999998,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 9896.2946,
+                        "transferInMs": 5260.5997,
+                        "transferInPoints": 27535
+                    },
+                    {
+                        "assembledPoints": 27586,
+                        "central": {
+                            "analyticalConstructionMs": 116.1186,
+                            "explicitFkCalls": 178437,
+                            "explicitFkMs": 3694.0716,
+                            "ikCalls": 44613,
+                            "ikMs": 3151.1515,
+                            "interpolationChecks": 133824,
+                            "retainedSamples": 44609,
+                            "samplingAndValidationMs": 9178.0001,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1613,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0202,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.0861
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3097.9287,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1191.5631,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1017.7981,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 30360,
+                                    "complete": false,
+                                    "computationMs": 6079.8597,
+                                    "error": "A6 speed 360009.814061 deg/s exceeds effective bound 492. (central t=44.6098027509 s) (central t=44.6098027509 s)",
+                                    "explicitFkCalls": 121444,
+                                    "explicitFkMs": 2502.4883,
+                                    "ikCalls": 30364,
+                                    "ikMs": 2133.2673,
+                                    "interpolationChecks": 91080
+                                }
+                            }
+                        },
+                        "error": "A6 speed 360009.814061 deg/s exceeds effective bound 492. (central t=44.6098027509 s) (central t=44.6098027509 s)",
+                        "homeToPs": {
+                            "addedPoints": 50,
+                            "complete": true,
+                            "computationMs": 1.0907,
+                            "explicitFkCalls": 50,
+                            "explicitFkMs": 1.0190999999999804,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0338,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.022399999999834108,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            98.57559998489445,
+                            -93.72864417864027,
+                            62.67794354826595
+                        ],
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5211.5811,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2826.3224999999998,
+                            "ikCalls": 27535,
+                            "ikMs": 1917.1954000000003,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 14507.239,
+                        "transferInMs": 5211.5857,
+                        "transferInPoints": 27535
+                    },
+                    {
+                        "assembledPoints": 27658,
+                        "central": {
+                            "analyticalConstructionMs": 116.8464,
+                            "explicitFkCalls": 85011,
+                            "explicitFkMs": 1760.913,
+                            "ikCalls": 21255,
+                            "ikMs": 1499.0952,
+                            "interpolationChecks": 63756,
+                            "retainedSamples": 21253,
+                            "samplingAndValidationMs": 4468.9895,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1737,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0205,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.0921
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3058.2132,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1180.7863,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1003.962,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 7004,
+                                    "complete": false,
+                                    "computationMs": 1410.5528,
+                                    "error": "A6 speed 359995.922885 deg/s exceeds effective bound 492. (central t=21.2529178357 s) (central t=21.2549177402 s)",
+                                    "explicitFkCalls": 28018,
+                                    "explicitFkMs": 580.1062,
+                                    "ikCalls": 7006,
+                                    "ikMs": 495.04110000000003,
+                                    "interpolationChecks": 21012
+                                }
+                            }
+                        },
+                        "error": "A6 speed 359995.922885 deg/s exceeds effective bound 492. (central t=21.2529178357 s) (central t=21.2549177402 s)",
+                        "homeToPs": {
+                            "addedPoints": 122,
+                            "complete": true,
+                            "computationMs": 2.6339,
+                            "explicitFkCalls": 122,
+                            "explicitFkMs": 2.4687999999996464,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0387,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.024900000000343425,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            -81.42440001510555,
+                            93.72864417864027,
+                            242.67794354826594
+                        ],
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5227.4007,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2832.554500000001,
+                            "ikCalls": 27535,
+                            "ikMs": 1922.9165999999996,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 9816.1066,
+                        "transferInMs": 5227.4054,
+                        "transferInPoints": 27535
+                    },
+                    {
+                        "assembledPoints": 132067,
+                        "central": {
+                            "analyticalConstructionMs": 118.4684,
+                            "explicitFkCalls": 307105,
+                            "explicitFkMs": 6329.0161,
+                            "ikCalls": 76777,
+                            "ikMs": 5390.0725,
+                            "interpolationChecks": 230328,
+                            "retainedSamples": 76777,
+                            "samplingAndValidationMs": 15917.318,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.283,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0408,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.1587
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3050.2411,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1178.0498,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1002.6124000000001,
+                                    "interpolationChecks": 42744
+                                },
+                                "leadOut": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3042.0615,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1174.7151999999996,
+                                    "ikCalls": 14248,
+                                    "ikMs": 999.7318000000005,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 48280,
+                                    "complete": true,
+                                    "computationMs": 9659.0333,
+                                    "explicitFkCalls": 193120,
+                                    "explicitFkMs": 3976.2103,
+                                    "ikCalls": 48280,
+                                    "ikMs": 3387.5696,
+                                    "interpolationChecks": 144840
+                                },
+                                "wholeCentralRateChecks": {
+                                    "computationMs": 165.6132,
+                                    "explicitFkCalls": 0,
+                                    "explicitFkMs": 0,
+                                    "ikCalls": 0,
+                                    "ikMs": 0
+                                }
+                            }
+                        },
+                        "centralAssemblyMs": 1629.7261,
+                        "error": "",
+                        "homeToPs": {
+                            "addedPoints": 149,
+                            "complete": true,
+                            "computationMs": 3.2677,
+                            "explicitFkCalls": 149,
+                            "explicitFkMs": 3.0146999999997206,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0361,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.02509999999892898,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "leadOutToPs": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5218.9806,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2827.8652999999995,
+                            "ikCalls": 27535,
+                            "ikMs": 1920.542699999999,
+                            "interpolationChecks": 82605
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            98.57559998489445,
+                            -93.72864417864027,
+                            -297.32205645173406
+                        ],
+                        "psToHome": {
+                            "addedPoints": 71,
+                            "complete": true,
+                            "computationMs": 1.5532,
+                            "explicitFkCalls": 71,
+                            "explicitFkMs": 1.4558999999990192,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5250.9052,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2844.5812000000005,
+                            "ikCalls": 27535,
+                            "ikMs": 1931.6374000000005,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 28356.5339,
+                        "transferInMs": 5250.9098,
+                        "transferInPoints": 27535,
+                        "transferOutMs": 5218.9903,
+                        "transferOutPoints": 27535,
+                        "wholeMotionChecks": {
+                            "computationMs": 215.7341,
+                            "explicitFkCalls": 0,
+                            "explicitFkMs": 0,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        }
+                    }
+                ],
+                "candidateCount": 4,
+                "configurationSearchMs": 2.0434,
+                "explicitFkCalls": 765625,
+                "explicitFkMs": 15749.131,
+                "homeTimingAndTimestampChecksMs": 15.8807,
+                "ikCalls": 137702,
+                "ikMs": 9626.7146,
+                "phaseIntervals": [
+                    149,
+                    27535,
+                    14248,
+                    48280,
+                    14248,
+                    27535,
+                    71
+                ],
+                "retainedPoints": 132067,
+                "totalMs": 62594.6771,
+                "transferInterpolationChecks": 413025
+            },
+            "previewDurationSeconds": 140.88378977663504,
+            "previewError": "",
+            "rsi": {
+                "encodingMs": 369.1375,
+                "explicitFkCalls": 172750,
+                "explicitFkMs": 3569.2186,
+                "ikCalls": 172750,
+                "ikMs": 12162.3244,
+                "intervalValidationSamples": 153551,
+                "retainedSamples": 19195,
+                "samplingAndValidationMs": 19155.2863,
+                "totalMs": 19524.6786
+            },
+            "rsiCorrections": 19194,
+            "rsiError": ""
+        },
+        {
+            "centralDurationSeconds": 76.77219975533788,
+            "encodingReady": false,
+            "encodingStatus": "Configure RSI limits in rsi-correction-limits.json.",
+            "preview": {
+                "attempts": [
+                    {
+                        "assembledPoints": 27595,
+                        "central": {
+                            "analyticalConstructionMs": 117.5687,
+                            "explicitFkCalls": 86197,
+                            "explicitFkMs": 1796.0596,
+                            "ikCalls": 21553,
+                            "ikMs": 1531.957,
+                            "interpolationChecks": 64644,
+                            "retainedSamples": 21549,
+                            "samplingAndValidationMs": 4574.7477,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1681,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0205,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.0894
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3112.1889,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1195.5543,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1018.8756000000001,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 7300,
+                                    "complete": false,
+                                    "computationMs": 1462.3376,
+                                    "error": "A4 speed 359999.68283 deg/s exceeds effective bound 381. (central t=21.5509036095 s) (central t=21.5509036095 s)",
+                                    "explicitFkCalls": 29204,
+                                    "explicitFkMs": 600.4848,
+                                    "ikCalls": 7304,
+                                    "ikMs": 512.9920000000001,
+                                    "interpolationChecks": 21900
+                                }
+                            }
+                        },
+                        "error": "A4 speed 359999.68283 deg/s exceeds effective bound 381. (central t=21.5509036095 s) (central t=21.5509036095 s)",
+                        "homeToPs": {
+                            "addedPoints": 59,
+                            "complete": true,
+                            "computationMs": 1.2819,
+                            "explicitFkCalls": 59,
+                            "explicitFkMs": 1.1998000000000002,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0318,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.02080000000000004,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            -81.42440001510555,
+                            93.72864417864027,
+                            -117.32205645173404
+                        ],
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5206.6772,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2824.9777,
+                            "ikCalls": 27535,
+                            "ikMs": 1913.4452,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 9900.5733,
+                        "transferInMs": 5206.6818,
+                        "transferInPoints": 27535
+                    },
+                    {
+                        "assembledPoints": 27586,
+                        "central": {
+                            "analyticalConstructionMs": 117.9197,
+                            "explicitFkCalls": 178437,
+                            "explicitFkMs": 3666.7218,
+                            "ikCalls": 44613,
+                            "ikMs": 3123.6267,
+                            "interpolationChecks": 133824,
+                            "retainedSamples": 44609,
+                            "samplingAndValidationMs": 9101.328,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1591,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0204,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.0867
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3049.9728,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1176.6810999999998,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1001.3054000000001,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 30360,
+                                    "complete": false,
+                                    "computationMs": 6051.145,
+                                    "error": "A6 speed 360009.814061 deg/s exceeds effective bound 492. (central t=44.6098027509 s) (central t=44.6098027509 s)",
+                                    "explicitFkCalls": 121444,
+                                    "explicitFkMs": 2490.0203,
+                                    "ikCalls": 30364,
+                                    "ikMs": 2122.2346,
+                                    "interpolationChecks": 91080
+                                }
+                            }
+                        },
+                        "error": "A6 speed 360009.814061 deg/s exceeds effective bound 492. (central t=44.6098027509 s) (central t=44.6098027509 s)",
+                        "homeToPs": {
+                            "addedPoints": 50,
+                            "complete": true,
+                            "computationMs": 1.09,
+                            "explicitFkCalls": 50,
+                            "explicitFkMs": 1.0140000000001237,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0311,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.02289999999993597,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            98.57559998489445,
+                            -93.72864417864027,
+                            62.67794354826595
+                        ],
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5220.2788,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2830.1227,
+                            "ikCalls": 27535,
+                            "ikMs": 1920.1014999999998,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 14440.9914,
+                        "transferInMs": 5220.2837,
+                        "transferInPoints": 27535
+                    },
+                    {
+                        "assembledPoints": 27658,
+                        "central": {
+                            "analyticalConstructionMs": 117.4878,
+                            "explicitFkCalls": 85011,
+                            "explicitFkMs": 1750.5574,
+                            "ikCalls": 21255,
+                            "ikMs": 1490.8703,
+                            "interpolationChecks": 63756,
+                            "retainedSamples": 21253,
+                            "samplingAndValidationMs": 4439.015,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1552,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0205,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.0854
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3044.1549,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1175.8932,
+                                    "ikCalls": 14248,
+                                    "ikMs": 1001.3624,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 7004,
+                                    "complete": false,
+                                    "computationMs": 1394.6539,
+                                    "error": "A6 speed 359995.922885 deg/s exceeds effective bound 492. (central t=21.2529178357 s) (central t=21.2549177402 s)",
+                                    "explicitFkCalls": 28018,
+                                    "explicitFkMs": 574.6436999999999,
+                                    "ikCalls": 7006,
+                                    "ikMs": 489.4225,
+                                    "interpolationChecks": 21012
+                                }
+                            }
+                        },
+                        "error": "A6 speed 359995.922885 deg/s exceeds effective bound 492. (central t=21.2529178357 s) (central t=21.2549177402 s)",
+                        "homeToPs": {
+                            "addedPoints": 122,
+                            "complete": true,
+                            "computationMs": 2.7708,
+                            "explicitFkCalls": 122,
+                            "explicitFkMs": 2.549099999999271,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.042,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.03260000000045693,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            -81.42440001510555,
+                            93.72864417864027,
+                            242.67794354826594
+                        ],
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5259.4791,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2847.5627999999997,
+                            "ikCalls": 27535,
+                            "ikMs": 1934.5288999999998,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 9818.9949,
+                        "transferInMs": 5259.4839,
+                        "transferInPoints": 27535
+                    },
+                    {
+                        "assembledPoints": 132067,
+                        "central": {
+                            "analyticalConstructionMs": 117.0158,
+                            "explicitFkCalls": 307105,
+                            "explicitFkMs": 6329.2237,
+                            "ikCalls": 76777,
+                            "ikMs": 5390.0087,
+                            "interpolationChecks": 230328,
+                            "retainedSamples": 76777,
+                            "samplingAndValidationMs": 15909.7931,
+                            "segments": {
+                                "initialCentralPose": {
+                                    "computationMs": 0.1587,
+                                    "explicitFkCalls": 1,
+                                    "explicitFkMs": 0.0205,
+                                    "ikCalls": 1,
+                                    "ikMs": 0.0853
+                                },
+                                "leadIn": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3029.6173,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1171.3639999999998,
+                                    "ikCalls": 14248,
+                                    "ikMs": 997.1450000000001,
+                                    "interpolationChecks": 42744
+                                },
+                                "leadOut": {
+                                    "addedPoints": 14248,
+                                    "complete": true,
+                                    "computationMs": 3024.936,
+                                    "explicitFkCalls": 56992,
+                                    "explicitFkMs": 1169.2032,
+                                    "ikCalls": 14248,
+                                    "ikMs": 995.9269000000004,
+                                    "interpolationChecks": 42744
+                                },
+                                "machining": {
+                                    "addedPoints": 48280,
+                                    "complete": true,
+                                    "computationMs": 9691.2361,
+                                    "explicitFkCalls": 193120,
+                                    "explicitFkMs": 3988.6359999999995,
+                                    "ikCalls": 48280,
+                                    "ikMs": 3396.8514999999998,
+                                    "interpolationChecks": 144840
+                                },
+                                "wholeCentralRateChecks": {
+                                    "computationMs": 163.7585,
+                                    "explicitFkCalls": 0,
+                                    "explicitFkMs": 0,
+                                    "ikCalls": 0,
+                                    "ikMs": 0
+                                }
+                            }
+                        },
+                        "centralAssemblyMs": 1630.0211,
+                        "error": "",
+                        "homeToPs": {
+                            "addedPoints": 149,
+                            "complete": true,
+                            "computationMs": 3.2608,
+                            "explicitFkCalls": 149,
+                            "explicitFkMs": 3.0173000000013417,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "initialHomePose": {
+                            "computationMs": 0.0346,
+                            "explicitFkCalls": 1,
+                            "explicitFkMs": 0.022399999999834108,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "leadOutToPs": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5244.5857,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2839.8611999999994,
+                            "ikCalls": 27535,
+                            "ikMs": 1928.6983,
+                            "interpolationChecks": 82605
+                        },
+                        "psJointAnglesDegrees": [
+                            8.405968629763134,
+                            -63.184818776682604,
+                            125.13300990469233,
+                            98.57559998489445,
+                            -93.72864417864027,
+                            -297.32205645173406
+                        ],
+                        "psToHome": {
+                            "addedPoints": 71,
+                            "complete": true,
+                            "computationMs": 1.5572,
+                            "explicitFkCalls": 71,
+                            "explicitFkMs": 1.4596000000001368,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        },
+                        "psToLeadIn": {
+                            "addedPoints": 27535,
+                            "complete": true,
+                            "computationMs": 5239.5304,
+                            "explicitFkCalls": 137675,
+                            "explicitFkMs": 2838.7443999999996,
+                            "ikCalls": 27535,
+                            "ikMs": 1927.7253,
+                            "interpolationChecks": 82605
+                        },
+                        "totalMs": 28362.8224,
+                        "transferInMs": 5239.5349,
+                        "transferInPoints": 27535,
+                        "transferOutMs": 5244.6014,
+                        "transferOutPoints": 27535,
+                        "wholeMotionChecks": {
+                            "computationMs": 216.4609,
+                            "explicitFkCalls": 0,
+                            "explicitFkMs": 0,
+                            "ikCalls": 0,
+                            "ikMs": 0
+                        }
+                    }
+                ],
+                "candidateCount": 4,
+                "configurationSearchMs": 3.8756,
+                "explicitFkCalls": 765625,
+                "explicitFkMs": 15749.1521,
+                "homeTimingAndTimestampChecksMs": 15.97,
+                "ikCalls": 137702,
+                "ikMs": 9627.3627,
+                "phaseIntervals": [
+                    149,
+                    27535,
+                    14248,
+                    48280,
+                    14248,
+                    27535,
+                    71
+                ],
+                "retainedPoints": 132067,
+                "totalMs": 62543.8531,
+                "transferInterpolationChecks": 413025
+            },
+            "previewDurationSeconds": 140.88378977663504,
+            "previewError": "",
+            "rsi": {
+                "encodingMs": 354.9414,
+                "explicitFkCalls": 172750,
+                "explicitFkMs": 3561.0256,
+                "ikCalls": 172750,
+                "ikMs": 12135.8546,
+                "intervalValidationSamples": 153551,
+                "retainedSamples": 19195,
+                "samplingAndValidationMs": 19116.7834,
+                "totalMs": 19471.9547
+            },
+            "rsiCorrections": 19194,
+            "rsiError": ""
+        }
+    ]
+}

@@ -1,0 +1,55 @@
+{
+  "type": "ellipse",
+  "units": "mm",
+  "coordinateSystem": "same as the input measurement points",
+  "center": [
+    929.0274849957831,
+    97.10252432714351,
+    420.24927705064033
+  ],
+  "majorAxis": [
+    0.014102854699780563,
+    0.8597301944175307,
+    -0.5105537212636019
+  ],
+  "minorAxis": [
+    -0.012751210215726299,
+    0.5107176153030499,
+    0.8596539559946202
+  ],
+  "majorRadius": 7.434434798316031,
+  "minorRadius": 7.432715286746136,
+  "parameterization": {
+    "expression": "P(theta) = center + majorRadius*cos(theta)*majorAxis + minorRadius*sin(theta)*minorAxis",
+    "parameter": "theta",
+    "units": "radians",
+    "start": 0.0,
+    "end": 6.283185307179586
+  },
+  "provenance": {
+    "planeFile": "resources/json/edge_cyl_plane/XP.json",
+    "cylinderFile": "resources/json/edge_cyl_plane/XC.json",
+    "method": "Numerical reproduction of Plane::fromPoints, BoundedCylinder::fromSamples and intersectSurfaces using NumPy; not exported from the running application. Floating-point results may differ slightly from Eigen.",
+    "planeNormal": [
+      0.999819241726899,
+      -0.005613397007236464,
+      0.018165176759066252
+    ],
+    "planeD": -935.9483829729735,
+    "cylinderAxisOrigin": [
+      933.7987810403921,
+      97.16397401207804,
+      420.2835424223169
+    ],
+    "cylinderAxisDirection": [
+      0.9998912955301896,
+      0.012877634190930425,
+      0.007180784121793747
+    ],
+    "cylinderFittedRadiusBeforeProbeCorrection": 5.932715286746136,
+    "cylinderProbeRadius": 1.5,
+    "cylinderProbeDirection": 1,
+    "cylinderRadiusAfterProbeCorrection": 7.432715286746136,
+    "cylinderFitRmsResidual": 0.016226757004972715
+  }
+}

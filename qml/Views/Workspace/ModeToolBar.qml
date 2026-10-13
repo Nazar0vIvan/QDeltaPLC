@@ -186,14 +186,6 @@ ToolBar {
         onTriggered: root.generationRequested()
       }
 
-      Tool {
-        visible: !root.measuring
-        text: root.preparing ? qsTr("Preparing…") : qsTr("Prepare")
-        iconSource: "qrc:/pics/generate_path.svg"
-        available: root.preparationAvailable
-        onTriggered: root.preparationRequested()
-      }
-
       Rectangle {
         visible: !root.rough
         width: Metrics.w1
@@ -234,6 +226,14 @@ ToolBar {
         height: Metrics.sz36
         y: Metrics.sp12
         color: Colors.background.dp12
+      }
+
+      Tool {
+        visible: !root.measuring
+        text: root.preparing ? qsTr("Sampling…") : qsTr("RSI Sampling")
+        iconSource: "qrc:/pics/rsi_sampling.svg"
+        available: root.preparationAvailable
+        onTriggered: root.preparationRequested()
       }
 
       Tool {

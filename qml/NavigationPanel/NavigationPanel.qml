@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 
 import Styles 1.0
 
@@ -25,22 +26,22 @@ Rectangle {
     spacing: Metrics.sp8
 
     model: ListModel {
-      ListElement { sourcePath: "qrc:/pics/3d.svg" }
-      ListElement { sourcePath: "qrc:/pics/dashboard.svg" }
-      ListElement { sourcePath: "qrc:/pics/network.svg" }
+      ListElement { label: "3D" }
+      ListElement { label: "Dashboard" }
+      ListElement { label: "Network" }
     }
 
-    delegate: NavigationMenuDelegate {
+    delegate: ItemDelegate {
       id: delegate
 
       required property int index
-      required property string sourcePath
+      required property string label
 
       width: ListView.view.width
       height: width
 
-      iconPath: delegate.sourcePath
-      selected: ListView.isCurrentItem
+      text: delegate.label
+      highlighted: ListView.isCurrentItem
 
       onClicked: lv.currentIndex = delegate.index
     }

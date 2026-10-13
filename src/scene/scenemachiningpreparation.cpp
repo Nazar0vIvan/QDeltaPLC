@@ -7,6 +7,8 @@
 #include <QFileInfo>
 #include <chrono>
 #include <utility>
+#include <QDebug>
+#include <QJsonDocument>
 
 SceneMachiningPreparation::SceneMachiningPreparation(SceneModel* scene, SceneMachining* machining,
                                                      QObject* parent)
@@ -44,9 +46,9 @@ SceneMachiningPath* SceneMachiningPreparation::selectedPath() const
 QString SceneMachiningPreparation::unavailableReason() const
 {
   if (m_shuttingDown) return tr("Application is shutting down.");
-  if (m_preparing) return tr("Preparing job…");
+  if (m_preparing) return tr("Sampling RSI…");
   if (m_machining->calculating()) return tr("Finish generating the trajectory first.");
-  if (m_machining->playbackActive()) return tr("Stop Dry Run before preparing a job.");
+  if (m_machining->playbackActive()) return tr("Stop Dry Run before RSI Sampling.");
   const auto* path = selectedPath();
   if (!path || !path->data().motion) return tr("Select a generated machining path.");
   return path->incompatibility();
@@ -83,7 +85,9 @@ void SceneMachiningPreparation::onAvailabilityChanged()
   if (m_preparing && (!sourceIsCurrent(m_pendingSource) || m_machining->calculating()
                       || m_machining->playbackActive()))
     ++m_generation;
-  if (m_job && !sourceIsCurrent(m_job->source())) setPreparedJob({});
+  // Regeneration invalidates the previous RSI job before the replacement exists.
+  if (m_job && (m_machining->calculating() || !sourceIsCurrent(m_job->source())))
+    setPreparedJob({});
   emit availabilityChanged();
 }
 
@@ -133,7 +137,7 @@ void SceneMachiningPreparation::prepare()
   m_preparing = true;
   setPreparedJob({});
   setError({});
-  m_future = std::async(std::launch::async, &PreparedChamferJob::create, m_pendingSource, m_limitConfiguration);
+  m_future = std::async(std::launch::async, &prepareChamferSharedData, m_pendingSource, m_limitConfiguration);
   m_timer.start();
   emit preparingChanged();
   emit availabilityChanged();
@@ -145,28 +149,35 @@ void SceneMachiningPreparation::finishPreparation()
       || m_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
   m_timer.stop();
   auto result = m_future.get();
+  qInfo().noquote() << "Chamfer preparation:" << QJsonDocument(result.prepared.diagnostics).toJson(QJsonDocument::Compact);
   refreshLimitConfiguration();
   const bool current = !m_shuttingDown && m_pendingGeneration == m_generation
       && sourceIsCurrent(m_pendingSource) && !m_machining->calculating()
       && !m_machining->playbackActive();
   m_pendingSource = {};
   if (!current) {
-    setError(tr("Scene, robot or RSI limits changed. Prepare again."));
-  } else if (!result.job) {
-    setError(result.error);
+    setError(tr("Scene, robot or RSI limits changed. Run RSI Sampling again."));
+  } else if (!result.prepared.job) {
+    setError(result.prepared.error);
   } else {
+    // Publish only accepted input, before notifying consumers of the new job.
+    const QString exportError = result.error.isEmpty()
+        ? writeChamferSharedData(result.contents) : result.error;
+    setPreparedJob(std::move(result.prepared.job), exportError);
     setError({});
-    setPreparedJob(std::move(result.job));
   }
   m_preparing = false;
   emit preparingChanged();
   emit availabilityChanged();
 }
 
-void SceneMachiningPreparation::setPreparedJob(PreparedChamferJobPtr job)
+void SceneMachiningPreparation::setPreparedJob(PreparedChamferJobPtr job, const QString& exportError)
 {
   if (m_job == job) return;
   m_job = std::move(job);
+  m_sharedDataExported = bool(m_job) && exportError.isEmpty();
+  m_sharedDataStatus = !m_job ? QString{} : m_sharedDataExported
+      ? tr("Exported C:/RoboCrapJobs/shared_data.txt") : exportError;
   emit preparedJobReady(m_job);
   emit preparedChanged();
 }

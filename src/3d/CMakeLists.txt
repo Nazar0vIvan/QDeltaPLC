@@ -32,6 +32,8 @@ qt_add_qml_module(RoboCrap3D
   ${QML_OPTIONS}
   DEPENDENCIES QtQml QtQuick
   SOURCES
+    chamferprofile.h
+    chamferprofile.cpp
     viewportqmltypes.h
     occcontroller.h
     occcontroller.cpp

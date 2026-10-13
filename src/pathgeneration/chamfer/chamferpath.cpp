@@ -13,14 +13,35 @@ constexpr double FrameTolerance = 16.0 * GeomConst::Eps;
 
 bool validLead(const ChamferLeadParameters& lead)
 {
-  return std::isfinite(lead.clearance) && lead.clearance > 0.0
-      && std::isfinite(lead.spanDegrees) && lead.spanDegrees > 0.0
-      && lead.spanDegrees <= 360.0 && lead.intervals > 0 && lead.intervals <= 100000;
+  return lead.intervals > 0 && lead.intervals <= 100000;
 }
 
 V3d transverse(const V3d& vector, const V3d& axis)
 {
   return vector - vector.dot(axis) * axis;
+}
+
+struct VectorDerivatives
+{
+  V3d value = V3d::Zero();
+  V3d first = V3d::Zero();
+  V3d second = V3d::Zero();
+};
+
+std::optional<VectorDerivatives> normalizedDerivatives(const VectorDerivatives& input)
+{
+  const double length = input.value.stableNorm();
+  if (!std::isfinite(length) || length <= GeomConst::Eps) return std::nullopt;
+  VectorDerivatives result;
+  result.value = input.value / length;
+  const double firstLength = result.value.dot(input.first);
+  result.first = (input.first - firstLength * result.value) / length;
+  const double secondLength = result.first.dot(input.first) + result.value.dot(input.second);
+  result.second = (input.second - secondLength * result.value
+                   - 2.0 * firstLength * result.first) / length;
+  if (!result.value.allFinite() || !result.first.allFinite() || !result.second.allFinite())
+    return std::nullopt;
+  return result;
 }
 
 // An ellipse on a circular cylinder projects to a centered circle in the
@@ -60,8 +81,10 @@ ChamferPath::ChamferPath(ChamferPathParameters parameters)
 
 ChamferPathResult ChamferPath::create(ChamferPathParameters parameters)
 {
+  if (!std::isfinite(parameters.leadRadius) || parameters.leadRadius <= 0.0)
+    return {{}, QStringLiteral("Lead-in/out radius must be finite and positive.")};
   if (!validLead(parameters.leadIn) || !validLead(parameters.leadOut))
-    return {{}, QStringLiteral("Leads require positive clearance, span in (0, 360] degrees and 1–100000 intervals.")};
+    return {{}, QStringLiteral("Leads require 1–100000 sampling intervals.")};
   if (!EdgeGeometry::fromEllipse(parameters.edge))
     return {{}, QStringLiteral("Invalid chamfer edge ellipse.")};
   if (!parameters.cylinderOrigin.allFinite() || !parameters.cylinderAxis.allFinite())
@@ -93,7 +116,68 @@ ChamferPathResult ChamferPath::create(ChamferPathParameters parameters)
       * parameters.stagingDistance * parameters.cylinderAxis;
   if (!staging.allFinite())
     return {{}, QStringLiteral("P_s position exceeds the numerical range.")};
-  return {ChamferPath(std::move(parameters)), {}};
+  ChamferPath path(std::move(parameters));
+  const QString error = path.initializeLeadArcs();
+  if (!error.isEmpty()) return {{}, error};
+  return {std::move(path), {}};
+}
+
+std::optional<ChamferPath::LeadArc> ChamferPath::makeLeadArc(ChamferPhase phase) const
+{
+  if (phase != ChamferPhase::LeadIn && phase != ChamferPhase::LeadOut)
+    return std::nullopt;
+  const bool entering = phase == ChamferPhase::LeadIn;
+  const double junctionAngle = entering ? 0.0 : 2.0 * GeomConst::Pi;
+  const auto junction = evaluate(junctionAngle);
+  const auto derivatives = machiningDerivatives(junctionAngle);
+  if (!junction || !derivatives) return std::nullopt;
+  const double speed = derivatives->first.stableNorm();
+  if (!std::isfinite(speed) || speed <= GeomConst::Eps) return std::nullopt;
+
+  LeadArc arc;
+  arc.junction = *junction;
+  const V3d stagingY = -m_outwardAxis;
+  const V3d stagingZ = junction->radialNormal;
+  const V3d stagingX = stagingY.cross(stagingZ).normalized();
+  if (!isBasis(stagingX, stagingY, stagingZ, FrameTolerance)) return std::nullopt;
+  arc.stagingRotation = basis2rot({stagingX, stagingY, stagingZ});
+  arc.tangent = derivatives->first / speed;
+  const double cosine = std::clamp(arc.tangent.dot(m_outwardAxis), -1.0, 1.0);
+  const V3d projection = m_outwardAxis - cosine * arc.tangent;
+  const double sine = projection.stableNorm();
+  // Dimensionless angular degeneracy threshold uses the existing frame tolerance.
+  if (!std::isfinite(sine) || sine <= FrameTolerance) return std::nullopt;
+  arc.planeY = projection / sine;
+  const V3d planeNormal = arc.tangent.cross(arc.planeY);
+  if (!isBasis(arc.tangent, arc.planeY, planeNormal, FrameTolerance))
+    return std::nullopt;
+  arc.sweep = std::atan2(sine, entering ? -cosine : cosine);
+  arc.length = m_parameters.leadRadius * arc.sweep;
+  if (!std::isfinite(arc.sweep) || arc.sweep <= 0.0
+      || !std::isfinite(arc.length) || arc.length <= GeomConst::Eps)
+    return std::nullopt;
+  const V3d origin = junction->tcp.block<3, 1>(0, 3);
+  arc.center = origin + m_parameters.leadRadius * arc.planeY;
+  const double halfSine = std::sin(0.5 * arc.sweep);
+  arc.freeEndpoint = origin + m_parameters.leadRadius
+      * ((entering ? -1.0 : 1.0) * std::sin(arc.sweep) * arc.tangent
+         + (2.0 * halfSine * halfSine) * arc.planeY);
+  if (!arc.center.allFinite() || !arc.freeEndpoint.allFinite())
+    return std::nullopt;
+  return arc;
+}
+
+QString ChamferPath::initializeLeadArcs()
+{
+  const auto leadIn = makeLeadArc(ChamferPhase::LeadIn);
+  if (!leadIn)
+    return QStringLiteral("Cannot construct lead-in circle: degenerate tangent/axis plane or numerical range exceeded.");
+  const auto leadOut = makeLeadArc(ChamferPhase::LeadOut);
+  if (!leadOut)
+    return QStringLiteral("Cannot construct lead-out circle: degenerate tangent/axis plane or numerical range exceeded.");
+  m_leadIn = *leadIn;
+  m_leadOut = *leadOut;
+  return {};
 }
 
 V3d ChamferPath::stagingPoint() const
@@ -106,11 +190,9 @@ std::optional<M4d> ChamferPath::stagingPose(ChamferPhase lead) const
 {
   if (lead != ChamferPhase::LeadIn && lead != ChamferPhase::LeadOut)
     return std::nullopt;
-  const auto endpoint = evaluatePhase(lead, lead == ChamferPhase::LeadIn ? 0.0 : 1.0);
-  if (!endpoint) return std::nullopt;
-  M4d pose = endpoint->tcp;
-  pose.block<3, 1>(0, 3) = stagingPoint();
-  return pose;
+  const auto& arc = lead == ChamferPhase::LeadIn ? m_leadIn : m_leadOut;
+  // Staging keeps the axial orientation; LIN performs the tilt to/from machining.
+  return makeTransform(arc.stagingRotation, stagingPoint());
 }
 
 std::optional<ChamferPathSample> ChamferPath::evaluate(double angleRad) const
@@ -170,37 +252,85 @@ std::optional<ChamferPathSample> ChamferPath::evaluatePhase(ChamferPhase phase, 
     return std::nullopt;
 
   const bool entering = phase == ChamferPhase::LeadIn;
-  const auto& lead = entering ? m_parameters.leadIn : m_parameters.leadOut;
-  const double span = lead.spanDegrees * GeomConst::DegToRad;
-  const double quarterTurn = 0.5 * GeomConst::Pi * progress;
-  // Pin the quarter-circle endpoint so cos(pi/2) cannot shift the machining join.
-  const double sine = progress == 1.0 ? 1.0 : std::sin(quarterTurn);
-  const double cosine = progress == 1.0 ? 0.0 : std::cos(quarterTurn);
-  const double angle = entering ? -span * cosine
-                                : 2.0 * GeomConst::Pi + span * sine;
-  auto result = evaluate(angle);
-  if (!result) return std::nullopt;
-  // Angular progress and axial clearance trace a normalized quarter circle.
-  // The same clear-state amount controls the attitude interpolation below.
-  const double clearWeight = entering ? 1.0 - sine : 1.0 - cosine;
-  // Preserve the exact shared machining poses, including their rotation entries.
-  if (clearWeight == 0.0) return result;
-
-  const V3d clearY = -m_outwardAxis;
-  const V3d clearZ = result->radialNormal;
-  const V3d clearX = clearY.cross(clearZ).normalized();
-  const M3d clearRotation = basis2rot({clearX, clearY, clearZ});
-  const Eigen::Quaterniond machining(M3d(result->tcp.block<3, 3>(0, 0)));
-  Eigen::Quaterniond clear(clearRotation);
-  // Hemisphere alignment avoids quaternion sign changes across the ellipse seam.
-  if (machining.dot(clear) < 0.0) clear.coeffs() *= -1.0;
-  result->tcp.block<3, 3>(0, 0) = clearWeight == 1.0 ? clearRotation
-      : machining.slerp(clearWeight, clear).normalized().toRotationMatrix();
-  result->tcp.block<3, 1>(0, 3) += (lead.clearance * clearWeight) * m_outwardAxis;
+  const auto& arc = entering ? m_leadIn : m_leadOut;
+  // Preserve the exact shared machining pose, including rotation entries.
+  if ((entering && progress == 1.0) || (!entering && progress == 0.0))
+    return arc.junction;
+  auto result = std::optional<ChamferPathSample>{arc.junction};
+  const double angle = arc.sweep * (entering ? 1.0 - progress : progress);
+  const double halfSine = std::sin(0.5 * angle);
+  // Junction-relative evaluation avoids subtracting the circle radius near the join.
+  const V3d displacement = m_parameters.leadRadius
+      * ((entering ? -1.0 : 1.0) * std::sin(angle) * arc.tangent
+         + (2.0 * halfSine * halfSine) * arc.planeY);
+  const bool freeEnd = entering ? progress == 0.0 : progress == 1.0;
+  if (freeEnd) result->tcp.block<3, 1>(0, 3) = arc.freeEndpoint;
+  else result->tcp.block<3, 1>(0, 3) += displacement;
+  // Rotation remains exactly the machining junction rotation over the entire lead.
   if (!result->tcp.allFinite()
+      || !isBasis(result->tcp.block<3, 1>(0, 0), result->tcp.block<3, 1>(0, 1),
+                  result->tcp.block<3, 1>(0, 2), FrameTolerance)
       || result->tcp.block<3, 1>(0, 1).dot(m_outwardAxis) >= 0.0)
     return std::nullopt;
   return result;
+}
+
+std::optional<ChamferPath::PositionDerivatives> ChamferPath::machiningDerivatives(
+    double angleRad) const
+{
+  if (!std::isfinite(angleRad)) return std::nullopt;
+  const double angle = m_direction * std::remainder(angleRad, 2.0 * GeomConst::Pi);
+  const double firstAngle = m_direction;
+  const auto& edge = m_parameters.edge;
+  const V3d offset = edge.majorRadius * std::cos(angle) * edge.majorAxis
+      + edge.minorRadius * std::sin(angle) * edge.minorAxis;
+  const V3d angularTangent = -edge.majorRadius * std::sin(angle) * edge.majorAxis
+      + edge.minorRadius * std::cos(angle) * edge.minorAxis;
+  const V3d firstOffset = firstAngle * angularTangent;
+  const V3d secondOffset = -offset;
+  const auto radial = normalizedDerivatives({transverse(offset, m_outwardAxis),
+      transverse(firstOffset, m_outwardAxis), transverse(secondOffset, m_outwardAxis)});
+  if (!radial) return std::nullopt;
+  const V3d normal = edge.majorAxis.cross(edge.minorAxis);
+  const double cosine = normal.dot(m_outwardAxis);
+  // Same normalized end-plane section direction as evaluate().
+  const auto face = normalizedDerivatives({
+      radial->value - (normal.dot(radial->value) / cosine) * m_outwardAxis,
+      radial->first - (normal.dot(radial->first) / cosine) * m_outwardAxis,
+      radial->second - (normal.dot(radial->second) / cosine) * m_outwardAxis});
+  if (!face) return std::nullopt;
+  const double cotangent = 1.0 / std::tan(m_parameters.chamferAngleDegrees * GeomConst::DegToRad);
+  const double firstDepth = cotangent * (face->first.dot(radial->value)
+      + face->value.dot(radial->first)) - face->first.dot(m_outwardAxis);
+  const double secondDepth = cotangent * (face->second.dot(radial->value)
+      + 2.0 * face->first.dot(radial->first) + face->value.dot(radial->second))
+      - face->second.dot(m_outwardAxis);
+  const double halfSize = 0.5 * m_parameters.chamferSize;
+  const V3d first = firstOffset + halfSize * (face->first - firstDepth * m_outwardAxis);
+  const V3d second = secondOffset + halfSize * (face->second - secondDepth * m_outwardAxis);
+  if (!first.allFinite() || !second.allFinite()) return std::nullopt;
+  return PositionDerivatives{first, second};
+}
+
+std::optional<ChamferArcDifferential> ChamferPath::phaseArcDifferential(
+    ChamferPhase phase, double progress) const
+{
+  if (!std::isfinite(progress) || progress < 0.0 || progress > 1.0)
+    return std::nullopt;
+  if (phase == ChamferPhase::LeadIn) return ChamferArcDifferential{m_leadIn.length, 0.0};
+  if (phase == ChamferPhase::LeadOut) return ChamferArcDifferential{m_leadOut.length, 0.0};
+  if (phase != ChamferPhase::Machining) return std::nullopt;
+  const double rate = 2.0 * GeomConst::Pi;
+  const auto differential = machiningDerivatives(rate * progress);
+  if (!differential) return std::nullopt;
+  const V3d first = rate * differential->first;
+  const V3d second = rate * rate * differential->second;
+  const double speed = first.stableNorm();
+  if (!first.allFinite() || !second.allFinite() || !std::isfinite(speed)
+      || speed <= GeomConst::Eps) return std::nullopt;
+  const double derivative = (first / speed).dot(second);
+  if (!std::isfinite(derivative)) return std::nullopt;
+  return ChamferArcDifferential{speed, derivative};
 }
 
 namespace {

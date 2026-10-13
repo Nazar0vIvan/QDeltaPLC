@@ -8,11 +8,9 @@ QxLed         1.0 QxLed.qml
 QxPanel       1.0 QxPanel.qml
 QxProgressBar 1.0 QxProgressBar.qml
 QxScrollView  1.0 QxScrollView.qml
-QxStepButton  1.0 QxStepButton.qml
 QxSwitch      1.0 QxSwitch.qml
 QxTextInput   1.0 QxTextInput.qml
 QxToolButton  1.0 QxToolButton.qml
-QxUploadFile  1.0 QxUploadFile.qml
 QxVField      1.0 QxVField.qml
 
 

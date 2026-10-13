@@ -30,6 +30,8 @@ struct JointModel
 
   double qMin = -std::numeric_limits<double>::infinity();
   double qMax =  std::numeric_limits<double>::infinity();
+  // Datasheet speed with rated payload, deg/s. Zero means unspecified and rejects motion generation.
+  double ratedPayloadSpeedDegreesPerSecond = 0.0;
 };
 
 struct Kr10KinematicModel

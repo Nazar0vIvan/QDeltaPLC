@@ -17,6 +17,7 @@ QxPanel {
   required property list<double> tcp
   required property bool tcpVisible
   required property bool colletVisible
+  signal closeRequested()
   signal browseRequested()
   signal retryRequested()
   signal posesRequested(var colletValues, var tcpValues)
@@ -32,10 +33,13 @@ QxPanel {
     return values.length === 6 && values.every(
         value => value.trim().length > 0 && isFinite(Number(value)))
   }
+  function formatReal(value) {
+    return (Math.abs(value) < 0.00005 ? 0 : value).toFixed(4)
+  }
   function poseDraft(values) {
     const result = []
     for (let i = 0; i < 6; ++i)
-      result.push(values.length === 6 ? (values[i] === 0 ? "0.00" : String(values[i])) : "0.00")
+      result.push(values.length === 6 ? root.formatReal(values[i]) : "0.0000")
     return result
   }
   function loadColletDraft() {
@@ -132,7 +136,7 @@ QxPanel {
           Label {
             Layout.fillWidth: true
             text: measurement.index === 0 ? root.measuringName
-                  : (measurement.index === 1 ? root.ballDiameter : root.stylusLength).toFixed(3)
+                  : root.formatReal(measurement.index === 1 ? root.ballDiameter : root.stylusLength)
             wrapMode: Text.Wrap
             font: Fonts.body
             color: Colors.foreground.high
@@ -166,8 +170,12 @@ QxPanel {
             text: root.colletDrafts[colletCoordinate.index] ?? ""
             font: Fonts.caption
             Accessible.name: qsTr("ER %1").arg(colletCoordinate.labelText)
-            validator: DoubleValidator { locale: "C"; decimals: 8 }
+            validator: DoubleValidator { locale: "C"; decimals: 4; notation: DoubleValidator.StandardNotation }
             onTextEdited: root.editColletValue(colletCoordinate.index, colletInput.text)
+            onEditingFinished: {
+              if (colletInput.acceptableInput)
+                root.editColletValue(colletCoordinate.index, root.formatReal(Number(colletInput.text)))
+            }
           }
           Label {
             text: colletCoordinate.index < 3 ? qsTr("mm") : qsTr("deg")
@@ -217,8 +225,12 @@ QxPanel {
             text: root.drafts[coordinate.index] ?? ""
             font: Fonts.caption
             Accessible.name: qsTr("TCP %1").arg(coordinate.labelText)
-            validator: DoubleValidator { locale: "C"; decimals: 8 }
+            validator: DoubleValidator { locale: "C"; decimals: 4; notation: DoubleValidator.StandardNotation }
             onTextEdited: root.editValue(coordinate.index, input.text)
+            onEditingFinished: {
+              if (input.acceptableInput)
+                root.editValue(coordinate.index, root.formatReal(Number(input.text)))
+            }
           }
           Label {
             text: coordinate.index < 3 ? qsTr("mm") : qsTr("deg")
@@ -245,12 +257,18 @@ QxPanel {
         Item { Layout.fillWidth: true }
       }
       RowLayout {
-        visible: !root.measuring
+        Layout.fillWidth: true
         QxButton {
+          visible: !root.measuring
           text: qsTr("Apply")
           enabled: root.validDraft
-          onClicked: root.posesRequested(root.colletDrafts.map(value => Number(value)),
+          // ER fields are read-only: display rounding must not alter calibration.
+          onClicked: root.posesRequested(root.colletPose,
                                          root.drafts.map(value => Number(value)))
+        }
+        QxButton {
+          text: qsTr("Close")
+          onClicked: root.closeRequested()
         }
       }
     }

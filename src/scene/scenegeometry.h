@@ -20,15 +20,15 @@ struct SceneMachiningSettings
   Q_PROPERTY(double chamferAngle MEMBER chamferAngle)
   Q_PROPERTY(double stagingDistance MEMBER stagingDistance)
   Q_PROPERTY(bool flipAxis MEMBER flipAxis)
-  Q_PROPERTY(double leadInClearance MEMBER leadInClearance)
-  Q_PROPERTY(double leadOutClearance MEMBER leadOutClearance)
-  Q_PROPERTY(double leadInSpan MEMBER leadInSpan)
-  Q_PROPERTY(double leadOutSpan MEMBER leadOutSpan)
+  Q_PROPERTY(double leadRadius MEMBER leadRadius)
   Q_PROPERTY(int leadInIntervals MEMBER leadInIntervals)
   Q_PROPERTY(int leadOutIntervals MEMBER leadOutIntervals)
   Q_PROPERTY(double leadInFeed MEMBER leadInFeed)
   Q_PROPERTY(double machiningFeed MEMBER machiningFeed)
   Q_PROPERTY(double leadOutFeed MEMBER leadOutFeed)
+  Q_PROPERTY(double accelerationDistanceFraction MEMBER accelerationDistanceFraction)
+  Q_PROPERTY(double transferFeed MEMBER transferFeed)
+  Q_PROPERTY(double transferAcceleration MEMBER transferAcceleration)
   Q_PROPERTY(double acceleration MEMBER acceleration)
   Q_PROPERTY(double auxiliaryScale MEMBER auxiliaryScale)
   Q_PROPERTY(QList<double> jointSpeed MEMBER jointSpeed)
@@ -38,18 +38,18 @@ public:
   double chamferAngle = 45.0;
   double stagingDistance = 10.0;
   bool flipAxis = false;
-  double leadInClearance = 5.0;
-  double leadOutClearance = 5.0;
-  double leadInSpan = 30.0;
-  double leadOutSpan = 30.0;
+  double leadRadius = 5.0; // Shared lead-in/out circle radius, mm.
   int leadInIntervals = 16;
   int leadOutIntervals = 16;
   double leadInFeed = 10.0;
   double machiningFeed = 5.0;
   double leadOutFeed = 10.0;
-  double acceleration = 20.0;
+  double accelerationDistanceFraction = 0.30;
+  double transferFeed = 10.0; // mm/s, shared staging-transfer setting.
+  double transferAcceleration = 20.0; // mm/s^2, requested transfer setting.
+  double acceleration = 20.0; // Existing simulation bound, not controller $ACC_MA.
   double auxiliaryScale = 1.0;
-  QList<double> jointSpeed{30, 30, 30, 30, 30, 30};
+  QList<double> jointSpeed{0, 0, 0, 0, 0, 0}; // Model-derived snapshot; unresolved before model loading.
   QList<double> jointAcceleration{60, 60, 60, 60, 60, 60};
 
   static SceneMachiningSettings fromMotion(const ChamferMotion& motion);
@@ -68,6 +68,8 @@ class SceneMachiningPath final : public QObject
 {
   Q_OBJECT
   Q_PROPERTY(double duration READ duration CONSTANT)
+  Q_PROPERTY(double centralDuration READ centralDuration CONSTANT)
+  Q_PROPERTY(QList<double> phaseTimes READ phaseTimes CONSTANT)
   Q_PROPERTY(double centralTimeScale READ centralTimeScale CONSTANT)
   Q_PROPERTY(quint32 sourceEdgeId READ sourceEdgeId CONSTANT)
   Q_PROPERTY(SceneMachiningSettings settings READ settings CONSTANT)
@@ -79,6 +81,15 @@ public:
   const ChamferMotion& motion() const { return *m_data.motion; }
   const SceneMachiningData& data() const { return m_data; }
   double duration() const { return motion().duration(); }
+  double centralDuration() const
+  { return motion().centralMotion() ? motion().centralMotion()->duration() : 0.0; }
+  // Eight HOME-relative phase boundaries; preparation exposes four central-relative times.
+  QList<double> phaseTimes() const
+  {
+    QList<double> times;
+    for (qsizetype index : motion().boundaries()) times.append(motion().points()[index].time);
+    return times;
+  }
   double centralTimeScale() const { return motion().centralTimeScale(); }
   quint32 sourceEdgeId() const { return m_data.sourceEdgeId; }
   SceneMachiningSettings settings() const { return SceneMachiningSettings::fromMotion(motion()); }

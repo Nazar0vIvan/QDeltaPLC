@@ -1,0 +1,11 @@
+&ACCESS RVP
+&REL 1
+DEFDAT RSI_Hole
+   ; shared_data.txt: Ps, LeadStart, LeadEnd (XYZABC), velocity, acceleration.
+   DECL FRAME Ps
+   DECL FRAME LeadStart
+   DECL FRAME LeadEnd
+   DECL REAL TransferVelocity=0.0 ; m/s
+   DECL REAL TransferAcceleration=0.0 ; m/s^2
+   DECL INT RsiContext=0
+ENDDAT

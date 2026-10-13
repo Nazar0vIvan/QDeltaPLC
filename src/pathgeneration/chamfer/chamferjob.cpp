@@ -1,5 +1,6 @@
 #include "chamferjob.h"
 
+#include <QElapsedTimer>
 #include <cmath>
 #include <utility>
 
@@ -20,10 +21,14 @@ double PreparedChamferJob::cyclePeriod() const
 PreparedChamferJobResult PreparedChamferJob::create(ChamferJobSource source,
                                                     RsiCorrectionLimitConfiguration limits)
 {
+  QElapsedTimer timer;
+  timer.start();
   if (!source.motion || source.jobId.isEmpty() || source.pathId == 0)
     return {{}, QStringLiteral("A saved trajectory and job identity are required.")};
 
   const auto& motion = *source.motion;
+  if (!motion.centralMotion())
+    return {{}, QStringLiteral("Regenerate the path before RSI Sampling: analytical timing is missing.")};
   const auto& points = motion.points();
   const auto& boundaries = motion.boundaries();
   if (points.isEmpty() || boundaries.front() != 0 || boundaries.back() != points.size() - 1)
@@ -45,7 +50,7 @@ PreparedChamferJobResult PreparedChamferJob::create(ChamferJobSource source,
   auto job = std::shared_ptr<PreparedChamferJob>(new PreparedChamferJob(std::move(source)));
   job->m_motionStartTime = points[boundaries[2]].time;
   for (std::size_t i = 0; i < job->m_phaseTimes.size(); ++i) {
-    const double time = points[boundaries[i + 2]].time - job->m_motionStartTime;
+    const double time = motion.centralMotion()->phaseTimes()[i];
     if (!std::isfinite(time) || (i > 0 && time <= job->m_phaseTimes[i - 1]))
       return {{}, QStringLiteral("Lead-in, machining and lead-out must have positive durations.")};
     job->m_phaseTimes[i] = time;
@@ -65,7 +70,10 @@ PreparedChamferJobResult PreparedChamferJob::create(ChamferJobSource source,
     job->m_boundaryPoses[i] = *pose;
   }
   auto sampled = sampleChamferCartesian(motion, job->cyclePeriod());
-  if (!sampled.data) return {{}, sampled.error};
+  if (!sampled.data) {
+    sampled.diagnostics.insert("totalMs", timer.nsecsElapsed() / 1e6);
+    return {{}, sampled.error, std::move(sampled.diagnostics)};
+  }
   // Central boundary poses use the same analytic targets as the sample vector.
   // This retains the full-turn endpoint separately from phase-start metadata.
   for (std::size_t i = 0; i < sampled.data->phasePoses.size(); ++i)
@@ -74,6 +82,10 @@ PreparedChamferJobResult PreparedChamferJob::create(ChamferJobSource source,
   job->m_samples = std::move(sampled.data->samples);
   // Encoding/limit failures do not discard valid nominal samples. They have
   // their own readiness/error state on the same job.
+  QElapsedTimer encodingTimer;
+  encodingTimer.start();
   job->m_encoding = prepareRsiNominalEncoding(job->m_samples, limits);
-  return {std::move(job), {}};
+  sampled.diagnostics.insert("encodingMs", encodingTimer.nsecsElapsed() / 1e6);
+  sampled.diagnostics.insert("totalMs", timer.nsecsElapsed() / 1e6);
+  return {std::move(job), {}, std::move(sampled.diagnostics)};
 }

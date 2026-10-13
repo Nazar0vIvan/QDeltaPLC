@@ -74,10 +74,8 @@ add_subdirectory(qml/Modules/Components)
 
 set(QML_FILES
   qml/Main.qml
-  qml/Logger.qml
   qml/MenuBar/MainMenuBar.qml
   qml/NavigationPanel/NavigationPanel.qml
-  qml/NavigationPanel/NavigationMenuDelegate.qml
   qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml
   qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml
   qml/Views/Dashboard/DeltaPanel/LedsPanel.qml
@@ -86,16 +84,10 @@ set(QML_FILES
   qml/Views/Dashboard/FtsPanel/FtsPanel.qml
   qml/Views/Dashboard/FtsPanel/FtsBars.qml
   qml/Views/Dashboard/KukaPanel/KukaPanel.qml
-  qml/Views/Dashboard/KukaPanel/RsiPosition.qml
-  qml/Views/Dashboard/KukaPanel/RsiCoordinate.qml
-  qml/Views/Dashboard/KukaPanel/Counter.qml
-  qml/Views/Dashboard/Dashboard.qml
   qml/Views/Network/Network.qml
   qml/Views/Network/NetworkPanel.qml
   qml/Views/Network/ConnectionsTable.qml
   qml/Views/Viewport3D/RobotViewport.qml
-  qml/Views/Viewport3D/RobotKinematicsPanel.qml
-  qml/Views/Viewport3D/SixValueEditor.qml
   qml/Views/Workspace/WorkflowPanel.qml
   qml/Views/Workspace/ModeToolBar.qml
   qml/Views/Workspace/ScenePanel.qml

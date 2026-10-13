@@ -20,14 +20,12 @@ QxPanel {
   readonly property var fields: [
     {key: "chamferSize", label: qsTr("Chamfer size, mm"), min: 0},
     {key: "chamferAngle", label: qsTr("Chamfer angle, deg"), min: 0.000001, max: 89.999999},
-    {key: "stagingDistance", label: qsTr("P_s axial distance from end plane, mm"), min: 0.000001},
-    {key: "leadInClearance", label: qsTr("Lead-in axial clearance, mm"), min: 0.000001},
-    {key: "leadOutClearance", label: qsTr("Lead-out axial clearance, mm"), min: 0.000001},
-    {key: "leadInSpan", label: qsTr("Lead-in span, deg"), min: 0.000001, max: 360},
-    {key: "leadOutSpan", label: qsTr("Lead-out span, deg"), min: 0.000001, max: 360},
-    {key: "leadInFeed", label: qsTr("Lead-in speed, mm/s"), min: 0.000001},
-    {key: "machiningFeed", label: qsTr("Machining feed, mm/s"), min: 0.000001},
-    {key: "leadOutFeed", label: qsTr("Lead-out speed, mm/s"), min: 0.000001},
+    {key: "stagingDistance", label: qsTr("Axial distance from the hole, mm"), min: 0.000001},
+    {key: "leadRadius", label: qsTr("Lead-in/out radius, mm"), min: 0.000001},
+    {key: "machiningFeed", label: qsTr("Machining speed, mm/s"), min: 0.000001},
+    {key: "accelerationDistanceFraction", label: qsTr("Acceleration/deceleration distance, %"), min: 0.0001, max: 100},
+    {key: "transferFeed", label: qsTr("$VEL.CP, mm/s"), min: 0.000001},
+    {key: "transferAcceleration", label: qsTr("$ACC.CP, mm/s²"), min: 0.000001},
     {key: "auxiliaryScale", label: qsTr("HOME PTP simulation, %"), min: 0.0001, max: 100}
   ]
   readonly property bool validDraft: root.fields.every(field => {
@@ -36,13 +34,16 @@ QxPanel {
     return text !== undefined && String(text).trim().length > 0 && isFinite(value)
         && value >= field.min && (field.max === undefined || value <= field.max)
   })
+  function isPercentage(key) {
+    return key === "auxiliaryScale" || key === "accelerationDistanceFraction"
+  }
   function beginEditing() {
     const values = {}
     const original = {flipAxis: root.coordinator.settings.flipAxis}
     for (const field of root.fields) {
       const value = root.coordinator.settings[field.key]
       original[field.key] = value
-      values[field.key] = String(field.key === "auxiliaryScale" ? value * 100 : value)
+      values[field.key] = String(root.isPercentage(field.key) ? value * 100 : value)
     }
     root.drafts = values
     root.originalSettings = original
@@ -58,7 +59,7 @@ QxPanel {
     let settings = root.coordinator.settings
     for (const field of root.fields) {
       const value = Number(root.drafts[field.key])
-      settings[field.key] = field.key === "auxiliaryScale" ? value / 100 : value
+      settings[field.key] = root.isPercentage(field.key) ? value / 100 : value
     }
     settings.flipAxis = root.draftFlipAxis
     root.coordinator.settings = settings
@@ -160,7 +161,8 @@ QxPanel {
       Label {
         Layout.fillWidth: true
         visible: root.savedPath !== null
-        text: root.savedPath ? qsTr("Duration: %1 s\nLead/chamfer time multiplier: %2").arg(root.savedPath.duration.toFixed(2)).arg(root.savedPath.centralTimeScale.toFixed(2)) : ""
+        text: root.savedPath ? qsTr("Dry Run: %1 s\nCentral path: %2 s")
+              .arg(root.savedPath.duration.toFixed(3)).arg(root.savedPath.centralDuration.toFixed(3)) : ""
         wrapMode: Text.Wrap
         color: Colors.foreground.medium
         font: Fonts.caption
@@ -177,7 +179,7 @@ QxPanel {
       }
       RowLayout {
         QxButton {
-          text: qsTr("Apply")
+          text: qsTr("Generate")
           enabled: root.coordinator.canGenerate && root.validDraft
           onClicked: root.applyDraft()
         }

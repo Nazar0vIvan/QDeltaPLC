@@ -29,9 +29,7 @@ ApplicationWindow {
     root.dryScanActive = false
     root.dryScanRunning = false
     if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
-    if (root.workflowMode === WorkflowPanel.Machining) {
-      if (measuringSetupWindow) measuringSetupWindow.hide()
-    } else if (spindleSetupWindow) spindleSetupWindow.hide()
+    root.toolSetupOpen = false
     if (root.chamferEditorOpen) machiningPanel.cancelEditing()
     root.syncEndEffector()
     root.syncMachiningInput()
@@ -43,14 +41,13 @@ ApplicationWindow {
   }
 
   function openToolSetup() {
-    const window = root.workflowMode === WorkflowPanel.Machining ? spindleSetupWindow : measuringSetupWindow
-    window.show()
-    window.raise()
-    window.requestActivate()
+    if (root.chamferEditorOpen) machiningPanel.cancelEditing()
+    root.toolSetupOpen = true
   }
 
   // Editor state and selected application objects.
   property bool chamferEditorOpen: false
+  property bool toolSetupOpen: false
   property list<real> selectedObjectIds: []
 
   readonly property Backend.SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
@@ -100,6 +97,7 @@ ApplicationWindow {
   }
 
   onSelectedSceneObjectChanged: {
+    root.toolSetupOpen = false
     if (root.chamferEditorOpen) machiningPanel.cancelEditing()
     root.syncMachiningInput()
   }
@@ -360,79 +358,6 @@ ApplicationWindow {
     }
   }
 
-  Window {
-    id: measuringSetupWindow
-
-    title: qsTr("Measuring end effector")
-    transientParent: root
-    flags: Qt.Tool
-    color: Colors.background.dp00
-    width: 440
-    height: 360
-    minimumWidth: 360
-    minimumHeight: 280
-
-    EndEffectorPanel {
-      anchors.fill: parent
-      anchors.margins: Metrics.sp8
-      measuring: true
-      cadSource: Backend.EndEffectors.measuringCadSource
-      loading: Viewport3D.OccController.measuringCadLoading
-      loadError: Viewport3D.OccController.measuringCadError
-      measuringName: Backend.EndEffectors.measuringName
-      ballDiameter: Backend.EndEffectors.rubyBallDiameter
-      stylusLength: Backend.EndEffectors.stylusLength
-      colletPose: Backend.EndEffectors.spindleColletPose
-      tcp: Backend.EndEffectors.spindleTcp
-      tcpVisible: false
-      colletVisible: false
-      onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Measuring)
-      onBrowseRequested: {
-        endEffectorFileDialog.measuring = true
-        endEffectorFileDialog.open()
-      }
-    }
-  }
-
-  Window {
-    id: spindleSetupWindow
-
-    title: qsTr("Spindle EE")
-    transientParent: root
-    flags: Qt.Tool
-    color: Colors.background.dp00
-    width: 440
-    height: 640
-    minimumWidth: 360
-    minimumHeight: 400
-
-    EndEffectorPanel {
-      anchors.fill: parent
-      anchors.margins: Metrics.sp8
-      measuring: false
-      cadSource: Backend.EndEffectors.spindleCadSource
-      loading: Viewport3D.OccController.spindleCadLoading
-      loadError: Viewport3D.OccController.spindleCadError
-      measuringName: Backend.EndEffectors.measuringName
-      ballDiameter: Backend.EndEffectors.rubyBallDiameter
-      stylusLength: Backend.EndEffectors.stylusLength
-      colletPose: Backend.EndEffectors.spindleColletPose
-      tcp: Backend.EndEffectors.spindleTcpInCollet
-      tcpVisible: Viewport3D.OccController.showSpindleTcp
-      colletVisible: Viewport3D.OccController.showSpindleCollet
-      onTcpVisibilityRequested: visible => Viewport3D.OccController.showSpindleTcp = visible
-      onColletVisibilityRequested: visible => Viewport3D.OccController.showSpindleCollet = visible
-      onPosesRequested: (colletValues, tcpValues) => {
-        if (Backend.EndEffectors.applySpindlePoses(colletValues, tcpValues))
-          Viewport3D.OccController.showSpindleTcp = true
-      }
-      onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)
-      onBrowseRequested: {
-        endEffectorFileDialog.measuring = false
-        endEffectorFileDialog.open()
-      }
-    }
-  }
 
   footer: ToolBar {
     padding: Metrics.sp8
@@ -540,6 +465,7 @@ ApplicationWindow {
                                  || root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath)
         onToolSetupRequested: root.openToolSetup()
         onGenerationRequested: {
+          root.toolSetupOpen = false
           if (!root.chamferEditorOpen) machiningPanel.beginEditing()
           root.chamferEditorOpen = true
           machiningPanel.focusEditor()
@@ -558,18 +484,20 @@ ApplicationWindow {
         color: Backend.MachiningPreparation.error.length > 0 ? Colors.maxColor : Colors.foreground.medium
         wrapMode: Text.WordWrap
         text: {
-          if (Backend.MachiningPreparation.preparing) return qsTr("Preparing job…")
+          if (Backend.MachiningPreparation.preparing) return qsTr("Sampling RSI…")
           if (Backend.MachiningPreparation.error.length > 0) return Backend.MachiningPreparation.error
           if (Backend.MachiningPreparation.prepared) {
-            const duration = Backend.MachiningPreparation.duration.toFixed(2)
-            const scale = Backend.MachiningPreparation.centralTimeScale
+            const duration = Backend.MachiningPreparation.duration.toFixed(3)
+            const controllerDuration = Backend.MachiningPreparation.controllerDuration.toFixed(3)
             const samples = Backend.MachiningPreparation.sampleCount
-            const status = scale > 1.000001 ? qsTr("Job prepared · %1 samples · %2 s · timing ×%3").arg(samples).arg(duration).arg(scale.toFixed(2))
-                                           : qsTr("Job prepared · %1 samples · %2 s").arg(samples).arg(duration)
+            const corrections = Backend.MachiningPreparation.correctionCount
+            const status = qsTr("RSI sampled · %1 samples · %2 corrections\nPath: %3 s · RSI cycles: %4 s")
+                           .arg(samples).arg(corrections).arg(duration).arg(controllerDuration)
             return status + "\n" + (Backend.MachiningPreparation.encodingReady ? qsTr("Encoding ready.")
                                    : Backend.MachiningPreparation.encodingUnavailableReason)
+                          + "\n" + Backend.MachiningPreparation.sharedDataStatus
           }
-          return Backend.MachiningPreparation.unavailableReason || qsTr("Ready to prepare.")
+          return Backend.MachiningPreparation.unavailableReason || qsTr("Ready for RSI Sampling.")
         }
       }
 
@@ -589,7 +517,7 @@ ApplicationWindow {
       SplitView.maximumWidth: 330
       PropertiesPanel {
         anchors.fill: parent
-        visible: !root.chamferEditorOpen
+        visible: !root.chamferEditorOpen && !root.toolSetupOpen
         selectionCount: root.selectedObjectIds.length
         selectedObject: root.selectedSceneObject
         showPoints: root.selectedSceneObject ? root.selectedSceneObject.showPoints : false
@@ -604,6 +532,54 @@ ApplicationWindow {
         }
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
         onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+      }
+      EndEffectorPanel {
+        anchors.fill: parent
+        visible: root.toolSetupOpen && root.workflowMode === WorkflowPanel.Measuring
+        onCloseRequested: root.toolSetupOpen = false
+        measuring: true
+        cadSource: Backend.EndEffectors.measuringCadSource
+        loading: Viewport3D.OccController.measuringCadLoading
+        loadError: Viewport3D.OccController.measuringCadError
+        measuringName: Backend.EndEffectors.measuringName
+        ballDiameter: Backend.EndEffectors.rubyBallDiameter
+        stylusLength: Backend.EndEffectors.stylusLength
+        colletPose: Backend.EndEffectors.spindleColletPose
+        tcp: Backend.EndEffectors.spindleTcp
+        tcpVisible: false
+        colletVisible: false
+        onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Measuring)
+        onBrowseRequested: {
+          endEffectorFileDialog.measuring = true
+          endEffectorFileDialog.open()
+        }
+      }
+      EndEffectorPanel {
+        anchors.fill: parent
+        visible: root.toolSetupOpen && root.workflowMode === WorkflowPanel.Machining
+        onCloseRequested: root.toolSetupOpen = false
+        measuring: false
+        cadSource: Backend.EndEffectors.spindleCadSource
+        loading: Viewport3D.OccController.spindleCadLoading
+        loadError: Viewport3D.OccController.spindleCadError
+        measuringName: Backend.EndEffectors.measuringName
+        ballDiameter: Backend.EndEffectors.rubyBallDiameter
+        stylusLength: Backend.EndEffectors.stylusLength
+        colletPose: Backend.EndEffectors.spindleColletPose
+        tcp: Backend.EndEffectors.spindleTcpInCollet
+        tcpVisible: Viewport3D.OccController.showSpindleTcp
+        colletVisible: Viewport3D.OccController.showSpindleCollet
+        onTcpVisibilityRequested: visible => Viewport3D.OccController.showSpindleTcp = visible
+        onColletVisibilityRequested: visible => Viewport3D.OccController.showSpindleCollet = visible
+        onPosesRequested: (colletValues, tcpValues) => {
+          if (Backend.EndEffectors.applySpindlePoses(colletValues, tcpValues))
+            Viewport3D.OccController.showSpindleTcp = true
+        }
+        onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)
+        onBrowseRequested: {
+          endEffectorFileDialog.measuring = false
+          endEffectorFileDialog.open()
+        }
       }
       MachiningPanel {
         id: machiningPanel

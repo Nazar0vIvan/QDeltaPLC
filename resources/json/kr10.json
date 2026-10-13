@@ -5,37 +5,43 @@
       "offset": { "dx": 0, "dy": 0, "dz": 227, "da": 0, "db": 0, "dc": 0 },
       "axis": [0.0, 0.0, -1.0],
       "min": -170,
-      "max": 170
+      "max": 170,
+      "ratedPayloadSpeedDegreesPerSecond": 220
     },
     {
       "offset": { "dx": 150, "dy": -90.4, "dz": 223, "da": 0, "db": 0, "dc": -90 },
       "axis": [0.0, 0.0, 1.0],
       "min": -185,
-      "max": 65
+      "max": 65,
+      "ratedPayloadSpeedDegreesPerSecond": 210
     },
     {
       "offset": { "dx": 0, "dy": -610, "dz": -11.1, "da": 90, "db": 0, "dc": 0 },
       "axis": [0.0, 0.0, 1.0],
       "min": -137,
-      "max": 163
+      "max": 163,
+      "ratedPayloadSpeedDegreesPerSecond": 270
     },
     {
       "offset": { "dx": -20, "dy": -357, "dz": 101.5, "da": 0, "db": 0, "dc": -90 },
       "axis": [0.0, 0.0, 1.0],
       "min": -185,
-      "max": 185
+      "max": 185,
+      "ratedPayloadSpeedDegreesPerSecond": 381
     },
     {
       "offset": { "dx": 0, "dy": -39, "dz": -303, "da": 0, "db": 0, "dc": 90 },
       "axis": [0.0, 0.0, 1.0],
       "min": -120,
-      "max": 120
+      "max": 120,
+      "ratedPayloadSpeedDegreesPerSecond": 311
     },
     {
       "offset": { "dx": 0, "dy": -80, "dz": -39, "da": 0, "db": 0, "dc": 90 },
       "axis": [0.0, 0.0, -1.0],
       "min": -350,
-      "max": 350
+      "max": 350,
+      "ratedPayloadSpeedDegreesPerSecond": 492
     }
   ],
 

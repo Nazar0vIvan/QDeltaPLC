@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QJsonObject>
+
 #include "chamfercartesiansampler.h"
 #include "rsiposeencoder.h"
 
@@ -33,10 +35,13 @@ public:
   double motionStartTime() const { return m_motionStartTime; }
   // Job-relative start, machining start, lead-out start and terminal time.
   const std::array<double, 4>& phaseTimes() const { return m_phaseTimes; }
-  double duration() const { return m_phaseTimes.back(); }
+  double duration() const { return m_phaseTimes.back(); } // Mathematical duration.
+  double controllerDuration() const
+  { return m_samples.isEmpty() ? 0.0 : m_samples.back().controllerTime; }
   double centralTimeScale() const { return motion().centralTimeScale(); }
   const QVector<ChamferCartesianSample>& samples() const { return m_samples; }
   int sampleCount() const { return static_cast<int>(m_samples.size()); }
+  int correctionCount() const { return m_samples.isEmpty() ? 0 : sampleCount() - 1; }
   const RsiNominalEncodingResult& encoding() const { return m_encoding; }
   bool encodingReady() const { return m_encoding.data && m_encoding.data->ready(); }
   QString encodingUnavailableReason() const
@@ -63,6 +68,7 @@ struct PreparedChamferJobResult
 {
   PreparedChamferJobPtr job;
   QString error;
+  QJsonObject diagnostics; // Owned worker result, also returned on failure.
 };
 
 Q_DECLARE_METATYPE(PreparedChamferJobPtr)

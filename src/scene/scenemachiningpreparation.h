@@ -1,8 +1,9 @@
 #pragma once
 
 #include "scenemachining.h"
-#include "pathgeneration/chamfer/chamferjob.h"
+#include "chamfershareddata.h"
 
+#include <QList>
 #include <QPointer>
 #include <QTimer>
 #include <QFileSystemWatcher>
@@ -17,7 +18,13 @@ class SceneMachiningPreparation final : public QObject
   Q_PROPERTY(bool prepared READ prepared NOTIFY preparedChanged)
   Q_PROPERTY(QString error READ error NOTIFY errorChanged)
   Q_PROPERTY(QString jobId READ jobId NOTIFY preparedChanged)
+  Q_PROPERTY(bool sharedDataExported READ sharedDataExported NOTIFY preparedChanged)
+  Q_PROPERTY(QString sharedDataStatus READ sharedDataStatus NOTIFY preparedChanged)
   Q_PROPERTY(double duration READ duration NOTIFY preparedChanged)
+  Q_PROPERTY(double controllerDuration READ controllerDuration NOTIFY preparedChanged)
+  Q_PROPERTY(double cyclePeriod READ cyclePeriod NOTIFY preparedChanged)
+  Q_PROPERTY(QList<double> phaseTimes READ phaseTimes NOTIFY preparedChanged)
+  Q_PROPERTY(int correctionCount READ correctionCount NOTIFY preparedChanged)
   Q_PROPERTY(double centralTimeScale READ centralTimeScale NOTIFY preparedChanged)
   Q_PROPERTY(int sampleCount READ sampleCount NOTIFY preparedChanged)
   Q_PROPERTY(bool encodingReady READ encodingReady NOTIFY preparedChanged)
@@ -31,9 +38,22 @@ public:
   QString unavailableReason() const;
   bool preparing() const { return m_preparing; }
   bool prepared() const { return bool(m_job); }
+  bool sharedDataExported() const { return m_sharedDataExported; }
+  QString sharedDataStatus() const { return m_sharedDataStatus; }
   QString error() const { return m_error; }
   QString jobId() const { return m_job ? m_job->source().jobId : QString{}; }
   double duration() const { return m_job ? m_job->duration() : 0.0; }
+  double controllerDuration() const { return m_job ? m_job->controllerDuration() : 0.0; }
+  double cyclePeriod() const { return m_job ? m_job->cyclePeriod() : 0.0; }
+  int correctionCount() const { return m_job ? m_job->correctionCount() : 0; }
+  QList<double> phaseTimes() const
+  {
+    QList<double> times;
+    if (m_job)
+      for (double time : m_job->phaseTimes()) times.append(time);
+    return times;
+  }
+  // Compatibility-only; prescribed timing is never stretched.
   double centralTimeScale() const { return m_job ? m_job->centralTimeScale() : 1.0; }
   int sampleCount() const { return m_job ? m_job->sampleCount() : 0; }
   bool encodingReady() const { return m_job && m_job->encodingReady(); }
@@ -59,7 +79,7 @@ private:
   void onLimitFileChanged(const QString& path);
   void refreshLimitConfiguration();
   void finishPreparation();
-  void setPreparedJob(PreparedChamferJobPtr job);
+  void setPreparedJob(PreparedChamferJobPtr job, const QString& exportError = {});
   void setError(const QString& error);
 
   SceneModel* m_scene;
@@ -70,12 +90,14 @@ private:
   QFileSystemWatcher m_limitWatcher;
   QString m_limitPath;
   RsiCorrectionLimitConfiguration m_limitConfiguration;
-  std::future<PreparedChamferJobResult> m_future;
+  std::future<ChamferSharedDataResult> m_future;
   ChamferJobSource m_pendingSource;
   PreparedChamferJobPtr m_job;
   quint64 m_generation = 0;
   quint64 m_pendingGeneration = 0;
   QString m_error;
+  QString m_sharedDataStatus;
+  bool m_sharedDataExported = false;
   bool m_preparing = false;
   bool m_shuttingDown = false;
 };

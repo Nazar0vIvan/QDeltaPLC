@@ -278,10 +278,16 @@ void RsiDevice::setPreparedJob(PreparedChamferJobPtr job)
 void RsiDevice::publishPreparedJob()
 {
   // Separate from the demonstration trajectory; storing a job never arms motion.
+  QVariantList phaseTimes;
+  if (m_preparedJob)
+    for (double time : m_preparedJob->phaseTimes()) phaseTimes.append(time);
   emit stateReady({
     {"preparedJobAvailable", bool(m_preparedJob)},
     {"preparedJobId", m_preparedJob ? m_preparedJob->source().jobId : QString{}},
     {"preparedJobDuration", m_preparedJob ? m_preparedJob->duration() : 0.0},
+    {"preparedJobControllerDuration", m_preparedJob ? m_preparedJob->controllerDuration() : 0.0},
+    {"preparedJobPhaseTimes", phaseTimes},
+    {"preparedJobCorrectionCount", m_preparedJob ? m_preparedJob->correctionCount() : 0},
     {"preparedJobTimeScale", m_preparedJob ? m_preparedJob->centralTimeScale() : 1.0},
     {"preparedJobCyclePeriod", m_preparedJob ? m_preparedJob->cyclePeriod() : 0.0},
     {"preparedJobSampleCount", m_preparedJob ? m_preparedJob->sampleCount() : 0},

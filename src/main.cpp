@@ -18,6 +18,7 @@
 #include <QStandardPaths>
 
 #include "logger.h"
+#include "3d/chamferprofile.h"
 #include "3d/viewportqmltypes.h"
 #include "3d/viewportassets.h"
 
@@ -44,6 +45,15 @@ void logViewportMessage(const QString& text, bool error)
 int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
+  if (app.arguments().contains(QStringLiteral("--profile-chamfer"))) {
+    const auto arguments = app.arguments();
+    const int option = arguments.indexOf(QStringLiteral("--profile-chamfer"));
+    if (option + 3 != arguments.size()) {
+      qWarning() << "Usage: robocrap --profile-chamfer input.json report.json";
+      return 2;
+    }
+    return profileChamferPreparation(arguments[option + 1], arguments[option + 2]);
+  }
 
 #ifdef USE_FELGO_HOT_RELOAD
   FelgoApplication felgo;
@@ -100,8 +110,7 @@ int main(int argc, char* argv[])
 
   SceneMachiningPreparation preparation(&scene, &machining);
   SceneMachiningPreparationQml::s_inst = &preparation;
-  QObject::connect(&preparation, &SceneMachiningPreparation::preparedJobReady,
-                   rsiDev, &RsiDevice::setPreparedJob, Qt::QueuedConnection);
+	QObject::connect(&preparation, &SceneMachiningPreparation::preparedJobReady, rsiDev, &RsiDevice::setPreparedJob, Qt::QueuedConnection);
   // Disable result dispatch and finish the worker before shutting down ControlIO.
   QObject::connect(&app, &QApplication::aboutToQuit, &preparation, &SceneMachiningPreparation::shutdown);
   QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);

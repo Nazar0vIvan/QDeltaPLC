@@ -1,0 +1,29 @@
+{
+  "plane": "../resources/json/edge_cyl_plane/XP.json",
+  "cylinder": "../resources/json/edge_cyl_plane/XC.json",
+  "robot": "../resources/json/kr10.json",
+  "tcpInCollet": [
+    0,
+    15,
+    1.5,
+    0,
+    0,
+    0
+  ],
+  "repetitions": 3,
+  "settings": {
+    "flipAxis": true,
+    "chamferSize": 0.5,
+    "chamferAngle": 45,
+    "stagingDistance": 30,
+    "leadInClearance": 5,
+    "leadOutClearance": 5,
+    "leadInSpan": 30,
+    "leadOutSpan": 30,
+    "machiningFeed": 1,
+    "accelerationDistanceFraction": 1,
+    "transferFeed": 1,
+    "transferAcceleration": 1,
+    "auxiliaryScale": 1
+  }
+}

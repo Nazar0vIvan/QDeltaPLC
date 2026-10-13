@@ -17,29 +17,6 @@ QxGroupBox {
 
     spacing: Metrics.sp12
 
-    RowLayout {
-      id: rl
-
-      spacing: Metrics.sp16
-
-      RsiPosition {
-        id: cartesianPosition
-
-        enabled: false
-        tags: ["X", "Y", "Z", "A", "B", "C"]
-        dimension: "mm"
-        title: "Cartesian Space"
-      }
-      RsiPosition {
-        id: jointPosition
-
-        enabled: false
-        tags: ["A1", "A2", "A3", "A4", "A5", "A6"]
-        dimension: "deg"
-        title: "Joint Space"
-      }
-    }
-
     ColumnLayout {
       id: cl2
 

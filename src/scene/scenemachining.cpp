@@ -3,6 +3,8 @@
 #include "geometry/utils.h"
 
 #include <utility>
+#include <QDebug>
+#include <QJsonDocument>
 #include <algorithm>
 #include <chrono>
 #include <QCoreApplication>
@@ -17,15 +19,15 @@ SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& m
   result.chamferAngle = path.chamferAngleDegrees;
   result.stagingDistance = path.stagingDistance;
   result.flipAxis = path.flipAxis;
-  result.leadInClearance = path.leadIn.clearance;
-  result.leadOutClearance = path.leadOut.clearance;
-  result.leadInSpan = path.leadIn.spanDegrees;
-  result.leadOutSpan = path.leadOut.spanDegrees;
+  result.leadRadius = path.leadRadius;
   result.leadInIntervals = path.leadIn.intervals;
   result.leadOutIntervals = path.leadOut.intervals;
   result.leadInFeed = timing.leadInFeed;
   result.machiningFeed = timing.machiningFeed;
   result.leadOutFeed = timing.leadOutFeed;
+  result.accelerationDistanceFraction = timing.accelerationDistanceFraction;
+  result.transferFeed = timing.transferFeed;
+  result.transferAcceleration = timing.transferAcceleration;
   result.acceleration = timing.cartesianAcceleration;
   result.auxiliaryScale = timing.auxiliaryScale;
   for (int i = 0; i < 6; ++i) {
@@ -41,8 +43,9 @@ ChamferPathParameters SceneMachiningSettings::applyTo(ChamferPathParameters para
   parameters.chamferAngleDegrees = chamferAngle;
   parameters.stagingDistance = stagingDistance;
   parameters.flipAxis = flipAxis;
-  parameters.leadIn = {leadInClearance, leadInSpan, leadInIntervals};
-  parameters.leadOut = {leadOutClearance, leadOutSpan, leadOutIntervals};
+  parameters.leadRadius = leadRadius;
+  parameters.leadIn.intervals = leadInIntervals;
+  parameters.leadOut.intervals = leadOutIntervals;
   return parameters;
 }
 
@@ -53,6 +56,9 @@ std::optional<ChamferTimingParameters> SceneMachiningSettings::timing() const
   result.leadInFeed = leadInFeed;
   result.machiningFeed = machiningFeed;
   result.leadOutFeed = leadOutFeed;
+  result.accelerationDistanceFraction = accelerationDistanceFraction;
+  result.transferFeed = transferFeed;
+  result.transferAcceleration = transferAcceleration;
   result.cartesianAcceleration = acceleration;
   result.auxiliaryScale = auxiliaryScale;
   for (int i = 0; i < 6; ++i) {
@@ -182,6 +188,7 @@ void SceneMachining::finishCalculation()
   if (m_calculation.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
   m_calculationTimer.stop();
   auto result = m_calculation.get();
+  qInfo().noquote() << "Chamfer preparation:" << QJsonDocument(result.diagnostics).toJson(QJsonDocument::Compact);
   const auto* previous = m_scene->findObject(m_calculationInputId);
   if (!previous || m_inputId != m_calculationInputId || m_revision != m_calculationRevision
       || !m_robotAvailable || !sourceParameters()) {
@@ -220,6 +227,11 @@ void SceneMachining::finishCalculation()
 void SceneMachining::setRobotModel(const RoboCrap3D::Kr10KinematicModel& model)
 {
   m_model = model;
+  auto settings = m_settings;
+  settings.jointSpeed.clear();
+  for (const auto& joint : model.joints)
+    settings.jointSpeed.append(joint.ratedPayloadSpeedDegreesPerSecond);
+  setSettings(settings);
   calibrationChanged();
 }
 

@@ -22,13 +22,15 @@ qt_add_library(RoboCrapGeometry STATIC
   geometry/cylinder.cpp
   geometry/pose.h
   geometry/pose.cpp
-  pathgeneration/blade/airfoil.h
-  pathgeneration/blade/bladefrenet.h
-  pathgeneration/blade/bladefrenet.cpp
-  pathgeneration/blade/bladejsonloader.h
-  pathgeneration/blade/bladejsonloader.cpp
   pathgeneration/chamfer/chamferpath.h
   pathgeneration/chamfer/chamferpath.cpp
+  pathgeneration/chamfer/chamferarclength.h
+  pathgeneration/chamfer/chamferarclength.cpp
+  pathgeneration/chamfer/chamfercentralmotion.h
+  pathgeneration/chamfer/chamfercentralmotion.cpp
+  pathgeneration/chamfer/chamfercentralvalidation.h
+  pathgeneration/chamfer/chamfercentralvalidation.cpp
+  pathgeneration/chamfer/chamferpreparationdiagnostics.h
   pathgeneration/chamfer/chamfermotion.h
   pathgeneration/chamfer/chamfermotion.cpp
   pathgeneration/chamfer/chamferjob.h
@@ -55,6 +57,8 @@ qt_add_library(RoboCrapScene STATIC
   scene/scenemachining.cpp
   scene/scenemachiningpreparation.h
   scene/scenemachiningpreparation.cpp
+  scene/chamfershareddata.h
+  scene/chamfershareddata.cpp
   scene/scenemodel.h
   scene/scenemodel.cpp
   scene/sceneobject.h

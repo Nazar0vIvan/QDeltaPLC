@@ -216,6 +216,9 @@ RsiHoleNominalAuditResult RsiHoleProtocol::auditNominalJob(const PreparedChamfer
   if (samples.size() < 2 || encoding.corrections.size() != samples.size() - 1
       || job.cyclePeriod() != 0.004 || samples.front().time != 0.0
       || samples.front().terminal || !samples.back().terminal
+      || samples.front().controllerTime != 0.0
+      || !std::isfinite(job.controllerDuration())
+      || job.controllerDuration() != encoding.corrections.size() * job.cyclePeriod()
       || !encoding.initialCoordinates.allFinite() || !samples.front().pose.tcp.allFinite()
       || !std::isfinite(job.duration()) || job.duration() <= 0.0
       || std::abs(samples.back().time - job.duration()) > GeomConst::Eps)
@@ -224,7 +227,7 @@ RsiHoleNominalAuditResult RsiHoleProtocol::auditNominalJob(const PreparedChamfer
   report.initialCoordinates = encoding.initialCoordinates;
   report.finalCoordinates = report.initialCoordinates;
   report.savedDuration = job.duration();
-  report.controllerDuration = encoding.corrections.size() * job.cyclePeriod();
+  report.controllerDuration = job.controllerDuration();
   report.limitStatus = encoding.limitValidation.status;
   report.maximumPositionError = positionError(report.initialCoordinates, samples.front().pose.tcp);
   report.maximumRotationError = rotationError(report.initialCoordinates, samples.front().pose.tcp);
@@ -236,11 +239,12 @@ RsiHoleNominalAuditResult RsiHoleProtocol::auditNominalJob(const PreparedChamfer
     const auto& sample = samples[index];
     const double clockTime = index * job.cyclePeriod();
     if (!sample.pose.tcp.allFinite() || !std::isfinite(sample.time)
+        || !std::isfinite(sample.controllerTime) || sample.controllerTime != clockTime
         || sample.time <= samples[index - 1].time
         || (!sample.terminal && std::abs(sample.time - clockTime) > GeomConst::Eps)
         || (sample.terminal && (index != samples.size() - 1
             || sample.time > clockTime + GeomConst::Eps
-            || sample.time <= clockTime - job.cyclePeriod())))
+            || sample.time <= (index - 1) * job.cyclePeriod())))
       return {{}, sampleError(QStringLiteral("Invalid nominal controller-clock target."), index)};
     // IPOC/job values here are offline audit labels, never controller timestamps.
     const RsiHoleReply reply{static_cast<quint64>(index), encoding.corrections[index - 1],

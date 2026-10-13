@@ -18,11 +18,9 @@ qt_add_qml_module(Components
     QxPanel.qml
     QxProgressBar.qml
     QxScrollView.qml
-    QxStepButton.qml
     QxSwitch.qml
     QxTextInput.qml
     QxToolButton.qml
-    QxUploadFile.qml
     QxVField.qml
 )
 
