@@ -3,6 +3,7 @@
 #include "chamferarclength.h"
 
 #include <array>
+#include <QJsonObject>
 
 struct ChamferTimingParameters;
 
@@ -64,4 +65,5 @@ struct ChamferCentralMotionResult
 {
   std::optional<ChamferCentralMotion> motion;
   QString error;
+  QJsonObject diagnostics; // Construction measurements, including completed phases on failure.
 };

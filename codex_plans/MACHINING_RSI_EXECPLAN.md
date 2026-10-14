@@ -1,5 +1,7 @@
 # Implement saved chamfer motion through RSI, then add bounded normal retreat
 
+> Статус при очистке 2026-10-13: сохранено из-за незавершённых задач выполнения RSI и силового управления. Работа над RSI приостановлена по указанию пользователя. Описания уже реализованных частей, имён файлов и геометрии ниже исторические; перед возобновлением сверять с действующим кодом и AGENTS.md. Этот документ сам по себе не разрешает запуск или изменение RSI.
+
 
 This ExecPlan is a living document. Maintain Progress, Surprises & Discoveries, Decision Log, and Outcomes & Retrospective as work proceeds. Follow the repository's PLANS.md; AGENTS.md overrides its generic suggestions about commits, tests and builds. This plan was prepared on 2026-10-07 from the finished MACHINING_RSI_STRATEGY.md and the current sources. The user has now authorized Milestone 5 for nominal motion only, using the photographed RSI_Hole.rsi graph and the existing shared-folder READ_FRAME/CLOSE_FILES mechanism. Implement the wire contract, offline wire-offset audit and controller integration artifacts. Milestone 6 application/session integration, force correction, builds and equipment operation remain outside this request.
 

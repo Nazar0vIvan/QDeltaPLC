@@ -37,7 +37,7 @@ struct ChamferJointPoint
   M4d tcp = M4d::Identity(); // BASE-relative, evaluated through FK.
   double progress = 0.0; // Local geometric phase progress, not time.
   double time = 0.0; // Seconds from HOME departure.
-  V6d velocity = V6d::Zero(); // deg/s; retained HOME derivatives, not central spline derivatives.
+  V6d velocity = V6d::Zero(); // deg/s; retained HOME derivatives, not playback spline derivatives.
 };
 
 struct ChamferPlaybackPose
@@ -70,14 +70,15 @@ private:
   ChamferMotion(const ChamferPath& path, const ChamferRobotSetup& robot,
                 QVector<ChamferJointPoint> points, const std::array<qsizetype, 8>& boundaries);
   void setCentralMotion(ChamferCentralMotion motion);
-  QString prepareCentralSpline();
+  QString preparePlaybackSplines();
+  QString prepareJointSpline(qsizetype first, qsizetype last);
   ChamferPathParameters m_parameters;
   ChamferRobotSetup m_robot;
   QVector<ChamferJointPoint> m_points;
   std::array<qsizetype, 8> m_boundaries{};
   std::optional<ChamferCentralMotion> m_centralMotion;
-  // One polynomial per central interval, six angles in degrees, normalized local time.
-  QVector<std::array<V6d, 4>> m_centralSpline;
+  // Non-HOME intervals, indexed from boundaries[1]; independent clamped LIN/central splines.
+  QVector<std::array<V6d, 4>> m_jointSpline;
 };
 
 struct ChamferMotionResult

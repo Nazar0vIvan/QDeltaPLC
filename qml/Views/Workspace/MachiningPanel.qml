@@ -12,7 +12,7 @@ QxPanel {
   required property Backend.Machining coordinator
   required property string inputName
   property Backend.MachiningPath savedPath: null
-  signal applyRequested()
+  signal generateRequested()
   signal cancelRequested()
   property bool draftFlipAxis: false
   property var originalSettings: ({})
@@ -21,7 +21,10 @@ QxPanel {
     {key: "chamferSize", label: qsTr("Chamfer size, mm"), min: 0},
     {key: "chamferAngle", label: qsTr("Chamfer angle, deg"), min: 0.000001, max: 89.999999},
     {key: "stagingDistance", label: qsTr("Axial distance from the hole, mm"), min: 0.000001},
-    {key: "leadRadius", label: qsTr("Lead-in/out radius, mm"), min: 0.000001},
+    {key: "leadInClearance", label: qsTr("Lead-in axial clearance, mm"), min: 0.000001},
+    {key: "leadOutClearance", label: qsTr("Lead-out axial clearance, mm"), min: 0.000001},
+    {key: "leadInSpan", label: qsTr("Lead-in span, deg"), min: 0.000001, max: 360},
+    {key: "leadOutSpan", label: qsTr("Lead-out span, deg"), min: 0.000001, max: 360},
     {key: "machiningFeed", label: qsTr("Machining speed, mm/s"), min: 0.000001},
     {key: "accelerationDistanceFraction", label: qsTr("Acceleration/deceleration distance, %"), min: 0.0001, max: 100},
     {key: "transferFeed", label: qsTr("$VEL.CP, mm/s"), min: 0.000001},
@@ -65,8 +68,8 @@ QxPanel {
     root.coordinator.settings = settings
     return true
   }
-  function applyDraft() {
-    if (root.commitDraft()) root.applyRequested()
+  function generateDraft() {
+    if (root.commitDraft()) root.generateRequested()
   }
   function cancelEditing() {
     let settings = root.coordinator.settings
@@ -181,7 +184,7 @@ QxPanel {
         QxButton {
           text: qsTr("Generate")
           enabled: root.coordinator.canGenerate && root.validDraft
-          onClicked: root.applyDraft()
+          onClicked: root.generateDraft()
         }
         QxButton {
           text: qsTr("Cancel")

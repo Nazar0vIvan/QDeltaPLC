@@ -1,5 +1,7 @@
 # One-hole-edge machining: agreed strategy and implementation handoff
 
+> Статус при очистке 2026-10-13: сохранено из-за незавершённых задач выполнения RSI и силового управления. Работа над RSI приостановлена по указанию пользователя. Описания уже реализованных частей, имён файлов и геометрии ниже исторические; перед возобновлением сверять с действующим кодом и AGENTS.md. Этот документ сам по себе не разрешает запуск или изменение RSI.
+
 Prepared on 2026-10-07. Repository: D:/Qt/QtProjects/RoboCrap.
 
 Completeness audit: checked against all 33 numbered answers in clarifications.txt, the subsequent force/lead-out/FTS/Stop clarifications, and the final explicit +e_z^T instruction. Section 18 preserves the answer-by-answer record. Section 2.1 governs how to proceed without asking the user the same questions again.

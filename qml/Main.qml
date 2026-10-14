@@ -589,7 +589,7 @@ ApplicationWindow {
         inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
         savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === Backend.SceneObject.MachiningPath
                    ? root.selectedSceneObject.geometry as Backend.MachiningPath : null
-        onApplyRequested: Backend.Machining.apply()
+        onGenerateRequested: Backend.Machining.generate()
         onCancelRequested: root.chamferEditorOpen = false
       }
     }

@@ -20,7 +20,10 @@ struct SceneMachiningSettings
   Q_PROPERTY(double chamferAngle MEMBER chamferAngle)
   Q_PROPERTY(double stagingDistance MEMBER stagingDistance)
   Q_PROPERTY(bool flipAxis MEMBER flipAxis)
-  Q_PROPERTY(double leadRadius MEMBER leadRadius)
+  Q_PROPERTY(double leadInClearance MEMBER leadInClearance)
+  Q_PROPERTY(double leadOutClearance MEMBER leadOutClearance)
+  Q_PROPERTY(double leadInSpan MEMBER leadInSpan)
+  Q_PROPERTY(double leadOutSpan MEMBER leadOutSpan)
   Q_PROPERTY(int leadInIntervals MEMBER leadInIntervals)
   Q_PROPERTY(int leadOutIntervals MEMBER leadOutIntervals)
   Q_PROPERTY(double leadInFeed MEMBER leadInFeed)
@@ -38,7 +41,10 @@ public:
   double chamferAngle = 45.0;
   double stagingDistance = 10.0;
   bool flipAxis = false;
-  double leadRadius = 5.0; // Shared lead-in/out circle radius, mm.
+  double leadInClearance = 5.0; // mm
+  double leadOutClearance = 5.0; // mm
+  double leadInSpan = 30.0; // degrees
+  double leadOutSpan = 30.0; // degrees
   int leadInIntervals = 16;
   int leadOutIntervals = 16;
   double leadInFeed = 10.0;

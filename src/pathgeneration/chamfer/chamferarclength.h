@@ -22,7 +22,7 @@ struct ChamferArcLengthKnot
 
 struct ChamferArcLengthResult;
 
-// Immutable distance map: exact circular leads, numerical machining. No timing or IK.
+// Immutable numerical distance map for one spatial lead or machining phase. No timing or IK.
 // Knots and quintics approximate inverse arc length, not poses or RSI clock samples.
 class ChamferArcLength
 {
@@ -31,21 +31,20 @@ public:
   static ChamferArcLengthResult create(const ChamferPath& path, ChamferPhase phase,
                                       const ChamferArcLengthParameters& parameters = {});
 
-  double length() const { return m_circularLength ? *m_circularLength : m_knots.last().distance; }
-  // Circular leads: L*progress. Machining: reverse the polynomial by bounded bisection.
+  double length() const { return m_knots.last().distance; }
+  qsizetype knotCount() const { return m_knots.size(); } // Inverse-map knots, not animation points.
+  // Reverse the inverse polynomial by bounded bisection; no numerical integration.
   std::optional<double> distanceAt(double progress) const;
-  // Circular leads: distance/L. Machining: binary search and quintic evaluation.
+  // Locate the distance interval by binary search and evaluate its saved quintic.
   // Evaluate the returned progress with the original ChamferPath::evaluatePhase;
   // do not interpolate XYZ or orientation between table entries.
   std::optional<double> progressAtDistance(double distance) const;
 
 private:
-  explicit ChamferArcLength(double circularLength);
-  // One normalized inverse polynomial per consecutive machining knot pair.
+  // One normalized inverse polynomial per consecutive phase knot pair.
   ChamferArcLength(QVector<ChamferArcLengthKnot> knots,
                    QVector<std::array<double, 6>> polynomials);
 
-  std::optional<double> m_circularLength; // Present only for leads; no knots/polynomials.
   QVector<ChamferArcLengthKnot> m_knots;
   QVector<std::array<double, 6>> m_polynomials;
 };

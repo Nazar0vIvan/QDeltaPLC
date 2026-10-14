@@ -9,6 +9,8 @@
 
 struct ChamferLeadParameters
 {
+  double clearance = 5.0; // Axial clearance at the free endpoint, mm.
+  double spanDegrees = 30.0; // Ellipse-parameter span, (0, 360] degrees.
   int intervals = 16; // Minimum intervals; refinement may add samples.
 };
 
@@ -22,7 +24,6 @@ struct ChamferPathParameters
   bool flipAxis = false;
   double chamferSize = 0.5; // Setback along the end plane in the longitudinal section, mm.
   double chamferAngleDegrees = 45.0; // Diagonal angle from the hole axis, in (0, 90).
-  double leadRadius = 5.0; // Shared lead-in/out circle radius, mm.
   ChamferLeadParameters leadIn;
   ChamferLeadParameters leadOut;
   double stagingDistance = 10.0; // From plane/axis intersection along outward Z, mm.
@@ -30,7 +31,7 @@ struct ChamferPathParameters
 
 struct ChamferPathSample
 {
-  // Leads retain the fixed machining junction edge point and radial normal.
+  // Leads follow the current machining parameter for edge point and radial normal.
   V3d edgePoint = V3d::Zero();
   V3d radialNormal = V3d::Zero();
   // BASE-relative TCP with X/Y/Z columns and origin. On machining, origin is
@@ -76,15 +77,15 @@ public:
   const ChamferPathParameters& parameters() const { return m_parameters; }
   const V3d& outwardAxis() const { return m_outwardAxis; }
   V3d stagingPoint() const;
-  // LeadIn selects approach attitude; LeadOut selects return attitude.
+  // Copies the selected free lead endpoint orientation to P_s.
   // Both have origin P_s and Y=-outwardAxis. Machining is not a staging side.
   std::optional<M4d> stagingPose(ChamferPhase lead) const;
   // Ellipse parameter in radians, not arc length or cylinder azimuth.
   // Zero starts at the major-axis endpoint; increasing values follow the
   // chosen outward axis.
   std::optional<ChamferPathSample> evaluate(double angleRad) const;
-  // Leads are planar circles; progress is their length fraction in [0, 1].
-  // Each lead retains the respective machining junction's rotation throughout.
+  // Spatial leads combine ellipse traversal with axial clearance; progress is not length fraction.
+  // TCP tilt follows chamferAngle*sin(pi*u/2) on entry and chamferAngle*cos(pi*u/2) on exit.
   // Machining progress remains the ellipse-parameter fraction, not time.
   std::optional<ChamferPathSample> evaluatePhase(ChamferPhase phase, double progress) const;
   // Analytical TCP-origin derivatives only; no quaternion or joint calculations.
@@ -99,28 +100,21 @@ private:
     V3d second = V3d::Zero(); // Per radian squared.
   };
 
-  struct LeadArc
+  struct LeadFrames
   {
     ChamferPathSample junction;
-    V3d tangent = V3d::Zero(); // Unit machining direction at the junction.
-    V3d planeY = V3d::Zero(); // Unit outward-axis projection normal to tangent.
-    V3d center = V3d::Zero();
-    V3d freeEndpoint = V3d::Zero();
-    double sweep = 0.0; // Radians.
-    double length = 0.0; // mm.
-    M3d stagingRotation = M3d::Identity(); // Axial orientation at P_s, not on the lead.
   };
 
   explicit ChamferPath(ChamferPathParameters parameters);
   std::optional<PositionDerivatives> machiningDerivatives(double angleRad) const;
-  std::optional<LeadArc> makeLeadArc(ChamferPhase phase) const;
-  QString initializeLeadArcs();
+  std::optional<LeadFrames> makeLeadFrames(ChamferPhase phase) const;
+  QString initializeLeadFrames();
 
   ChamferPathParameters m_parameters;
   V3d m_outwardAxis = V3d::UnitZ();
   double m_direction = 1.0;
-  LeadArc m_leadIn;
-  LeadArc m_leadOut;
+  LeadFrames m_leadIn;
+  LeadFrames m_leadOut;
 };
 
 struct ChamferPathResult

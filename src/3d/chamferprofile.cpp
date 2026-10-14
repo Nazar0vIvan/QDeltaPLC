@@ -77,10 +77,11 @@ int profileChamferPreparation(const QString& inputPath, const QString& reportPat
   const auto intersection = intersectSurfaces(*plane, *cylinder);
   if (!intersection.edge) { qWarning() << "Profiling intersection failed."; return 2; }
   const auto settings = input.value("settings").toObject();
-  if (!settings.value("leadRadius").isDouble()) {
-    qWarning() << "Missing numeric leadRadius in mm.";
-    return 2;
-  }
+  for (const auto* key : {"leadInClearance", "leadOutClearance", "leadInSpan", "leadOutSpan"})
+    if (!settings.value(QLatin1String(key)).isDouble()) {
+      qWarning() << "Missing numeric spatial lead setting:" << key;
+      return 2;
+    }
   const double missing = std::numeric_limits<double>::quiet_NaN();
   ChamferPathParameters parameters;
   parameters.edge = intersection.edge->ellipse();
@@ -93,7 +94,10 @@ int profileChamferPreparation(const QString& inputPath, const QString& reportPat
   parameters.chamferSize = settings.value("chamferSize").toDouble(missing);
   parameters.chamferAngleDegrees = settings.value("chamferAngle").toDouble(missing);
   parameters.stagingDistance = settings.value("stagingDistance").toDouble(missing);
-  parameters.leadRadius = settings.value("leadRadius").toDouble(missing);
+  parameters.leadIn.clearance = settings.value("leadInClearance").toDouble(missing);
+  parameters.leadOut.clearance = settings.value("leadOutClearance").toDouble(missing);
+  parameters.leadIn.spanDegrees = settings.value("leadInSpan").toDouble(missing);
+  parameters.leadOut.spanDegrees = settings.value("leadOutSpan").toDouble(missing);
   QElapsedTimer geometryTimer;
   geometryTimer.start();
   const auto path = ChamferPath::create(parameters);

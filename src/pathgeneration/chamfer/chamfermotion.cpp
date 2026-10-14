@@ -12,6 +12,7 @@
 namespace {
 
 using namespace RoboCrap3D;
+constexpr double TransferPositionTolerance = 0.01; // mm; prescribed TCP chord criterion only.
 
 bool rigid(const M4d& transform)
 {
@@ -57,18 +58,18 @@ std::array<double, 2> quadraticUnitRoots(double quadratic, double linear, double
 }
 
 // Polynomial, physical interval duration and robot bounds define an interval audit.
-QString centralSplineIntervalError(const std::array<V6d, 4>& coefficients, double seconds,
-                                  const ChamferRobotSetup& robot)
+QString jointSplineIntervalError(const std::array<V6d, 4>& coefficients, double seconds,
+                                 const ChamferRobotSetup& robot)
 {
   for (const auto& coefficient : coefficients)
-    if (!coefficient.allFinite()) return QStringLiteral("Nonfinite central spline coefficient.");
+    if (!coefficient.allFinite()) return QStringLiteral("Nonfinite joint spline coefficient.");
   for (std::size_t axis = 0; axis < DofCount; ++axis) {
     const double a = coefficients[0][axis];
     const double b = coefficients[1][axis];
     const double c = coefficients[2][axis];
     const double d = coefficients[3][axis];
     if (!std::isfinite(6.0 * d) || !std::isfinite(2.0 * c))
-      return QStringLiteral("Nonfinite central spline derivative.");
+      return QStringLiteral("Nonfinite joint spline derivative.");
     const auto roots = quadraticUnitRoots(3.0 * d, 2.0 * c, b);
     const double speedExtremum = d == 0.0 ? -1.0 : -(c / d) / 3.0;
     const std::array<double, 5> candidates{0.0, 1.0, roots[0], roots[1], speedExtremum};
@@ -81,12 +82,12 @@ QString centralSplineIntervalError(const std::array<V6d, 4>& coefficients, doubl
       const double speed = ((3.0 * d * u + 2.0 * c) * u + b) / seconds;
       const double acceleration = ((6.0 * d * u + 2.0 * c) / seconds) / seconds;
       if (!std::isfinite(angle) || !std::isfinite(speed) || !std::isfinite(acceleration))
-        return QStringLiteral("A%1 central spline has a nonfinite angle or derivative.").arg(axis + 1);
+        return QStringLiteral("A%1 joint spline has a nonfinite angle or derivative.").arg(axis + 1);
       if (!IgnorePreviewJointPositionLimits && (angle < joint.qMin || angle > joint.qMax))
-        return QStringLiteral("A%1 central spline position %2 deg is outside [%3, %4] (interval fraction %5).")
+        return QStringLiteral("A%1 joint spline position %2 deg is outside [%3, %4] (interval fraction %5).")
             .arg(axis + 1).arg(angle, 0, 'g', 12).arg(joint.qMin).arg(joint.qMax).arg(u, 0, 'g', 12);
       if (std::abs(speed) > speedBound * (1.0 + 1e-6))
-        return QStringLiteral("A%1 central spline speed %2 deg/s exceeds bound %3 (interval fraction %4).")
+        return QStringLiteral("A%1 joint spline speed %2 deg/s exceeds bound %3 (interval fraction %4).")
             .arg(axis + 1).arg(std::abs(speed), 0, 'g', 12).arg(speedBound).arg(u, 0, 'g', 12);
       // Preserve the temporary preview joint-acceleration magnitude bypass.
     }
@@ -265,7 +266,6 @@ public:
   {
     auto result = m_solver.diagnostics();
     result.insert("attempts", m_attempts);
-    result.insert("transferInterpolationChecks", m_transferInterpolationChecks);
     return result;
   }
 
@@ -408,14 +408,13 @@ private:
     timer.start();
     const auto before = m_output.points.size();
     const ChamferProfileScope scope(m_solver.diagnostics());
-    const auto beforeChecks = m_transferInterpolationChecks;
     const QString error = appendTransferImpl(side);
     auto measured = scope.finish(m_solver.diagnostics());
     measured.insert("addedPoints", m_output.points.size() - before);
-    measured.insert("interpolationChecks", m_transferInterpolationChecks - beforeChecks);
+    measured.insert("schedule", m_transferSchedule);
     measured.insert("complete", error.isEmpty());
-    measured.insert("temporaryRatePoints", m_transferRatePoints.size());
-    measured.insert("intervalEvaluations", m_transferEvaluations);
+    measured.insert("samplingCriterion", "cartesian-acceleration-time-bound");
+    measured.insert("positionToleranceMm", TransferPositionTolerance);
     m_attempt.insert(side == ChamferPhase::LeadIn ? "psToLeadIn" : "leadOutToPs", measured);
     const QString prefix = side == ChamferPhase::LeadIn ? "transferIn" : "transferOut";
     m_attempt.insert(prefix + "Ms", timer.nsecsElapsed() / 1e6);
@@ -425,11 +424,10 @@ private:
 
   QString appendTransferImpl(ChamferPhase side)
   {
+    m_transferSchedule = {};
     const auto profile = transferProfile(m_path, side, m_robot.timing);
     if (!profile) return QStringLiteral("Invalid or degenerate staging transfer profile.");
-    m_transferEvaluations = 0;
-    m_transferRatePoints.clear();
-    m_transferRatePoints.append(m_output.points.back());
+    const qsizetype first = m_output.points.size() - 1;
     const M4d& actualStart = m_output.points.back().tcp;
     if ((actualStart.block<3, 1>(0, 3) - profile->first.block<3, 1>(0, 3)).norm() > Kr10PosEps
         || (actualStart.block<3, 3>(0, 0) - profile->first.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
@@ -437,105 +435,57 @@ private:
     const double offset = m_output.points.back().time;
     const std::array<double, 4> stops{0.0, profile->ramp,
                                     profile->ramp + profile->cruise, profile->duration()};
-    for (std::size_t stage = 1; stage < stops.size(); ++stage) {
-      const double span = stops[stage] - stops[stage - 1];
-      if (span == 0.0) continue; // Triangular profile has no cruise.
-      // Retain exact timing switches; add interior playback points only as
-      // required by joint continuity and time-aware Cartesian interpolation.
-      const QString error = appendTransferInterval(*profile, {offset, stops[stage]}, 0);
-      if (!error.isEmpty()) return QStringLiteral("%1: %2").arg(centralPhaseName(m_phase), error);
+    std::array<int, 3> intervals{};
+    qsizetype plannedPoints = 1;
+    // Count all points before IK. Straight TCP motion has zero normal acceleration.
+    for (std::size_t stage = 0; stage < intervals.size(); ++stage) {
+      const double duration = stops[stage + 1] - stops[stage];
+      if (duration == 0.0) continue;
+      const double acceleration = stage == 1 ? 0.0 : m_robot.timing.transferAcceleration;
+      const double count = std::max(1.0, std::ceil(duration * std::sqrt(acceleration / (8.0 * TransferPositionTolerance))));
+      if (!std::isfinite(duration) || duration <= 0.0 || !std::isfinite(count)
+          || count > 200000 - plannedPoints || !(duration / count > 1e-9))
+        return QStringLiteral("Transfer schedule exceeds numerical range or 200000 points.");
+      intervals[stage] = static_cast<int>(count);
+      plannedPoints += intervals[stage];
+      m_transferSchedule.append(QJsonObject{{"startSeconds", stops[stage]},
+          {"endSeconds", stops[stage + 1]}, {"intervals", intervals[stage]},
+          {"accelerationBoundMmPerSecondSquared", acceleration}});
     }
-    return inspectTransferRates(m_transferRatePoints);
-  }
-
-  struct TransferTime
-  {
-    double offset = 0.0;
-    double end = 0.0;
-  };
-
-  // A profile, its absolute/local clock mapping and refinement depth define this interval.
-  QString appendTransferInterval(const TransferProfile& profile, TransferTime time, int depth)
-  {
-    if (++m_transferEvaluations > 200000)
-      return QStringLiteral("Transfer interval evaluation budget exhausted.");
-    if (m_output.points.size() >= 400000)
+    if (plannedPoints - 1 > 400000 - m_output.points.size())
       return QStringLiteral("Complete motion exceeds the 400000-point limit.");
-    const auto first = m_output.points.back();
-    const double end = time.offset + time.end;
-    const double step = end - first.time;
-    if (!(step > 1e-9)) return QStringLiteral("Transfer timestamps cannot be resolved.");
-    const M4d target = profile.target(time.end);
-    const auto joints = inverse(target, first.joints);
-    if (!joints) return splitTransferInterval(profile, time, depth);
-    bool refine = (*joints - first.joints).cwiseAbs().maxCoeff() > 5.0;
-    for (double fraction : {0.25, 0.5, 0.75}) {
-      ++m_transferInterpolationChecks;
-      const V6d interpolated = first.joints + fraction * (*joints - first.joints);
-      const M4d actual = m_solver.solveFK(interpolated).back() * m_robot.flangeToTcp;
-      const M4d expected = profile.target(first.time - time.offset + fraction * step);
-      if (!actual.allFinite()) return QStringLiteral("Nonfinite transfer FK.");
-      const Eigen::Quaterniond a(M3d(actual.block<3, 3>(0, 0)));
-      const Eigen::Quaterniond b(M3d(expected.block<3, 3>(0, 0)));
-      if ((actual.block<3, 1>(0, 3) - expected.block<3, 1>(0, 3)).norm() > 0.01
-          || a.angularDistance(b) > 0.1 * GeomConst::DegToRad) refine = true;
+    for (std::size_t stage = 0; stage < intervals.size(); ++stage) {
+      for (int index = 1; index <= intervals[stage]; ++index) {
+        const double local = index == intervals[stage] ? stops[stage + 1]
+            : stops[stage] + (stops[stage + 1] - stops[stage])
+                * (static_cast<double>(index) / intervals[stage]);
+        const double time = offset + local;
+        if (!std::isfinite(time) || !(time > m_output.points.back().time))
+          return QStringLiteral("Transfer timestamps cannot be resolved.");
+        const M4d target = profile->target(local);
+        const auto joints = inverse(target, m_output.points.back().joints);
+        if (!joints)
+          return QStringLiteral("%1: IK, joint position or TCP reconstruction failed at %2 s.")
+              .arg(centralPhaseName(m_phase)).arg(local, 0, 'g', 12);
+        auto point = forward(*joints, profile->progress(local));
+        if ((point.tcp.block<3, 1>(0, 3) - target.block<3, 1>(0, 3)).norm() > Kr10PosEps
+            || (point.tcp.block<3, 3>(0, 0) - target.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
+          return QStringLiteral("%1: TCP fails FK reconstruction tolerance at %2 s.")
+              .arg(centralPhaseName(m_phase)).arg(local, 0, 'g', 12);
+        point.time = time;
+        m_output.points.append(point);
+      }
     }
-    if (refine) return splitTransferInterval(profile, time, depth);
-    const auto rateSamples = transferRateSamples(profile, time);
-    if (!rateSamples || (rateSamples->back().joints - *joints).cwiseAbs().maxCoeff() > 1e-6)
-      return splitTransferInterval(profile, time, depth);
-    auto point = forward(*joints, profile.progress(time.end));
-    if ((point.tcp.block<3, 1>(0, 3) - target.block<3, 1>(0, 3)).norm() > Kr10PosEps
-        || (point.tcp.block<3, 3>(0, 0) - target.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
-      return QStringLiteral("Staging TCP fails FK reconstruction tolerance.");
-    point.time = end;
-    m_output.points.append(point);
-    for (const auto& sample : *rateSamples) m_transferRatePoints.append(sample);
-    return {};
+    return inspectTransferRates(first);
   }
 
-  // Recompute the right child using the committed left endpoint's IK seed.
-  QString splitTransferInterval(const TransferProfile& profile, TransferTime time, int depth)
+  QString inspectTransferRates(qsizetype first) const
   {
-    if (depth >= 20) return QStringLiteral("Transfer IK/continuity/interpolation refinement limit reached.");
-    const double first = m_output.points.back().time - time.offset;
-    const double middle = first + 0.5 * (time.end - first);
-    if (!(middle > first && middle < time.end))
-      return QStringLiteral("Transfer subdivision lost time resolution.");
-    const QString error = appendTransferInterval(profile, {time.offset, middle}, depth + 1);
-    if (!error.isEmpty()) return error;
-    return appendTransferInterval(profile, time, depth + 1);
-  }
-
-  std::optional<QVector<ChamferJointPoint>> transferRateSamples(
-      const TransferProfile& profile, TransferTime time) const
-  {
-    const auto& first = m_output.points.back();
-    const double end = time.offset + time.end;
-    QVector<ChamferJointPoint> samples;
-    V6d seed = first.joints;
-    double previousTime = first.time;
-    for (int index = 1; index <= 4; ++index) {
-      const double currentTime = index == 4 ? end : first.time + (end - first.time) * (index / 4.0);
-      if (!(currentTime > previousTime)) return std::nullopt;
-      const double local = index == 4 ? time.end : currentTime - time.offset;
-      const M4d target = profile.target(local);
-      const auto joints = inverse(target, seed); // Includes positions and FK reconstruction.
-      if (!joints || (*joints - seed).cwiseAbs().maxCoeff() > 5.0) return std::nullopt;
-      ChamferJointPoint sample{*joints, target, profile.progress(local), currentTime};
-      samples.append(sample);
-      seed = *joints;
-      previousTime = currentTime;
-    }
-    return samples;
-  }
-
-  QString inspectTransferRates(const QVector<ChamferJointPoint>& points) const
-  {
-    qsizetype anchor = 0;
+    const auto& points = m_output.points;
+    qsizetype anchor = first;
     V6d previous = V6d::Zero();
     double previousStep = 0.0;
-    for (qsizetype i = 1; i < points.size(); ++i) {
+    for (qsizetype i = first + 1; i < points.size(); ++i) {
       const double dt = points[i].time - points[i - 1].time;
       const V6d velocity = (points[i].joints - points[i - 1].joints) / dt;
       if (!velocity.allFinite()) return QStringLiteral("Nonfinite transfer velocity.");
@@ -578,9 +528,7 @@ private:
   QVector<V6d> m_starts;
   QJsonObject m_attempt;
   QJsonArray m_attempts;
-  qint64 m_transferInterpolationChecks = 0;
-  int m_transferEvaluations = 0;
-  QVector<ChamferJointPoint> m_transferRatePoints;
+  QJsonArray m_transferSchedule;
 };
 
 double smoothProgress(double u)
@@ -683,21 +631,33 @@ void ChamferMotion::setCentralMotion(ChamferCentralMotion motion)
   m_centralMotion = std::move(motion);
 }
 
-QString ChamferMotion::prepareCentralSpline()
+QString ChamferMotion::preparePlaybackSplines()
 {
-  const qsizetype first = m_boundaries[2];
-  const qsizetype last = m_boundaries[5];
+  m_jointSpline.resize(m_boundaries[6] - m_boundaries[1]);
+  const std::array<std::array<std::size_t, 2>, 3> ranges{{{1, 2}, {2, 5}, {5, 6}}};
+  const std::array<QString, 3> names{QStringLiteral("P_s to lead-in"),
+      QStringLiteral("Lead-in / machining / lead-out"), QStringLiteral("lead-out to P_s")};
+  for (std::size_t index = 0; index < ranges.size(); ++index) {
+    const auto& range = ranges[index];
+    const QString error = prepareJointSpline(m_boundaries[range[0]], m_boundaries[range[1]]);
+    if (!error.isEmpty()) return QStringLiteral("%1: %2").arg(names[index], error);
+  }
+  return {};
+}
+
+QString ChamferMotion::prepareJointSpline(qsizetype first, qsizetype last)
+{
   if (first < 0 || last >= m_points.size() || last <= first)
-    return QStringLiteral("Missing central spline points.");
+    return QStringLiteral("Missing joint spline points.");
   const qsizetype count = last - first + 1;
   QVector<double> steps(count - 1);
   QVector<V6d> slopes(count - 1, V6d::Zero());
   for (qsizetype i = 0; i + 1 < count; ++i) {
     steps[i] = m_points[first + i + 1].time - m_points[first + i].time;
     if (!std::isfinite(steps[i]) || steps[i] <= 1e-9)
-      return QStringLiteral("Central spline timestamps cannot be resolved.");
+      return QStringLiteral("Joint spline timestamps cannot be resolved.");
     slopes[i] = (m_points[first + i + 1].joints - m_points[first + i].joints) / steps[i];
-    if (!slopes[i].allFinite()) return QStringLiteral("Nonfinite central spline secant speed.");
+    if (!slopes[i].allFinite()) return QStringLiteral("Nonfinite joint spline secant speed.");
   }
   // Row-scaled clamped spline system for second derivatives (deg/s^2).
   // Endpoint slopes are zero. The same unknown is shared across phase boundaries.
@@ -705,7 +665,7 @@ QString ChamferMotion::prepareCentralSpline()
   QVector<V6d> second(count, V6d::Zero());
   upper[0] = 0.5;
   second[0] = 3.0 * slopes[0] / steps[0];
-  if (!second[0].allFinite()) return QStringLiteral("Nonfinite central spline boundary equation.");
+  if (!second[0].allFinite()) return QStringLiteral("Nonfinite joint spline boundary equation.");
   for (qsizetype i = 1; i < count; ++i) {
     double lower = 1.0;
     double next = 0.0;
@@ -713,21 +673,21 @@ QString ChamferMotion::prepareCentralSpline()
     if (i + 1 == count) rhs = -6.0 * slopes[i - 1] / steps[i - 1];
     else {
       const double sum = steps[i - 1] + steps[i];
-      if (!std::isfinite(sum)) return QStringLiteral("Nonfinite central spline interval sum.");
+      if (!std::isfinite(sum)) return QStringLiteral("Nonfinite joint spline interval sum.");
       lower = steps[i - 1] / sum;
       next = steps[i] / sum;
       rhs = 6.0 * (slopes[i] - slopes[i - 1]) / sum;
     }
     const double diagonal = 2.0 - lower * upper[i - 1];
     if (!std::isfinite(diagonal) || diagonal <= 0.0 || !rhs.allFinite())
-      return QStringLiteral("Invalid central spline equation.");
+      return QStringLiteral("Invalid joint spline equation.");
     upper[i] = next / diagonal;
     second[i] = (rhs - lower * second[i - 1]) / diagonal;
-    if (!second[i].allFinite()) return QStringLiteral("Nonfinite central spline solution.");
+    if (!second[i].allFinite()) return QStringLiteral("Nonfinite joint spline solution.");
   }
   for (qsizetype i = count - 1; i > 0; --i) {
     second[i - 1] -= upper[i - 1] * second[i];
-    if (!second[i - 1].allFinite()) return QStringLiteral("Nonfinite central spline back substitution.");
+    if (!second[i - 1].allFinite()) return QStringLiteral("Nonfinite joint spline back substitution.");
   }
   QVector<std::array<V6d, 4>> intervals;
   intervals.reserve(count - 1);
@@ -739,14 +699,15 @@ QString ChamferMotion::prepareCentralSpline()
         V6d(delta - (square / 6.0) * (2.0 * second[i] + second[i + 1])),
         V6d((square / 2.0) * second[i]),
         V6d((square / 6.0) * (second[i + 1] - second[i]))};
-    const QString error = centralSplineIntervalError(coefficients, steps[i], m_robot);
+    const QString error = jointSplineIntervalError(coefficients, steps[i], m_robot);
     if (!error.isEmpty())
       return QStringLiteral("%1 (motion interval [%2, %3] s).")
           .arg(error).arg(m_points[first + i].time, 0, 'g', 12)
           .arg(m_points[first + i + 1].time, 0, 'g', 12);
     intervals.append(coefficients);
   }
-  m_centralSpline = std::move(intervals);
+  for (qsizetype i = 0; i < intervals.size(); ++i)
+    m_jointSpline[first - m_boundaries[1] + i] = std::move(intervals[i]);
   return {};
 }
 
@@ -780,16 +741,18 @@ ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const Chamfer
     motion.setCentralMotion(std::move(*timed.central));
     QElapsedTimer splineTimer;
     splineTimer.start();
-    const QString splineError = motion.prepareCentralSpline();
+    const QString splineError = motion.preparePlaybackSplines();
     QJsonObject splineDiagnostic;
     splineDiagnostic.insert("computationMs", splineTimer.nsecsElapsed() / 1e6);
-    splineDiagnostic.insert("intervals", timed.boundaries[5] - timed.boundaries[2]);
+    splineDiagnostic.insert("centralIntervals", timed.boundaries[5] - timed.boundaries[2]);
+    splineDiagnostic.insert("transferInIntervals", timed.boundaries[2] - timed.boundaries[1]);
+    splineDiagnostic.insert("transferOutIntervals", timed.boundaries[6] - timed.boundaries[5]);
     splineDiagnostic.insert("attemptIndex", compiler.diagnostics().value("attempts").toArray().size() - 1);
     splineDiagnostic.insert("error", splineError);
     splineAttempts.append(splineDiagnostic);
     if (!splineError.isEmpty()) { error = splineError; continue; }
     auto diagnostics = compiler.diagnostics();
-    diagnostics.insert("centralSplineAttempts", splineAttempts);
+    diagnostics.insert("jointSplineAttempts", splineAttempts);
     diagnostics.insert("homeTimingAndTimestampChecksMs", homeTimingMs);
     diagnostics.insert("totalMs", totalTimer.nsecsElapsed() / 1e6);
     diagnostics.insert("configurationSearchMs", searchMs);
@@ -802,7 +765,7 @@ ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const Chamfer
     return {std::move(motion), {}, std::move(diagnostics)};
   }
   auto diagnostics = compiler.diagnostics();
-  diagnostics.insert("centralSplineAttempts", splineAttempts);
+  diagnostics.insert("jointSplineAttempts", splineAttempts);
   diagnostics.insert("totalMs", totalTimer.nsecsElapsed() / 1e6);
   diagnostics.insert("configurationSearchMs", searchMs);
   diagnostics.insert("candidateCount", starts.size());
@@ -834,16 +797,14 @@ std::optional<ChamferPlaybackPose> ChamferMotion::evaluate(double seconds) const
     const auto& a = m_points[low];
     const auto& b = m_points[high];
     const double fraction = (time - a.time) / (b.time - a.time);
-    if (phase >= 2 && phase <= 4) {
-      const qsizetype interval = low - m_boundaries[2];
-      if (interval < 0 || interval >= m_centralSpline.size()) return std::nullopt;
-      const auto& coefficients = m_centralSpline[interval];
-      // Preserve exact IK values at saved knots, including full-turn phase boundaries.
-      if (time == a.time) joints = a.joints;
-      else if (time == b.time) joints = b.joints;
-      else joints = ((coefficients[3] * fraction + coefficients[2]) * fraction
-                     + coefficients[1]) * fraction + coefficients[0];
-    } else joints = a.joints + fraction * (b.joints - a.joints);
+    const qsizetype interval = low - m_boundaries[1];
+    if (interval < 0 || interval >= m_jointSpline.size()) return std::nullopt;
+    const auto& coefficients = m_jointSpline[interval];
+    // Preserve exact IK values at saved knots, including full-turn phase boundaries.
+    if (time == a.time) joints = a.joints;
+    else if (time == b.time) joints = b.joints;
+    else joints = ((coefficients[3] * fraction + coefficients[2]) * fraction
+                   + coefficients[1]) * fraction + coefficients[0];
   }
   if (!withinLimits(joints, m_robot.model)) return std::nullopt;
   const M4d tcp = Kr10Kinematics(m_robot.model).solveFK(joints).back() * m_robot.flangeToTcp;

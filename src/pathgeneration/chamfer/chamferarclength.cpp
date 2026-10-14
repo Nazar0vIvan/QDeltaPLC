@@ -122,8 +122,10 @@ struct ArcTableResult
 class ArcTableBuilder
 {
 public:
-  ArcTableBuilder(const ChamferPath& path, const ChamferArcLengthParameters& parameters)
-    : m_path(path), m_parameters(parameters) {}
+  // Path and phase identify the subcurve; parameters specify numerical accuracy.
+  ArcTableBuilder(const ChamferPath& path, ChamferPhase phase,
+                  const ChamferArcLengthParameters& parameters)
+    : m_path(path), m_phase(phase), m_parameters(parameters) {}
 
   ArcTableResult run()
   {
@@ -148,7 +150,7 @@ private:
       return std::nullopt;
     }
     ++m_evaluations;
-    const auto differential = m_path.phaseArcDifferential(ChamferPhase::Machining, progress);
+    const auto differential = m_path.phaseArcDifferential(m_phase, progress);
     if (!differential) {
       m_error = QStringLiteral("Invalid analytical TCP differential during arc-length calculation.");
       return std::nullopt;
@@ -278,6 +280,7 @@ private:
   }
 
   const ChamferPath& m_path;
+  const ChamferPhase m_phase;
   const ChamferArcLengthParameters& m_parameters;
   ArcTable m_table;
   int m_evaluations = 0;
@@ -301,9 +304,6 @@ bool positiveFinite(double value)
 
 } // namespace
 
-ChamferArcLength::ChamferArcLength(double circularLength)
-  : m_circularLength(circularLength) {}
-
 ChamferArcLength::ChamferArcLength(QVector<ChamferArcLengthKnot> knots,
                                  QVector<std::array<double, 6>> polynomials)
   : m_knots(std::move(knots)), m_polynomials(std::move(polynomials)) {}
@@ -318,16 +318,7 @@ ChamferArcLengthResult ChamferArcLength::create(const ChamferPath& path, Chamfer
       || !positiveFinite(parameters.relativeSpeedTolerance)
       || !positiveFinite(parameters.speedDerivativeTolerance))
     return {{}, QStringLiteral("Arc-length tolerances must be finite and positive.")};
-  if (phase == ChamferPhase::LeadIn || phase == ChamferPhase::LeadOut) {
-    // Circular progress is length fraction; its constant differential is R*sweep.
-    // Read the cached geometric length once, without quadrature or inverse fitting.
-    const auto differential = path.phaseArcDifferential(phase, 0.0);
-    if (!differential || !positiveFinite(differential->speed)
-        || differential->speed <= GeomConst::Eps || differential->speedDerivative != 0.0)
-      return {{}, QStringLiteral("Invalid circular lead length for phase %1.").arg(static_cast<int>(phase))};
-    return {ChamferArcLength(differential->speed), {}};
-  }
-  auto result = ArcTableBuilder(path, parameters).run();
+  auto result = ArcTableBuilder(path, phase, parameters).run();
   if (!result.table)
     return {{}, QStringLiteral("Cannot measure chamfer phase %1: %2")
                     .arg(static_cast<int>(phase)).arg(result.error)};
@@ -340,7 +331,6 @@ std::optional<double> ChamferArcLength::distanceAt(double progress) const
   if (!std::isfinite(progress) || progress < 0.0 || progress > 1.0) return std::nullopt;
   if (progress == 0.0) return 0.0;
   if (progress == 1.0) return length();
-  if (m_circularLength) return progress * *m_circularLength;
   const auto upper = std::lower_bound(m_knots.cbegin(), m_knots.cend(), progress, progressBefore);
   if (upper->progress == progress) return upper->distance;
   const auto& lower = *(upper - 1);
@@ -373,7 +363,6 @@ std::optional<double> ChamferArcLength::progressAtDistance(double distance) cons
   if (!std::isfinite(distance) || distance < 0.0 || distance > length()) return std::nullopt;
   if (distance == 0.0) return 0.0;
   if (distance == length()) return 1.0;
-  if (m_circularLength) return distance / *m_circularLength;
   const auto upper = std::lower_bound(m_knots.cbegin(), m_knots.cend(), distance, distanceBefore);
   if (upper->distance == distance) return upper->progress;
   const auto& lower = *(upper - 1);

@@ -3,7 +3,9 @@
 #include "chamferpreparationdiagnostics.h"
 #include "geometry/utils.h"
 
+#include <QJsonArray>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <utility>
 
@@ -15,29 +17,117 @@ constexpr double PreviewPositionTolerance = 0.01; // mm; Cartesian chord criteri
 constexpr double RateStep = 1e-4;
 constexpr double RateTolerance = 1e-6;
 
-// Bound the actual chamfer TCP curve, not just the measured edge ellipse.
-// In cylinder azimuth alpha: h is the sinusoidal end-plane slope, |h|,|h'|,|h''|<=H.
-// With g=(1+h*h)^(-1/2), |g|<=1, |g'|<=H, |g''|<=2*H*H+H.
-// p = center + rho*(r+h*k) + size/2*(g*r+(2*h-cot(angle))*g*k).
-// |dp/dalpha|>=rho, hence curvature <= |d2p/dalpha2|/rho^2.
-std::optional<double> machiningCurvatureBound(const ChamferPath& path)
+bool positiveFinite(double value)
+{
+  return std::isfinite(value) && value > 0.0;
+}
+
+struct ColumnStretch
+{
+  double minimum = 0.0;
+  double maximum = 0.0;
+};
+
+// Singular values of a 3x2 matrix from its columns, without iterative decomposition.
+std::optional<ColumnStretch> columnStretch(const V3d& first, const V3d& second)
+{
+  const double scale = std::max(first.stableNorm(), second.stableNorm());
+  if (!first.allFinite() || !second.allFinite() || !positiveFinite(scale)) return std::nullopt;
+  const V3d left = first / scale;
+  const V3d right = second / scale;
+  const double aa = left.squaredNorm();
+  const double bb = right.squaredNorm();
+  const double ab = left.dot(right);
+  const double maximum = std::sqrt(0.5 * (aa + bb + std::hypot(aa - bb, 2.0 * ab)));
+  // Product of singular values equals the parallelogram area; avoids cancellation.
+  const double minimum = left.cross(right).stableNorm() / maximum;
+  if (!positiveFinite(minimum) || minimum <= GeomConst::Eps * maximum) return std::nullopt;
+  const ColumnStretch result{scale * minimum, scale * maximum};
+  if (!positiveFinite(result.minimum) || !positiveFinite(result.maximum)) return std::nullopt;
+  return result;
+}
+
+struct MachiningDerivativeBounds
+{
+  double first = 0.0; // Upper norm bound, mm per radian.
+  double second = 0.0; // Upper norm bound, mm per radian squared.
+  double axialFirst = 0.0; // Upper axial first-derivative magnitude, mm per radian.
+  double transverseFirst = 0.0; // Lower transverse first-derivative norm, mm per radian.
+};
+
+// Coefficient-based bounds derived in codex_plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
+// Includes the chamfer offset and the actual (rounded) ellipse projection coefficients.
+std::optional<MachiningDerivativeBounds> machiningDerivativeBounds(const ChamferPath& path)
 {
   const auto& parameters = path.parameters();
-  const V3d normal = parameters.edge.majorAxis.cross(parameters.edge.minorAxis).normalized();
+  const auto& edge = parameters.edge;
   const V3d& axis = path.outwardAxis();
-  const double cosine = std::abs(normal.dot(axis));
-  const double slope = normal.cross(axis).stableNorm() / cosine;
-  const double radius = parameters.edge.minorRadius;
+  const V3d major = edge.majorRadius * edge.majorAxis;
+  const V3d minor = edge.minorRadius * edge.minorAxis;
+  const auto full = columnStretch(major, minor);
+  const auto projected = columnStretch(major - major.dot(axis) * axis,
+                                        minor - minor.dot(axis) * axis);
+  if (!full || !projected) return std::nullopt;
+  const V3d normal = edge.majorAxis.cross(edge.minorAxis).normalized();
+  const double slope = normal.cross(axis).stableNorm() / std::abs(normal.dot(axis));
+  const double ratio = std::max(1.0, projected->maximum / projected->minimum);
+  const double ratioSquared = ratio * ratio;
+  const double radialAngularSecond = ratio * (ratioSquared - 1.0);
+  const double radialSecond = ratioSquared + radialAngularSecond;
+  const double firstG = slope * ratio;
+  const double secondG = 2.0 * firstG * firstG + slope * radialSecond;
   const double cotangent = 1.0 / std::tan(parameters.chamferAngleDegrees * GeomConst::DegToRad);
-  const double secondG = 2.0 * slope * slope + slope;
-  const double radialSecond = secondG + 2.0 * slope + 1.0;
-  const double axialSecond = 2.0 * slope + 4.0 * slope * slope
-      + (2.0 * slope + cotangent) * secondG;
-  const double second = radius * std::hypot(1.0, slope)
-      + 0.5 * parameters.chamferSize * (radialSecond + axialSecond);
-  const double curvature = (second / radius) / radius;
-  if (!std::isfinite(curvature) || curvature <= 0.0) return std::nullopt;
+  const double firstAxialFactor = firstG * (2.0 * slope + cotangent) + 2.0 * slope * ratio;
+  const double secondAxialFactor = secondG * (2.0 * slope + cotangent)
+      + 4.0 * firstG * slope * ratio + 2.0 * slope * radialSecond;
+  const double halfSize = 0.5 * parameters.chamferSize;
+  const MachiningDerivativeBounds result{
+      full->maximum + halfSize * (firstG + ratio + firstAxialFactor),
+      full->maximum + halfSize * (secondG + 2.0 * firstG * ratio + radialSecond + secondAxialFactor),
+      std::hypot(major.dot(axis), minor.dot(axis)) + halfSize * firstAxialFactor,
+      (projected->minimum + halfSize / std::hypot(1.0, slope)) / ratio};
+  if (!positiveFinite(result.first) || !positiveFinite(result.second)
+      || !std::isfinite(result.axialFirst) || result.axialFirst < 0.0
+      || !positiveFinite(result.transverseFirst)) return std::nullopt;
+  return result;
+}
+
+std::optional<double> leadCurvatureBound(const MachiningDerivativeBounds& bounds,
+                                       const ChamferLeadParameters& lead)
+{
+  const double span = lead.spanDegrees * GeomConst::DegToRad;
+  const double transverse = bounds.transverseFirst * span;
+  const double axial = bounds.axialFirst * span;
+  const double clearance = lead.clearance;
+  if (!positiveFinite(transverse) || !std::isfinite(axial) || axial < 0.0
+      || !positiveFinite(clearance)) return std::nullopt;
+  // Scale the Gram eigenvalue formula to avoid squared/fourth-power overflow.
+  const double scale = std::max({transverse, axial, clearance});
+  const double x = transverse / scale;
+  const double y = axial / scale;
+  const double z = clearance / scale;
+  const double sum = x * x + y * y + z * z;
+  const double discriminant = std::hypot(x - z, y) * std::hypot(x + z, y);
+  const double minimum = (x * z) * std::sqrt(2.0 / (sum + discriminant));
+  if (!positiveFinite(minimum) || minimum <= GeomConst::Eps * std::sqrt(sum))
+    return std::nullopt;
+  const double firstLower = scale * minimum;
+  const double secondUpper = bounds.second * span * span + bounds.first * span + clearance;
+  const double curvature = (secondUpper / firstLower) / firstLower;
+  if (!positiveFinite(firstLower) || !positiveFinite(secondUpper) || !positiveFinite(curvature))
+    return std::nullopt;
   return curvature;
+}
+
+std::optional<std::array<double, 3>> phaseCurvatureBounds(const ChamferPath& path)
+{
+  const auto bounds = machiningDerivativeBounds(path);
+  if (!bounds) return std::nullopt;
+  const auto leadIn = leadCurvatureBound(*bounds, path.parameters().leadIn);
+  const auto leadOut = leadCurvatureBound(*bounds, path.parameters().leadOut);
+  const double machining = (bounds->second / bounds->transverseFirst) / bounds->transverseFirst;
+  if (!leadIn || !leadOut || !positiveFinite(machining)) return std::nullopt;
+  return std::array<double, 3>{*leadIn, machining, *leadOut};
 }
 
 struct PreviewSpan
@@ -47,6 +137,7 @@ struct PreviewSpan
   double accelerationBound = 0.0; // mm/s^2, geometric criterion, not a robot limit.
   int intervals = 0;
   QString phase;
+  double curvatureBound = 0.0; // per mm
 };
 
 struct PreviewSchedule
@@ -58,8 +149,8 @@ struct PreviewSchedule
 
 PreviewSchedule makePreviewSchedule(const ChamferPath& path, const ChamferCentralMotion& motion)
 {
-  const auto curvature = machiningCurvatureBound(path);
-  if (!curvature) return {{}, 0, QStringLiteral("Cannot bound machining TCP curvature.")};
+  const auto curvature = phaseCurvatureBounds(path);
+  if (!curvature) return {{}, 0, QStringLiteral("Cannot bound TCP curvature: degenerate projection, ill-conditioned lead dimensions or numerical range exceeded.")};
   PreviewSchedule schedule;
   for (int index = 0; index < 3; ++index) {
     const auto phase = static_cast<ChamferPhase>(index);
@@ -72,7 +163,7 @@ PreviewSchedule makePreviewSchedule(const ChamferPath& path, const ChamferCentra
       stops.append(start + (index == 0 ? profile->rampSeconds : profile->cruiseSeconds));
     stops.append(end);
     const double normalAcceleration = profile->speed * (profile->speed
-        * (index == 1 ? *curvature : 1.0 / path.parameters().leadRadius));
+        * (*curvature)[index]);
     for (qsizetype part = 1; part < stops.size(); ++part) {
       const bool ramp = index == 0 ? part == 1 : index == 2 && part == stops.size() - 1;
       const double bound = std::hypot(ramp ? profile->acceleration : 0.0, normalAcceleration);
@@ -87,7 +178,7 @@ PreviewSchedule makePreviewSchedule(const ChamferPath& path, const ChamferCentra
         return {{}, 0, QStringLiteral("Preview geometric interval is below time resolution.")};
       schedule.spans.append({stops[part - 1], stops[part], bound, intervals,
           index == 0 ? QStringLiteral("leadIn") : index == 1 ? QStringLiteral("machining")
-                                                           : QStringLiteral("leadOut")});
+                                                           : QStringLiteral("leadOut"), (*curvature)[index]});
       schedule.points += intervals;
     }
   }
@@ -172,13 +263,25 @@ public:
     result.diagnostics.insert("plannedSamples", m_plannedSamples);
     result.diagnostics.insert("samplingCriterion", "cartesian-curvature-time-bound");
     result.diagnostics.insert("segments", m_segments);
+    result.diagnostics.insert("previewSchedule", m_scheduleDiagnostics);
     return result;
   }
 
 private:
   ChamferCentralValidationResult runImpl(const V6d& seed, const ChamferPath& path)
   {
+    QElapsedTimer scheduleTimer;
+    scheduleTimer.start();
     const auto schedule = makePreviewSchedule(path, m_motion);
+    m_scheduleDiagnostics.insert("computationMs", scheduleTimer.nsecsElapsed() / 1e6);
+    m_scheduleDiagnostics.insert("error", schedule.error);
+    QJsonArray spans;
+    for (const auto& span : schedule.spans)
+      spans.append(QJsonObject{{"phase", span.phase}, {"startSeconds", span.start},
+          {"endSeconds", span.end}, {"movementSeconds", span.end - span.start},
+          {"intervals", span.intervals}, {"curvatureBoundPerMm", span.curvatureBound},
+          {"accelerationBoundMmPerSecondSquared", span.accelerationBound}});
+    m_scheduleDiagnostics.insert("spans", spans);
     if (!schedule.error.isEmpty()) return {{}, schedule.error};
     m_plannedSamples = schedule.points;
     m_samples.reserve(schedule.points);
@@ -332,6 +435,7 @@ private:
   QVector<ChamferCentralJointSample> m_samples;
   qsizetype m_plannedSamples = 0;
   QJsonObject m_segments;
+  QJsonObject m_scheduleDiagnostics;
 };
 
 } // namespace
@@ -347,8 +451,9 @@ ChamferCentralValidationResult validateChamferCentral(const ChamferPath& path,
   timer.start();
   auto motion = ChamferCentralMotion::create(path, robot.timing);
   const double constructionMs = timer.nsecsElapsed() / 1e6;
-  if (!motion.motion) return {{}, motion.error, {{"analyticalConstructionMs", constructionMs}}};
+  if (!motion.motion) return {{}, motion.error, {{"analyticalConstructionMs", constructionMs}, {"arcLengthPhases", motion.diagnostics}}};
   auto result = CentralValidator(std::move(*motion.motion), robot).run(initialSeed, path);
   result.diagnostics.insert("analyticalConstructionMs", constructionMs);
+  result.diagnostics.insert("arcLengthPhases", motion.diagnostics);
   return result;
 }

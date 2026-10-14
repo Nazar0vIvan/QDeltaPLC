@@ -19,7 +19,10 @@ SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& m
   result.chamferAngle = path.chamferAngleDegrees;
   result.stagingDistance = path.stagingDistance;
   result.flipAxis = path.flipAxis;
-  result.leadRadius = path.leadRadius;
+  result.leadInClearance = path.leadIn.clearance;
+  result.leadOutClearance = path.leadOut.clearance;
+  result.leadInSpan = path.leadIn.spanDegrees;
+  result.leadOutSpan = path.leadOut.spanDegrees;
   result.leadInIntervals = path.leadIn.intervals;
   result.leadOutIntervals = path.leadOut.intervals;
   result.leadInFeed = timing.leadInFeed;
@@ -43,7 +46,10 @@ ChamferPathParameters SceneMachiningSettings::applyTo(ChamferPathParameters para
   parameters.chamferAngleDegrees = chamferAngle;
   parameters.stagingDistance = stagingDistance;
   parameters.flipAxis = flipAxis;
-  parameters.leadRadius = leadRadius;
+  parameters.leadIn.clearance = leadInClearance;
+  parameters.leadOut.clearance = leadOutClearance;
+  parameters.leadIn.spanDegrees = leadInSpan;
+  parameters.leadOut.spanDegrees = leadOutSpan;
   parameters.leadIn.intervals = leadInIntervals;
   parameters.leadOut.intervals = leadOutIntervals;
   return parameters;
@@ -150,7 +156,7 @@ std::optional<ChamferPathParameters> SceneMachining::previewParameters() const
   return source ? std::optional<ChamferPathParameters>{m_settings.applyTo(*source)} : std::nullopt;
 }
 
-void SceneMachining::apply()
+void SceneMachining::generate()
 {
   if (m_calculating) return;
   const QString reason = unavailableReason();
@@ -158,7 +164,10 @@ void SceneMachining::apply()
   const auto source = sourceParameters();
   const auto timing = m_settings.timing();
   if (!source || !timing) { setError(tr("Six joint speed and acceleration limits are required.")); return; }
+  QElapsedTimer geometryTimer;
+  geometryTimer.start();
   const auto path = ChamferPath::create(m_settings.applyTo(*source));
+  m_geometryConstructionMs = geometryTimer.nsecsElapsed() / 1e6;
   if (!path.path) { setError(path.error); return; }
   const auto& tcp = m_effectors->spindleTcp();
   ChamferRobotSetup robot;
@@ -188,11 +197,13 @@ void SceneMachining::finishCalculation()
   if (m_calculation.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
   m_calculationTimer.stop();
   auto result = m_calculation.get();
+  result.diagnostics.insert("geometryConstructionMs", m_geometryConstructionMs);
+  if (result.motion) result.diagnostics.insert("movementSeconds", result.motion->duration());
   qInfo().noquote() << "Chamfer preparation:" << QJsonDocument(result.diagnostics).toJson(QJsonDocument::Compact);
   const auto* previous = m_scene->findObject(m_calculationInputId);
   if (!previous || m_inputId != m_calculationInputId || m_revision != m_calculationRevision
       || !m_robotAvailable || !sourceParameters()) {
-    setError(tr("Scene or robot configuration changed. Apply again."));
+    setError(tr("Scene or robot configuration changed. Generate again."));
     setCalculating(false);
     return;
   }

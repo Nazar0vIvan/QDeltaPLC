@@ -31,7 +31,7 @@ public:
   bool canGenerate() const { return unavailableReason().isEmpty(); }
   QString unavailableReason() const;
   QString error() const { return m_error; }
-  Q_INVOKABLE void apply();
+  Q_INVOKABLE void generate();
   bool calculating() const { return m_calculating; }
   Q_INVOKABLE void dryRun();
   Q_INVOKABLE void stop();
@@ -93,4 +93,5 @@ private:
   quint32 m_calculationInputId = 0;
   quint64 m_calculationRevision = 0;
   bool m_calculating = false;
+  double m_geometryConstructionMs = 0.0;
 };
