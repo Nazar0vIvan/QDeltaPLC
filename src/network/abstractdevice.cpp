@@ -4,6 +4,7 @@
 
 #include <functional>
 
+#include <QDebug>
 #include <QMetaMethod>
 #include <QThread>
 
@@ -37,18 +38,15 @@ void AbstractDevice::invoke(const QString& method, const QVariantMap& args)
   Q_ASSERT(QThread::currentThread() == thread());
 
   if (!m_started) {
-    emit logMessage({method + ": device is not started", 0, objectName()});
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << method + ": device is not started";
     return;
   }
 
   const auto it = m_api.constFind(method);
 
   if (it == m_api.cend()) {
-    emit logMessage({
-        QStringLiteral("invoke(\"%1\") is not exposed").arg(method),
-        0,
-        objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":"
+        << QStringLiteral("invoke(\"%1\") is not exposed").arg(method);
     return;
   }
 
@@ -58,7 +56,7 @@ void AbstractDevice::invoke(const QString& method, const QVariantMap& args)
       ? mm.invoke(this, Qt::DirectConnection, Q_ARG(QVariantMap, args))
       : mm.invoke(this, Qt::DirectConnection);
 
-  if (!ok) emit logMessage({method + ": invoke failed", 0, objectName()});
+  if (!ok) qInfo().noquote() << "[ERROR]" << objectName() + ":" << method + ": invoke failed";
 }
 
 void AbstractDevice::buildApi()
@@ -111,14 +109,11 @@ void AbstractDevice::attachSocket(QAbstractSocket* sock)
 void AbstractDevice::onSocketStateChanged(QAbstractSocket::SocketState state)
 {
   emit socketStateReady(state);
-  emit logMessage({socketStateName(state), 2, objectName()});
+  qInfo().noquote() << "[INFO]" << objectName() + ":" << socketStateName(state);
 }
 
 void AbstractDevice::logSocketError(QAbstractSocket* socket, QAbstractSocket::SocketError error)
 {
-  emit logMessage({
-    QString("%1: %2").arg(socketErrorName(error), socket->errorString()),
-    0,
-    objectName()
-  });
+  qInfo().noquote() << "[ERROR]" << objectName() + ":"
+      << QString("%1: %2").arg(socketErrorName(error), socket->errorString());
 }

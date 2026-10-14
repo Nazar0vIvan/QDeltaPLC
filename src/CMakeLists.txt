@@ -96,7 +96,6 @@ qt_add_library(RoboCrapDevices STATIC
   network/rsi/rsiprotocol.cpp
   network/rsi/rsiholeprotocol.h
   network/rsi/rsiholeprotocol.cpp
-  network/common/loggermessage.h
 )
 target_include_directories(RoboCrapDevices PUBLIC ${SRC_DIR})
 target_link_libraries(RoboCrapDevices PUBLIC RoboCrapGeometry Qt6::Network Qt6::Qml)
@@ -123,8 +122,6 @@ add_subdirectory(3d)
 set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
 
 target_sources(robocrap PRIVATE
-  logger.h
-  logger.cpp
   qmlchartbridge.h
   qmlchartbridge.cpp
 )

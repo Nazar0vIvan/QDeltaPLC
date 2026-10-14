@@ -1,6 +1,7 @@
 #include "network/plc/plcdevice.h"
 #include "network/common/socketconfigutils.h"
 
+#include <QDebug>
 #include <QTcpSocket>
 
 namespace {
@@ -48,11 +49,7 @@ void PlcDevice::stopDevice()
 void PlcDevice::connect(const QVariantMap& config)
 {
   if (!m_sock) {
-    emit logMessage({
-      "PLC device is not started",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "PLC device is not started";
     return;
   }
 
@@ -64,11 +61,7 @@ void PlcDevice::connect(const QVariantMap& config)
     const auto port = parseSocketPort(config.value("peerPort"));
 
     if (localAddr.isNull() || !localPort || addr.isNull() || !port) {
-      emit logMessage({
-        "Invalid socket configuration",
-        0,
-        objectName()
-      });
+      qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Invalid socket configuration";
       return;
     }
 
@@ -79,11 +72,7 @@ void PlcDevice::connect(const QVariantMap& config)
   }
 
   if (m_la.isNull() || m_lp == 0 || m_pa.isNull() || m_pp == 0) {
-    emit logMessage({
-      "Socket configuration is incomplete",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Socket configuration is incomplete";
     return;
   }
 
@@ -98,11 +87,7 @@ void PlcDevice::connect(const QVariantMap& config)
 
   // The PLC program expects this PC endpoint, including its source port.
   if (!m_sock->bind(m_la, m_lp)) {
-    emit logMessage({
-      QString("Bind failed: %1").arg(m_sock->errorString()),
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << QString("Bind failed: %1").arg(m_sock->errorString());
     m_sock->abort();
     return;
   }
@@ -122,17 +107,13 @@ void PlcDevice::disconnect()
 void PlcDevice::setOutput(const QVariantMap& args)
 {
   if (!m_sock || !m_mgr || m_sock->state() != QAbstractSocket::ConnectedState) {
-    emit logMessage({"PLC is not connected", 0, objectName()});
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "PLC is not connected";
     return;
   }
 
   const PlcMessageManager::ParseResult request = m_mgr->outputRequest(args);
   if (!request.ok()) {
-    emit logMessage({
-      "WRITE ERROR: " + QString::number(request.error),
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "WRITE ERROR: " + QString::number(request.error);
     return;
   }
 
@@ -142,17 +123,13 @@ void PlcDevice::setOutput(const QVariantMap& args)
 void PlcDevice::writeMessage(const QVariantMap& msg)
 {
   if (!m_sock || !m_mgr) {
-    emit logMessage({
-      "PLC device is not started",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "PLC device is not started";
     return;
   }
 
   const auto available = availableTid();
   if (!available) {
-    emit logMessage({"All PLC transaction ids are pending", 0, objectName()});
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "All PLC transaction ids are pending";
     return;
   }
   const quint8 tid = *available;
@@ -160,11 +137,7 @@ void PlcDevice::writeMessage(const QVariantMap& msg)
       m_mgr->buildReq(msg, tid);
 
   if (!built.ok()) {
-    emit logMessage({
-      "WRITE ERROR: " + QString::number(built.error),
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "WRITE ERROR: " + QString::number(built.error);
     return;
   }
 
@@ -179,24 +152,17 @@ void PlcDevice::writeMessage(const QVariantMap& msg)
     if (count > 0) m_sock->abort();
   }
 
-  emit logMessage({
-    count != data.size()
+  qInfo().noquote() << (count != data.size() ? "[ERROR]" : "[WRITE]") << objectName() + ":"
+      << (count != data.size()
         ? QString("Incomplete PLC write: %1 of %2 bytes queued").arg(count).arg(data.size())
         : QString("TX: %1 (%2 bytes)")
             .arg(QString(data.toHex(' ').toUpper()))
-            .arg(count),
-    count != data.size() ? 0 : 4,
-    objectName()
-  });
+            .arg(count));
 }
 
 void PlcDevice::onConnected()
 {
-  emit logMessage({
-    "Connection has been successfully established",
-    1,
-    objectName()
-  });
+  qInfo().noquote() << "[OK]" << objectName() + ":" << "Connection has been successfully established";
 
   writeMessage({
     {"cmd", PlcMessageManager::SNAPSHOT}
@@ -265,11 +231,7 @@ void PlcDevice::processIncoming(const QByteArray& bytes)
     const PlcMessageManager::ParseResult parsed = m_mgr->parseMessage(frame);
 
     if (!parsed.ok()) {
-      emit logMessage({
-        "READ ERROR: " + QString::number(parsed.error),
-        0,
-        objectName()
-      });
+      qInfo().noquote() << "[ERROR]" << objectName() + ":" << "READ ERROR: " + QString::number(parsed.error);
       continue;
     }
 
@@ -277,24 +239,17 @@ void PlcDevice::processIncoming(const QByteArray& bytes)
 
     if (data.contains("tid")) {
       if (!matchResponse(data)) {
-        emit logMessage({
-          "Unmatched PLC response for transaction " + data.value("tid").toString(),
-          0,
-          objectName()
-        });
+        qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Unmatched PLC response for transaction " + data.value("tid").toString();
         continue;
       }
     }
 
     if (data.value("type").toUInt() == PlcMessageManager::RESP_ERR) {
-      emit logMessage({
-        QString("PLC response error: cmd=%1, err=%2, code=%3")
-          .arg(data.value("cmd").toUInt())
-          .arg(data.value("err").toUInt())
-          .arg(data.value("code").toUInt()),
-          0,
-          objectName()
-      });
+      qInfo().noquote() << "[ERROR]" << objectName() + ":"
+          << QString("PLC response error: cmd=%1, err=%2, code=%3")
+                 .arg(data.value("cmd").toUInt())
+                 .arg(data.value("err").toUInt())
+                 .arg(data.value("code").toUInt());
 
       continue;
     }

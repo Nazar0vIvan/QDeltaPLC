@@ -11,13 +11,11 @@
 #include <QFontDatabase>
 #include <QMetaType>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QQmlEngine>
 #include <QUrl>
 #include <QDir>
 #include <QStandardPaths>
 
-#include "logger.h"
 #include "3d/chamferprofile.h"
 #include "3d/viewportqmltypes.h"
 #include "3d/viewportassets.h"
@@ -37,7 +35,7 @@ namespace {
 
 void logViewportMessage(const QString& text, bool error)
 {
-  Logger::instance()->push({text.toHtmlEscaped(), error ? 0 : 2, QStringLiteral("3D")});
+  qInfo().noquote() << (error ? "[ERROR]" : "[INFO]") << "3D:" << text;
 }
 
 } // namespace
@@ -45,6 +43,7 @@ void logViewportMessage(const QString& text, bool error)
 int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
+  qSetMessagePattern(QStringLiteral("[%{time yyyy-MM-dd hh:mm:ss}] %{message}"));
   if (app.arguments().contains(QStringLiteral("--profile-chamfer"))) {
     const auto arguments = app.arguments();
     const int option = arguments.indexOf(QStringLiteral("--profile-chamfer"));
@@ -69,16 +68,11 @@ int main(int argc, char* argv[])
 
   qRegisterMetaType<RDTResponse>("RDTResponse");
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
-  qRegisterMetaType<LoggerMessage>("LoggerMessage");
   qRegisterMetaType<PreparedChamferJobPtr>("PreparedChamferJobPtr");
 
   auto* plcDev = new PlcDevice(QStringLiteral("PLC_AS332T"));
   auto* ftsDev = new FtsDevice(QStringLiteral("FTS_Delta"));
   auto* rsiDev = new RsiDevice(QStringLiteral("KRC4_RSI"));
-
-  QObject::connect(plcDev, &AbstractDevice::logMessage, Logger::instance(), &Logger::push, Qt::QueuedConnection);
-  QObject::connect(ftsDev, &AbstractDevice::logMessage, Logger::instance(), &Logger::push, Qt::QueuedConnection);
-  QObject::connect(rsiDev, &AbstractDevice::logMessage, Logger::instance(), &Logger::push, Qt::QueuedConnection);
 
   DeviceHub hub;
 
@@ -121,16 +115,13 @@ int main(int argc, char* argv[])
   viewportController.setMachining(&machining);
   OccControllerQml::s_inst = &viewportController;
 
-	QObject::connect(&viewportController, &RoboCrap3D::OccController::message, Logger::instance(), &logViewportMessage);
+  QObject::connect(&viewportController, &RoboCrap3D::OccController::message, &app, &logViewportMessage);
 
   QQmlApplicationEngine engine;
 
 #ifdef USE_FELGO_HOT_RELOAD
   felgo.initialize(&engine);
 #endif
-
-  QQmlContext* ctx = engine.rootContext();
-  ctx->setContextProperty("logger", Logger::instance());
 
 #ifdef USE_FELGO_HOT_RELOAD
 

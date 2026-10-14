@@ -210,7 +210,6 @@ The old final-LOC forecast is withdrawn. The directly counted whole-file deletio
 | `resources/json/edge_cyl_plane/XP.json` | `resources/json/edge_cyl_plane/XP.json` | keep path/resource URL; application-owned input |
 | `resources/json/ellipse_sample.json` | `resources/json/ellipse_sample.json` | keep path/resource URL; application-owned input |
 | `resources/json/kr10.json` | `resources/json/kr10.json` | keep path/resource URL; application-owned input |
-| `resources/json/README.md` | `resources/json/README.md` | keep path/resource URL; application-owned input |
 | `resources/pics.qrc` | `resources/pics.qrc` | keep path/resource URL; application-owned input |
 | `resources/pics/arrow_dropdown.svg` | `resources/pics/arrow_dropdown.svg` | keep path/resource URL; application-owned input |
 | `resources/pics/circ.svg` | `resources/pics/circ.svg` | keep path/resource URL; application-owned input |
@@ -540,7 +539,7 @@ FK is forward kinematics; IK is inverse kinematics.
 
 **Files/API.** OccController, OccViewWindow, OccViewport, OccSceneAdapter, OccRobotAdapter, OccScene/OccPart and application projection in existing SceneObject/SceneModel implementation. Delete the unused reverse setDiagnosticOverlays chain that mutates SceneModel from the renderer (controller:370, window:87, viewport:71, adapter:339). Keep the UI's actual SceneModel operation. CAD data and accepted drawing records remain in a renderer-local replay cache for surface recreation.
 
-**Risk/rules.** Preserve picking IDs, hidden selection behavior, analytic surfaces, phase polylines from existing points, decorative fit/picking exclusion, deferred redraw and initial camera-fit policy. Preserve worker serialization, stale generations and cleanup on failed presentation. The existing OCCT exception boundary conflicts with the binding no-try/catch rule (§8); renaming methods or returning a status does not resolve it. These edits need an explicit exception-policy resolution before implementation of affected handlers, not a silent deletion of failure cleanup.
+**Risk/rules.** Preserve picking IDs, hidden selection behavior, analytic surfaces, phase polylines from existing points, decorative fit/picking exclusion, deferred redraw and initial camera-fit policy. Preserve worker serialization, stale generations and cleanup on failed presentation. The existing OCCT exception boundary conflicts with the binding no-try/catch rule (§7); renaming methods or returning a status does not resolve it. These edits need an explicit exception-policy resolution before implementation of affected handlers, not a silent deletion of failure cleanup.
 
 ### F6 — Major: PLC internal data is repeatedly converted through untyped dictionaries
 
@@ -674,52 +673,7 @@ The review's implementation succeeds when repeated work and broad interfaces are
 
 Later performance comparisons must distinguish computation duration from movement duration, saved animation points from inverse-map knots and RSI samples, stage totals from nested timers, logical work budgets from actual calls, and raw payload from measured resident memory.
 
-## 7. Corrections and additions to docs/ARCHITECTURE.md
-
-ARCHITECTURE.md was read first in the original review and reread for this revision. The table below distinguishes actual inaccuracies from leads that survived inspection. Its old line numbers are useful only in this reviewed snapshot; future migration phases must update the whole affected paragraph and its references.
-
-| Existing section/claim | Correction or necessary completion | Current evidence |
-|---|---|---|
-| Snapshot and “verified map” | State explicitly that the current uncommitted numerical/QML changes are included. Several numerical descriptions lag them. Historical “user confirmed” statements in the map are not authority to override the current prompt's binding rules. | Working-tree status and the current files; current AGENTS mandatory C++ section. |
-| §2, physical versus logical location | Target graph is correctly acyclic; keep that distinction. Broad PUBLIC src paths mean include access is wider than the link diagram suggests. | src/CMakeLists.txt:4-50,70,101; src/3d/CMakeLists.txt:76. |
-| §2, public viewport Scene headers / PRIVATE Scene | “Works because executable links Scene” is incomplete. Common src include exposure and already available Qt requirements also mask the compile-interface omission. Nested Tool requires the full declaration. | occcontroller.h:3,71,96,111,113; src/3d/CMakeLists.txt:76-79. |
-| §3.1, optional probe radius/dir | For object-form JSON, points, radius and dir are required; only legacy point arrays default to zero compensation. | geometry/utils.cpp:67-86; resources/json/README.md:18-20. |
-| §3.1/§5.1, compensation | decodeProbeSamples decodes/validates metadata and samples. The geometry factories apply the actual plane/cylinder compensation. Circles use raw coordinates. | scenesurfaceimporter.cpp:37-50,105-114; plane.cpp:54-63; boundedplane/boundedcylinder fromSamples. |
-| §3.2, busy “never observable as true” | Too strong. Synchronous busyChanged handlers can read true; normal event-loop rendering does not occur during the synchronous read/fit call. | scenesurfaceimporter.cpp:96-121. |
-| §3.2, SceneModel friendship | Keep the factual private setters/friend description; do not imply current direct field assignment by another object. | sceneobject.cpp:11-24,67-70; scenemodel uses named setters. |
-| §3.3, analytical curve parameters | Separate evaluate(angleRad) in radians from evaluatePhase(phase, progress), whose phase-local progress is dimensionless in [0,1]. Neither is traveled distance or physical seconds. | chamferpath.h:83-93. |
-| §3.3, “linear for LIN” | Incorrect now. Both LIN transfers and the shared central portion use independently prepared clamped joint splines; PTP uses smoothstep. | chamfermotion.cpp:634-710,775-812. |
-| §3.3, second full path copy | ChamferMotion now stores ChamferPathParameters; the full path is owned inside ChamferCentralMotion. Parameter data is repeated, not two full ChamferPath objects. | chamfermotion.h:75-79; chamfercentralmotion.h:65. |
-| §3.3, fixed points/checks | Add straight-LIN interval-count rule and polynomial position/speed extrema checks. Keep the explicit limit that the position criterion does not bound orientation or actual TCP error after joint interpolation. | chamfermotion.cpp:61-95,440-453; AGENTS machining constraints. |
-| §3.3, numerical work | Add repeated central map/timing construction per candidate reaching validation. Do not imply an observed timing bottleneck. | chamfermotion.cpp:286,731-732; centralvalidation.cpp:452; centralmotion.cpp:123-138. |
-| §3.3, Geometry file I/O | Include BoundedPlane/BoundedCylinder file factories, not just utils/Plane/RSI files. They have live profiler consumers. | boundedplane.cpp:66-69; boundedcylinder.cpp:240-243; chamferprofile.cpp:73-75. |
-| §3.3, demo path methods | The demo also uses fromSurfPose, not only lin. It is dormant through the current UI but remains a callable invokable. | rsidevice.cpp:182,206-220; rsidevice.h:28; KukaPanel.qml:34. |
-| §3.4, FTS “every 16 ms” and “7 kHz” | Publication is checked while datagrams are processed; it is not a fixed GUI publication timer. 7000 Hz is the timestamp assumption, not a measured or verified configuration. | ftsdevice.cpp:27-28,299-307,421-434. |
-| §3.4/§7, PLC lifetime | Add pending-ID exhaustion with its precise preconditions and clearing paths. Keep protocol correctness/hardware history separate from this untested response-loss condition. | plcdevice.cpp:153-179,206-247,311. |
-| §3.5/§6, OCCT confined to listed files | Full Kr10Model also imports an OCCT-bearing visual property type. Numerical model alone is independent; complete loader is not. | kr10model.h:8,15; occpartprops.h:3-4,29-30. |
-| §3.6, application state “and similar” | Enumerate persistent application mode/submode/selection decisions separately from local panel visibility, draft fields, focus and expansion. Main currently has one shared selection-to-input function called from several events. | Main.qml:22-41,49-114,122-145. |
-| §3.6, tools and placeholders | Dry Scan currently toggles UI flags only; Scan/Start Machining remain disabled placeholders. Measuring settings/ER are displayed read-only, while spindle TCP has Apply. Do not describe these as implemented measurement calibration or scan execution. | Main.qml:450-459; ModeToolBar.qml:62,197-219,239-244; EndEffectorPanel.qml:121-178,261-267. |
-| §5.1, fixed-tool intent | Current code permits Browse/Retry for both CAD sources, despite the supplied future fixed-configuration intent. Keep this visible behavioral discrepancy in open questions. | Main.qml:212-227,551-555,578-582. |
-| §5.2, generation entry | Toolbar Generate Path opens the editor; panel Generate commits draft settings and invokes generation. Cancel restores the captured settings. | Main.qml:466-472,592; MachiningPanel.qml:60-79,183-187. |
-| §5.2, source dependencies | The raw-edge Generate path still requires source plane and cylinder to exist, even though numerical parameters use the ellipse and cylinder. Keep this check in the baseline; removing it changes accepted input states. Saved motions can outlive their sources. | scenemachining.cpp:116-138,203-220. |
-| §5.2/§5.4, playback/shutdown | Stop presents time zero and returns immediately to HOME, not an animated return. Keep synchronous AIS-transform acceptance (not completed drawing) and wait-for-worker lifetime semantics. Shared ControlIO does not alone prove a race/deadlock. | scenemachining.cpp:357-403; devicehub.cpp:60-78; occcontroller.cpp:72-84. |
-| §5.4, queued invalidation ordering | Explain the actual same-GUI-sender sequence: prepared-job invalidation is posted before subsequent stopping of the receiving RSI worker. Do not imply a universal FIFO ordering across unrelated senders, receivers and all Qt event kinds. | main.cpp:113-116; scenemachiningpreparation.cpp:192-201; devicehub.cpp:68-70. |
-| §6, Devices only Core/Network | False today: target publicly links QtQml, Runner uses QQmlPropertyMap, RDTResponse declares QML_VALUE_TYPE and PLC header includes QQmlEngine. | src/CMakeLists.txt:102; devicerunner.h:5,14; rdtmessage.h:6,11; plcmessagemanager.h:3. |
-| §6, types “only” through QML_FOREIGN | RDTResponse directly declares its value-type macro; its generated foreign metadata is forwarded to the App module. Preserve that API while moving registration. | rdtmessage.h:11; root CMakeLists.txt:127. |
-| §6, OCCT exceptions | Keep count of 13 try blocks in 8 files, but add std::exception and catch-all/rethrow. An older recorded permission does not satisfy the current binding ban on new exception-handling syntax. | cadloadworker.cpp:49-52; occscene.cpp:247-254; current AGENTS. |
-| §7, std::bind listed as style deviation | Remove that implication: current mandatory C++ style bans lambdas, not std::bind. Check each bound connection's lifetime independently. | occcontroller.cpp:461-463; current AGENTS mandatory style. |
-| §7, dead candidates | Distinguish truly unused compiled files, dormant callable demo, unused individual members and retained authoring/example assets. The tolerance type used by RSI survives old sampler removal. | Audit in §5.1; chamfercartesiansampler.cpp:396. |
-| §7, units/cache/calibration | Supplied probe README states mm, but arbitrary imported files are not tagged/converted. Provisional ER roll and basename-only BREP identity remain unresolved facts, not newly verified physical calibration. | resources/json/README.md:3-4; sceneendeffectors.cpp:11-20; cachedshapeloader.cpp:41-62. |
-| Verification references | The preview-only profiling JSON named in AGENTS is absent. Do not retain it as an executable baseline command without supplying a new accepted input in a later task. | Filesystem inventory of codex_plans, 2026-10-14. |
-
-Statements about immutable saved motion, stale Generate rejection, GUI-thread insertion, unchanged-calibration handling, separate RSI preparation, the native window's GUI ownership and phase-specific numerical tolerances survived the review. They should be retained, with updated paths, rather than rewritten as defects.
-
-An adjacent documentation mismatch also exists: resources/json/README.md:49 describes sample radius 3, while the currently inspected edge_cyl_plane/XP.json and XC.json contain 0 and 1.5 respectively. The actual files are the numerical inputs. Correct the README when those examples are maintained; do not change the data to make a sentence true.
-
-
-The former review itself also needs correction, and this revision supersedes it: remove the Core library, remove Components/Styles from scope, withdraw the projected total-LOC benefit, replace “drawing succeeds” with AIS-transform acceptance, elevate F2/F3/F5 and O1–O5 into concrete code phases, and show the unfinished Devices numerical edges explicitly. Existing documentation is not edited by this review.
-
-## 8. Decisions, hard constraints and unresolved behavior
+## 7. Decisions, hard constraints and unresolved behavior
 
 1. **OCCT exceptions:** current code has 13 try blocks in eight files, including Standard_Failure, std::exception and catch-all/rethrow, while the binding C++ rule prohibits try/catch/throw. Existing fallback/cleanup relies on some handlers. This review proposes no new exception syntax and no removal of cleanup to satisfy style. Before editing those failure paths, choose an explicit policy for retaining the existing boundary or supply a verified nonthrowing OCCT approach. An optional/status wrapper alone cannot catch an exception. The former plan's assumption that byte-for-byte relocation settles the policy is withdrawn.
 2. **Optimization equivalence:** O3 must retain the old logical work-limit rejection if behavior preservation is required. O4 must preserve the discarded machining-frame checks. O6 is a changed numerical method. These distinctions are now implementation acceptance conditions, not generic caveats.
@@ -732,7 +686,7 @@ The former review itself also needs correction, and this revision supersedes it:
 
 These are decisions/limits recorded for future implementation; no additional permission is needed to complete this review.
 
-## 9. Coverage, independent challenge and checks
+## 8. Coverage, independent challenge and checks
 
 This revision reread implementation paths rather than relying on the earlier architecture table.
 

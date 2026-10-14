@@ -1,0 +1,1816 @@
+{
+  "capturedAtUtc": "2026-10-14T16:24:13.8371368Z",
+  "cmakeDeclarations": [
+    {
+      "path": "CMakeLists.txt",
+      "line": 55,
+      "command": "qt_add_executable",
+      "declaration": "qt_add_executable(robocrap\r\n  src/main.cpp\r\n)"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "line": 128,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(robocrap PRIVATE\r\n  ${CMAKE_CURRENT_BINARY_DIR}\r\n  ${PROJECT_SOURCE_DIR}/src/network/fts\r\n)"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "line": 133,
+      "command": "target_sources",
+      "declaration": "target_sources(robocrap PRIVATE\r\n  ${RESOURCE_FILES}\r\n)"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "line": 137,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(robocrap PRIVATE\r\n  RoboCrapBackend\r\n  RoboCrapBackendplugin\r\n  RoboCrapScene\r\n  RoboCrapDevices\r\n  RoboCrap3D\r\n  RoboCrap3Dplugin\r\n  Qt6::Core\r\n  Qt6::Gui\r\n  Qt6::Quick\r\n  Qt6::Qml\r\n  Qt6::Network\r\n  Qt6::Charts\r\n  Qt6::Xml\r\n  Qt6::Widgets\r\n  Styles\r\n  Components\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 4,
+      "command": "qt_add_library",
+      "declaration": "qt_add_library(RoboCrapGeometry STATIC\r\n  3d/robot/model/kr10kinematicmodel.h\r\n  3d/robot/kinematics/kr10kinematics.h\r\n  3d/robot/kinematics/kr10kinematics.cpp\r\n  geometry/boundedplane.h\r\n  geometry/boundedplane.cpp\r\n  geometry/boundedcylinder.h\r\n  geometry/boundedcylinder.cpp\r\n  geometry/circle.h\r\n  geometry/circle.cpp\r\n  geometry/surfaceintersection.h\r\n  geometry/surfaceintersection.cpp\r\n  geometry/plane.h\r\n  geometry/plane.cpp\r\n  geometry/mathtypes.h\r\n  geometry/utils.h\r\n  geometry/utils.cpp\r\n  geometry/cylinder.h\r\n  geometry/cylinder.cpp\r\n  geometry/pose.h\r\n  geometry/pose.cpp\r\n  pathgeneration/chamfer/chamferpath.h\r\n  pathgeneration/chamfer/chamferpath.cpp\r\n  pathgeneration/chamfer/chamferarclength.h\r\n  pathgeneration/chamfer/chamferarclength.cpp\r\n  pathgeneration/chamfer/chamfercentralmotion.h\r\n  pathgeneration/chamfer/chamfercentralmotion.cpp\r\n  pathgeneration/chamfer/chamfercentralvalidation.h\r\n  pathgeneration/chamfer/chamfercentralvalidation.cpp\r\n  pathgeneration/chamfer/chamferpreparationdiagnostics.h\r\n  pathgeneration/chamfer/chamfermotion.h\r\n  pathgeneration/chamfer/chamfermotion.cpp\r\n  pathgeneration/chamfer/chamferjob.h\r\n  pathgeneration/chamfer/chamferjob.cpp\r\n  pathgeneration/chamfer/chamfercartesiansampler.h\r\n  pathgeneration/chamfer/chamfercartesiansampler.cpp\r\n  pathgeneration/chamfer/rsiposeencoder.h\r\n  pathgeneration/chamfer/rsiposeencoder.cpp\r\n  pathgeneration/chamfer/rsicorrectionlimits.h\r\n  pathgeneration/chamfer/rsicorrectionlimits.cpp\r\n  pathgeneration/rsi/motionprofile.h\r\n  pathgeneration/rsi/offsetjsonwriter.h\r\n  pathgeneration/rsi/offsetjsonwriter.cpp\r\n  pathgeneration/rsi/rsipath.h\r\n  pathgeneration/rsi/rsipath.cpp\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 50,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(RoboCrapGeometry PUBLIC ${SRC_DIR} ${EIGEN5_INCLUDE_DIR})"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 51,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(RoboCrapGeometry PUBLIC Qt6::Core)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 53,
+      "command": "qt_add_library",
+      "declaration": "qt_add_library(RoboCrapScene STATIC\r\n  scene/sceneendeffectors.h\r\n  scene/sceneendeffectors.cpp\r\n  scene/scenemachining.h\r\n  scene/scenemachining.cpp\r\n  scene/scenemachiningpreparation.h\r\n  scene/scenemachiningpreparation.cpp\r\n  scene/chamfershareddata.h\r\n  scene/chamfershareddata.cpp\r\n  scene/scenemodel.h\r\n  scene/scenemodel.cpp\r\n  scene/sceneobject.h\r\n  scene/sceneobject.cpp\r\n  scene/scenegeometry.h\r\n  scene/scenesurfaceimporter.h\r\n  scene/scenesurfaceimporter.cpp\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 70,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(RoboCrapScene PUBLIC ${SRC_DIR})"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 71,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(RoboCrapScene PUBLIC RoboCrapGeometry Qt6::Qml)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 74,
+      "command": "qt_add_library",
+      "declaration": "qt_add_library(RoboCrapDevices STATIC\r\n  network/abstractdevice.h\r\n  network/abstractdevice.cpp\r\n  network/devicerunner.h\r\n  network/devicerunner.cpp\r\n  network/devicehub.h\r\n  network/devicehub.cpp\r\n  network/common/socketstateutils.h\r\n  network/common/socketstateutils.cpp\r\n  network/common/socketconfigutils.h\r\n  network/common/deviceprofilemodel.h\r\n  network/common/deviceprofilemodel.cpp\r\n  network/plc/plcmessagemanager.h\r\n  network/plc/plcmessagemanager.cpp\r\n  network/fts/rdtmessage.h\r\n  network/fts/ftsdevice.h\r\n  network/fts/ftsdevice.cpp\r\n  network/plc/plcdevice.h\r\n  network/plc/plcdevice.cpp\r\n  network/rsi/rsidevice.h\r\n  network/rsi/rsidevice.cpp\r\n  network/rsi/rsiprotocol.h\r\n  network/rsi/rsiprotocol.cpp\r\n  network/rsi/rsiholeprotocol.h\r\n  network/rsi/rsiholeprotocol.cpp\r\n  network/common/loggermessage.h\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 101,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(RoboCrapDevices PUBLIC ${SRC_DIR})"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 102,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(RoboCrapDevices PUBLIC RoboCrapGeometry Qt6::Network Qt6::Qml)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 105,
+      "command": "qt_add_qml_module",
+      "declaration": "qt_add_qml_module(RoboCrapBackend\r\n  STATIC\r\n  URI RoboCrap.Backend\r\n  VERSION 1.0\r\n  DEPENDENCIES QtQml\r\n  SOURCES backendqmltypes.h\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 114,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(RoboCrapBackend PRIVATE\r\n  ${SRC_DIR}/scene\r\n  ${SRC_DIR}/network\r\n  ${SRC_DIR}/network/common\r\n  ${SRC_DIR}/network/plc\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 120,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(RoboCrapBackend PUBLIC RoboCrapScene RoboCrapDevices)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 125,
+      "command": "target_sources",
+      "declaration": "target_sources(robocrap PRIVATE\r\n  logger.h\r\n  logger.cpp\r\n  qmlchartbridge.h\r\n  qmlchartbridge.cpp\r\n)"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "line": 131,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(robocrap PRIVATE ${SRC_DIR})"
+    },
+    {
+      "path": "src/3d/CMakeLists.txt",
+      "line": 28,
+      "command": "qt_add_qml_module",
+      "declaration": "qt_add_qml_module(RoboCrap3D\r\n  STATIC\r\n  URI RoboCrap.Viewport3D\r\n  VERSION 1.0\r\n  ${QML_OPTIONS}\r\n  DEPENDENCIES QtQml QtQuick\r\n  SOURCES\r\n    chamferprofile.h\r\n    chamferprofile.cpp\r\n    viewportqmltypes.h\r\n    occcontroller.h\r\n    occcontroller.cpp\r\n    viewportassets.h\r\n    viewportassets.cpp\r\n    adapters/occsceneadapter.h\r\n    adapters/occsceneadapter.cpp\r\n    adapters/occrobotadapter.h\r\n    adapters/occrobotadapter.cpp\r\n    occt/cadloadresult.h\r\n    occt/cadloadworker.h\r\n    occt/cadloadworker.cpp\r\n    occt/cachedshapeloader.h\r\n    occt/cachedshapeloader.cpp\r\n    occt/stepimporter.h\r\n    occt/stepimporter.cpp\r\n    occt/occviewwindow.h\r\n    occt/occviewwindow.cpp\r\n    occt/occviewport.h\r\n    occt/occviewport.cpp\r\n    occt/occviewer.h\r\n    occt/occviewer.cpp\r\n    occt/occinputcontroller.h\r\n    occt/occinputcontroller.cpp\r\n    occt/occscene.h\r\n    occt/occscene.cpp\r\n    occt/occpart.h\r\n    occt/occpart.cpp\r\n    occt/occpartprops.h\r\n    occt/occviewcube.h\r\n    occt/occviewcube.cpp\r\n    occt/occworldaxes.h\r\n    occt/occworldaxes.cpp\r\n    robot/robotpreviewstate.h\r\n    robot/robotpreviewstate.cpp\r\n    robot/model/kr10model.h\r\n    robot/model/kr10model.cpp\r\n)"
+    },
+    {
+      "path": "src/3d/CMakeLists.txt",
+      "line": 76,
+      "command": "target_include_directories",
+      "declaration": "target_include_directories(RoboCrap3D PUBLIC \"${PROJECT_SOURCE_DIR}/src\")"
+    },
+    {
+      "path": "src/3d/CMakeLists.txt",
+      "line": 77,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(RoboCrap3D\r\n  PUBLIC RoboCrapGeometry Qt6::Core Qt6::Gui Qt6::Qml\r\n  PRIVATE RoboCrapScene TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP\r\n)"
+    },
+    {
+      "path": "qml/Modules/Components/CMakeLists.txt",
+      "line": 1,
+      "command": "qt_add_library",
+      "declaration": "qt_add_library(Components STATIC)"
+    },
+    {
+      "path": "qml/Modules/Components/CMakeLists.txt",
+      "line": 3,
+      "command": "qt_add_qml_module",
+      "declaration": "qt_add_qml_module(Components\r\n  URI Components\r\n  VERSION 1.0\r\n  ${QML_OPTIONS}\r\n  OUTPUT_DIRECTORY \"${QT_QML_OUTPUT_DIRECTORY}/Components\"\r\n  IMPORTS\r\n    Styles\r\n  NO_PLUGIN\r\n  QML_FILES\r\n    QxButton.qml\r\n    QxCheckBox.qml\r\n    QxComboBox.qml\r\n    QxGroupBox.qml\r\n    QxHField.qml\r\n    QxLed.qml\r\n    QxPanel.qml\r\n    QxProgressBar.qml\r\n    QxScrollView.qml\r\n    QxSwitch.qml\r\n    QxTextInput.qml\r\n    QxToolButton.qml\r\n    QxVField.qml\r\n)"
+    },
+    {
+      "path": "qml/Modules/Components/CMakeLists.txt",
+      "line": 27,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(Components\r\n  PRIVATE\r\n    Qt6::Qml\r\n    Styles\r\n)"
+    },
+    {
+      "path": "qml/Modules/Styles/CMakeLists.txt",
+      "line": 1,
+      "command": "qt_add_library",
+      "declaration": "qt_add_library(Styles STATIC)"
+    },
+    {
+      "path": "qml/Modules/Styles/CMakeLists.txt",
+      "line": 11,
+      "command": "qt_add_qml_module",
+      "declaration": "qt_add_qml_module(Styles\r\n  URI Styles\r\n  VERSION 1.0\r\n  ${QML_OPTIONS}\r\n  OUTPUT_DIRECTORY \"${QT_QML_OUTPUT_DIRECTORY}/Styles\"\r\n  NO_PLUGIN\r\n  QML_FILES\r\n    Colors.qml\n    Fonts.qml\n    Metrics.qml\n)"
+    },
+    {
+      "path": "qml/Modules/Styles/CMakeLists.txt",
+      "line": 23,
+      "command": "target_link_libraries",
+      "declaration": "target_link_libraries(Styles\r\n  PRIVATE\r\n    Qt6::Qml\r\n)"
+    }
+  ],
+  "applicationQmlImports": [
+    {
+      "path": "qml/Main.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 2,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 3,
+      "text": "import QtQuick.Controls"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 4,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 5,
+      "text": "import QtQuick.Dialogs as Dialogs"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 6,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 7,
+      "text": "import RoboCrap.Viewport3D 1.0 as Viewport3D"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 9,
+      "text": "import \"MenuBar\""
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 10,
+      "text": "import \"Views/Dashboard/DeltaPanel\""
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 11,
+      "text": "import \"Views/Dashboard/FtsPanel\""
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 12,
+      "text": "import \"Views/Network\""
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 13,
+      "text": "import \"Views/Viewport3D\""
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 14,
+      "text": "import \"Views/Workspace\""
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 16,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Main.qml",
+      "line": 17,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/MenuBar/MainMenuBar.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/MenuBar/MainMenuBar.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls"
+    },
+    {
+      "path": "qml/MenuBar/MainMenuBar.qml",
+      "line": 3,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/MenuBar/MainMenuBar.qml",
+      "line": 5,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/NavigationPanel/NavigationPanel.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/NavigationPanel/NavigationPanel.qml",
+      "line": 4,
+      "text": "import QtQuick.Controls"
+    },
+    {
+      "path": "qml/NavigationPanel/NavigationPanel.qml",
+      "line": 6,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "line": 4,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "line": 6,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "line": 7,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "line": 9,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml",
+      "line": 2,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml",
+      "line": 4,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml",
+      "line": 2,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml",
+      "line": 4,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml",
+      "line": 4,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml",
+      "line": 7,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/LedsPanel.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/LedsPanel.qml",
+      "line": 4,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/LedsPanel.qml",
+      "line": 6,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/LedsPanel.qml",
+      "line": 7,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsBars.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsBars.qml",
+      "line": 5,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsBars.qml",
+      "line": 6,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsBars.qml",
+      "line": 8,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 4,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 7,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 4,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 5,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 7,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Network/ConnectionsTable.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Network/ConnectionsTable.qml",
+      "line": 4,
+      "text": "import QtQuick.Controls"
+    },
+    {
+      "path": "qml/Views/Network/ConnectionsTable.qml",
+      "line": 5,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Network/ConnectionsTable.qml",
+      "line": 7,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Network/ConnectionsTable.qml",
+      "line": 8,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 3,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 6,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 8,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Network/NetworkPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Network/NetworkPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls"
+    },
+    {
+      "path": "qml/Views/Network/NetworkPanel.qml",
+      "line": 3,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Network/NetworkPanel.qml",
+      "line": 5,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Viewport3D/RobotViewport.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Viewport3D/RobotViewport.qml",
+      "line": 3,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Viewport3D/RobotViewport.qml",
+      "line": 4,
+      "text": "import RoboCrap.Viewport3D 1.0 as Viewport3D"
+    },
+    {
+      "path": "qml/Views/Workspace/EndEffectorPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Workspace/EndEffectorPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Views/Workspace/EndEffectorPanel.qml",
+      "line": 3,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Workspace/EndEffectorPanel.qml",
+      "line": 4,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/EndEffectorPanel.qml",
+      "line": 5,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "line": 4,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "line": 5,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "line": 6,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "line": 7,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "line": 8,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/ModeToolBar.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Workspace/ModeToolBar.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Views/Workspace/ModeToolBar.qml",
+      "line": 4,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "line": 3,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "line": 6,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "line": 7,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 3,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 4,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 5,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 6,
+      "text": "import QtQml.Models"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 8,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 9,
+      "text": "import Styles 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "line": 10,
+      "text": "import RoboCrap.Backend 1.0 as Backend"
+    },
+    {
+      "path": "qml/Views/Workspace/WorkflowPanel.qml",
+      "line": 1,
+      "text": "import QtQuick"
+    },
+    {
+      "path": "qml/Views/Workspace/WorkflowPanel.qml",
+      "line": 2,
+      "text": "import QtQuick.Controls.Basic"
+    },
+    {
+      "path": "qml/Views/Workspace/WorkflowPanel.qml",
+      "line": 3,
+      "text": "import QtQuick.Layouts"
+    },
+    {
+      "path": "qml/Views/Workspace/WorkflowPanel.qml",
+      "line": 5,
+      "text": "import Components 1.0"
+    },
+    {
+      "path": "qml/Views/Workspace/WorkflowPanel.qml",
+      "line": 6,
+      "text": "import Styles 1.0"
+    }
+  ],
+  "deviceStringInvocations": [
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "line": 103,
+      "text": "onClicked: root.plc.invoke(\"setOutput\", {"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 53,
+      "text": "onClicked: root.fts.invoke(root.streaming ? \"stopStreaming\" : \"startStreaming\")"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 61,
+      "text": "onClicked: root.fts.invoke(\"bias\")"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 70,
+      "text": "onClicked: root.fts.invoke(\"startLogRecording\")"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "line": 78,
+      "text": "onClicked: root.fts.invoke(\"saveLogToDefaultFile\")"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 34,
+      "text": "onClicked: root.rsi.invoke(\"generateTrajectory\")"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "line": 44,
+      "text": "onClicked: root.rsi.invoke(root.rsi.data.motionActive ? \"stopStreaming\" : \"startStreaming\")"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 161,
+      "text": "runner.invoke(\"disconnect\")"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "line": 163,
+      "text": "runner.invoke(\"connect\", root.currentSocketConfig())"
+    }
+  ],
+  "qmlAndDeviceApiDeclarations": [
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 22,
+      "text": "QML_FOREIGN(SceneMachining)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 23,
+      "text": "QML_NAMED_ELEMENT(Machining)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 24,
+      "text": "QML_SINGLETON"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 42,
+      "text": "QML_FOREIGN(SceneMachiningPreparation)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 43,
+      "text": "QML_NAMED_ELEMENT(MachiningPreparation)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 44,
+      "text": "QML_SINGLETON"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 62,
+      "text": "QML_FOREIGN(SceneMachiningSettings)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 63,
+      "text": "QML_VALUE_TYPE(machiningSettings)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 69,
+      "text": "QML_FOREIGN(SceneMachiningPath)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 70,
+      "text": "QML_NAMED_ELEMENT(MachiningPath)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 77,
+      "text": "QML_FOREIGN(SceneEndEffectors)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 78,
+      "text": "QML_NAMED_ELEMENT(EndEffectors)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 79,
+      "text": "QML_SINGLETON"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 100,
+      "text": "QML_FOREIGN(SceneObject)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 101,
+      "text": "QML_NAMED_ELEMENT(SceneObject)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 108,
+      "text": "QML_FOREIGN(ScenePlaneGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 109,
+      "text": "QML_NAMED_ELEMENT(PlaneGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 116,
+      "text": "QML_FOREIGN(SceneCylinderGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 117,
+      "text": "QML_NAMED_ELEMENT(CylinderGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 124,
+      "text": "QML_FOREIGN(SceneCircleGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 125,
+      "text": "QML_NAMED_ELEMENT(CircleGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 132,
+      "text": "QML_FOREIGN(SceneEdgeGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 133,
+      "text": "QML_NAMED_ELEMENT(EdgeGeometry)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 140,
+      "text": "QML_FOREIGN(SceneModel)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 141,
+      "text": "QML_NAMED_ELEMENT(SceneModel)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 147,
+      "text": "QML_FOREIGN(SceneModel)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 148,
+      "text": "QML_NAMED_ELEMENT(Scene)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 149,
+      "text": "QML_SINGLETON"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 173,
+      "text": "QML_FOREIGN(SceneSurfaceImporter)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 174,
+      "text": "QML_NAMED_ELEMENT(PlaneImporter)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 180,
+      "text": "QML_FOREIGN(DeviceRunner)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 181,
+      "text": "QML_NAMED_ELEMENT(DeviceRunner)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 188,
+      "text": "QML_FOREIGN(DeviceProfileModel)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 189,
+      "text": "QML_NAMED_ELEMENT(DeviceProfileModel)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 195,
+      "text": "QML_FOREIGN(PlcMessageManager)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 196,
+      "text": "QML_NAMED_ELEMENT(PlcMessage)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 203,
+      "text": "QML_FOREIGN(DeviceHub)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 204,
+      "text": "QML_NAMED_ELEMENT(Hub)"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "line": 205,
+      "text": "QML_SINGLETON"
+    },
+    {
+      "path": "src/3d/viewportqmltypes.h",
+      "line": 13,
+      "text": "QML_FOREIGN(RoboCrap3D::OccController)"
+    },
+    {
+      "path": "src/3d/viewportqmltypes.h",
+      "line": 14,
+      "text": "QML_NAMED_ELEMENT(OccController)"
+    },
+    {
+      "path": "src/3d/viewportqmltypes.h",
+      "line": 15,
+      "text": "QML_SINGLETON"
+    },
+    {
+      "path": "src/network/devicehub.h",
+      "line": 21,
+      "text": "Q_PROPERTY(QStringList keys READ keys CONSTANT)"
+    },
+    {
+      "path": "src/network/devicehub.h",
+      "line": 35,
+      "text": "Q_INVOKABLE DeviceRunner* device(const QString& key) const;"
+    },
+    {
+      "path": "src/network/devicerunner.h",
+      "line": 14,
+      "text": "Q_PROPERTY(QQmlPropertyMap* data READ data CONSTANT)"
+    },
+    {
+      "path": "src/network/devicerunner.h",
+      "line": 15,
+      "text": "Q_PROPERTY(int socketState READ socketState NOTIFY socketStateChanged)"
+    },
+    {
+      "path": "src/network/devicerunner.h",
+      "line": 16,
+      "text": "Q_PROPERTY(bool isConnected READ isConnected NOTIFY socketStateChanged)"
+    },
+    {
+      "path": "src/network/devicerunner.h",
+      "line": 17,
+      "text": "Q_PROPERTY(bool isDisconnected READ isDisconnected NOTIFY socketStateChanged)"
+    },
+    {
+      "path": "src/network/devicerunner.h",
+      "line": 29,
+      "text": "Q_INVOKABLE void invoke(const QString& method, const QVariantMap& args = {});"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 11,
+      "text": "QML_VALUE_TYPE(rdtResponse)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 13,
+      "text": "Q_PROPERTY(uint32_t rdt_sequence MEMBER rdt_sequence)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 14,
+      "text": "Q_PROPERTY(uint32_t ft_sequence MEMBER ft_sequence)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 15,
+      "text": "Q_PROPERTY(uint32_t status MEMBER status)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 16,
+      "text": "Q_PROPERTY(int32_t Fx MEMBER Fx)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 17,
+      "text": "Q_PROPERTY(int32_t Fy MEMBER Fy)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 18,
+      "text": "Q_PROPERTY(int32_t Fz MEMBER Fz)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 19,
+      "text": "Q_PROPERTY(int32_t Tx MEMBER Tx)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 20,
+      "text": "Q_PROPERTY(int32_t Ty MEMBER Ty)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 21,
+      "text": "Q_PROPERTY(int32_t Tz MEMBER Tz)"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "line": 22,
+      "text": "Q_PROPERTY(double timestamp MEMBER timestamp)"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 23,
+      "text": "Q_INVOKABLE void startStreaming();"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 24,
+      "text": "Q_INVOKABLE void stopStreaming();"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 25,
+      "text": "Q_INVOKABLE void bias();"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 26,
+      "text": "Q_INVOKABLE void connect(const QVariantMap& config);"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 27,
+      "text": "Q_INVOKABLE void disconnect();"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 28,
+      "text": "Q_INVOKABLE void startLogRecording();"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 29,
+      "text": "Q_INVOKABLE void stopLogRecording();"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "line": 30,
+      "text": "Q_INVOKABLE void saveLogToDefaultFile();"
+    },
+    {
+      "path": "src/network/plc/plcdevice.h",
+      "line": 21,
+      "text": "Q_INVOKABLE void connect(const QVariantMap& config);"
+    },
+    {
+      "path": "src/network/plc/plcdevice.h",
+      "line": 22,
+      "text": "Q_INVOKABLE void disconnect();"
+    },
+    {
+      "path": "src/network/plc/plcdevice.h",
+      "line": 23,
+      "text": "Q_INVOKABLE void setOutput(const QVariantMap& args);"
+    },
+    {
+      "path": "src/network/plc/plcdevice.h",
+      "line": 24,
+      "text": "Q_INVOKABLE void writeMessage(const QVariantMap& msg);"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "line": 26,
+      "text": "Q_INVOKABLE void connect(const QVariantMap& config);"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "line": 27,
+      "text": "Q_INVOKABLE void disconnect();"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "line": 28,
+      "text": "Q_INVOKABLE void generateTrajectory();"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "line": 29,
+      "text": "Q_INVOKABLE void startStreaming();"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "line": 30,
+      "text": "Q_INVOKABLE void stopStreaming();"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 12,
+      "text": "Q_PROPERTY(SceneMachiningSettings settings READ settings WRITE setSettings NOTIFY settingsChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 13,
+      "text": "Q_PROPERTY(quint32 inputId READ inputId WRITE setInputId NOTIFY inputChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 14,
+      "text": "Q_PROPERTY(bool canGenerate READ canGenerate NOTIFY availabilityChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 15,
+      "text": "Q_PROPERTY(QString unavailableReason READ unavailableReason NOTIFY availabilityChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 16,
+      "text": "Q_PROPERTY(QString error READ error NOTIFY errorChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 17,
+      "text": "Q_PROPERTY(bool calculating READ calculating NOTIFY calculatingChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 18,
+      "text": "Q_PROPERTY(bool playbackActive READ playbackActive NOTIFY playbackChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 19,
+      "text": "Q_PROPERTY(bool playing READ playing NOTIFY playbackChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 20,
+      "text": "Q_PROPERTY(bool canPlay READ canPlay NOTIFY availabilityChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 21,
+      "text": "Q_PROPERTY(double elapsed READ elapsed NOTIFY playbackChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 22,
+      "text": "Q_PROPERTY(double duration READ duration NOTIFY playbackChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 23,
+      "text": "Q_PROPERTY(QString phase READ phase NOTIFY playbackChanged)"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 34,
+      "text": "Q_INVOKABLE void generate();"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 36,
+      "text": "Q_INVOKABLE void dryRun();"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 37,
+      "text": "Q_INVOKABLE void stop();"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "line": 38,
+      "text": "Q_INVOKABLE void pause();"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 16,
+      "text": "Q_PROPERTY(QUrl measuringCadSource READ measuringCadSource NOTIFY measuringCadSourceChanged)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 17,
+      "text": "Q_PROPERTY(QUrl spindleCadSource READ spindleCadSource NOTIFY spindleCadSourceChanged)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 18,
+      "text": "Q_PROPERTY(QString measuringName READ measuringName CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 19,
+      "text": "Q_PROPERTY(double rubyBallDiameter READ rubyBallDiameter CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 20,
+      "text": "Q_PROPERTY(double stylusLength READ stylusLength CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 21,
+      "text": "Q_PROPERTY(QList<double> spindleTcp READ spindleTcp NOTIFY spindleTcpChanged)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 22,
+      "text": "Q_PROPERTY(QList<double> spindleTcpInCollet READ spindleTcpInCollet NOTIFY spindleTcpChanged)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 23,
+      "text": "Q_PROPERTY(QList<double> spindleColletPose READ spindleColletPose NOTIFY spindleColletChanged)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 24,
+      "text": "Q_PROPERTY(Tool activeTool READ activeTool NOTIFY activeToolChanged)"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 47,
+      "text": "Q_INVOKABLE bool setMeasuringCadSource(const QUrl& source);"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 48,
+      "text": "Q_INVOKABLE bool setSpindleCadSource(const QUrl& source);"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 49,
+      "text": "Q_INVOKABLE bool setSpindleTcp(const QList<double>& pose);"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 50,
+      "text": "Q_INVOKABLE bool setSpindleTcpInCollet(const QList<double>& pose);"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 52,
+      "text": "Q_INVOKABLE bool applySpindlePoses(const QList<double>& colletPose, const QList<double>& tcpInCollet);"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "line": 53,
+      "text": "Q_INVOKABLE bool setActiveTool(Tool tool);"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 13,
+      "text": "Q_PROPERTY(quint32 objectId READ objectId CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 14,
+      "text": "Q_PROPERTY(QString name READ name NOTIFY nameChanged)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 15,
+      "text": "Q_PROPERTY(Kind kind READ kind CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 16,
+      "text": "Q_PROPERTY(Classification classification READ classification CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 17,
+      "text": "Q_PROPERTY(bool visible READ visible NOTIFY visibleChanged)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 18,
+      "text": "Q_PROPERTY(bool showPoints READ showPoints NOTIFY diagnosticOverlaysChanged)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 19,
+      "text": "Q_PROPERTY(bool showNormals READ showNormals NOTIFY diagnosticOverlaysChanged)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 20,
+      "text": "Q_PROPERTY(QUrl sourceUrl READ sourceUrl CONSTANT)"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "line": 21,
+      "text": "Q_PROPERTY(QObject* geometry READ geometry CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 12,
+      "text": "Q_PROPERTY(QQmlListProperty<SceneObject> objects READ objects NOTIFY objectsChanged)"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 19,
+      "text": "Q_INVOKABLE SceneObject* findObject(quint32 objectId) const;"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 20,
+      "text": "Q_INVOKABLE void removeObjects(const QList<quint32>& ids);"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 21,
+      "text": "Q_INVOKABLE bool canIntersect(const QList<quint32>& selectedIds) const;"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 22,
+      "text": "Q_INVOKABLE QList<quint32> intersect(const QList<quint32>& selectedIds);"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 25,
+      "text": "Q_INVOKABLE SceneObject* addPlane(const QUrl& sourceUrl, const QString& name, const QVariantList& coefficients);"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 31,
+      "text": "Q_INVOKABLE SceneObject* addObject(const QString& name, SceneObject::Kind kind, SceneObject::Classification classification);"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 32,
+      "text": "Q_INVOKABLE bool renameObject(SceneObject* object, const QString& name);"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 33,
+      "text": "Q_INVOKABLE bool setObjectVisible(SceneObject* object, bool visible);"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "line": 35,
+      "text": "Q_INVOKABLE bool setObjectDiagnosticOverlays(SceneObject* object, bool showPoints, bool showNormals);"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 19,
+      "text": "Q_PROPERTY(double chamferSize MEMBER chamferSize)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 20,
+      "text": "Q_PROPERTY(double chamferAngle MEMBER chamferAngle)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 21,
+      "text": "Q_PROPERTY(double stagingDistance MEMBER stagingDistance)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 22,
+      "text": "Q_PROPERTY(bool flipAxis MEMBER flipAxis)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 23,
+      "text": "Q_PROPERTY(double leadInClearance MEMBER leadInClearance)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 24,
+      "text": "Q_PROPERTY(double leadOutClearance MEMBER leadOutClearance)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 25,
+      "text": "Q_PROPERTY(double leadInSpan MEMBER leadInSpan)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 26,
+      "text": "Q_PROPERTY(double leadOutSpan MEMBER leadOutSpan)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 27,
+      "text": "Q_PROPERTY(int leadInIntervals MEMBER leadInIntervals)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 28,
+      "text": "Q_PROPERTY(int leadOutIntervals MEMBER leadOutIntervals)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 29,
+      "text": "Q_PROPERTY(double leadInFeed MEMBER leadInFeed)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 30,
+      "text": "Q_PROPERTY(double machiningFeed MEMBER machiningFeed)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 31,
+      "text": "Q_PROPERTY(double leadOutFeed MEMBER leadOutFeed)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 32,
+      "text": "Q_PROPERTY(double accelerationDistanceFraction MEMBER accelerationDistanceFraction)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 33,
+      "text": "Q_PROPERTY(double transferFeed MEMBER transferFeed)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 34,
+      "text": "Q_PROPERTY(double transferAcceleration MEMBER transferAcceleration)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 35,
+      "text": "Q_PROPERTY(double acceleration MEMBER acceleration)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 36,
+      "text": "Q_PROPERTY(double auxiliaryScale MEMBER auxiliaryScale)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 37,
+      "text": "Q_PROPERTY(QList<double> jointSpeed MEMBER jointSpeed)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 38,
+      "text": "Q_PROPERTY(QList<double> jointAcceleration MEMBER jointAcceleration)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 76,
+      "text": "Q_PROPERTY(double duration READ duration CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 77,
+      "text": "Q_PROPERTY(double centralDuration READ centralDuration CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 78,
+      "text": "Q_PROPERTY(QList<double> phaseTimes READ phaseTimes CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 79,
+      "text": "Q_PROPERTY(double centralTimeScale READ centralTimeScale CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 80,
+      "text": "Q_PROPERTY(quint32 sourceEdgeId READ sourceEdgeId CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 81,
+      "text": "Q_PROPERTY(SceneMachiningSettings settings READ settings CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 82,
+      "text": "Q_PROPERTY(QString incompatibility READ incompatibility NOTIFY compatibilityChanged)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 83,
+      "text": "Q_PROPERTY(bool compatible READ compatible NOTIFY compatibilityChanged)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 121,
+      "text": "Q_PROPERTY(double normalX READ normalX CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 122,
+      "text": "Q_PROPERTY(double normalY READ normalY CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 123,
+      "text": "Q_PROPERTY(double normalZ READ normalZ CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 124,
+      "text": "Q_PROPERTY(double offset READ offset CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 125,
+      "text": "Q_PROPERTY(bool hasBounds READ hasBounds CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 126,
+      "text": "Q_PROPERTY(double originX READ originX CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 127,
+      "text": "Q_PROPERTY(double originY READ originY CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 128,
+      "text": "Q_PROPERTY(double originZ READ originZ CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 129,
+      "text": "Q_PROPERTY(QVariantList axisU READ axisU CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 130,
+      "text": "Q_PROPERTY(QVariantList axisV READ axisV CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 131,
+      "text": "Q_PROPERTY(double width READ width CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 132,
+      "text": "Q_PROPERTY(double height READ height CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 133,
+      "text": "Q_PROPERTY(qsizetype pointCount READ pointCount CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 176,
+      "text": "Q_PROPERTY(double originX READ originX CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 177,
+      "text": "Q_PROPERTY(double originY READ originY CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 178,
+      "text": "Q_PROPERTY(double originZ READ originZ CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 179,
+      "text": "Q_PROPERTY(double axisX READ axisX CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 180,
+      "text": "Q_PROPERTY(double axisY READ axisY CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 181,
+      "text": "Q_PROPERTY(double axisZ READ axisZ CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 182,
+      "text": "Q_PROPERTY(double radius READ radius CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 183,
+      "text": "Q_PROPERTY(double length READ length CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 184,
+      "text": "Q_PROPERTY(qsizetype pointCount READ pointCount CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 209,
+      "text": "Q_PROPERTY(double centerX READ centerX CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 210,
+      "text": "Q_PROPERTY(double centerY READ centerY CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 211,
+      "text": "Q_PROPERTY(double centerZ READ centerZ CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 212,
+      "text": "Q_PROPERTY(double normalX READ normalX CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 213,
+      "text": "Q_PROPERTY(double normalY READ normalY CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 214,
+      "text": "Q_PROPERTY(double normalZ READ normalZ CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 215,
+      "text": "Q_PROPERTY(double radius READ radius CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 216,
+      "text": "Q_PROPERTY(double rmsResidual READ rmsResidual CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 217,
+      "text": "Q_PROPERTY(qsizetype pointCount READ pointCount CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 241,
+      "text": "Q_PROPERTY(CurveKind curveKind READ curveKind CONSTANT)"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "line": 242,
+      "text": "Q_PROPERTY(QList<quint32> sourceIds READ sourceIds CONSTANT)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 30,
+      "text": "Q_PROPERTY(QWindow* viewWindow READ viewWindow NOTIFY viewWindowChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 31,
+      "text": "Q_PROPERTY(bool ready READ isReady NOTIFY readyChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 32,
+      "text": "Q_PROPERTY(bool showSpindleTcp READ showSpindleTcp WRITE setShowSpindleTcp NOTIFY showSpindleTcpChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 33,
+      "text": "Q_PROPERTY(bool showSpindleCollet READ showSpindleCollet WRITE setShowSpindleCollet NOTIFY showSpindleColletChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 34,
+      "text": "Q_PROPERTY(bool viewportReady READ isViewportReady NOTIFY viewportReadyChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 35,
+      "text": "Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 36,
+      "text": "Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 37,
+      "text": "Q_PROPERTY(QString warningString READ warningString NOTIFY warningStringChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 38,
+      "text": "Q_PROPERTY(QVariantList jointAngles READ jointAngles NOTIFY poseChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 39,
+      "text": "Q_PROPERTY(QVariantList flangePose READ flangePose NOTIFY poseChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 40,
+      "text": "Q_PROPERTY(QList<double> tcpPose READ tcpPose NOTIFY tcpPoseChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 41,
+      "text": "Q_PROPERTY(bool measuringCadLoading READ isMeasuringCadLoading NOTIFY endEffectorLoadChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 42,
+      "text": "Q_PROPERTY(bool spindleCadLoading READ isSpindleCadLoading NOTIFY endEffectorLoadChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 43,
+      "text": "Q_PROPERTY(QString measuringCadError READ measuringCadError NOTIFY endEffectorLoadChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 44,
+      "text": "Q_PROPERTY(QString spindleCadError READ spindleCadError NOTIFY endEffectorLoadChanged)"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 71,
+      "text": "Q_INVOKABLE void reloadEndEffector(SceneEndEffectors::Tool tool);"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 72,
+      "text": "Q_INVOKABLE void setSelectedObjects(const QList<quint32>& ids);"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 73,
+      "text": "Q_INVOKABLE void setDiagnosticOverlays(bool showPoints, bool showNormals);"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 75,
+      "text": "Q_INVOKABLE void loadRobot();"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 76,
+      "text": "Q_INVOKABLE void detachViewWindow(QWindow* window);"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 77,
+      "text": "Q_INVOKABLE QVariantList solveFK(const QVariantList& joints);"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 78,
+      "text": "Q_INVOKABLE QVariantList solveIK(const QVariantList& flange);"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "line": 79,
+      "text": "Q_INVOKABLE QVariantList solveTcpIK(const QVariantList& tcp);"
+    }
+  ],
+  "sourceContracts": "SOURCE_CONTRACTS.md",
+  "excludedRsiHashes": "manifest.json: frozenRsiInputs",
+  "numericalCapture": "Skipped at user request; source inspection only."
+}

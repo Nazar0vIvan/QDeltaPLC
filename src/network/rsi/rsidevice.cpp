@@ -10,6 +10,7 @@
 #include "pathgeneration/rsi/offsetjsonwriter.h"
 #include "pathgeneration/rsi/rsipath.h"
 
+#include <QDebug>
 #include <QNetworkDatagram>
 #include <QTimer>
 #include <QThread>
@@ -63,11 +64,7 @@ void RsiDevice::stopDevice()
 void RsiDevice::connect(const QVariantMap& config)
 {
   if (!m_sock) {
-    emit logMessage({
-      "RSI device is not started",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "RSI device is not started";
     return;
   }
 
@@ -80,11 +77,7 @@ void RsiDevice::connect(const QVariantMap& config)
     if (la.isNull()
         || pa.isNull()
         || !lp) {
-      emit logMessage({
-        "Invalid socket configuration",
-        0,
-        objectName()
-      });
+      qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Invalid socket configuration";
       return;
     }
 
@@ -97,11 +90,7 @@ void RsiDevice::connect(const QVariantMap& config)
   }
 
   if (m_la.isNull() || m_lp == 0 || m_pa.isNull()) {
-    emit logMessage({
-      "Socket configuration is incomplete",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Socket configuration is incomplete";
     return;
   }
 
@@ -116,21 +105,14 @@ void RsiDevice::connect(const QVariantMap& config)
   }}});
 
   if (!m_sock->bind(m_la, m_lp)) {
-    emit logMessage({
-      QString("Bind failed: %1").arg(m_sock->errorString()),
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << QString("Bind failed: %1").arg(m_sock->errorString());
     return;
   }
 
-  emit logMessage({
-    QString("Socket connected: %1:%2")
+  qInfo().noquote() << "[OK]" << objectName() + ":"
+      << QString("Socket connected: %1:%2")
         .arg(m_la.toString())
-        .arg(m_lp),
-    1,
-    objectName()
-  });
+        .arg(m_lp);
 }
 
 void RsiDevice::disconnect()
@@ -143,21 +125,13 @@ void RsiDevice::disconnect()
 
   m_pp = 0;
 
-  emit logMessage({
-    "Socket disconnected",
-    1,
-    objectName()
-  });
+  qInfo().noquote() << "[OK]" << objectName() + ":" << "Socket disconnected";
 }
 
 void RsiDevice::generateTrajectory()
 {
   if (m_state == MotionState::Moving) {
-    emit logMessage({
-        "Cannot generate trajectory while RSI motion is active",
-        0,
-        objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Cannot generate trajectory while RSI motion is active";
     return;
   }
 
@@ -209,11 +183,7 @@ void RsiDevice::generateTrajectory()
   m_offsets = RsiPath::lin(p1, p2, {10, 4});
 
   if (m_offsets.empty()) {
-    emit logMessage({
-      "Generated RSI trajectory is empty",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Generated RSI trajectory is empty";
     return;
   }
 
@@ -225,20 +195,12 @@ void RsiDevice::generateTrajectory()
 void RsiDevice::startStreaming()
 {
   if (!m_sock || m_sock->state() != QAbstractSocket::BoundState) {
-    emit logMessage({
-        "Cannot start RSI motion: socket is not bound",
-        0,
-        objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Cannot start RSI motion: socket is not bound";
     return;
   }
 
   if (m_offsets.isEmpty()) {
-    emit logMessage({
-        "Cannot start RSI motion: trajectory is empty",
-        0,
-        objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Cannot start RSI motion: trajectory is empty";
     return;
   }
 
@@ -267,7 +229,7 @@ void RsiDevice::setPreparedJob(PreparedChamferJobPtr job)
   if (job && m_state == MotionState::Moving) {
     m_preparedJobError = QStringLiteral("Cannot replace a prepared job while RSI motion is active.");
     publishPreparedJob();
-    emit logMessage({m_preparedJobError, 0, objectName()});
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << m_preparedJobError;
     return;
   }
   m_preparedJob = std::move(job);

@@ -1,0 +1,1473 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-14T16:17:52.6552032Z",
+  "completedAtUtc": "2026-10-14T16:29:57.1804548Z",
+  "scope": "source-and-configuration-only",
+  "repository": "E:\\Qt\\QtProjects\\RoboCrap",
+  "head": "3709a12ca3726858f2116608f4dd3dc2c01a336d",
+  "dirtyAtCapture": [
+    {
+      "status": " M",
+      "path": "CMakeLists.txt",
+      "sha256": "CC60803996D5CDFBC90B9BD6D2E543456CDFF80E75CD4EFB2B27827130D9AF79"
+    },
+    {
+      "status": " M",
+      "path": "CMakeLists.txt.user",
+      "sha256": "0E9270956E4ECA272F49F970527E7143AD3F71152C570486AA75A7430683B493"
+    },
+    {
+      "status": " M",
+      "path": "codex_plans/ARCHITECTURE_REVIEW.md",
+      "sha256": "DEF3D0B66737250322A496DF079970A19E548A49B5C527EBBEB98C91F506A218"
+    },
+    {
+      "status": " M",
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "16CAF3BE5727DEDA330EE0D220C82BA30CAF0CCEC0DCB00E0FC50C65FB7220F1"
+    },
+    {
+      "status": " M",
+      "path": "resources/cad/kr10/SEE.stp",
+      "sha256": "2BD606A7005B5857C4CC44B9509FA08CC47614B5999B54D8CF166E764F9E24AD"
+    },
+    {
+      "status": " D",
+      "path": "resources/json/README.md",
+      "exists": false
+    },
+    {
+      "status": "??",
+      "path": "codex_plans/ARCHITECTURE_EXECPLAN.md",
+      "sha256": "D162636569B72BCB33553587435A71AA15FF6EA8FDCBD7EABB544D930E3C9083"
+    }
+  ],
+  "executable": {
+    "path": "E:\\Qt\\QtProjects\\RoboCrap\\build\\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\\robocrap.exe",
+    "bytes": 228425183,
+    "lastWriteUtc": "2026-10-14T13:16:03.0737276Z",
+    "sha256": "7C88C80F983A1156865021B1C2161408EB35E93B4FBF244E5CE115D93537A609",
+    "sourceIdentity": "Cache and file/build-log timestamps are consistent; no embedded source-revision proof recorded."
+  },
+  "cmakeCache": [
+    "CMAKE_BUILD_TYPE:STRING=Debug",
+    "CMAKE_CXX_COMPILER:STRING=C:/Felgo/Tools/mingw1310_64/bin/g++.exe",
+    "CMAKE_GENERATOR:STRING=Ninja",
+    "FAST_QML_BUILD:BOOL=ON",
+    "OCCT_ROOT:PATH=E:/Qt/QtProjects/RoboCrap/libs/OCCT_8_0_0/install-gcc1310_64",
+    "Qt6_DIR:PATH=C:/Felgo/Felgo/mingw_64/lib/cmake/Qt6",
+    "USE_HOT_RELOAD:BOOL=OFF",
+    "CMAKE_HOME_DIRECTORY:INTERNAL=E:/Qt/QtProjects/RoboCrap"
+  ],
+  "buildObjectMetadata": [
+    {
+      "path": "E:\\Qt\\QtProjects\\RoboCrap\\build\\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\\src\\CMakeFiles\\RoboCrapGeometry.dir\\3d\\robot\\kinematics\\kr10kinematics.cpp.obj",
+      "lastWriteUtc": "2026-10-14T13:08:50.6171848Z",
+      "bytes": 3045560
+    },
+    {
+      "path": "E:\\Qt\\QtProjects\\RoboCrap\\build\\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\\src\\CMakeFiles\\RoboCrapGeometry.dir\\pathgeneration\\chamfer\\chamfercentralvalidation.cpp.obj",
+      "lastWriteUtc": "2026-10-14T13:10:02.802215Z",
+      "bytes": 8936279
+    },
+    {
+      "path": "E:\\Qt\\QtProjects\\RoboCrap\\build\\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\\src\\CMakeFiles\\RoboCrapGeometry.dir\\pathgeneration\\chamfer\\chamfermotion.cpp.obj",
+      "lastWriteUtc": "2026-10-14T13:10:06.1716745Z",
+      "bytes": 15587152
+    },
+    {
+      "path": "E:\\Qt\\QtProjects\\RoboCrap\\build\\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\\src\\CMakeFiles\\RoboCrapScene.dir\\scene\\sceneendeffectors.cpp.obj",
+      "lastWriteUtc": "2026-10-14T13:11:54.4064035Z",
+      "bytes": 2993475
+    },
+    {
+      "path": "E:\\Qt\\QtProjects\\RoboCrap\\build\\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\\src\\3d\\CMakeFiles\\RoboCrap3D.dir\\chamferprofile.cpp.obj",
+      "lastWriteUtc": "2026-10-14T13:12:38.8290398Z",
+      "bytes": 3461358
+    }
+  ],
+  "trackedTextInputRecordCount": 194,
+  "presentTrackedTextInputCount": 193,
+  "deletedTrackedTextInputCount": 1,
+  "trackedTextInputs": [
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 3927,
+      "lastWriteUtc": "2026-10-14T12:57:12.2898342Z",
+      "sha256": "CC60803996D5CDFBC90B9BD6D2E543456CDFF80E75CD4EFB2B27827130D9AF79"
+    },
+    {
+      "path": "cmake/DeployOcct.cmake",
+      "bytes": 3547,
+      "lastWriteUtc": "2026-09-29T07:22:26.6653199Z",
+      "sha256": "01F01B662C4CF630338FCBFC85B0D6D1F60F1EE3F7DF5ED193691D63CC7538B3"
+    },
+    {
+      "path": "hot_reload_config.json",
+      "bytes": 370,
+      "lastWriteUtc": "2026-09-19T08:30:12.6355266Z",
+      "sha256": "7A6C140BF61B45A58195F907383122278844327334914A917E65FFD1C31FBF70"
+    },
+    {
+      "path": "qml/Main.qml",
+      "bytes": 21615,
+      "lastWriteUtc": "2026-10-14T11:29:19.4656039Z",
+      "sha256": "14715C35DD752E4FB5ED4837DCC94F3EC978C8FF2845AE53CBF3D4D6114DFE67"
+    },
+    {
+      "path": "qml/MenuBar/MainMenuBar.qml",
+      "bytes": 2337,
+      "lastWriteUtc": "2026-10-06T10:33:45.1970748Z",
+      "sha256": "D36B3DEF01FE6092FD2E7D45F8544EEABB36AD00F71074CE73E076D0BE167E27"
+    },
+    {
+      "path": "qml/Modules/Components/CMakeLists.txt",
+      "bytes": 558,
+      "lastWriteUtc": "2026-10-14T11:29:19.4661315Z",
+      "sha256": "E49705E13D68F43735415688B97CEB9EA8F77AAB66BA262896A7E6D10020B37C"
+    },
+    {
+      "path": "qml/Modules/Components/QxButton.qml",
+      "bytes": 795,
+      "lastWriteUtc": "2026-09-19T14:48:20.7520551Z",
+      "sha256": "6555475577831F43F92F4C1B9CB9971C11ABAB28EBB8192EDB92F0DA45CB0C74"
+    },
+    {
+      "path": "qml/Modules/Components/QxCheckBox.qml",
+      "bytes": 892,
+      "lastWriteUtc": "2026-09-22T11:37:07.9983865Z",
+      "sha256": "3D6C408786D478A4DAB61E6B2CB08C6DB73EBB0F68C32B094F76FD307140C0BE"
+    },
+    {
+      "path": "qml/Modules/Components/QxComboBox.qml",
+      "bytes": 2172,
+      "lastWriteUtc": "2026-09-19T14:48:19.7178691Z",
+      "sha256": "F9967DB282F3B5BA744D3E3F6AEFEDDEAFFF3790146ADA9F3A8406122F1E6502"
+    },
+    {
+      "path": "qml/Modules/Components/QxGroupBox.qml",
+      "bytes": 733,
+      "lastWriteUtc": "2026-09-19T14:48:18.6951616Z",
+      "sha256": "D8F9B1BEC1EC5D6A507B20AE9828957B09A16F2781DE7334532EEED41ED63544"
+    },
+    {
+      "path": "qml/Modules/Components/QxHField.qml",
+      "bytes": 790,
+      "lastWriteUtc": "2026-10-05T13:31:38.2808264Z",
+      "sha256": "6A8444B3475A0EF42250988FE176ACA29A1591D82014D24A8058390097008271"
+    },
+    {
+      "path": "qml/Modules/Components/QxLed.qml",
+      "bytes": 556,
+      "lastWriteUtc": "2026-09-19T14:50:38.6161811Z",
+      "sha256": "61E965B1FD01D1E15D2943AEF86BB744F1E4BA33233342425F1B05EFE3043C65"
+    },
+    {
+      "path": "qml/Modules/Components/QxPanel.qml",
+      "bytes": 1198,
+      "lastWriteUtc": "2026-09-25T16:05:13.8938399Z",
+      "sha256": "2D0BECBCA45EF7B301471C753A153E516A80485AE87526A8010345272E69A9AC"
+    },
+    {
+      "path": "qml/Modules/Components/QxProgressBar.qml",
+      "bytes": 1865,
+      "lastWriteUtc": "2026-09-19T14:50:40.1165506Z",
+      "sha256": "258C1C6240BEC09EB75AD714A3E33615B35B026BE70DBCA1FFE6444AEE6BD14B"
+    },
+    {
+      "path": "qml/Modules/Components/QxScrollView.qml",
+      "bytes": 826,
+      "lastWriteUtc": "2026-09-19T08:30:12.6355266Z",
+      "sha256": "F839B804BACBBD7D4304DBE1B5B942813FD414B0BA9D2B41617CFCA2F8715B6D"
+    },
+    {
+      "path": "qml/Modules/Components/QxSwitch.qml",
+      "bytes": 1638,
+      "lastWriteUtc": "2026-09-25T16:02:40.5462596Z",
+      "sha256": "2F403E8E2BDBD9F14C8B66E9BD1D8B0BDA2065A485C8D6E31981B66ED65EFD17"
+    },
+    {
+      "path": "qml/Modules/Components/QxTextInput.qml",
+      "bytes": 1167,
+      "lastWriteUtc": "2026-09-19T14:50:42.9382301Z",
+      "sha256": "7D7CCA2C140711B3D835A2D48DE7B4F516F98BF7085838CE0F2751DD3EAF9DF6"
+    },
+    {
+      "path": "qml/Modules/Components/QxToolButton.qml",
+      "bytes": 723,
+      "lastWriteUtc": "2026-09-19T15:46:03.0740853Z",
+      "sha256": "9104289F23CBC7B9F473FC1A67A0FC6E4CA64E9BC1B53A047B176AD5FF339BFF"
+    },
+    {
+      "path": "qml/Modules/Components/QxVField.qml",
+      "bytes": 643,
+      "lastWriteUtc": "2026-09-18T14:19:19.1447499Z",
+      "sha256": "8A8335BE8C17DFA2C0A15B3999434B37E7E4FD575CE04F43A2BD591CAC298D05"
+    },
+    {
+      "path": "qml/Modules/Components/qmldir",
+      "bytes": 461,
+      "lastWriteUtc": "2026-10-14T11:29:19.466675Z",
+      "sha256": "1DD0D3641D0A3B046AA74EB2F9D748C45ED3FD6413ECC7756A6BC5873020F1FC"
+    },
+    {
+      "path": "qml/Modules/Styles/CMakeLists.txt",
+      "bytes": 416,
+      "lastWriteUtc": "2026-09-16T09:08:59.9920127Z",
+      "sha256": "7176BB3E1771FC771AA969B303065C1361BE08916009534456BDBC7570554DC7"
+    },
+    {
+      "path": "qml/Modules/Styles/Colors.qml",
+      "bytes": 1832,
+      "lastWriteUtc": "2026-09-16T09:08:58.0867583Z",
+      "sha256": "6198089F1B8A9C10C396D41296EEE719D6EA2D90577A3D7599C02F6A76BEE4EE"
+    },
+    {
+      "path": "qml/Modules/Styles/Fonts.qml",
+      "bytes": 504,
+      "lastWriteUtc": "2026-09-16T09:08:59.1125777Z",
+      "sha256": "C418F06641552A8858D66B36B637F3ABD500C60B1A5F8E73DE278A6F913C0DA1"
+    },
+    {
+      "path": "qml/Modules/Styles/Metrics.qml",
+      "bytes": 1149,
+      "lastWriteUtc": "2026-09-19T15:47:22.5731994Z",
+      "sha256": "5DF95E11B439682541E246073B6B51C096B166E392950FE7D3329046E5BFF7BA"
+    },
+    {
+      "path": "qml/Modules/Styles/qmldir",
+      "bytes": 111,
+      "lastWriteUtc": "2026-09-16T09:09:00.9662893Z",
+      "sha256": "C89C79A33D7B80D7493F79933BB974B2559BBFFBB7D772B6B8CB405FBE83C66B"
+    },
+    {
+      "path": "qml/NavigationPanel/NavigationPanel.qml",
+      "bytes": 904,
+      "lastWriteUtc": "2026-10-14T11:29:19.466675Z",
+      "sha256": "8BC83C29B39DC2E342C19052E2DA2B2205F438E3BCB01CA06E370323C9967DD4"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml",
+      "bytes": 2625,
+      "lastWriteUtc": "2026-09-29T07:22:26.6733096Z",
+      "sha256": "169BE23863CA75F52DAA5B9AA2FB79FB7D4038975F7D11279A228C8743A6F283"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml",
+      "bytes": 967,
+      "lastWriteUtc": "2026-09-25T16:02:38.514685Z",
+      "sha256": "57A3BE2EEE613B193C66A1132A065D6D2C9C74188BA4B9AEFEA461ADE4E7A1C8"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml",
+      "bytes": 1133,
+      "lastWriteUtc": "2026-09-25T16:02:39.578763Z",
+      "sha256": "C5736D8B5EF5545063A797D2D34D87B6ABBEC2B606C444C2F938BEFA783500B0"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml",
+      "bytes": 2810,
+      "lastWriteUtc": "2026-10-06T10:33:45.1970748Z",
+      "sha256": "5161967E6038B157F898533A11617EE4F9D09369E5DAF1D735FDB10A6E192B32"
+    },
+    {
+      "path": "qml/Views/Dashboard/DeltaPanel/LedsPanel.qml",
+      "bytes": 1150,
+      "lastWriteUtc": "2026-09-25T16:05:13.8928395Z",
+      "sha256": "A52DCE9D528EAF088B373942E50F4A4D5ED357269648EB9199061D6D47E78E1A"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsBars.qml",
+      "bytes": 1289,
+      "lastWriteUtc": "2026-09-18T14:19:19.1267946Z",
+      "sha256": "37EF2E93AFB604F12104D372098BBBFBCCBD91B02098255CEB78C836DFD1D251"
+    },
+    {
+      "path": "qml/Views/Dashboard/FtsPanel/FtsPanel.qml",
+      "bytes": 2183,
+      "lastWriteUtc": "2026-10-06T10:33:45.1970748Z",
+      "sha256": "8B9FF495A7434ACC71DC7D7BFE6DCAB5F37D6369B2CD9E1D44327E43D8BCBE44"
+    },
+    {
+      "path": "qml/Views/Dashboard/KukaPanel/KukaPanel.qml",
+      "bytes": 1241,
+      "lastWriteUtc": "2026-10-14T11:29:19.4672214Z",
+      "sha256": "B1FF1FA408FE132954B445D0688A336C54A1B4B8004845B2B849010B9ED8D86B"
+    },
+    {
+      "path": "qml/Views/Network/ConnectionsTable.qml",
+      "bytes": 5663,
+      "lastWriteUtc": "2026-09-29T07:22:26.6785925Z",
+      "sha256": "F1A56FF3A765188FA4332F304AE91F3A4FCC06B47FEA3AC8EFEDD492E94696DF"
+    },
+    {
+      "path": "qml/Views/Network/Network.qml",
+      "bytes": 4436,
+      "lastWriteUtc": "2026-09-29T07:22:26.6785925Z",
+      "sha256": "5BF7FCAA2DFD55981C09318370D23BA79B07401E5AEEFBA12CE7729C858122D4"
+    },
+    {
+      "path": "qml/Views/Network/NetworkPanel.qml",
+      "bytes": 1289,
+      "lastWriteUtc": "2026-09-19T14:54:52.9685976Z",
+      "sha256": "F946C400CA4A1092D32CBB0E597D0E16FD840405DE122243BEA95E4A4112AA0C"
+    },
+    {
+      "path": "qml/Views/Viewport3D/RobotViewport.qml",
+      "bytes": 810,
+      "lastWriteUtc": "2026-09-22T09:49:01.5367951Z",
+      "sha256": "C73BD7871363A27EF6B7E21052B289D7EAEDF7F2CACA052071826E044F47DDF7"
+    },
+    {
+      "path": "qml/Views/Workspace/EndEffectorPanel.qml",
+      "bytes": 9547,
+      "lastWriteUtc": "2026-10-14T11:29:19.4677372Z",
+      "sha256": "197894184DEFE7B4A8BDC966D30B540CB7E7CBB8974BB1B74904817EFEDBFAC0"
+    },
+    {
+      "path": "qml/Views/Workspace/MachiningPanel.qml",
+      "bytes": 7329,
+      "lastWriteUtc": "2026-10-14T11:29:19.4677372Z",
+      "sha256": "4C656DA3AB4E16D3FBC82572FCA2B6A210C9793D21486D0AF8237D6D4C28F5C4"
+    },
+    {
+      "path": "qml/Views/Workspace/ModeToolBar.qml",
+      "bytes": 7480,
+      "lastWriteUtc": "2026-10-14T11:29:19.4682555Z",
+      "sha256": "78EA18EFBAEB118783424BB954751A9B2233FED6BD2E9E10F9301D47ABCF84B2"
+    },
+    {
+      "path": "qml/Views/Workspace/PropertiesPanel.qml",
+      "bytes": 15986,
+      "lastWriteUtc": "2026-10-05T14:45:13.6715396Z",
+      "sha256": "EEE6DA52241ADD036DAD6575C11CD020ED0AF64C897EAB4818E6A60D59A0AA84"
+    },
+    {
+      "path": "qml/Views/Workspace/ScenePanel.qml",
+      "bytes": 12364,
+      "lastWriteUtc": "2026-10-05T09:01:21.9400618Z",
+      "sha256": "7BC20F242BCBAF0D068516E6A0D18D2DC5E8002E4C9A68900A5A7852D02E3CC0"
+    },
+    {
+      "path": "qml/Views/Workspace/WorkflowPanel.qml",
+      "bytes": 4010,
+      "lastWriteUtc": "2026-09-22T09:49:01.5367951Z",
+      "sha256": "7F3A3AB5F3DD63E02444797F0BF0EE8832A4A09B552809AA362101391714E7D8"
+    },
+    {
+      "path": "qml/config.json",
+      "bytes": 165,
+      "lastWriteUtc": "2026-09-16T08:52:42.6588116Z",
+      "sha256": "1AEA9172C83B3A44E9B1BB0A296D8A65B63121F84A0FB5A1D9864296478D61C2"
+    },
+    {
+      "path": "resources/files.qrc",
+      "bytes": 44,
+      "lastWriteUtc": "2026-10-14T11:29:19.4687721Z",
+      "sha256": "8DC07DBF6FEDB857EA293A92742E8B6ED6E5BB937779A2169811AF92683CBF88"
+    },
+    {
+      "path": "resources/files/blade/242.json",
+      "bytes": 23288,
+      "lastWriteUtc": "2026-10-14T11:29:19.4703447Z",
+      "sha256": "BEFE628AB1AAC8E54A7C242CA90B8B31126C04B91AD453DAD6E28D76FC6E5F75"
+    },
+    {
+      "path": "resources/files/rsi/RSI_CorrectionLimits.example.json",
+      "bytes": 653,
+      "lastWriteUtc": "2026-10-14T11:29:19.4708652Z",
+      "sha256": "47B3E70C2011E7AE63CD34821E5AF0B2D54F97C902CD43EF4641F97BD2E56799"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole_CONTRACT.md",
+      "bytes": 6600,
+      "lastWriteUtc": "2026-10-14T11:29:19.4713833Z",
+      "sha256": "CA4C7F58B0E7C9F6A5168B2D40E989B87506C85DE5E5A53F611642CFC2A9A448"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole_DIAGRAM.md",
+      "bytes": 1232,
+      "lastWriteUtc": "2026-10-14T11:29:19.4724635Z",
+      "sha256": "B29B3DB99854A390598B296A4F9917EBA367FE1D9BFA1348AA12288C9654D1EA"
+    },
+    {
+      "path": "resources/fonts.qrc",
+      "bytes": 219,
+      "lastWriteUtc": "2026-06-11T13:26:00.7701096Z",
+      "sha256": "55B3E9721F4C23261118032CB47167F1A754BA463315729CCE37092E74E2A61A"
+    },
+    {
+      "path": "resources/json.qrc",
+      "bytes": 133,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "6BC4A5786B8CC1423530ACA788D4AC4DCAED22389BA1B3ED0DC3B30CB04F5A62"
+    },
+    {
+      "path": "resources/json/README.md",
+      "exists": false
+    },
+    {
+      "path": "resources/json/circ/circle_12_noisy_points.json",
+      "bytes": 388,
+      "lastWriteUtc": "2026-09-29T07:22:26.7145502Z",
+      "sha256": "39ECF885BB2C4313961BA3FE42555CA576AF5CB588DF7171F45698CFBA98DE90"
+    },
+    {
+      "path": "resources/json/circ/circle_3_points.json",
+      "bytes": 64,
+      "lastWriteUtc": "2026-09-29T07:22:26.7145502Z",
+      "sha256": "6FEB07A64134F6845BD794454037E1BD263DD79E04C9F31DB325CE75EA5C9CF9"
+    },
+    {
+      "path": "resources/json/db.json",
+      "bytes": 942,
+      "lastWriteUtc": "2026-09-05T11:21:38.6638907Z",
+      "sha256": "93DBADEBE5DB0874AE905BDEC175818AF5D9F2BD0F3D05A5E814D887C9F789F9"
+    },
+    {
+      "path": "resources/json/edge_2planes/XS.json",
+      "bytes": 480,
+      "lastWriteUtc": "2026-09-29T07:22:26.7145502Z",
+      "sha256": "F1113F73101B2D4DE4990E7F0D620A586F35F3632E22409048888952F59F276D"
+    },
+    {
+      "path": "resources/json/edge_2planes/XT.json",
+      "bytes": 619,
+      "lastWriteUtc": "2026-09-29T07:22:26.7145502Z",
+      "sha256": "0495D3F771EAA371D0A73AF4C4F790836DA33C771D5D6B5D2684A8ED9B9BBEF5"
+    },
+    {
+      "path": "resources/json/edge_cyl_plane/XC.json",
+      "bytes": 511,
+      "lastWriteUtc": "2026-09-29T11:13:58.2352684Z",
+      "sha256": "CB57C9749D90502BC272ECBE2266F859266C32F611F4F24FA9103A92BF44F654"
+    },
+    {
+      "path": "resources/json/edge_cyl_plane/XP.json",
+      "bytes": 244,
+      "lastWriteUtc": "2026-09-29T10:48:21.4075774Z",
+      "sha256": "6B7511C5DD01EBADBC95AF72BD22FCB1F7576EF96168FA50E501BE87A863697D"
+    },
+    {
+      "path": "resources/json/ellipse_sample.json",
+      "bytes": 1727,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "7DC0EE00A363B28ABCFFE0F5DBE96D243E0DE22B7E077CB0BEA923E047408C53"
+    },
+    {
+      "path": "resources/json/kr10.json",
+      "bytes": 2150,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "40254E70BE8BD4EB4036952D84C196B09C0588AB5977967AC70F411E16D2B30D"
+    },
+    {
+      "path": "resources/pics.qrc",
+      "bytes": 1020,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "274E81D3BDA9A32C29796CE9AA7C1DC13643D7707C6D2194773FB608E1378BEF"
+    },
+    {
+      "path": "src/3d/CMakeLists.txt",
+      "bytes": 2753,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "791293DB2C465BC5EB816384E817CCA18C5987F4EF3374A4A264E3603FFDDEF2"
+    },
+    {
+      "path": "src/3d/adapters/occrobotadapter.cpp",
+      "bytes": 4203,
+      "lastWriteUtc": "2026-10-06T17:09:38.4074531Z",
+      "sha256": "08AE69E6F773490F2697861065440C13EAE6E9AE4A0A1419B2C2C5C3E2544648"
+    },
+    {
+      "path": "src/3d/adapters/occrobotadapter.h",
+      "bytes": 1748,
+      "lastWriteUtc": "2026-10-06T17:15:04.2592863Z",
+      "sha256": "B948504249BD5BD26BAE86E8B397F083CD15E3E5A3D9EC117B5E286FC9324737"
+    },
+    {
+      "path": "src/3d/adapters/occsceneadapter.cpp",
+      "bytes": 17888,
+      "lastWriteUtc": "2026-10-05T14:45:13.6755311Z",
+      "sha256": "EA7A5308E6FD8FEE61BF093C542B849105617012DB6E269C4F065D72182120F5"
+    },
+    {
+      "path": "src/3d/adapters/occsceneadapter.h",
+      "bytes": 1678,
+      "lastWriteUtc": "2026-10-05T14:44:09.0737895Z",
+      "sha256": "09676A37E9B256B72C2A85E204E755F8F709CF800A5296E10BA38588C09C1758"
+    },
+    {
+      "path": "src/3d/chamferprofile.cpp",
+      "bytes": 7689,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "8FF6BE588957EEB68902828ABDAA55C9B63521ACF8E8A0099ABF0D5181FFC26E"
+    },
+    {
+      "path": "src/3d/chamferprofile.h",
+      "bytes": 208,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "B7770C3FCD2EEDF3FACE61124BC61B4CFCF51B030B58C458CCB8344BFB8840AC"
+    },
+    {
+      "path": "src/3d/occcontroller.cpp",
+      "bytes": 20760,
+      "lastWriteUtc": "2026-10-06T17:09:38.4064553Z",
+      "sha256": "9DFB90767C8251829BB25E20D80A491B76D1F47C49DADE7E61DCDECF2D7BDBFB"
+    },
+    {
+      "path": "src/3d/occcontroller.h",
+      "bytes": 5812,
+      "lastWriteUtc": "2026-10-06T15:26:26.5469528Z",
+      "sha256": "26342A1D6C03F11B652983046325561648B401157C83ED1C584659E1A998FBA8"
+    },
+    {
+      "path": "src/3d/occt/cachedshapeloader.cpp",
+      "bytes": 3323,
+      "lastWriteUtc": "2026-10-06T16:04:01.5495293Z",
+      "sha256": "697630460D70FF1335A43E42D77EF033F205CEE91B874B428062DE6D2FF332D4"
+    },
+    {
+      "path": "src/3d/occt/cachedshapeloader.h",
+      "bytes": 364,
+      "lastWriteUtc": "2026-09-19T10:32:22.2281119Z",
+      "sha256": "5FBFC6A471AF76DC78051892A50A1F387B8F91C15E2A7EFC3D4350394D93BCE2"
+    },
+    {
+      "path": "src/3d/occt/cadloadresult.h",
+      "bytes": 218,
+      "lastWriteUtc": "2026-09-29T07:22:26.7265321Z",
+      "sha256": "C9F4AA8DC8A760912BA731D7430D6DC63329E41CC250B17FEE2307754136EE6C"
+    },
+    {
+      "path": "src/3d/occt/cadloadworker.cpp",
+      "bytes": 1756,
+      "lastWriteUtc": "2026-09-29T07:22:26.7265321Z",
+      "sha256": "CE77907B3508489A377C322F8C68116874421E0A69F8E998858BE04F2BAEF846"
+    },
+    {
+      "path": "src/3d/occt/cadloadworker.h",
+      "bytes": 521,
+      "lastWriteUtc": "2026-09-29T07:22:26.7265321Z",
+      "sha256": "F9E86F7ABE27DF70CADCACCD56BC602192E1DC41FC0C399F2ACB79D2E5EE2925"
+    },
+    {
+      "path": "src/3d/occt/occinputcontroller.cpp",
+      "bytes": 4819,
+      "lastWriteUtc": "2026-09-29T07:22:26.730526Z",
+      "sha256": "546A6B22D475940620C66162709910738550D4B63C0D42CB259B9E08786D726C"
+    },
+    {
+      "path": "src/3d/occt/occinputcontroller.h",
+      "bytes": 1498,
+      "lastWriteUtc": "2026-09-29T07:22:26.730526Z",
+      "sha256": "3A2099103144372F081E8F054AF7968B94080A322BB2ECDBA6639FF3956CBAE5"
+    },
+    {
+      "path": "src/3d/occt/occpart.cpp",
+      "bytes": 5400,
+      "lastWriteUtc": "2026-09-23T09:39:57.9778729Z",
+      "sha256": "D26FDA78590B84E2614826648F42A374B477147B373B40154982B26DD0E5CC2E"
+    },
+    {
+      "path": "src/3d/occt/occpart.h",
+      "bytes": 1854,
+      "lastWriteUtc": "2026-09-23T09:39:57.9789027Z",
+      "sha256": "E77692E84E77E6E803ADAAD5D019E813E5A0F89D024073DC48FB7CFFB933294F"
+    },
+    {
+      "path": "src/3d/occt/occpartprops.h",
+      "bytes": 1140,
+      "lastWriteUtc": "2026-09-29T07:22:26.730526Z",
+      "sha256": "11A8DBD3C91610C22EEBCD2D77F23952DCED7ABDE7410DB829563D6CE54B0F39"
+    },
+    {
+      "path": "src/3d/occt/occscene.cpp",
+      "bytes": 10563,
+      "lastWriteUtc": "2026-10-06T15:27:43.1391089Z",
+      "sha256": "9F77E844076475A24D6A25903B4CC5575C18F344568D8D7BCD24C7A5DF3B7D5D"
+    },
+    {
+      "path": "src/3d/occt/occscene.h",
+      "bytes": 2562,
+      "lastWriteUtc": "2026-10-06T15:27:43.1285988Z",
+      "sha256": "A691E4DC91FB5EA2B3FEDBDF4B98D5132F9952CBD8D6E1E12D8882418082256D"
+    },
+    {
+      "path": "src/3d/occt/occviewcube.cpp",
+      "bytes": 4922,
+      "lastWriteUtc": "2026-09-29T07:22:26.730526Z",
+      "sha256": "248C27BE8BFC63123554A2C5C112F9F6859AA233F3401C9BA589A6A862A42B91"
+    },
+    {
+      "path": "src/3d/occt/occviewcube.h",
+      "bytes": 476,
+      "lastWriteUtc": "2026-09-19T10:32:22.2381086Z",
+      "sha256": "81BF73A4A39025CB310EB668E956C14846D88D37DB78F18815300975C0A0F5FE"
+    },
+    {
+      "path": "src/3d/occt/occviewer.cpp",
+      "bytes": 6204,
+      "lastWriteUtc": "2026-09-29T07:22:26.7345224Z",
+      "sha256": "1C904CF723A6CF4D7F8CEDAD751FF4665ACE7E0EB9ED027BCFECFE4B5B18C16E"
+    },
+    {
+      "path": "src/3d/occt/occviewer.h",
+      "bytes": 1445,
+      "lastWriteUtc": "2026-09-19T10:32:22.2381086Z",
+      "sha256": "600FB37C4BDD3FF8F9D5C5101249AC2AB9D99AB9ADFDE90BEAF1C43A70C4AF9F"
+    },
+    {
+      "path": "src/3d/occt/occviewport.cpp",
+      "bytes": 5515,
+      "lastWriteUtc": "2026-10-06T15:27:43.1141153Z",
+      "sha256": "699C2577E6A804202848B4044449C26458F7153F9789131238BC05EAAEFA8B7E"
+    },
+    {
+      "path": "src/3d/occt/occviewport.h",
+      "bytes": 2355,
+      "lastWriteUtc": "2026-10-06T17:15:04.263277Z",
+      "sha256": "31A1150261A3B1753724F5A5C58BDAC111AA7E8B61B6635E8EDBEE196A8CF021"
+    },
+    {
+      "path": "src/3d/occt/occviewwindow.cpp",
+      "bytes": 8212,
+      "lastWriteUtc": "2026-10-06T15:27:43.1006382Z",
+      "sha256": "F35B4F5D3390C8B71A946147D997506F13A834FB5933B4E24CE14A6FD31B3789"
+    },
+    {
+      "path": "src/3d/occt/occviewwindow.h",
+      "bytes": 2926,
+      "lastWriteUtc": "2026-10-06T17:15:04.2612816Z",
+      "sha256": "9A27BEE9B93CEA309295F566F22F408B8B106D7B46EB07CCFC108733C67FA56B"
+    },
+    {
+      "path": "src/3d/occt/occworldaxes.cpp",
+      "bytes": 2460,
+      "lastWriteUtc": "2026-09-29T07:22:26.7345224Z",
+      "sha256": "942E39AF7E8BD368827EEE70930C9B4D06823E8E00AA6619A1D8C40EBDCB9273"
+    },
+    {
+      "path": "src/3d/occt/occworldaxes.h",
+      "bytes": 866,
+      "lastWriteUtc": "2026-09-19T10:32:22.2457743Z",
+      "sha256": "7DD5CB7BA65FB1D67EFF8FE9F3D78235123AF627D8786DF17B1295955D766BDB"
+    },
+    {
+      "path": "src/3d/occt/stepimporter.cpp",
+      "bytes": 2852,
+      "lastWriteUtc": "2026-09-19T10:32:22.2467686Z",
+      "sha256": "4C3CE8208F10B6C41B568D1046B593A457433777FEF77A036CB11E02BB556F27"
+    },
+    {
+      "path": "src/3d/occt/stepimporter.h",
+      "bytes": 1146,
+      "lastWriteUtc": "2026-09-19T10:32:22.2467686Z",
+      "sha256": "0FEB791FF09D3155D98BA1D2924F850B69F9180E47D27F6E7E72DAE1837028F0"
+    },
+    {
+      "path": "src/3d/robot/kinematics/kr10kinematics.cpp",
+      "bytes": 9410,
+      "lastWriteUtc": "2026-09-29T13:01:11.6118732Z",
+      "sha256": "63E8FC7E76591DD28C75B46E0F74FDD16716398B4E68E015F5B2AC887200DAE7"
+    },
+    {
+      "path": "src/3d/robot/kinematics/kr10kinematics.h",
+      "bytes": 2059,
+      "lastWriteUtc": "2026-09-29T07:22:26.738516Z",
+      "sha256": "9F2FCDF0B2DB91ED85DAE752394FC0CF4D4586BFA4CD0F2B761A6A3DF2763BE3"
+    },
+    {
+      "path": "src/3d/robot/model/kr10kinematicmodel.h",
+      "bytes": 1530,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "1CDDD52A04EBBD4529707F8C8570036E842814FA5014741FAAEAA9599A0A0EC3"
+    },
+    {
+      "path": "src/3d/robot/model/kr10model.cpp",
+      "bytes": 9264,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "62BD066060E494E4DA7F8A864A42529A9191145790EBE16F07C27420C663553C"
+    },
+    {
+      "path": "src/3d/robot/model/kr10model.h",
+      "bytes": 509,
+      "lastWriteUtc": "2026-09-29T07:22:26.738516Z",
+      "sha256": "FBBEB2F764019557953AAA0A4F7506A2A58D1291966FC9AA84954EDCF59AF493"
+    },
+    {
+      "path": "src/3d/robot/robotpreviewstate.cpp",
+      "bytes": 3446,
+      "lastWriteUtc": "2026-09-29T13:01:11.6158871Z",
+      "sha256": "E129004060C379014CABB53DBB2B3E9C126B5EF9515E9027BD4EA28191DBE65E"
+    },
+    {
+      "path": "src/3d/robot/robotpreviewstate.h",
+      "bytes": 1741,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "4BBAFA4FC48BEA67082A531406FD5FA9A9779DA92E6E3E779839ED6249A76730"
+    },
+    {
+      "path": "src/3d/viewportassets.cpp",
+      "bytes": 1971,
+      "lastWriteUtc": "2026-10-06T16:04:01.5305983Z",
+      "sha256": "A89E6A870D690E725EC7DF785C64A5B9E3A7BB8935DB7EC56763184857FF582F"
+    },
+    {
+      "path": "src/3d/viewportassets.h",
+      "bytes": 299,
+      "lastWriteUtc": "2026-09-19T10:32:22.2281119Z",
+      "sha256": "24A79DCD36C168559BA8187864222A79CD0D2251F32A29BBE42C016E0BF9759D"
+    },
+    {
+      "path": "src/3d/viewportqmltypes.h",
+      "bytes": 786,
+      "lastWriteUtc": "2026-09-19T12:30:00.6522487Z",
+      "sha256": "3E8DB533DB12337D6162BD3C4C5BB711B5BA412E6A10A49F46D445267AFCE8F1"
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "bytes": 4300,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "2826A3B51F800AD04C706399AEDCB9528F5569EDDB73558AD0E1D67AC6F4EA5D"
+    },
+    {
+      "path": "src/backendqmltypes.h",
+      "bytes": 5477,
+      "lastWriteUtc": "2026-10-07T06:14:42.68023Z",
+      "sha256": "014CC110FDF783D4BA4789D39A1837F25A7216E1BDCB391F17059D4858AF038E"
+    },
+    {
+      "path": "src/geometry/boundedcylinder.cpp",
+      "bytes": 10715,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "546C73271EE201E9EFCCBBC7F3A65E4CE307F7D9BBE8AD1020F072EDB9EAD38D"
+    },
+    {
+      "path": "src/geometry/boundedcylinder.h",
+      "bytes": 1260,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "58E04FC18B2DEF183EF36FC42552F6243F8A03AD1E822C49FDC808C42120376D"
+    },
+    {
+      "path": "src/geometry/boundedplane.cpp",
+      "bytes": 3558,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "56A11E1FEC44B08D889E4FA9B6B2AA43E51EE133E8DCB19CCA7CD5E3DC31A9DE"
+    },
+    {
+      "path": "src/geometry/boundedplane.h",
+      "bytes": 1396,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "61E73D32E2A5F11C792B331C8F75C74E7BACAAFDBC9BC0B430E1CB5A02E5EFBE"
+    },
+    {
+      "path": "src/geometry/circle.cpp",
+      "bytes": 9539,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "D3E11560862E7AEFA5A72AFCC97EAFEACE75B7008F5D6F6FE1302155AABAB387"
+    },
+    {
+      "path": "src/geometry/circle.h",
+      "bytes": 930,
+      "lastWriteUtc": "2026-09-29T07:22:26.7425097Z",
+      "sha256": "207D5273662856EA930F781E08232FA0EC2F29FAB3520D1EEE1E27896842BDEB"
+    },
+    {
+      "path": "src/geometry/cylinder.cpp",
+      "bytes": 4176,
+      "lastWriteUtc": "2026-09-10T11:29:06.090622Z",
+      "sha256": "23368B19A62CF9C6659A47400753001BB8CA91430DEA20C454CEA3CF99A7E450"
+    },
+    {
+      "path": "src/geometry/cylinder.h",
+      "bytes": 658,
+      "lastWriteUtc": "2026-06-16T10:29:14.0289985Z",
+      "sha256": "AD9F9EA88851EC628BC94CC09A6F4960A463240225524BC2772C8F473D9DD4FF"
+    },
+    {
+      "path": "src/geometry/mathtypes.h",
+      "bytes": 761,
+      "lastWriteUtc": "2026-06-16T08:09:45.5210614Z",
+      "sha256": "EF7D00C11865F5DF98297685DF9170C424326435B14A6918549815FB25C83A5A"
+    },
+    {
+      "path": "src/geometry/plane.cpp",
+      "bytes": 2556,
+      "lastWriteUtc": "2026-09-25T10:16:45.5853301Z",
+      "sha256": "F17F55839B032272C7159D241CC6332D458F49E9B2D561954764E38277CCD29C"
+    },
+    {
+      "path": "src/geometry/plane.h",
+      "bytes": 784,
+      "lastWriteUtc": "2026-09-25T10:16:45.5853301Z",
+      "sha256": "CCBB3948508D6DFFFCBB68F8DA7F7A00C3395A0B5923AFF601D7C4FD80FDF3A8"
+    },
+    {
+      "path": "src/geometry/pose.cpp",
+      "bytes": 3112,
+      "lastWriteUtc": "2026-06-19T13:06:25.2331511Z",
+      "sha256": "8947740AE6EF40DF94F71577929E5B1C006904E18EF5F31F37437F96A5861A3F"
+    },
+    {
+      "path": "src/geometry/pose.h",
+      "bytes": 1063,
+      "lastWriteUtc": "2026-06-19T13:13:25.5906623Z",
+      "sha256": "FCADBFD9354AC1445FDB68845A5EB5984B8CE0DBB924DE64C73CB343A920C6C8"
+    },
+    {
+      "path": "src/geometry/surfaceintersection.cpp",
+      "bytes": 3831,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "A19EF70BBC35E740AADF2A232EE892BA3841436A03D704F23C0929C4AA8AEAF0"
+    },
+    {
+      "path": "src/geometry/surfaceintersection.h",
+      "bytes": 1010,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "554FC427C6F737851DF46527061D588459C07EE123CBF9D6A63DC75B16CF0D31"
+    },
+    {
+      "path": "src/geometry/utils.cpp",
+      "bytes": 9123,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "0382626B5715B5A6FE5986EA867AB4DB58B34DBCCF5C3019B99105AEF02FB484"
+    },
+    {
+      "path": "src/geometry/utils.h",
+      "bytes": 2115,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "E7F2E6A17ED4D710313885DEE5CCBEECBEAA2DF0F3266A42DB32F718D004AD79"
+    },
+    {
+      "path": "src/logger.cpp",
+      "bytes": 565,
+      "lastWriteUtc": "2026-09-07T07:57:39.8458666Z",
+      "sha256": "BA95AEA35206BAD1F8032BE08C15A25ED99FF3C23D2E2B8E21507471F622DDF2"
+    },
+    {
+      "path": "src/logger.h",
+      "bytes": 431,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "649DC03D2052E0BBFE658E358078D9F1C50C96A5B8DF944DC840077858C9FC2A"
+    },
+    {
+      "path": "src/main.cpp",
+      "bytes": 6256,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "2B31A4F3A113952CC83B763D2F8700FDC59F5E1E29A1E96044ECC2BE056094B6"
+    },
+    {
+      "path": "src/network/abstractdevice.cpp",
+      "bytes": 3061,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "EA9F84A6C0E7B8E7A5E8D9CE16F200883DBEAB146F6AA2ED62BDBB4C469E111F"
+    },
+    {
+      "path": "src/network/abstractdevice.h",
+      "bytes": 1103,
+      "lastWriteUtc": "2026-09-29T07:22:26.7465038Z",
+      "sha256": "C3061D125AC06F42E8DC84220611C6BF3D98379D196171E07A80742E58A18ED8"
+    },
+    {
+      "path": "src/network/common/deviceprofilemodel.cpp",
+      "bytes": 5000,
+      "lastWriteUtc": "2026-09-29T07:22:26.7504989Z",
+      "sha256": "A71287230349BB253B80BBEAA8AF533E52EE9AF8C0A03E24C75F492E52DE2B4A"
+    },
+    {
+      "path": "src/network/common/deviceprofilemodel.h",
+      "bytes": 1354,
+      "lastWriteUtc": "2026-09-29T07:22:26.7504989Z",
+      "sha256": "24DC4DD056BF26BDA1A7EBFDE5AC0BF30179E6CFA698FFB060661E0474531EC2"
+    },
+    {
+      "path": "src/network/common/loggermessage.h",
+      "bytes": 188,
+      "lastWriteUtc": "2026-09-29T07:22:26.7504989Z",
+      "sha256": "B717C0FF60205AC01AF63E0E163DDF4E937DAA9B2699F4D7E666A3DE48810F77"
+    },
+    {
+      "path": "src/network/common/socketconfigutils.h",
+      "bytes": 378,
+      "lastWriteUtc": "2026-09-29T07:22:26.7504989Z",
+      "sha256": "A89F6457F6FD9750BF9D64C121792DC0B6FED17E1AE82D9E657F63A8086E4441"
+    },
+    {
+      "path": "src/network/common/socketstateutils.cpp",
+      "bytes": 599,
+      "lastWriteUtc": "2026-06-22T07:33:17.5230118Z",
+      "sha256": "C21EDC9C516040EC03BBDCEA0CABECFEAD9F15AE37B8532C23BD7E31CD2D5937"
+    },
+    {
+      "path": "src/network/common/socketstateutils.h",
+      "bytes": 188,
+      "lastWriteUtc": "2026-06-22T07:33:17.5230118Z",
+      "sha256": "F7229A915811CF5954F8FE5D56674B98E9658444952649BE588473C34A7BFD60"
+    },
+    {
+      "path": "src/network/devicehub.cpp",
+      "bytes": 1768,
+      "lastWriteUtc": "2026-09-09T14:31:54.0610462Z",
+      "sha256": "AA5EB3CD6C0C2F37D52D1236E7F479CFF8999A00516A5D782CC28EDC68CE82D9"
+    },
+    {
+      "path": "src/network/devicehub.h",
+      "bytes": 1143,
+      "lastWriteUtc": "2026-09-09T14:31:25.2281286Z",
+      "sha256": "D3D0C5CE1F87C77FFC445122C32FE8BF5B0E59C92DB687AD1D9144461A4FE18B"
+    },
+    {
+      "path": "src/network/devicerunner.cpp",
+      "bytes": 1822,
+      "lastWriteUtc": "2026-09-29T07:22:26.7504989Z",
+      "sha256": "2479DAE5B19A4CD95C8A91963A63E1ADD745156666443C8166A875D06F1DB642"
+    },
+    {
+      "path": "src/network/devicerunner.h",
+      "bytes": 1312,
+      "lastWriteUtc": "2026-09-08T11:12:52.1979054Z",
+      "sha256": "D3EDAE24613F241D8BC614435E25F3E0176B3396386A4BB4D5F591855C2CD7D4"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.cpp",
+      "bytes": 15310,
+      "lastWriteUtc": "2026-10-06T10:33:45.1970748Z",
+      "sha256": "20D230B6026320CCE1BB28EEA2FF87BEC8DE7BDEEB152230A4FE80BAE22FEBB5"
+    },
+    {
+      "path": "src/network/fts/ftsdevice.h",
+      "bytes": 2164,
+      "lastWriteUtc": "2026-10-06T10:33:45.1970748Z",
+      "sha256": "13BF062ACAB78BA448DA7F7E58E4951C2EA5BA36B6540E325C5BF9B225B8BC12"
+    },
+    {
+      "path": "src/network/fts/rdtmessage.h",
+      "bytes": 865,
+      "lastWriteUtc": "2026-09-10T07:06:27.7856169Z",
+      "sha256": "77897589BAD2C0247BB3E7C3859242EB317291974FB9A8E27B43C85358EC7582"
+    },
+    {
+      "path": "src/network/plc/plcdevice.cpp",
+      "bytes": 9976,
+      "lastWriteUtc": "2026-09-29T07:22:26.7545018Z",
+      "sha256": "1382A9805613E43BA725076949BE57C85BD04841A54414CCC319723A045EB59C"
+    },
+    {
+      "path": "src/network/plc/plcdevice.h",
+      "bytes": 1290,
+      "lastWriteUtc": "2026-09-29T07:22:26.7545018Z",
+      "sha256": "37D6A70BA38F142A40EB719FDF6BDAE9D12B7F31D37EA3B88CE948929EA5AFF7"
+    },
+    {
+      "path": "src/network/plc/plcmessagemanager.cpp",
+      "bytes": 13844,
+      "lastWriteUtc": "2026-09-29T07:22:26.7553868Z",
+      "sha256": "D48B95A81A8F02175866E99BC4363A1CAD3127344FFE555E7D115E1EAE3A278E"
+    },
+    {
+      "path": "src/network/plc/plcmessagemanager.h",
+      "bytes": 3817,
+      "lastWriteUtc": "2026-09-29T07:22:26.7553868Z",
+      "sha256": "704470E4F61592783A5162EC82BD95A8E7A7D49636A474B318968DC1B1BFE94A"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.cpp",
+      "bytes": 9456,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "4833E2B4FD675122D763B631B446DE24E42DFDCF8E573125C99D080A989A87FC"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "bytes": 1622,
+      "lastWriteUtc": "2026-10-07T06:14:42.6822266Z",
+      "sha256": "EA26A20F54EC7008831FE3082E3F6EA76D6F4820F8914B971D1FD437996C4F17"
+    },
+    {
+      "path": "src/network/rsi/rsiholeprotocol.cpp",
+      "bytes": 12491,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "ED77D6C733B567CAFB004326D40C3FDE60C3380CDC88FC4E0C03BA714CAE5732"
+    },
+    {
+      "path": "src/network/rsi/rsiholeprotocol.h",
+      "bytes": 2068,
+      "lastWriteUtc": "2026-10-07T09:41:23.4104272Z",
+      "sha256": "4846BA822A0325B38C5EE56D96E4988981E2E2B0EF0ED7F86162AF8C9BE79B00"
+    },
+    {
+      "path": "src/network/rsi/rsiprotocol.cpp",
+      "bytes": 3356,
+      "lastWriteUtc": "2026-09-24T17:01:04.111015Z",
+      "sha256": "164FB3ACBABAEEFBDA8D88EBAB77F412091046C94E40687EF19EF45B73ED0456"
+    },
+    {
+      "path": "src/network/rsi/rsiprotocol.h",
+      "bytes": 1283,
+      "lastWriteUtc": "2026-10-05T09:01:21.9462046Z",
+      "sha256": "07A636F60331D6DD826C8D1968D79C48A073D98DEB1A656A71214B85D0C8FD73"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferarclength.cpp",
+      "bytes": 15654,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "D25F45562C6342FDD83BDFF22DECBFFFC9CCB981C0B62482FA4DC453D55D99E4"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferarclength.h",
+      "bytes": 2236,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "0352FABBD55641F3BB59FAA065AB898893FCF2C0BE0F860A132BC2AF1C8BAF8A"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercartesiansampler.cpp",
+      "bytes": 21046,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "9A7710F9C484DFA5504A340BD5761F670F33C18B722FB0D536356392A719DA82"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercartesiansampler.h",
+      "bytes": 1244,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "202699D8F6598A6CCD71619F7F876421B9E196463069B3C92A23EAC147E68C7C"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercentralmotion.cpp",
+      "bytes": 8970,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "7FA31F034F29497DF188749D0ACFDCD98A13E7261EA10B6B08D3552380BC9858"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercentralmotion.h",
+      "bytes": 2750,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "23AFA0A1271E0EB43F97239A7542479B0286B8F89B67D8823CD3F9F1E5D2498E"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercentralvalidation.cpp",
+      "bytes": 22557,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "4CABAA47751DD03EE0E7AE776FFA838C30C151F483050F06EF0420C806E77F56"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercentralvalidation.h",
+      "bytes": 1300,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "002B93976C0C79B7D0EFDA06D69A35307F1D658320A079D0DA15B3069967AAD0"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferjob.cpp",
+      "bytes": 4286,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "BB2F0B3C38F22000DA7BC1A6682097DEEF19A315177614350DB004C06206D2A6"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferjob.h",
+      "bytes": 3165,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "1B2C28E0470391BC5814198A68C33FCDE50FB04D216054F20857918FD7B0633E"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfermotion.cpp",
+      "bytes": 38761,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "D93E2AB48E57345371BB890D4FF1F4C1B5D707D08003C915CE8B2A86F40039D6"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfermotion.h",
+      "bytes": 4000,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "3445F12355AAC4BF3F68D17CA94FAF73BB418A7ABD3465F1ECB7CEC74453A254"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferpath.cpp",
+      "bytes": 20785,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "A40D198B8E55D033AD3A1A4F581AD5654C19AB45088528F4D334F4B0F60CE168"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferpath.h",
+      "bytes": 4564,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "017F86F4C7472B1E17FD1137A11377902A20954526025B976EEBDC3AEFB88642"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferpreparationdiagnostics.h",
+      "bytes": 2031,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "45B5065D495C9CC303A21C5E6D6291EF9EAAE4815D2515DFFB509BA463D01009"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsicorrectionlimits.cpp",
+      "bytes": 8293,
+      "lastWriteUtc": "2026-10-07T06:14:42.6832236Z",
+      "sha256": "BAFBBC30173A1B538841ACAD19E72455CCB1BADB805A6763DE72E32CB00560AE"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsicorrectionlimits.h",
+      "bytes": 2175,
+      "lastWriteUtc": "2026-10-07T06:14:42.6832236Z",
+      "sha256": "CC0C3B344400346C84EE752E03A7CE3A891A44965C817E9D0CB2A7E382BB6C88"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsiposeencoder.cpp",
+      "bytes": 16039,
+      "lastWriteUtc": "2026-10-07T06:14:42.684221Z",
+      "sha256": "38A6AE851D66850D1B5C4C78A45A0EF1B5B486EC07DACDB8FED535E607C6538B"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsiposeencoder.h",
+      "bytes": 2623,
+      "lastWriteUtc": "2026-10-07T06:14:42.684221Z",
+      "sha256": "01F5D171DCD5B29F5FA45490CD837BA21B55489438494B3120938D1E1E9AA585"
+    },
+    {
+      "path": "src/pathgeneration/rsi/motionprofile.h",
+      "bytes": 100,
+      "lastWriteUtc": "2026-06-23T15:13:20.8715968Z",
+      "sha256": "817EB202B943448DDA7467032661E693899548AD176E86576C66E6B602B6C4FE"
+    },
+    {
+      "path": "src/pathgeneration/rsi/offsetjsonwriter.cpp",
+      "bytes": 1305,
+      "lastWriteUtc": "2026-06-22T07:33:17.5386329Z",
+      "sha256": "9BD48B5B7DB94B22ACC8E080E65F4F5BD777A35DADD5A37929BBAE90507A564C"
+    },
+    {
+      "path": "src/pathgeneration/rsi/offsetjsonwriter.h",
+      "bytes": 189,
+      "lastWriteUtc": "2026-06-22T07:33:17.5386329Z",
+      "sha256": "234B3FE7C0FE24E66E5A7E4DA629AEFF31F421B018AD110291B352A5424206DD"
+    },
+    {
+      "path": "src/pathgeneration/rsi/rsipath.cpp",
+      "bytes": 5780,
+      "lastWriteUtc": "2026-06-22T14:02:50.0506427Z",
+      "sha256": "3311C5DCFEA4011D131BA54014FF646910925E2ECC76D37D5DCE252ED2F7D047"
+    },
+    {
+      "path": "src/pathgeneration/rsi/rsipath.h",
+      "bytes": 587,
+      "lastWriteUtc": "2026-06-22T13:56:21.5329907Z",
+      "sha256": "E7C9A1B4A4750DF36A3F74BC0D6E1A5604ECF23A6447425AFF07C026A6417CCB"
+    },
+    {
+      "path": "src/qmlchartbridge.cpp",
+      "bytes": 1966,
+      "lastWriteUtc": "2025-09-25T10:46:40.7597051Z",
+      "sha256": "0EE1BC5CBD55ABDBF5219990998726F7EDFA128B9AD13F5AF8589A513B27E9F2"
+    },
+    {
+      "path": "src/qmlchartbridge.h",
+      "bytes": 1129,
+      "lastWriteUtc": "2026-09-24T17:01:04.111015Z",
+      "sha256": "5B257C345D7B7FAB150340C219231835819D9B5FB54A40D08088D814F388FFDD"
+    },
+    {
+      "path": "src/scene/chamfershareddata.cpp",
+      "bytes": 3975,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "AAEA0B01F442C93233FC10893D1D47E779E825E0C3981635B81C8E8BB331FD0A"
+    },
+    {
+      "path": "src/scene/chamfershareddata.h",
+      "bytes": 593,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "7CE1CB97A3F24D43B2C12B2E8C2357C56A5FDA5CAC8A4496B6C2064D13734A8F"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.cpp",
+      "bytes": 5948,
+      "lastWriteUtc": "2026-10-06T17:16:59.1181992Z",
+      "sha256": "34475DABA616AA27D2B79A92D0041E5736447CC83267494F6E9182E25FFC141E"
+    },
+    {
+      "path": "src/scene/sceneendeffectors.h",
+      "bytes": 3192,
+      "lastWriteUtc": "2026-10-06T17:09:38.366589Z",
+      "sha256": "CE17A83EBA757E7D672A1C9D3197867BC8FFBA8849A7C46A3D72BD5D7BA118C0"
+    },
+    {
+      "path": "src/scene/scenegeometry.h",
+      "bytes": 11233,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "2DABC42C7346DC995823EACC9513DB4C60E4BA1880D75F847823D824899C5B37"
+    },
+    {
+      "path": "src/scene/scenemachining.cpp",
+      "bytes": 14697,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "F1A763E369D3173AB87A9BBF0DF627C84C42DDE5F123F0BF852595C7393FAFA7"
+    },
+    {
+      "path": "src/scene/scenemachining.h",
+      "bytes": 3807,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "D781DCC9DD49F8EA41A3AA870D9C93F1A1BFEC4325F0C27C8D1FEEDEE3247EFB"
+    },
+    {
+      "path": "src/scene/scenemachiningpreparation.cpp",
+      "bytes": 7962,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "60ED35E12E389D30C6FFFE9C59DB2BE5DF83945DF32C2CF49BC614A2DE171EF7"
+    },
+    {
+      "path": "src/scene/scenemachiningpreparation.h",
+      "bytes": 4539,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "28D98A30995553FCE7C85BA4C0BB2662F6504258C66ABB023A6280211E8CBD89"
+    },
+    {
+      "path": "src/scene/scenemodel.cpp",
+      "bytes": 9295,
+      "lastWriteUtc": "2026-10-05T14:44:09.0668064Z",
+      "sha256": "71CE2FCE6CDE035941F4F8A9C2C5CB3BCCC3DCC5C7372EC9EE4B1DA3B3EE25F5"
+    },
+    {
+      "path": "src/scene/scenemodel.h",
+      "bytes": 2881,
+      "lastWriteUtc": "2026-10-05T14:44:09.0648123Z",
+      "sha256": "C73B8E0DBBA736A4FB3C9A2CFD333A3CF3D8DD23337AC0C92361E879CF62CA29"
+    },
+    {
+      "path": "src/scene/sceneobject.cpp",
+      "bytes": 2757,
+      "lastWriteUtc": "2026-10-05T14:44:09.0628167Z",
+      "sha256": "2694688FFDF330984F5E6101E64E2FD2172BF295F9B34E9306F331D10CB7DD51"
+    },
+    {
+      "path": "src/scene/sceneobject.h",
+      "bytes": 2716,
+      "lastWriteUtc": "2026-10-05T14:44:09.0618467Z",
+      "sha256": "23B5E2A39BF1C636C9B9E325436E559DBE84467C0F3C0D2B661F6A4BCE5905E0"
+    },
+    {
+      "path": "src/scene/scenesurfaceimporter.cpp",
+      "bytes": 5248,
+      "lastWriteUtc": "2026-09-29T07:22:26.764889Z",
+      "sha256": "D5B459704B6A70D64048074B23245D7C3513986AFFF9B8A7F63D302EA2F0A1E2"
+    },
+    {
+      "path": "src/scene/scenesurfaceimporter.h",
+      "bytes": 970,
+      "lastWriteUtc": "2026-09-29T07:22:26.764889Z",
+      "sha256": "8FE27E8257AE1A7BEBC326D6B23CEE0E25281968ABA1744EFF549548740CD2C8"
+    }
+  ],
+  "frozenRsiInputCount": 31,
+  "frozenRsiInputs": [
+    {
+      "path": "resources/files/rsi/RSI_CorrectionLimits.example.json",
+      "bytes": 653,
+      "lastWriteUtc": "2026-10-14T11:29:19.4708652Z",
+      "sha256": "47B3E70C2011E7AE63CD34821E5AF0B2D54F97C902CD43EF4641F97BD2E56799"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole.dat",
+      "bytes": 306,
+      "lastWriteUtc": "2026-10-14T11:29:19.4708652Z",
+      "sha256": "0F7846A00DA4806133B0A1866936A053093F6998B41E12FD95AA289067C442FF"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole.src",
+      "bytes": 2751,
+      "lastWriteUtc": "2026-10-14T11:29:19.4713833Z",
+      "sha256": "1A075D9188BCDBAD99C961A9B466A34912C1C45B7D00FD7C0A1E6A5BBB6968FC"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole_CONTRACT.md",
+      "bytes": 6600,
+      "lastWriteUtc": "2026-10-14T11:29:19.4713833Z",
+      "sha256": "CA4C7F58B0E7C9F6A5168B2D40E989B87506C85DE5E5A53F611642CFC2A9A448"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole_DIAGRAM.md",
+      "bytes": 1232,
+      "lastWriteUtc": "2026-10-14T11:29:19.4724635Z",
+      "sha256": "B29B3DB99854A390598B296A4F9917EBA367FE1D9BFA1348AA12288C9654D1EA"
+    },
+    {
+      "path": "resources/files/rsi/RSI_Hole_EthernetConfig.xml",
+      "bytes": 1148,
+      "lastWriteUtc": "2026-10-14T11:29:19.4729671Z",
+      "sha256": "B349CC7E9DC76CC21E8BA6DF259608ABF581FB7DDBB322547E12913FDCBB474A"
+    },
+    {
+      "path": "resources/files/rsi/RSI_request_example.xml",
+      "bytes": 121,
+      "lastWriteUtc": "2026-10-14T11:29:19.472983Z",
+      "sha256": "B48BDFD3A7F3CF13970DC3FF72507096243287BFB6DD503345C314D3E12967E9"
+    },
+    {
+      "path": "resources/files/rsi/RSI_responce_example.xml",
+      "bytes": 196,
+      "lastWriteUtc": "2026-10-14T11:29:19.472983Z",
+      "sha256": "D7CF94108F77AE8F84BB6FC0C21BA18E59804BF4B986A6CD75733AF72942D2FA"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.cpp",
+      "bytes": 9456,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "4833E2B4FD675122D763B631B446DE24E42DFDCF8E573125C99D080A989A87FC"
+    },
+    {
+      "path": "src/network/rsi/rsidevice.h",
+      "bytes": 1622,
+      "lastWriteUtc": "2026-10-07T06:14:42.6822266Z",
+      "sha256": "EA26A20F54EC7008831FE3082E3F6EA76D6F4820F8914B971D1FD437996C4F17"
+    },
+    {
+      "path": "src/network/rsi/rsiholeprotocol.cpp",
+      "bytes": 12491,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "ED77D6C733B567CAFB004326D40C3FDE60C3380CDC88FC4E0C03BA714CAE5732"
+    },
+    {
+      "path": "src/network/rsi/rsiholeprotocol.h",
+      "bytes": 2068,
+      "lastWriteUtc": "2026-10-07T09:41:23.4104272Z",
+      "sha256": "4846BA822A0325B38C5EE56D96E4988981E2E2B0EF0ED7F86162AF8C9BE79B00"
+    },
+    {
+      "path": "src/network/rsi/rsiprotocol.cpp",
+      "bytes": 3356,
+      "lastWriteUtc": "2026-09-24T17:01:04.111015Z",
+      "sha256": "164FB3ACBABAEEFBDA8D88EBAB77F412091046C94E40687EF19EF45B73ED0456"
+    },
+    {
+      "path": "src/network/rsi/rsiprotocol.h",
+      "bytes": 1283,
+      "lastWriteUtc": "2026-10-05T09:01:21.9462046Z",
+      "sha256": "07A636F60331D6DD826C8D1968D79C48A073D98DEB1A656A71214B85D0C8FD73"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercartesiansampler.cpp",
+      "bytes": 21046,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "9A7710F9C484DFA5504A340BD5761F670F33C18B722FB0D536356392A719DA82"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamfercartesiansampler.h",
+      "bytes": 1244,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "202699D8F6598A6CCD71619F7F876421B9E196463069B3C92A23EAC147E68C7C"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferjob.cpp",
+      "bytes": 4286,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "BB2F0B3C38F22000DA7BC1A6682097DEEF19A315177614350DB004C06206D2A6"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/chamferjob.h",
+      "bytes": 3165,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "1B2C28E0470391BC5814198A68C33FCDE50FB04D216054F20857918FD7B0633E"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsicorrectionlimits.cpp",
+      "bytes": 8293,
+      "lastWriteUtc": "2026-10-07T06:14:42.6832236Z",
+      "sha256": "BAFBBC30173A1B538841ACAD19E72455CCB1BADB805A6763DE72E32CB00560AE"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsicorrectionlimits.h",
+      "bytes": 2175,
+      "lastWriteUtc": "2026-10-07T06:14:42.6832236Z",
+      "sha256": "CC0C3B344400346C84EE752E03A7CE3A891A44965C817E9D0CB2A7E382BB6C88"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsiposeencoder.cpp",
+      "bytes": 16039,
+      "lastWriteUtc": "2026-10-07T06:14:42.684221Z",
+      "sha256": "38A6AE851D66850D1B5C4C78A45A0EF1B5B486EC07DACDB8FED535E607C6538B"
+    },
+    {
+      "path": "src/pathgeneration/chamfer/rsiposeencoder.h",
+      "bytes": 2623,
+      "lastWriteUtc": "2026-10-07T06:14:42.684221Z",
+      "sha256": "01F5D171DCD5B29F5FA45490CD837BA21B55489438494B3120938D1E1E9AA585"
+    },
+    {
+      "path": "src/pathgeneration/rsi/motionprofile.h",
+      "bytes": 100,
+      "lastWriteUtc": "2026-06-23T15:13:20.8715968Z",
+      "sha256": "817EB202B943448DDA7467032661E693899548AD176E86576C66E6B602B6C4FE"
+    },
+    {
+      "path": "src/pathgeneration/rsi/offsetjsonwriter.cpp",
+      "bytes": 1305,
+      "lastWriteUtc": "2026-06-22T07:33:17.5386329Z",
+      "sha256": "9BD48B5B7DB94B22ACC8E080E65F4F5BD777A35DADD5A37929BBAE90507A564C"
+    },
+    {
+      "path": "src/pathgeneration/rsi/offsetjsonwriter.h",
+      "bytes": 189,
+      "lastWriteUtc": "2026-06-22T07:33:17.5386329Z",
+      "sha256": "234B3FE7C0FE24E66E5A7E4DA629AEFF31F421B018AD110291B352A5424206DD"
+    },
+    {
+      "path": "src/pathgeneration/rsi/rsipath.cpp",
+      "bytes": 5780,
+      "lastWriteUtc": "2026-06-22T14:02:50.0506427Z",
+      "sha256": "3311C5DCFEA4011D131BA54014FF646910925E2ECC76D37D5DCE252ED2F7D047"
+    },
+    {
+      "path": "src/pathgeneration/rsi/rsipath.h",
+      "bytes": 587,
+      "lastWriteUtc": "2026-06-22T13:56:21.5329907Z",
+      "sha256": "E7C9A1B4A4750DF36A3F74BC0D6E1A5604ECF23A6447425AFF07C026A6417CCB"
+    },
+    {
+      "path": "src/scene/chamfershareddata.cpp",
+      "bytes": 3975,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "AAEA0B01F442C93233FC10893D1D47E779E825E0C3981635B81C8E8BB331FD0A"
+    },
+    {
+      "path": "src/scene/chamfershareddata.h",
+      "bytes": 593,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "7CE1CB97A3F24D43B2C12B2E8C2357C56A5FDA5CAC8A4496B6C2064D13734A8F"
+    },
+    {
+      "path": "src/scene/scenemachiningpreparation.cpp",
+      "bytes": 7962,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "60ED35E12E389D30C6FFFE9C59DB2BE5DF83945DF32C2CF49BC614A2DE171EF7"
+    },
+    {
+      "path": "src/scene/scenemachiningpreparation.h",
+      "bytes": 4539,
+      "lastWriteUtc": "2026-10-14T11:29:19.4734869Z",
+      "sha256": "28D98A30995553FCE7C85BA4C0BB2662F6504258C66ABB023A6280211E8CBD89"
+    }
+  ],
+  "inputSnapshots": [
+    {
+      "path": "inputs/XP.json",
+      "bytes": 244,
+      "sha256": "6B7511C5DD01EBADBC95AF72BD22FCB1F7576EF96168FA50E501BE87A863697D"
+    },
+    {
+      "path": "inputs/XC.json",
+      "bytes": 511,
+      "sha256": "CB57C9749D90502BC272ECBE2266F859266C32F611F4F24FA9103A92BF44F654"
+    },
+    {
+      "path": "inputs/kr10.json",
+      "bytes": 2150,
+      "sha256": "40254E70BE8BD4EB4036952D84C196B09C0588AB5977967AC70F411E16D2B30D"
+    }
+  ],
+  "sourceInputsUnchangedAtCompletion": true,
+  "numericalCaptureStatus": "Explicitly skipped by the user on 2026-10-14; no accepted TCP/settings, numerical case, or generated motion recorded.",
+  "numericalEquivalenceVerified": false,
+  "debugSymbolsInspectedWithoutStartingApplication": true,
+  "applicationRun": false,
+  "profilerRun": false,
+  "buildRun": false,
+  "rsiPreparationRun": false,
+  "hardwareActions": false,
+  "trackedTextInputSelection": "Tracked .cpp/.h/.qml/.json/.qrc/.cmake/.txt/.md/qmldir inputs under src/qml/resources/cmake and root build configuration; frozenRsiInputs separately includes every excluded controller/resource file.",
+  "frozenRsiDirtyPathsAtCompletion": []
+}

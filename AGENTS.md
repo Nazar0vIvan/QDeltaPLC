@@ -39,8 +39,12 @@
 
 - Do not use C++ lambdas; use descriptively named helper functions or member methods.
 - No project test logic is needed; do not add tests, test harnesses, or test build targets.
-- Do not use exception-handling syntax in project C++ code: no `try`, `catch`, or `throw`.
-  Report expected failures through return values, using existing optional/result conventions.
+- Use `try`/`catch` only to handle exceptions originating in external-library calls, such as
+  OCCT's `Standard_Failure`, including standard C++ exceptions raised by those calls. Preserve
+  necessary recovery and cleanup; a bare `throw;` may rethrow the same external exception after
+  cleanup. Do not define project exception types or throw new exceptions from project code,
+  including instances of library exception types. Report expected project failures through
+  return values, using existing optional/result conventions.
   This rule does not authorize disabling compiler exception support or changing third-party code.
 - Return results through the function return value, never through output or input/output parameters.
   Do not use references, raw pointers, or smart pointers as result channels, including shared result
@@ -89,7 +93,7 @@
   RoboCrapGeometry (geometry, KR10 numerical kinematics and path-generation sources), RoboCrapScene
   (scene objects and synchronous importer), RoboCrapDevices (device infrastructure, concrete
   devices and protocols), and RoboCrapBackend (backend QML registration only). Scene and Devices
-  link Geometry; Backend links Scene and Devices. Logger and QmlChartBridge compile in robocrap.
+  link Geometry; Backend links Scene and Devices. QmlChartBridge compiles in robocrap.
   Geometry publicly supplies Eigen because its public headers expose Eigen types. Scene and
   Devices export Qt metatype metadata for backend foreign registration. RDTResponse retains
   its application-module QML registration through qt_generate_foreign_qml_types.
@@ -148,8 +152,10 @@ and src/main.cpp.
 - Publish value state through stateReady -> DeviceRunner::onStateReady -> data, and socket state
   through socketStateReady -> onSockState -> socketState. Preserve keys consumed by QML and notify
   bindings when values change. Keep QML-facing model mutations on the model's owning thread.
-- Device log signals are connected to Logger in main.cpp before devices start, using queued
-  connections. Devices depend only on network/common/loggermessage.h, not the Logger singleton.
+- Device diagnostics use `qInfo().noquote()` directly on the device's owning thread, retaining
+  the message's category label, device name, and text. Viewport diagnostics use Qt logging too;
+  main.cpp configures Qt's timestamp format. Keep logging independent of QML state and avoid
+  introducing a logging singleton, message type, or GUI-thread logging relay.
 - For FTS recording/saving, preserve device-thread socket/timer ownership, copied-input
   nonblocking file work and completion of outstanding saves before device destruction.
 - Methods dispatched by DeviceRunner::invoke(name, args) must be public Q_INVOKABLE methods on
@@ -157,7 +163,7 @@ and src/main.cpp.
   Names must be unique: buildApi() indexes by name, not overload signature. Inspect string call sites.
 - Register C++ QML types through src/backendqmltypes.h and src/CMakeLists.txt, following
   the existing QML_FOREIGN pattern. Preserve Hub's C++ ownership, engine/thread checks, and lifetime.
-  logger is the existing context-property exception; use typed registration for new exposure.
+  Use typed registration for new exposure; do not add context properties for diagnostics.
 - Keep device/protocol processing and substantial numerical work in C++. Avoid blocking the GUI
   or adding blocking work to ControlIO's receive callbacks. Keep single-file helpers/constants local
   to an unnamed namespace; match the edited file's naming, braces, and indentation.

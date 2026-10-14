@@ -8,8 +8,6 @@
 #include <QHash>
 #include <QMetaMethod>
 
-#include "network/common/loggermessage.h"
-
 class AbstractDevice : public QObject
 {
   Q_OBJECT
@@ -21,7 +19,6 @@ public:
 signals:
   void stateReady(const QVariantHash& vals);
   void socketStateReady(QAbstractSocket::SocketState state);
-  void logMessage(const LoggerMessage& msg);
 
 public slots:
   void start();

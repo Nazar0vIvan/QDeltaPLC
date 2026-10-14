@@ -5,6 +5,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -126,7 +127,7 @@ void FtsDevice::stopDevice()
 void FtsDevice::connect(const QVariantMap& config)
 {
 	if (!m_sock) {
-		emit logMessage({"FTS device is not started", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "FTS device is not started";
 		return;
 	}
 
@@ -139,7 +140,7 @@ void FtsDevice::connect(const QVariantMap& config)
 
 		if (localAddr.isNull() || peerAddr.isNull()
 				|| !localPort || !peerPort) {
-			emit logMessage({"Invalid socket configuration", 0, objectName()});
+			qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Invalid socket configuration";
 			return;
 		}
 
@@ -151,7 +152,7 @@ void FtsDevice::connect(const QVariantMap& config)
 	}
 
 	if (m_la.isNull() || m_lp == 0 || m_pa.isNull() || m_pp == 0) {
-		emit logMessage({"Socket configuration is incomplete", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Socket configuration is incomplete";
 		return;
 	}
 
@@ -163,26 +164,17 @@ void FtsDevice::connect(const QVariantMap& config)
 	}}});
 
 	if (!m_sock->bind(m_la, m_lp, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
-		emit logMessage({
-			QString("Bind failed: %1").arg(m_sock->errorString()),
-			0,
-			objectName()
-		});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << QString("Bind failed: %1").arg(m_sock->errorString());
 		return;
 	}
 	publishControlState();
 
-	emit logMessage({
-		QString("Socket connected:<br/>"
-						"&nbsp;&nbsp;Local: &nbsp;[%1] : [%2]<br/>"
-						"&nbsp;&nbsp;Peer: &nbsp;&nbsp;[%3] : [%4]")
-						.arg(m_la.toString())
-						.arg(m_lp)
-						.arg(m_pa.toString())
-						.arg(m_pp),
-		1,
-		objectName()
-	});
+	qInfo().noquote() << "[OK]" << objectName() + ":"
+			<< QString("Socket connected: local [%1]:%2, peer [%3]:%4")
+					 .arg(m_la.toString())
+					 .arg(m_lp)
+					 .arg(m_pa.toString())
+					 .arg(m_pp);
 }
 
 void FtsDevice::disconnect()
@@ -207,22 +199,22 @@ void FtsDevice::disconnect()
 	stopLogRecording();
 
 	publishControlState();
-	emit logMessage({"Socket disconnected", 1, objectName()});
+	qInfo().noquote() << "[OK]" << objectName() + ":" << "Socket disconnected";
 }
 
 void FtsDevice::startStreaming()
 {
 	if (!m_sock || m_sock->state() != QAbstractSocket::BoundState) {
-		emit logMessage({"FTS socket is not bound", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "FTS socket is not bound";
 		return;
 	}
 
 	if (m_pa.isNull() || m_pp == 0) {
-		emit logMessage({"FTS peer is not configured", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "FTS peer is not configured";
 		return;
 	}
 	if (m_saveFuture.valid()) {
-		emit logMessage({"Wait for the FTS recording to finish saving", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Wait for the FTS recording to finish saving";
 		return;
 	}
 	if (m_startPending || (m_streamRequested && m_streaming)) return;
@@ -257,7 +249,7 @@ void FtsDevice::stopStreaming()
 void FtsDevice::bias()
 {
 	if (!isSocketReady() || !m_streaming || m_startPending || m_stopRequested) {
-		emit logMessage({"Start the connected FTS stream before biasing", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Start the connected FTS stream before biasing";
 		return;
 	}
 	if (!sendRequest(kBiasCmd)) return;
@@ -310,7 +302,8 @@ void FtsDevice::onRxTimeout()
 {
 	if (m_logEnabled) processBatch();
 	if (m_startPending)
-		emit logMessage({"No FTS data received after Start; check the sensor connection", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":"
+				<< "No FTS data received after Start; check the sensor connection";
 	m_batch.clear();
 	m_needBase = true;
 	m_hasPub = false;
@@ -399,7 +392,7 @@ void FtsDevice::publishState(const RDTResponse& sample)
 bool FtsDevice::sendRequest(quint16 cmd, quint32 count)
 {
 	if (!isSocketReady()) {
-		emit logMessage({"Connect the FTS socket before sending a command", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Connect the FTS socket before sending a command";
 		return false;
 	}
 
@@ -411,8 +404,7 @@ bool FtsDevice::sendRequest(quint16 cmd, quint32 count)
 	qToBigEndian<quint32>(count, raw + 4);
 
 	if (m_sock->writeDatagram(data, m_pa, m_pp) != data.size()) {
-		emit logMessage({QString("Failed to send FTS command: %1").arg(m_sock->errorString()),
-				0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << QString("Failed to send FTS command: %1").arg(m_sock->errorString());
 		return false;
 	}
 	return true;
@@ -439,11 +431,7 @@ void FtsDevice::startLogRecording()
   if (m_logEnabled) return;
 
   if (!canRecord() || !m_rxTimeout || !m_rxTimeout->isActive()) {
-    emit logMessage({
-      "Cannot record FTS log: no data is being received",
-      0,
-      objectName()
-    });
+    qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Cannot record FTS log: no data is being received";
     return;
   }
 
@@ -454,11 +442,8 @@ void FtsDevice::startLogRecording()
   m_logEnabled = true;
   publishControlState();
 
-  emit logMessage({
-    QString("LF log recording started (capacity=%1 samples)").arg(kLogCap),
-    1,
-    objectName()
-  });
+  qInfo().noquote() << "[OK]" << objectName() + ":"
+      << QString("LF log recording started (capacity=%1 samples)").arg(kLogCap);
 }
 
 void FtsDevice::stopLogRecording()
@@ -468,11 +453,7 @@ void FtsDevice::stopLogRecording()
   m_logEnabled = false;
   publishControlState();
 
-  emit logMessage({
-    "LF log recording stopped",
-    1,
-    objectName()
-  });
+  qInfo().noquote() << "[OK]" << objectName() + ":" << "LF log recording stopped";
 }
 
 void FtsDevice::appendLogSample(const RDTResponse& sample)
@@ -481,11 +462,8 @@ void FtsDevice::appendLogSample(const RDTResponse& sample)
 
   if (m_log.size() < kLogCap) return;
 
-  emit logMessage({
-      QString("LF log reached capacity (%1 samples), auto-stopping").arg(kLogCap),
-      2,
-      objectName()
-  });
+  qInfo().noquote() << "[INFO]" << objectName() + ":"
+      << QString("LF log reached capacity (%1 samples), auto-stopping").arg(kLogCap);
 
   stopLogRecording();
 }
@@ -493,7 +471,7 @@ void FtsDevice::appendLogSample(const RDTResponse& sample)
 void FtsDevice::saveLogToDefaultFile()
 {
 	if (!canSave()) {
-		emit logMessage({"Connect FTS, record samples and Stop before saving", 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << "Connect FTS, record samples and Stop before saving";
 		return;
 	}
 
@@ -585,15 +563,12 @@ void FtsDevice::onLogSaveFinished()
 	m_savePoll->stop();
 	publishControlState();
 	if (!result.error.isEmpty()) {
-		emit logMessage({result.error, 0, objectName()});
+		qInfo().noquote() << "[ERROR]" << objectName() + ":" << result.error;
 		return;
 	}
-	emit logMessage({
-		QString("Saved LF log to '%1' (%2 samples, %3 bytes)")
-			.arg(result.filePath)
-			.arg(result.sampleCount)
-			.arg(result.byteCount),
-		1,
-		objectName()
-	});
+	qInfo().noquote() << "[OK]" << objectName() + ":"
+			<< QString("Saved LF log to '%1' (%2 samples, %3 bytes)")
+					 .arg(result.filePath)
+					 .arg(result.sampleCount)
+					 .arg(result.byteCount);
 }
