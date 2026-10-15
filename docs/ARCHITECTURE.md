@@ -6,8 +6,11 @@ or call sites; anything else is listed under [Open questions](#7-open-questions)
 Snapshot date: 2026-10-14 (working tree at HEAD `3709a12`, including uncommitted edits to
 `CMakeLists.txt`, `CMakeLists.txt.user` and `resources/cad/kr10/SEE.stp`). No numerical or QML
 files are uncommitted in this snapshot. Current source was checked again for the corrections
-in `codex_plans/ARCHITECTURE_REVIEW.md` §7; that review's proposed migrations are not implemented
-by this map. Historical "user confirmed" notes record context, not permission to override
+in `codex_plans/ARCHITECTURE_REVIEW.md` §7. Section 3.3 reflects Step 04's central-preparation
+sharing implemented on 2026-10-15. Sections 3.1 and 3.3 also reflect Step 05's angle-only IK,
+accepted configuration reuse and caller-owned FK; later migrations remain planned. These source
+changes have not been built or run.
+Historical "user confirmed" notes record context, not permission to override
 current task instructions or `AGENTS.md`.
 
 ## 1. Scope and hardware context
@@ -98,9 +101,11 @@ Plain value types with `std::optional` factories. There are no QObjects, signals
 - **`surfaceintersection`**: `intersectSurfaces(BoundedPlane, BoundedCylinder)` returns an analytic ellipse (`EdgeGeometry`), or the status `ParallelCylinderAxis` or `InvalidGeometry`.
 - **`Kr10Kinematics`** (`src/3d/robot/kinematics/`) is a closed-form solver for forward kinematics (FK) and inverse kinematics (IK).
   - `solveFK(q)` returns 7 link transforms; the last is the flange.
-  - `solveIK(T06, seed)` copies its configuration branch (shoulder, elbow, wrist) and the ±360° winding from the seed. It does not enumerate solutions.
+  - `calculateIK(T06, previous)` returns only six joint angles in degrees and Status/Turn. T06 is the requested BASE-relative flange transform; previous contains the preceding accepted angles and bits. Status chooses shoulder/elbow/wrist; the six angles choose the nearest permitted ±360° equivalents. Turn records angle signs and does not count revolutions. This operation does not enumerate solutions or run full FK.
+  - Wrist decomposition multiplies only the first three joint transforms, in the same order as FK. The caller runs full FK for the resulting six angles and checks the flange/TCP using that array.
+  - `configuration(q, transforms)` derives Status and Turn from those already computed frames and angles. Initial arbitrary seeds require an FK once; accepted sequence points reuse their bits. Refreshing bits from the existing array retains the preceding-angle branch classification at boundaries.
   - It rejects a wrist singularity (|sin q5| ≤ Eps), a target out of reach, and joints outside their limits.
-  - It checks the result by FK against `Kr10PosEps = 1e-4` and `Kr10RotEps = 1e-6`.
+  - `matchesFlange(target, actual)` checks the target-relative flange residual against `Kr10PosEps = 1e-4` mm and `Kr10RotEps = 1e-6` rotation entries without FK. Animation/manual callers use it; the checked compatibility `solveIK(T06, previousAngles)` still derives seed configuration and performs candidate FK internally for separate RSI callers.
   - It stores `const Kr10KinematicModel&`, so the model must outlive the solver. `RobotPreviewState` deletes copy and move for this reason.
 - **`Kr10KinematicModel`** (`kr10kinematicmodel.h`) holds the joints (axis, limits, rated payload speed in °/s), the IK parameters, `qHome` and `pHome`.
   - `IgnorePreviewJointPositionLimits = false` is a compile-time diagnostic switch that turns off joint-limit checks. It is read in the kinematics, in `RobotPreviewState`, in `chamfermotion.cpp` and in `OccController`.
@@ -141,7 +146,7 @@ denotes a synchronized joint movement.
 | Analytical curve | `chamferpath` | `ChamferPath::evaluate(angleRad)` evaluates the machining curve at an ellipse parameter in radians. `evaluatePhase(phase, progress)` evaluates LeadIn, Machining or LeadOut at dimensionless phase-local progress in [0,1]. Neither parameter is traveled distance or physical seconds. The path also supplies staging point P_s; `create(parameters)` validates the input (`chamferpath.h:83-93`). |
 | Arc length | `chamferarclength` | Per-phase map from progress to distance in mm. Uses adaptive Gauss–Kronrod (G7/K15) integration and a quintic inverse per knot interval (the "inverse-map knots"). |
 | Central timing | `chamfercentralmotion` | For elapsed seconds, calculate traveled distance in mm, recover phase-local progress through the inverse arc-length map, then evaluate the analytical TCP pose. All three phases use `machiningFeed`; there is an acceleration ramp over `accelerationDistanceFraction` of each lead. `leadInFeed`/`leadOutFeed` are carried through the settings but do not define central timing. |
-| Point schedule + IK | `chamfercentralvalidation` | Animation points per span are fixed **before** IK from a curvature/acceleration chord bound (0.01 mm). Each point is solved with seeded IK and checked for joint limits, speed and Cartesian XYZ acceleration. Joint-acceleration magnitude rejection is commented out (temporary exception, see `AGENTS.md`). |
+| Point schedule + IK | `chamfercentralvalidation` | `ChamferCentralPreparation` builds the central maps/timing and curvature/acceleration point schedule (0.01 mm) once per Generate, on the first reached central attempt. Scheduled analytical targets and target failures are cached as reached. Each candidate solves its own seeded IK sequence and checks joint limits, speed and Cartesian XYZ acceleration. Joint-acceleration magnitude rejection is commented out (temporary exception, see `AGENTS.md`). |
 | Whole motion | `chamfermotion` | `ChamferMotion::create(path, robot)` prepares HOME to P_s (PTP), P_s to lead-in start (LIN), the central three phases, lead-out end to P_s (LIN), and P_s to HOME (PTP). It prepares three clamped cubic joint splines: one per LIN and one shared across LeadIn/Machining/LeadOut, each with zero endpoint joint velocities. `evaluate(seconds)` uses quintic smoothstep for PTP and the prepared splines for LIN/central, then FK; it performs no IK. Times 0 and `duration()` return `qHome`. The outer motion stores `ChamferPathParameters`; the complete `ChamferPath` is inside `ChamferCentralMotion`, so parameters are repeated, not two full path objects (`chamfermotion.h:75-81`, `chamfercentralmotion.h:65`). |
 | RSI preparation | `chamferjob`, `chamfercartesiansampler`, `rsiposeencoder`, `rsicorrectionlimits` | `PreparedChamferJob` with 4 ms samples of the central part. Each sample runs IK and checks limits, **including per-joint acceleration**. Correction is encoded as an absolute first sample plus per-cycle increments, then checked against the limits file. |
 | Legacy RSI demo | `pathgeneration/rsi/*` | `RsiPath::fromSurfPose`, `RsiPath::lin` and `writeOffsetsToJson` are used by `RsiDevice::generateTrajectory` (`rsidevice.cpp:206-220`). The demo remains a callable invokable; its only QML caller is the uninstantiated `KukaPanel`. |
@@ -153,27 +158,66 @@ in seconds, `a` its acceleration magnitude in mm/s², and `epsilon = 0.01 mm`. C
 interval. For a hypothetical 0.2 s ramp at the default `a = 20 mm/s²`, this gives
 `ceil(0.2 * sqrt(20 / 0.08)) = 4` intervals and five endpoint-inclusive points; the preceding
 endpoint is shared, so four points are appended. Central spans use their curvature and timing
-bounds to fix their point counts before IK (`chamfercentralvalidation.cpp:155-191`);
-LIN uses `chamfermotion.cpp:440-478`. Neither stage inserts extra IK points or stretches time
+bounds to fix their point counts before IK (`chamfercentralvalidation.cpp:145-181`);
+LIN uses `chamfermotion.cpp:445-483`. Neither stage inserts extra IK points or stretches time
 after an IK/rate failure.
 
 After IK, spline checks evaluate each joint polynomial at interval endpoints and interior
 position/speed extrema, checking finite angles/derivatives, joint position and rated speed
-(`chamfermotion.cpp:61-95,634-710`). Joint-acceleration magnitude rejection remains disabled
+(`chamfermotion.cpp:61-95,639-715`). Joint-acceleration magnitude rejection remains disabled
 in central validation, LIN checks (including terminal stops) and spline checks; acceleration
 finiteness and central XYZ acceleration checks remain. HOME timing still uses configured
 joint acceleration. The 0.01 mm point criterion does not bound orientation or the actual TCP
 error between saved points after joint interpolation. Dry Run only evaluates the prepared
 motion; it constructs no inverse maps or splines and adds no points.
 
-**Repeated preparation.** Each starting joint candidate that reaches central validation calls
-`ChamferCentralMotion::create` again, rebuilding its three arc-length maps, timing and point
-schedule (`chamfermotion.cpp:286,731-733`; `chamfercentralvalidation.cpp:452-455`;
-`chamfercentralmotion.cpp:123-147`). For example, three candidates that each complete all three
-maps construct nine maps. This is a source-level work count, not a measured timing bottleneck.
-Inverse-map knots, saved animation points and the separately prepared RSI samples are distinct.
-Diagnostics separate computation milliseconds from movement seconds and include failed
-attempts; nested timings must not be added as if they were disjoint stages.
+**Shared central preparation.** One `ChamferCentralPreparation` belongs to `MotionCompiler`
+for the whole `ChamferMotion::create` call. Its constructor only borrows the worker-owned path
+and timing. After a candidate's incoming LIN succeeds, `validate(robot, seed)` checks the robot
+and seed, then lazily builds three arc-length maps, timing and fixed schedule. The preparation
+result, including a map/timing/schedule error, remains available to subsequent candidates.
+`CentralValidator` borrows that preparation and the immutable robot setup, returning only its
+own accepted joint samples. The completed motion retains the central motion through a value
+copy with implicitly shared Qt map arrays; no maps are rebuilt when retaining it.
+
+At each scheduled index, `evaluateTarget(index, seconds)` returns an already cached analytical
+TCP pose or evaluates and appends the next pose. A failed evaluation is retained as an empty
+optional at that index. Every candidate still solves/checks its own joint sequence and stops
+at its first error; a later target is never evaluated before the preceding point passes.
+For example, three candidates reaching successful map construction now build three maps in
+total, versus nine previously. This is a source-derived operation count, not an executed timing
+comparison. The target cache adds worker-local storage and is destroyed after Generate;
+inverse-map knots, saved animation points and separately prepared RSI samples remain distinct.
+
+Job diagnostics contain `centralPreparation` once: map attempts/completions, schedule construction,
+shared computation milliseconds, target evaluations/cache hits, zero-based failed target index,
+and target-cache payload/capacity bytes (`sizeof(optional<ChamferCentralPose>)` per entry, excluding
+allocator/container overhead). Candidate `totalMs`, central `samplingAndValidationMs` and central
+segment `computationMs` exclude newly performed shared work. Top-level `totalMs` includes all
+elapsed Generate work; shared construction/map/schedule/target timings and attempt substage
+timings are nested measurements, not additional disjoint totals. Failed candidates retain their
+errors and attempted-stage/IK diagnostics. Movement durations remain seconds.
+
+Animation preparation carries one accepted angle/configuration value through incoming LIN,
+central samples and outgoing LIN. Each angle-only IK call uses its predecessor's Status and
+angles. The caller runs FK once for flange verification and derives accepted configuration from
+that array. Central validation also checks TCP using the same array. LIN point construction still
+calls forward again to store/check TCP, and central assembly still calls forward to store TCP;
+removing those repetitions is Step 06. Playback FK for interpolated angles is a separate calculation and
+the current evaluator/controller duplication remains pending Step 10.
+
+Manual `RobotPreviewState::inverse` uses the committed pose's configuration, calls angle-only IK,
+and calls `forward` once. That FK array supplies the flange check and read-only RobotPose. A
+successful call therefore evaluates three wrist-prefix joints and six FK joints, versus 24 joint
+steps previously; these are source-derived counts, not measured speed. `initialize`, `forward`
+and `inverse` return RobotPoseResult with an optional pose and error text. OccController consumes
+the result and still commits only after presentation succeeds. Forward/manual and playback pose
+construction derive configuration from the same FK array, so later manual IK has a current seed.
+
+ChamferProfiledKinematics times angle-only IK (including its three-joint prefix) separately from
+explicit full FK. Initial search-seed FK is now explicit and counted; accepted preceding angles
+need no such call. Checked compatibility IK still includes its internal FK in IK time. No measured
+before/after runtime or accepted-motion equivalence is claimed.
 
 `src/3d/chamferprofile.*` is a CLI profiler: `robocrap --profile-chamfer in.json out.json`, checked at
 `main.cpp:47-55`. It runs before any device or QML object, and before the application's scene objects, are
@@ -440,7 +484,7 @@ Source-level facts, unresolved decisions and runtime/hardware checks not perform
 - `SceneEndEffectors` uses a hard-coded collet frame `FLANGE_ER` with a roll explicitly marked provisional (`sceneendeffectors.cpp:11-20`). Source inspection does not establish physical calibration.
 - The BREP cache is keyed only by `completeBaseName`, not directory, content hash or OCCT version. A user-chosen `X/MEE.stp` reuses a valid `kr10/MEE.brep`; STEP/content/version changes require removing that BREP to regenerate it (`cachedshapeloader.cpp:36-62`). `applicationDirPath()` may be read-only when installed.
 - Both end-effector panels currently allow Browse/Retry (§5.1). The review records a future fixed-configuration intent; whether to remove this existing user choice is unresolved, and that intent is not current behavior.
-- `IkSolution::status/turn` resemble KUKA S/T but have no reader and were not checked against the KUKA definition.
+- `IkSolution::status` now selects the next animation/manual IK branch. `turn` remains angle-sign metadata; nearest winding uses the preceding six angles. Exact compatibility of the project's bit mapping with installed KUKA controller semantics remains unverified.
 
 **Code hygiene observed (not changed)**
 - `SceneModel` is QML-creatable. The Scene and Hub singleton checks are `Q_ASSERT` only.

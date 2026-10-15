@@ -212,9 +212,10 @@ class MotionCompiler
 {
 public:
   MotionCompiler(const ChamferPath& path, const ChamferRobotSetup& robot)
-    : m_path(path), m_robot(robot), m_solver(robot.model), m_tcpToFlange(inverseRigidTransform(robot.flangeToTcp)) {}
+    : m_path(path), m_robot(robot), m_solver(robot.model), m_tcpToFlange(inverseRigidTransform(robot.flangeToTcp)),
+      m_central(path, robot.timing) {}
 
-  QVector<V6d> starts()
+  QVector<Kr10Kinematics::IkSolution> starts()
   {
     m_starts.clear();
     const auto target = m_path.stagingPose(ChamferPhase::LeadIn);
@@ -234,11 +235,11 @@ public:
     // A valid full revolution may need a different initial wrist winding.
     // Ask the solver to resolve those turns within limits, rather than wrapping
     // an already compiled path when a wrist reaches its travel limit.
-    const QVector<V6d> branches = m_starts;
+    const QVector<Kr10Kinematics::IkSolution> branches = m_starts;
     for (const auto& branch : branches)
       for (double fourth : {0.0, 1.0})
         for (double sixth : {0.0, 1.0}) {
-          V6d seed = branch;
+          V6d seed = branch.q;
           seed[3] = seedAngle(3, fourth);
           seed[5] = seedAngle(5, sixth);
           appendStart(seed, *target);
@@ -246,16 +247,18 @@ public:
     return m_starts;
   }
 
-  CompiledPoints compile(const V6d& start)
+  CompiledPoints compile(const Kr10Kinematics::IkSolution& start)
   {
+    const qint64 sharedBefore = m_central.computationNanoseconds();
     QElapsedTimer timer;
     timer.start();
     m_attempt = {};
     QJsonArray angles;
-    for (int joint = 0; joint < 6; ++joint) angles.append(start[joint]);
+    for (int joint = 0; joint < 6; ++joint) angles.append(start.q[joint]);
     m_attempt.insert("psJointAnglesDegrees", angles);
     auto result = compileImpl(start);
-    m_attempt.insert("totalMs", timer.nsecsElapsed() / 1e6);
+    const qint64 elapsed = timer.nsecsElapsed() - (m_central.computationNanoseconds() - sharedBefore);
+    m_attempt.insert("totalMs", std::max(qint64{0}, elapsed) / 1e6);
     m_attempt.insert("error", result.error);
     m_attempt.insert("assembledPoints", result.points.size());
     m_attempts.append(m_attempt);
@@ -266,29 +269,31 @@ public:
   {
     auto result = m_solver.diagnostics();
     result.insert("attempts", m_attempts);
+    result.insert("centralPreparation", m_central.diagnostics());
     return result;
   }
 
 private:
-  CompiledPoints compileImpl(const V6d& start)
+  CompiledPoints compileImpl(const Kr10Kinematics::IkSolution& start)
   {
     m_output = {};
     const ChamferProfileScope homeScope(m_solver.diagnostics());
     m_output.points.append(forward(m_robot.model.qHome, 0.0));
     m_attempt.insert("initialHomePose", homeScope.finish(m_solver.diagnostics()));
     m_phase = ChamferMotionPhase::Approach;
-    if (!appendPtp(start)) return std::move(m_output);
+    if (!appendPtp(start.q)) return std::move(m_output);
+    m_previous = start;
     m_output.boundaries[1] = m_output.points.size() - 1;
     m_phase = ChamferMotionPhase::TransferIn;
     m_output.error = appendTransfer(ChamferPhase::LeadIn);
     if (!m_output.error.isEmpty()) return std::move(m_output);
     m_output.boundaries[2] = m_output.points.size() - 1;
-    auto validated = validateChamferCentral(m_path, m_robot, m_output.points.back().joints);
+    auto validated = m_central.validate(m_robot, m_previous);
     m_attempt.insert("central", validated.diagnostics);
     if (!validated.data) { m_output.error = validated.error; return std::move(m_output); }
-    const auto& central = validated.data->motion;
+    const auto& central = m_central.motion();
     const auto& samples = validated.data->samples;
-    if (samples.isEmpty() || (samples.front().joints - m_output.points.back().joints)
+    if (samples.isEmpty() || (samples.front().solution.q - m_output.points.back().joints)
             .cwiseAbs().maxCoeff() > 1e-6) {
       m_output.error = QStringLiteral("Lead-in does not retain the transfer's joint configuration.");
       return std::move(m_output);
@@ -303,7 +308,7 @@ private:
         return std::move(m_output);
       }
       const auto& sample = samples[i];
-      auto point = forward(sample.joints, sample.target.progress);
+      auto point = forward(sample.solution.q, sample.target.progress);
       point.time = offset + sample.time;
       if (phase >= 3) {
         m_output.error = QStringLiteral("Unexpected sample after the central endpoint.");
@@ -322,7 +327,8 @@ private:
       return std::move(m_output);
     }
     m_attempt.insert("centralAssemblyMs", assemblyTimer.nsecsElapsed() / 1e6);
-    m_output.central = std::move(validated.data->motion);
+    m_previous = samples.back().solution;
+    m_output.central = central; // Keep the shared preparation for any later candidate.
     m_phase = ChamferMotionPhase::TransferOut;
     m_output.error = appendTransfer(ChamferPhase::LeadOut);
     if (!m_output.error.isEmpty()) return std::move(m_output);
@@ -347,25 +353,25 @@ private:
     return (1.0 - fraction) * joint.qMin + fraction * joint.qMax;
   }
 
-  std::optional<V6d> inverse(const M4d& tcp, const V6d& seed) const
+  std::optional<Kr10Kinematics::IkSolution> inverse(
+      const M4d& tcp, const Kr10Kinematics::IkSolution& seed) const
   {
     const M4d flange = tcp * m_tcpToFlange;
-    const auto solution = m_solver.solveIK(flange, seed);
+    const auto solution = m_solver.calculateIK(flange, seed);
     if (!solution || !withinLimits(solution->q, m_robot.model)) return std::nullopt;
-    const M4d actual = m_solver.solveFK(solution->q).back();
-    const M4d error = inverseRigidTransform(flange) * actual;
-    if (!error.allFinite() || error.block<3, 1>(0, 3).norm() > Kr10PosEps
-        || (error.block<3, 3>(0, 0) - M3d::Identity()).cwiseAbs().maxCoeff() > Kr10RotEps)
+    const auto transforms = m_solver.solveFK(solution->q);
+    if (!Kr10Kinematics::matchesFlange(flange, transforms.back()))
       return std::nullopt;
-    return solution->q;
+    return m_solver.configuration(solution->q, transforms);
   }
 
   void appendStart(const V6d& seed, const M4d& target)
   {
-    const auto solution = inverse(target, seed);
+    const auto previous = m_solver.configuration(seed, m_solver.solveFK(seed));
+    const auto solution = inverse(target, previous);
     if (!solution) return;
     for (const auto& existing : m_starts)
-      if ((existing - *solution).cwiseAbs().maxCoeff() < 1e-6) return;
+      if ((existing.q - solution->q).cwiseAbs().maxCoeff() < 1e-6) return;
     m_starts.append(*solution);
   }
 
@@ -463,17 +469,18 @@ private:
         if (!std::isfinite(time) || !(time > m_output.points.back().time))
           return QStringLiteral("Transfer timestamps cannot be resolved.");
         const M4d target = profile->target(local);
-        const auto joints = inverse(target, m_output.points.back().joints);
-        if (!joints)
+        const auto solution = inverse(target, m_previous);
+        if (!solution)
           return QStringLiteral("%1: IK, joint position or TCP reconstruction failed at %2 s.")
               .arg(centralPhaseName(m_phase)).arg(local, 0, 'g', 12);
-        auto point = forward(*joints, profile->progress(local));
+        auto point = forward(solution->q, profile->progress(local));
         if ((point.tcp.block<3, 1>(0, 3) - target.block<3, 1>(0, 3)).norm() > Kr10PosEps
             || (point.tcp.block<3, 3>(0, 0) - target.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
           return QStringLiteral("%1: TCP fails FK reconstruction tolerance at %2 s.")
               .arg(centralPhaseName(m_phase)).arg(local, 0, 'g', 12);
         point.time = time;
         m_output.points.append(point);
+        m_previous = *solution;
       }
     }
     return inspectTransferRates(first);
@@ -523,9 +530,11 @@ private:
   const ChamferRobotSetup& m_robot;
   ChamferProfiledKinematics m_solver;
   M4d m_tcpToFlange = M4d::Identity();
+  ChamferCentralPreparation m_central;
   ChamferMotionPhase m_phase = ChamferMotionPhase::TransferIn;
   CompiledPoints m_output;
-  QVector<V6d> m_starts;
+  QVector<Kr10Kinematics::IkSolution> m_starts;
+  Kr10Kinematics::IkSolution m_previous;
   QJsonObject m_attempt;
   QJsonArray m_attempts;
   QJsonArray m_transferSchedule;

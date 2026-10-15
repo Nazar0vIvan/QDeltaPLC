@@ -68,8 +68,25 @@ Kr10Kinematics::solveIK(const M4d& targetT06, const V6d& currentQ) const
     qWarning() << "Cannot solve KR10 IK: invalid kinematic parameters";
     return std::nullopt;
   }
+  const auto previous = configuration(currentQ, solveFK(currentQ));
+  const auto solution = calculateIK(targetT06, previous);
+  if (!solution || !matchesFlange(targetT06, solveFK(solution->q).back()))
+    return std::nullopt;
+  return solution;
+}
 
-  const IkBranch branch = branchFrom(currentQ);
+std::optional<Kr10Kinematics::IkSolution>
+Kr10Kinematics::calculateIK(const M4d& targetT06, const IkSolution& previous) const
+{
+  if (!isValid()) {
+    qWarning() << "Cannot solve KR10 IK: invalid kinematic parameters";
+    return std::nullopt;
+  }
+
+  if (!targetT06.allFinite() || !previous.q.allFinite() || (previous.status & ~uint8_t{7}) != 0)
+    return std::nullopt;
+  const IkBranch branch = branchFromStatus(previous.status);
+  const V6d& currentQ = previous.q;
 
   const V3d flangeOrigin = targetT06.block<3, 1>(0, 3);
   const V3d flangeZ = targetT06.block<3, 1>(0, 2);
@@ -91,9 +108,6 @@ Kr10Kinematics::solveIK(const M4d& targetT06, const V6d& currentQ) const
       wrist->q6
   };
 
-  if (!isSolution(targetT06, q))
-    return std::nullopt;
-
   return IkSolution{
     q,
     statusFrom(branch),
@@ -101,8 +115,23 @@ Kr10Kinematics::solveIK(const M4d& targetT06, const V6d& currentQ) const
   };
 }
 
+Kr10Kinematics::IkSolution Kr10Kinematics::configuration(
+    const V6d& q, const std::array<M4d, LinkCount>& transforms) const
+{
+  return {q, statusFrom(branchFrom(q, transforms)), turnFrom(q)};
+}
+
+Kr10Kinematics::IkBranch Kr10Kinematics::branchFromStatus(uint8_t status) noexcept
+{
+  return {
+      (status & (1u << 0)) ? ShoulderBranch::Overhead : ShoulderBranch::Basic,
+      (status & (1u << 1)) ? ElbowBranch::Negative : ElbowBranch::Positive,
+      (status & (1u << 2)) ? WristBranch::Negative : WristBranch::Positive
+  };
+}
+
 Kr10Kinematics::IkBranch
-Kr10Kinematics::branchFrom(const V6d &q) const
+Kr10Kinematics::branchFrom(const V6d &q, const std::array<M4d, LinkCount>& transforms) const
 {
   const double alpha = std::atan2(m_model.ik.bx, m_model.ik.by);
 
@@ -115,10 +144,22 @@ Kr10Kinematics::branchFrom(const V6d &q) const
   const double dq5 = (q[4] - m_model.qHome[4]) * GeomConst::DegToRad / joint5.axis.z();
 
   return {
-      isOverhead(q) ? ShoulderBranch::Overhead : ShoulderBranch::Basic,
+      isOverhead(transforms) ? ShoulderBranch::Overhead : ShoulderBranch::Basic,
       elbowRad <= 0.0 ? ElbowBranch::Negative : ElbowBranch::Positive,
       dq5 < 0.0 ? WristBranch::Negative : WristBranch::Positive
   };
+}
+
+M4d Kr10Kinematics::armTransform(const ArmJoints& arm) const
+{
+  const std::array<double, 3> joints{arm.q1, arm.q2, arm.q3};
+  M4d transform = M4d::Identity();
+  for (std::size_t i = 0; i < joints.size(); ++i) {
+    const JointModel& joint = m_model.joints[i];
+    const double dq = joints[i] - m_model.qHome[i];
+    transform = (transform * joint.localTransform * makeRotation(dq, joint.axis)).eval();
+  }
+  return transform;
 }
 
 
@@ -180,13 +221,7 @@ Kr10Kinematics::solveWrist(const M4d &targetT06,
                            const IkBranch &branch,
                            const V6d &currentQ) const
 {
-  V6d q123 = m_model.qHome;
-  q123[0] = arm.q1;
-  q123[1] = arm.q2;
-  q123[2] = arm.q3;
-
-  const std::array<M4d, LinkCount> transforms = solveFK(q123);
-  const M4d T36 = inverseRigidTransform(transforms[3]) * targetT06;
+  const M4d T36 = inverseRigidTransform(armTransform(arm)) * targetT06;
 
   const double rawCosQ5 = -T36(1, 2);
 
@@ -245,10 +280,8 @@ std::optional<double> Kr10Kinematics::resolveJointAngle(std::size_t jointIndex, 
   return angleDeg + 360.0 * static_cast<double>(turn);
 }
 
-bool Kr10Kinematics::isOverhead(const V6d& q) const
+bool Kr10Kinematics::isOverhead(const std::array<M4d, LinkCount>& transforms) const
 {
-  const std::array<M4d, LinkCount> transforms = solveFK(q);
-
   const M4d& T01 = transforms[1];
   const M4d& T06 = transforms.back();
 
@@ -265,12 +298,12 @@ bool Kr10Kinematics::isOverhead(const V6d& q) const
   return wristXInA1 < 0.0;
 }
 
-bool Kr10Kinematics::isSolution(const M4d& targetT06, const V6d& q) const
+bool Kr10Kinematics::matchesFlange(const M4d& targetT06, const M4d& actualT06)
 {
-  const M4d actualT06 = solveFK(q).back();
   const M4d errorTransform = inverseRigidTransform(targetT06) * actualT06;
 
   return
+      errorTransform.allFinite() &&
       posErr(errorTransform) <= Kr10PosEps &&
       rotErr(errorTransform) <= Kr10RotEps;
 }

@@ -23,6 +23,12 @@ public:
   explicit Kr10Kinematics(const Kr10KinematicModel& model);
 
   [[nodiscard]] std::array<M4d, LinkCount> solveFK(const V6d& q) const;
+  // Angle-only IK: caller checks the flange using its own full FK result.
+  [[nodiscard]] std::optional<IkSolution> calculateIK(const M4d& T06, const IkSolution& previous) const;
+  // Classify finite joint coordinates using their already computed FK frames.
+  [[nodiscard]] IkSolution configuration(const V6d& q, const std::array<M4d, LinkCount>& transforms) const;
+  [[nodiscard]] static bool matchesFlange(const M4d& targetT06, const M4d& actualT06);
+  // Checked compatibility operation for callers supplying only previous angles.
   [[nodiscard]] std::optional<IkSolution> solveIK(const M4d& T06,const V6d& currentQ) const;
   [[nodiscard]] bool isValid() const;
 
@@ -52,7 +58,9 @@ private:
     double q6 = 0.0;
   };
 
-  [[nodiscard]] IkBranch branchFrom(const V6d& q) const;
+  [[nodiscard]] IkBranch branchFrom(const V6d& q, const std::array<M4d, LinkCount>& transforms) const;
+  [[nodiscard]] static IkBranch branchFromStatus(uint8_t status) noexcept;
+  [[nodiscard]] M4d armTransform(const ArmJoints& arm) const;
 
   [[nodiscard]] std::optional<ArmJoints> solveArm(
       const V3d& wristCenter,
@@ -70,8 +78,7 @@ private:
       double deltaRad,
       double currentDeg) const;
 
-  [[nodiscard]] bool isOverhead(const V6d& q) const;
-  [[nodiscard]] bool isSolution(const M4d& targetT06, const V6d& q) const;
+  [[nodiscard]] bool isOverhead(const std::array<M4d, LinkCount>& transforms) const;
   [[nodiscard]] static uint8_t statusFrom(const IkBranch& branch) noexcept;
   [[nodiscard]] static uint8_t turnFrom(const V6d& q) noexcept;
 

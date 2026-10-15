@@ -3,10 +3,11 @@
 #include "3d/robot/kinematics/kr10kinematics.h"
 #include <QElapsedTimer>
 #include <QJsonObject>
+#include <algorithm>
 #include <utility>
 
-// Worker-local accounting. IK time includes the solver's internal FK calls;
-// explicit FK counts below exclude those internal calls. No global counters.
+// Worker-local accounting. Checked compatibility IK includes internal FK;
+// angle-only IK includes its three-joint wrist prefix. Neither is explicit FK.
 class ChamferProfiledKinematics
 {
 public:
@@ -33,6 +34,21 @@ public:
     return result;
   }
 
+  auto calculateIK(const M4d& target, const RoboCrap3D::Kr10Kinematics::IkSolution& previous) const
+  {
+    QElapsedTimer timer;
+    timer.start();
+    auto result = m_solver.calculateIK(target, previous);
+    m_ikNanoseconds += timer.nsecsElapsed();
+    ++m_ikCalls;
+    return result;
+  }
+
+  auto configuration(const V6d& joints, const std::array<M4d, RoboCrap3D::LinkCount>& transforms) const
+  {
+    return m_solver.configuration(joints, transforms);
+  }
+
   bool isValid() const { return m_solver.isValid(); }
   QJsonObject diagnostics() const
   {
@@ -49,22 +65,26 @@ private:
 };
 
 // A scope snapshot returns elapsed work without mutating the worker's result.
+// Optional cumulative shared work is excluded from the scope's computation time.
 class ChamferProfileScope
 {
 public:
-  explicit ChamferProfileScope(QJsonObject before) : m_before(std::move(before))
+  explicit ChamferProfileScope(QJsonObject before, qint64 sharedNanoseconds = 0)
+    : m_before(std::move(before)), m_sharedNanoseconds(sharedNanoseconds)
   { m_timer.start(); }
 
-  QJsonObject finish(const QJsonObject& after) const
+  QJsonObject finish(const QJsonObject& after, qint64 sharedNanoseconds = 0) const
   {
     QJsonObject result;
     for (const auto& key : {"ikCalls", "explicitFkCalls", "ikMs", "explicitFkMs"})
       result.insert(key, after.value(key).toDouble() - m_before.value(key).toDouble());
-    result.insert("computationMs", m_timer.nsecsElapsed() / 1e6);
+    const qint64 elapsed = m_timer.nsecsElapsed() - (sharedNanoseconds - m_sharedNanoseconds);
+    result.insert("computationMs", std::max(qint64{0}, elapsed) / 1e6);
     return result;
   }
 
 private:
   QJsonObject m_before;
+  qint64 m_sharedNanoseconds = 0;
   QElapsedTimer m_timer;
 };

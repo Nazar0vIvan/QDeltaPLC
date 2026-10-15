@@ -1,0 +1,29 @@
+{
+  "description": "Request a separate AGENTS compliance review after C++ changes during a turn.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -Command \"& python.exe (Join-Path (git rev-parse --show-toplevel) '.codex/review_hook.py')\"",
+            "timeout": 15,
+            "statusMessage": "Record C++ state for the compliance review"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -Command \"& python.exe (Join-Path (git rev-parse --show-toplevel) '.codex/review_hook.py')\"",
+            "timeout": 15,
+            "statusMessage": "Check whether a C++ compliance review is required"
+          }
+        ]
+      }
+    ]
+  }
+}

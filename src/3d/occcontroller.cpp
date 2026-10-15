@@ -428,8 +428,6 @@ void OccController::loadRobot()
   }
 
   const ViewportAssets assets = ViewportAssets::applicationAssets();
-  QString error;
-
   std::shared_ptr<RobotPreviewState> pending;
   try {
     const auto model = Kr10Model::fromJson(assets.modelFile);
@@ -438,8 +436,9 @@ void OccController::loadRobot()
       return;
     }
     pending = std::make_shared<RobotPreviewState>(*model);
-    if (!pending->initialize(error)) {
-      setError(error);
+    const auto initialized = pending->initialize();
+    if (!initialized.pose) {
+      setError(initialized.error);
       return;
     }
   } catch (const Standard_Failure& failure) {
@@ -535,18 +534,17 @@ QVariantList OccController::solve(const QVariantList& values, bool inverse)
     return {};
   }
   try {
-    QString error;
-    const auto pose = inverse ? m_state->inverse(*input, error) : m_state->forward(*input, error);
-    if (!pose) {
-      setError(error);
+    const auto result = inverse ? m_state->inverse(*input) : m_state->forward(*input);
+    if (!result.pose) {
+      setError(result.error);
       return {};
     }
-    if (!applyPose(*pose)) {
+    if (!applyPose(*result.pose)) {
       setError(QStringLiteral("Cannot update the robot presentation."));
       return {};
     }
     setError({});
-    return toList(inverse ? pose->joints() : pose->flange());
+    return toList(inverse ? result.pose->joints() : result.pose->flange());
   } catch (const Standard_Failure& failure) {
     setError(QStringLiteral("Kinematics failed: %1").arg(QString::fromUtf8(failure.what())));
     return {};
@@ -567,10 +565,9 @@ void OccController::applyPlaybackPose(QList<double> joints)
   }
   V6d values = V6d::Zero();
   for (int i = 0; i < 6; ++i) values[i] = joints[i];
-  QString error;
-  const auto pose = m_state->forward(values, error);
-  if (!pose || !applyPose(*pose)) {
-    m_machining->failPlayback(error.isEmpty() ? QStringLiteral("Cannot display the trajectory pose.") : error);
+  const auto result = m_state->forward(values);
+  if (!result.pose || !applyPose(*result.pose)) {
+    m_machining->failPlayback(result.error.isEmpty() ? QStringLiteral("Cannot display the trajectory pose.") : result.error);
   }
 }
 

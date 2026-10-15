@@ -8,7 +8,8 @@ namespace RoboCrap3D {
 class RobotPose
 {
 public:
-  const V6d& joints() const { return m_joints; }
+  const V6d& joints() const { return m_solution.q; }
+  const Kr10Kinematics::IkSolution& ikSolution() const { return m_solution; }
   const V6d& flange() const { return m_flange; }
   const std::array<M4d, LinkCount>& transforms() const { return m_transforms; }
 
@@ -16,11 +17,18 @@ private:
   friend class RobotPreviewState;
   RobotPose() { m_transforms.fill(M4d::Identity()); }
   // Joint coordinates, displayed flange frame and link transforms describe one pose.
-  RobotPose(const V6d& joints, const V6d& flange, const std::array<M4d, LinkCount>& transforms)
-    : m_joints(joints), m_flange(flange), m_transforms(transforms) {}
-  V6d m_joints = V6d::Zero();
+  RobotPose(const Kr10Kinematics::IkSolution& solution, const V6d& flange,
+            const std::array<M4d, LinkCount>& transforms)
+    : m_solution(solution), m_flange(flange), m_transforms(transforms) {}
+  Kr10Kinematics::IkSolution m_solution;
   V6d m_flange = V6d::Zero();
   std::array<M4d, LinkCount> m_transforms{};
+};
+
+struct RobotPoseResult
+{
+  std::optional<RobotPose> pose;
+  QString error;
 };
 
 class RobotPreviewState final
@@ -35,9 +43,9 @@ public:
 
   const Kr10Model& model() const { return m_model; }
   const RobotPose& pose() const { return m_pose; }
-  bool initialize(QString& error);
-  std::optional<RobotPose> forward(const V6d& joints, QString& error) const;
-  std::optional<RobotPose> inverse(const V6d& flange, QString& error) const;
+  RobotPoseResult initialize();
+  RobotPoseResult forward(const V6d& joints) const;
+  RobotPoseResult inverse(const V6d& flange) const;
 
 private:
   friend class OccController;
