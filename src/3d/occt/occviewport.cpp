@@ -8,7 +8,7 @@
 
 namespace RoboCrap3D {
 
-OccViewport::OccViewport(Aspect_Handle handle, SceneModel* applicationScene)
+OccViewport::OccViewport(Aspect_Handle handle, const DrawingDocument& document)
   : m_viewer(handle),
     m_scene(m_viewer.context(), m_viewer.view()),
     m_robot(m_scene),
@@ -20,34 +20,26 @@ OccViewport::OccViewport(Aspect_Handle handle, SceneModel* applicationScene)
   QObject::connect(&m_timer, &QTimer::timeout, &m_timer, std::bind(&OccViewport::flushRender, this));
   if (!m_viewer.isValid()) return;
   m_scene.displayInfrastructure();
-  (void)m_application.synchronize(applicationScene);
+  for (const auto& object : document.objects) {
+    const auto result = m_application.insertObject(object);
+    if (!result.accepted) qWarning().noquote() << "Object drawing replay:" << result.error;
+  }
   fitInitialCamera();
 }
 
-bool OccViewport::setRobot(const RobotPreviewState* state, const CadLoadResult* shapes)
+ViewportOperationResult OccViewport::setRobot(const RobotVisualModel& visuals,
+                                              const CadLoadResult& shapes,
+                                              const DrawingPose& pose)
 {
-  if (!isValid()) return false;
-  if (!state || !shapes) {
-    m_robot.clear();
-    requestRender();
-    return true;
-  }
-  const bool loaded = m_robot.load(state->model().visuals, *shapes, state->pose().transforms());
+  if (!isValid()) return {false, QStringLiteral("Robot installation: viewport is unavailable.")};
+  const auto result = m_robot.load(visuals, shapes, pose);
   requestRender();
-  if (loaded) fitInitialCamera();
-  return loaded;
-}
-
-void OccViewport::synchronizeApplicationScene(SceneModel* applicationScene)
-{
-  if (m_application.synchronize(applicationScene)) {
-    if (!m_robot.isLoaded()) fitInitialCamera();
-    requestRender();
-  }
+  if (result.accepted) fitInitialCamera();
+  return result;
 }
 
 bool OccViewport::setEndEffectors(
-    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, SceneEndEffectors::Tool active)
+    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, RobotTool active)
 {
   if (!isValid()) return false;
   const bool success = m_robot.setEndEffectors(shapes, active);
@@ -55,23 +47,31 @@ bool OccViewport::setEndEffectors(
   return success;
 }
 
-void OccViewport::removeSceneObject(quint32 objectId)
+void OccViewport::removeObject(quint32 id)
 {
-  if (m_application.removeObject(objectId)) requestRender();
+  if (m_application.removeObject(id)) requestRender();
 }
 
-void OccViewport::synchronizeSceneObject(SceneObject* object)
+ViewportOperationResult OccViewport::insertObject(const DrawingObject& object)
 {
-  if (m_application.synchronizeObject(object)) {
-    if (!m_robot.isLoaded()) fitInitialCamera();
-    requestRender();
-  }
+  const auto result = m_application.insertObject(object);
+  if (result.accepted && !m_robot.isLoaded()) fitInitialCamera();
+  requestRender();
+  return result;
 }
 
-void OccViewport::setDiagnosticOverlays(bool showPoints, bool showNormals,
-                                        SceneModel* applicationScene)
+ViewportOperationResult OccViewport::setObjectVisible(quint32 id, bool visible)
 {
-  if (m_application.setDiagnosticOverlays(showPoints, showNormals, applicationScene)) requestRender();
+  const auto result = m_application.setObjectVisible(id, visible);
+  requestRender();
+  return result;
+}
+
+ViewportOperationResult OccViewport::setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics)
+{
+  const auto result = m_application.setObjectDiagnostics(id, diagnostics);
+  requestRender();
+  return result;
 }
 
 void OccViewport::setSelectedObjects(const QList<quint32>& ids)
@@ -80,9 +80,11 @@ void OccViewport::setSelectedObjects(const QList<quint32>& ids)
   requestRender();
 }
 
-void OccViewport::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
+ViewportOperationResult OccViewport::setDraftAxis(const std::optional<DrawingAxis>& axis)
 {
-  if (m_application.setMachiningPreview(parameters)) requestRender();
+  const auto result = m_application.setDraftAxis(axis);
+  requestRender();
+  return result;
 }
 
 OccViewport::~OccViewport()
@@ -95,23 +97,18 @@ bool OccViewport::isValid() const
   return m_viewer.isValid();
 }
 
-void OccViewport::setSpindleTcpFrame(const std::optional<M4d>& frame)
+void OccViewport::setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet)
 {
-  m_robot.setSpindleTcpFrame(frame);
+  m_robot.setSpindleFrames(tcp, collet);
   requestRender();
 }
 
-void OccViewport::setSpindleColletFrame(const std::optional<M4d>& frame)
+ViewportOperationResult OccViewport::applyTransforms(const DrawingPose& pose)
 {
-  m_robot.setSpindleColletFrame(frame);
-  requestRender();
-}
-
-bool OccViewport::applyPose(const RobotPose& pose)
-{
-  if (!isValid() || !m_robot.applyTransforms(pose.transforms())) return false;
-  requestRender();
-  return true;
+  if (!isValid()) return {false, QStringLiteral("Viewport is unavailable.")};
+  const auto result = m_robot.applyTransforms(pose);
+  if (result.accepted) requestRender();
+  return result;
 }
 
 void OccViewport::setExposed(bool exposed)

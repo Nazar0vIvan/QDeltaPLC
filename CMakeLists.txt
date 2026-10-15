@@ -108,12 +108,14 @@ if(USE_HOT_RELOAD)
     URI robocrap_qml_module
     VERSION 1.0
     ${QML_OPTIONS}
+    DEPENDENCIES RoboCrap.Backend/1.0
   )
 else()
   qt_add_qml_module(robocrap
     URI robocrap_qml_module
     VERSION 1.0
     ${QML_OPTIONS}
+    DEPENDENCIES RoboCrap.Backend/1.0
     IMPORTS
       Styles
       Components

@@ -1,28 +1,88 @@
 #pragma once
 
-#include "scene/sceneendeffectors.h"
+#include "robotgraphics.h"
+#include <QUrl>
 
 #include <QObject>
-#include <QMetaObject>
+#include <QMap>
+#include <variant>
 #include <QPointer>
 #include <QList>
-#include <QVariantList>
 #include <QWindow>
 
 #include <memory>
 #include <array>
 
-class SceneModel;
-class SceneObject;
-class SceneMachining;
-
 namespace RoboCrap3D {
+
+struct DrawingPlane {
+  V3d origin = V3d::Zero();
+  V3d normal = V3d::UnitZ();
+  V3d axisU = V3d::UnitX();
+  double width = 0.0;
+  double height = 0.0;
+};
+
+struct DrawingCylinder {
+  V3d origin = V3d::Zero();
+  V3d axis = V3d::UnitZ();
+  double radius = 0.0;
+  double length = 0.0;
+};
+
+struct DrawingCurve {
+  V3d center = V3d::Zero();
+  V3d normal = V3d::UnitZ();
+  V3d majorAxis = V3d::UnitX();
+  double majorRadius = 0.0;
+  double minorRadius = 0.0;
+};
+
+struct DrawingStyle {
+  std::array<int, 3> color{80, 157, 253};
+  double lineWidth = 0.0;
+  bool decoration = false;
+};
+
+struct DrawingPart {
+  std::variant<DrawingPlane, DrawingCylinder, DrawingCurve, QList<V3d>, QList<std::array<V3d, 2>>> geometry;
+  DrawingStyle style;
+};
+
+struct DrawingDiagnostics {
+  QList<V3d> markers;
+  QList<std::array<V3d, 2>> normalLines;
+};
+
+struct DrawingObject {
+  quint32 id = 0;
+  QList<DrawingPart> parts;
+  bool visible = true;
+  DrawingDiagnostics diagnostics;
+};
+
+struct DrawingAxis {
+  V3d center = V3d::Zero();
+  V3d direction = V3d::UnitZ();
+  double length = 0.0;
+};
+
+struct DrawingDocument {
+  QMap<quint32, DrawingObject> objects;
+  QList<quint32> selected;
+  std::optional<DrawingAxis> axis;
+};
+
+struct DrawingPose {
+  QList<M4d> links;
+  M4d tool = M4d::Identity();
+  std::optional<M4d> tcp;
+  std::optional<M4d> collet;
+};
 
 class CadLoadWorker;
 class OccViewWindow;
-class RobotPreviewState;
 struct CadLoadResult;
-class RobotPose;
 
 class OccController final : public QObject
 {
@@ -35,9 +95,6 @@ class OccController final : public QObject
   Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged)
   Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
   Q_PROPERTY(QString warningString READ warningString NOTIFY warningStringChanged)
-  Q_PROPERTY(QVariantList jointAngles READ jointAngles NOTIFY poseChanged)
-  Q_PROPERTY(QVariantList flangePose READ flangePose NOTIFY poseChanged)
-  Q_PROPERTY(QList<double> tcpPose READ tcpPose NOTIFY tcpPoseChanged)
   Q_PROPERTY(bool measuringCadLoading READ isMeasuringCadLoading NOTIFY endEffectorLoadChanged)
   Q_PROPERTY(bool spindleCadLoading READ isSpindleCadLoading NOTIFY endEffectorLoadChanged)
   Q_PROPERTY(QString measuringCadError READ measuringCadError NOTIFY endEffectorLoadChanged)
@@ -54,12 +111,11 @@ public:
   bool isLoading() const { return m_loading; }
   QString errorString() const { return m_error; }
   QString warningString() const { return m_warning; }
-  QVariantList jointAngles() const;
-  QVariantList flangePose() const;
-  QList<double> tcpPose() const;
-  void setApplicationScene(SceneModel* scene);
-  void setEndEffectors(SceneEndEffectors* effectors);
-  void setMachining(SceneMachining* machining);
+  ViewportOperationResult insertObject(const DrawingObject& object);
+  void removeObject(quint32 id);
+  void setObjectVisible(quint32 id, bool visible);
+  void setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics);
+  void setDraftAxis(const std::optional<DrawingAxis>& axis);
   bool showSpindleTcp() const { return m_showSpindleTcp; }
   void setShowSpindleTcp(bool visible);
   bool showSpindleCollet() const { return m_showSpindleCollet; }
@@ -68,15 +124,14 @@ public:
   bool isSpindleCadLoading() const;
   QString measuringCadError() const;
   QString spindleCadError() const;
-  Q_INVOKABLE void reloadEndEffector(SceneEndEffectors::Tool tool);
+  void loadEndEffector(RobotTool tool, const QUrl& source);
+  void setActiveTool(RobotTool tool);
+  void setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet);
   Q_INVOKABLE void setSelectedObjects(const QList<quint32>& ids);
-  Q_INVOKABLE void setDiagnosticOverlays(bool showPoints, bool showNormals);
 
-  Q_INVOKABLE void loadRobot();
+  ViewportOperationResult loadRobot(const RobotVisualModel& visuals, const DrawingPose& pose);
+  ViewportOperationResult applyRobotTransforms(const DrawingPose& pose);
   Q_INVOKABLE void detachViewWindow(QWindow* window);
-  Q_INVOKABLE QVariantList solveFK(const QVariantList& joints);
-  Q_INVOKABLE QVariantList solveIK(const QVariantList& flange);
-  Q_INVOKABLE QVariantList solveTcpIK(const QVariantList& tcp);
 
 signals:
   void showSpindleTcpChanged();
@@ -87,36 +142,24 @@ signals:
   void loadingChanged();
   void errorStringChanged();
   void warningStringChanged();
-  void poseChanged();
-  void tcpPoseChanged();
   void message(const QString& text, bool error);
   void applicationSelectionRequested(quint32 objectId, bool additive);
   void deleteSelectionRequested();
   void endEffectorLoadChanged();
-  void endEffectorLoaded(SceneEndEffectors::Tool tool);
+  void endEffectorLoaded(RobotTool tool);
 
 private:
   void createWindow();
-  void synchronizeMachiningReadiness();
-  void synchronizeMachiningPreview();
-  void applyPlaybackPose(QList<double> joints);
   void synchronizeEndEffectors();
-  void synchronizeSpindleTcp();
-  void synchronizeSpindleCollet();
-  void synchronizeSceneObject(SceneObject* object);
-  void removeSceneObject(quint32 objectId);
-  void onSceneDestroyed();
   void onViewWindowDestroyed();
-  void finishRobotLoad(quint64 generation, std::shared_ptr<RobotPreviewState> pending);
-  void startEndEffectorLoad(SceneEndEffectors::Tool tool);
+  void finishRobotLoad(quint64 generation);
+  void startEndEffectorLoad(RobotTool tool);
   // Tool identity, request generation and source identify an asynchronous result.
-  void finishEndEffectorLoad(SceneEndEffectors::Tool tool, quint64 generation, const QUrl& source);
+  void finishEndEffectorLoad(RobotTool tool, quint64 generation, const QUrl& source);
   void setError(const QString& error);
-  bool applyPose(const RobotPose& pose);
-  QVariantList solve(const QVariantList& values, bool inverse);
 
   struct ToolCadState {
-    QUrl loadedSource;
+    QUrl source;
     std::shared_ptr<const CadLoadResult> shapes;
     std::unique_ptr<CadLoadWorker> worker;
     QString error;
@@ -124,18 +167,13 @@ private:
   };
 
   std::array<ToolCadState, 2> m_toolCad;
-  QPointer<SceneEndEffectors> m_endEffectors;
-  QPointer<SceneMachining> m_machining;
-  std::shared_ptr<RobotPreviewState> m_state;
+  std::optional<RobotVisualModel> m_visuals;
+  DrawingPose m_pose;
+  DrawingDocument m_document;
+  RobotTool m_activeTool = RobotTool::Measuring;
   std::shared_ptr<const CadLoadResult> m_shapes;
   std::unique_ptr<CadLoadWorker> m_worker;
   QPointer<OccViewWindow> m_window;
-  QPointer<SceneModel> m_applicationScene;
-  QMetaObject::Connection m_sceneCollectionConnection;
-  QMetaObject::Connection m_sceneVisibilityConnection;
-  QMetaObject::Connection m_sceneDiagnosticConnection;
-  QMetaObject::Connection m_sceneRemovalConnection;
-  QMetaObject::Connection m_sceneDestroyedConnection;
   QString m_error;
   QString m_warning;
   quint64 m_generation = 0;

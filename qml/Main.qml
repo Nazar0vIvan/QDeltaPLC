@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs as Dialogs
 import RoboCrap.Backend 1.0 as Backend
+import robocrap_qml_module 1.0 as App
 import RoboCrap.Viewport3D 1.0 as Viewport3D
 
 import "MenuBar"
@@ -19,25 +20,17 @@ import Components 1.0
 ApplicationWindow {
   id: root
 
-  property int workflowMode: WorkflowPanel.Measuring
+  readonly property int workflowMode: App.WorkspaceController.mode
   property bool dryScanActive: false
   property bool dryScanRunning: false
   onMeasurementSubmodeChanged: { root.dryScanActive = false; root.dryScanRunning = false }
-  property int measurementSubmode: WorkflowPanel.Rough
+  readonly property int measurementSubmode: App.WorkspaceController.submode
 
   onWorkflowModeChanged: {
     root.dryScanActive = false
     root.dryScanRunning = false
-    if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
     root.toolSetupOpen = false
     if (root.chamferEditorOpen) machiningPanel.cancelEditing()
-    root.syncEndEffector()
-    root.syncMachiningInput()
-  }
-
-  function syncEndEffector() {
-    Backend.EndEffectors.setActiveTool(root.workflowMode === WorkflowPanel.Machining
-                                      ? Backend.EndEffectors.Spindle : Backend.EndEffectors.Measuring)
   }
 
   function openToolSetup() {
@@ -45,33 +38,11 @@ ApplicationWindow {
     root.toolSetupOpen = true
   }
 
-  // Editor state and selected application objects.
+  // Editor state stays local; application selection belongs to WorkspaceController.
   property bool chamferEditorOpen: false
   property bool toolSetupOpen: false
-  property list<real> selectedObjectIds: []
-
-  readonly property Backend.SceneObject selectedSceneObject: root.selectedObjectIds.length === 1
-                                                            ? root.sceneModel.findObject(root.selectedObjectIds[0]) : null
-
-  function selectSceneObject(objectId, additive) {
-    if (!additive) {
-      root.selectedObjectIds = [objectId]
-      return
-    }
-    const selected = root.selectedObjectIds.slice()
-    const index = selected.indexOf(objectId)
-    if (index >= 0)
-      selected.splice(index, 1)
-    else
-      selected.push(objectId)
-    root.selectedObjectIds = selected
-  }
-
-  function deleteSelectedObjects() {
-    const ids = root.selectedObjectIds.slice()
-    root.selectedObjectIds = []
-    root.sceneModel.removeObjects(ids)
-  }
+  readonly property list<real> selectedObjectIds: App.WorkspaceController.selectedObjectIds
+  readonly property Backend.SceneObject selectedSceneObject: App.WorkspaceController.selectedObject
 
   Shortcut {
     sequence: "Del"
@@ -80,75 +51,27 @@ ApplicationWindow {
     enabled: root.selectedObjectIds.length > 0
              && !(root.activeFocusItem instanceof TextInput)
              && !(root.activeFocusItem instanceof TextEdit)
-    onActivated: root.deleteSelectedObjects()
-  }
-
-  function intersectSelected() {
-    const createdIds = root.sceneModel.intersect(root.selectedObjectIds)
-    if (createdIds.length > 0)
-      root.selectedObjectIds = createdIds
-  }
-
-  function syncMachiningInput() {
-    const object = root.selectedSceneObject
-    Backend.Machining.inputId = root.workflowMode === WorkflowPanel.Machining && object
-        && (object.kind === Backend.SceneObject.Edge || object.kind === Backend.SceneObject.MachiningPath)
-        ? object.objectId : 0
+    onActivated: App.WorkspaceController.deleteSelected()
   }
 
   onSelectedSceneObjectChanged: {
     root.toolSetupOpen = false
     if (root.chamferEditorOpen) machiningPanel.cancelEditing()
-    root.syncMachiningInput()
   }
 
   Connections {
     target: Backend.Machining
     function onGenerated(objectId) {
       root.chamferEditorOpen = false
-      root.selectedObjectIds = [objectId]
+      App.WorkspaceController.selectObject(objectId, false)
     }
   }
-  function syncViewportSelection() {
-    Viewport3D.OccController.setSelectedObjects(root.selectedObjectIds)
-  }
-
-  function setSceneObjectVisible(object, visible) {
-    if (root.sceneModel.setObjectVisible(object, visible))
-      root.syncViewportSelection()
-  }
-
-  onSelectedObjectIdsChanged: root.syncViewportSelection()
-  Component.onCompleted: {
-    if (root.workflowMode !== WorkflowPanel.Machining) Backend.Machining.stop()
-    root.syncEndEffector()
-    root.syncMachiningInput()
-    root.syncViewportSelection()
-  }
-
-  Connections {
-    target: Viewport3D.OccController
-
-    function onDeleteSelectionRequested() { root.deleteSelectedObjects() }
-
-    function onViewportReadyChanged() {
-      if (Viewport3D.OccController.viewportReady) {
-        root.syncViewportSelection()
-      }
-    }
-
-    function onApplicationSelectionRequested(objectId, additive) {
-      if (objectId === 0)
-        root.selectedObjectIds = []
-      else
-        root.selectSceneObject(objectId, additive)
-    }
-  }
+  Component.onCompleted: App.WorkspaceController.reset()
 
   Backend.PlaneImporter {
     id: surfaceImporter
 
-    onLoaded: object => root.selectedObjectIds = [object.objectId]
+    onLoaded: object => App.WorkspaceController.selectObject(object.objectId, false)
     onFailed: message => {
       importError.text = message
       importError.open()
@@ -188,15 +111,10 @@ ApplicationWindow {
   readonly property bool geometryImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible
                                                  && !circleFileDialog.visible && !cylinderFileDialog.visible
   readonly property Backend.SceneModel sceneModel: Backend.Scene
-  // Reading the collection also reevaluates eligibility after model insertions.
-  readonly property bool intersectionAvailable: root.sceneModel.objects.length >= 2
-                                                && root.sceneModel.canIntersect(root.selectedObjectIds)
+  readonly property bool intersectionAvailable: App.WorkspaceController.intersectionAvailable
 
   Connections {
     target: root.sceneModel
-    function onObjectsChanged() {
-      root.selectedObjectIds = root.selectedObjectIds.filter(id => root.sceneModel.findObject(id) !== null)
-    }
     function onIntersectionFailed(message) {
       intersectionError.text = message
       intersectionError.open()
@@ -219,8 +137,8 @@ ApplicationWindow {
       const currentSource = endEffectorFileDialog.measuring
                             ? Backend.EndEffectors.measuringCadSource : Backend.EndEffectors.spindleCadSource
       if (currentSource.toString() === endEffectorFileDialog.selectedFile.toString()) {
-        Viewport3D.OccController.reloadEndEffector(endEffectorFileDialog.measuring
-                                                 ? Backend.EndEffectors.Measuring : Backend.EndEffectors.Spindle)
+        App.RobotController.reloadEndEffector(endEffectorFileDialog.measuring
+                                              ? Backend.EndEffectors.Measuring : Backend.EndEffectors.Spindle)
       } else if (endEffectorFileDialog.measuring)
         Backend.EndEffectors.setMeasuringCadSource(endEffectorFileDialog.selectedFile)
       else
@@ -408,8 +326,8 @@ ApplicationWindow {
 
         mode: root.workflowMode
         submode: root.measurementSubmode
-        onModeRequested: mode => root.workflowMode = mode
-        onSubmodeRequested: submode => root.measurementSubmode = submode
+        onModeRequested: mode => App.WorkspaceController.mode = mode
+        onSubmodeRequested: submode => App.WorkspaceController.submode = submode
       }
 
       ScenePanel {
@@ -418,8 +336,8 @@ ApplicationWindow {
 
         sceneModel: root.sceneModel
         selectedObjectIds: root.selectedObjectIds
-        onSelectionRequested: (objectId, additive) => root.selectSceneObject(objectId, additive)
-        onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+        onSelectionRequested: (objectId, additive) => App.WorkspaceController.selectObject(objectId, additive)
+        onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
       }
     }
@@ -471,7 +389,7 @@ ApplicationWindow {
           machiningPanel.focusEditor()
         }
         intersectionAvailable: root.intersectionAvailable
-        onIntersectionRequested: root.intersectSelected()
+        onIntersectionRequested: App.WorkspaceController.intersectSelected()
         onPlaneImportRequested: planeFileDialog.open()
         onCircleImportRequested: circleFileDialog.open()
         onCylinderImportRequested: cylinderFileDialog.open()
@@ -531,7 +449,7 @@ ApplicationWindow {
             root.sceneModel.setObjectDiagnosticOverlays(root.selectedSceneObject, root.selectedSceneObject.showPoints, checked)
         }
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
-        onVisibilityRequested: (object, visible) => root.setSceneObjectVisible(object, visible)
+        onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
       }
       EndEffectorPanel {
         anchors.fill: parent
@@ -548,7 +466,7 @@ ApplicationWindow {
         tcp: Backend.EndEffectors.spindleTcp
         tcpVisible: false
         colletVisible: false
-        onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Measuring)
+        onRetryRequested: App.RobotController.reloadEndEffector(Backend.EndEffectors.Measuring)
         onBrowseRequested: {
           endEffectorFileDialog.measuring = true
           endEffectorFileDialog.open()
@@ -575,7 +493,7 @@ ApplicationWindow {
           if (Backend.EndEffectors.applySpindlePoses(colletValues, tcpValues))
             Viewport3D.OccController.showSpindleTcp = true
         }
-        onRetryRequested: Viewport3D.OccController.reloadEndEffector(Backend.EndEffectors.Spindle)
+        onRetryRequested: App.RobotController.reloadEndEffector(Backend.EndEffectors.Spindle)
         onBrowseRequested: {
           endEffectorFileDialog.measuring = false
           endEffectorFileDialog.open()

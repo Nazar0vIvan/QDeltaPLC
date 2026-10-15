@@ -1,6 +1,5 @@
 #include "scenemachining.h"
-
-#include "geometry/utils.h"
+#include "3d/robot/robotpreviewstate.h"
 
 #include <utility>
 #include <QDebug>
@@ -8,7 +7,6 @@
 #include <algorithm>
 #include <chrono>
 #include <QCoreApplication>
-#include <QMetaMethod>
 
 SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& motion)
 {
@@ -80,6 +78,10 @@ SceneMachining::SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, 
   connect(effectors, &SceneEndEffectors::spindleTcpChanged, this, &SceneMachining::calibrationChanged);
   connect(scene, &SceneModel::objectRemoved, this, &SceneMachining::onObjectRemoved);
   connect(scene, &SceneModel::objectAdded, this, &SceneMachining::onObjectAdded);
+  connect(scene, &SceneModel::objectVisibilityChanged, this, &SceneMachining::synchronizeDraftAxis);
+  connect(this, &SceneMachining::settingsChanged, this, &SceneMachining::synchronizeDraftAxis);
+  connect(this, &SceneMachining::inputChanged, this, &SceneMachining::synchronizeDraftAxis);
+  connect(this, &SceneMachining::availabilityChanged, this, &SceneMachining::synchronizeDraftAxis);
   m_calculationTimer.setInterval(30);
   connect(&m_calculationTimer, &QTimer::timeout, this, &SceneMachining::finishCalculation);
   m_timer.setInterval(16);
@@ -143,17 +145,27 @@ QString SceneMachining::unavailableReason() const
   if (m_calculating) return tr("Calculating trajectory…");
   if (playbackActive()) return tr("Stop Dry Run before generating a trajectory.");
   if (!m_model || !m_robotAvailable) return tr("Robot preview is not ready.");
-  if (m_effectors->spindleTcp().size() != 6) return tr("Apply the spindle TCP calibration first.");
+  if (!m_effectors->spindleTcpFrame()) return tr("Apply the spindle TCP calibration first.");
   if (!sourceParameters()) return tr("Select an intersection edge with its source plane and cylinder, or a generated machining path.");
   return {};
 }
 
-std::optional<ChamferPathParameters> SceneMachining::previewParameters() const
+void SceneMachining::synchronizeDraftAxis()
 {
+  std::optional<RoboCrap3D::DrawingAxis> axis;
   const auto* object = m_scene->findObject(m_inputId);
-  if (!object || !object->visible()) return std::nullopt;
-  const auto source = sourceParameters();
-  return source ? std::optional<ChamferPathParameters>{m_settings.applyTo(*source)} : std::nullopt;
+  const auto source = object && object->visible() ? sourceParameters() : std::nullopt;
+  if (source) {
+    V3d direction = source->cylinderAxis;
+    const double norm = direction.stableNorm();
+    if (direction.allFinite() && norm > GeomConst::Eps) {
+      direction /= norm;
+      if (m_settings.flipAxis) direction = -direction;
+      axis = RoboCrap3D::DrawingAxis{source->edge.center, direction,
+                                    std::clamp(source->edge.minorRadius, 5.0, 40.0)};
+    }
+  }
+  emit draftAxisChanged(axis);
 }
 
 void SceneMachining::generate()
@@ -169,10 +181,9 @@ void SceneMachining::generate()
   const auto path = ChamferPath::create(m_settings.applyTo(*source));
   m_geometryConstructionMs = geometryTimer.nsecsElapsed() / 1e6;
   if (!path.path) { setError(path.error); return; }
-  const auto& tcp = m_effectors->spindleTcp();
   ChamferRobotSetup robot;
   robot.model = *m_model;
-  robot.flangeToTcp = makeTransform(euler2rot(tcp[3], tcp[4], tcp[5]), V3d{tcp[0], tcp[1], tcp[2]});
+  robot.flangeToTcp = *m_effectors->spindleTcpFrame();
   robot.timing = *timing;
   m_calculationInputId = m_inputId;
   m_calculationRevision = m_revision;
@@ -220,7 +231,7 @@ void SceneMachining::finishCalculation()
   SceneMachiningData data{std::make_shared<const ChamferMotion>(std::move(*result.motion)), sourceId, m_calculationRevision};
   auto* inserted = m_scene->addMachiningPath(std::move(data), name);
   if (!inserted) {
-    setError(tr("Cannot insert trajectory: scene object IDs are exhausted."));
+    setError(tr("Cannot insert trajectory: scene IDs or drawing installation failed."));
     setCalculating(false);
     return;
   }
@@ -244,6 +255,12 @@ void SceneMachining::setRobotModel(const RoboCrap3D::Kr10KinematicModel& model)
     settings.jointSpeed.append(joint.ratedPayloadSpeedDegreesPerSecond);
   setSettings(settings);
   calibrationChanged();
+}
+
+void SceneMachining::setRobotController(RoboCrap3D::RobotController* controller)
+{
+  Q_ASSERT(!controller || controller->thread() == thread());
+  m_robotController = controller;
 }
 
 void SceneMachining::setRobotAvailable(bool available)
@@ -310,7 +327,7 @@ bool SceneMachining::canPlay() const
 void SceneMachining::dryRun()
 {
   if (!canPlay()) { setError(tr("Select a compatible machining path before Dry Run.")); return; }
-  if (!isSignalConnected(QMetaMethod::fromSignal(&SceneMachining::playbackPoseRequested))) {
+  if (!m_robotController) {
     setError(tr("Robot presentation is not connected."));
     return;
   }
@@ -356,15 +373,17 @@ void SceneMachining::failPlayback(const QString& error)
 
 bool SceneMachining::presentPlayback(double seconds)
 {
-  const auto pose = m_activeMotion->evaluate(seconds);
+  if (!m_robotController) { failPlayback(tr("Robot presentation is not connected.")); return false; }
+  // Readiness/pose notifications may release the active motion during the returned operation.
+  const auto motion = m_activeMotion;
+  const auto pose = motion->evaluateJoints(seconds);
   if (!pose) { failPlayback(tr("Cannot evaluate the saved trajectory.")); return false; }
-  QList<double> joints;
-  for (double value : pose->joints) joints.append(value);
-  // GUI-thread direct delivery: presentation failures stop playback before time advances.
-  emit playbackPoseRequested(joints);
+  const auto& [joints, phase] = *pose;
+  const auto result = m_robotController->applyPlayback(joints, motion->robot().flangeToTcp);
+  if (!result.accepted) { failPlayback(result.error); return false; }
   if (!playbackActive()) return false;
   m_elapsed = seconds;
-  switch (pose->phase) {
+  switch (phase) {
   case ChamferMotionPhase::Approach: m_phase = tr("HOME to P_s"); break;
   case ChamferMotionPhase::TransferIn: m_phase = tr("P_s to lead-in"); break;
   case ChamferMotionPhase::LeadIn: m_phase = tr("Lead-in"); break;

@@ -5,6 +5,11 @@
 #include <QUrl>
 #include "scenegeometry.h"
 
+namespace RoboCrap3D {
+struct DrawingObject;
+struct DrawingDiagnostics;
+}
+
 class SceneModel;
 
 class SceneObject final : public QObject
@@ -26,6 +31,8 @@ public:
   enum Classification { Unclassified, Rough, Precise };
   Q_ENUM(Classification)
 
+  std::optional<RoboCrap3D::DrawingObject> drawing() const;
+  RoboCrap3D::DrawingDiagnostics drawingDiagnostics() const;
   quint32 objectId() const { return m_objectId; }
   struct Description {
     QString name;

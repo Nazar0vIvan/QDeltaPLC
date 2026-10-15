@@ -2,7 +2,7 @@
 
 #include "occinputcontroller.h"
 #include "occviewer.h"
-#include "3d/robot/robotpreviewstate.h"
+#include "3d/occcontroller.h"
 #include "3d/adapters/occrobotadapter.h"
 #include "3d/adapters/occsceneadapter.h"
 
@@ -12,36 +12,32 @@
 
 #include <optional>
 
-class SceneModel;
-class SceneObject;
-
 namespace RoboCrap3D {
 
 class OccViewport final
 {
 public:
-  // Install the scene before initial camera fitting.
-  OccViewport(Aspect_Handle handle, SceneModel* applicationScene);
+  OccViewport(Aspect_Handle handle, const DrawingDocument& document);
   ~OccViewport();
   OccViewport(const OccViewport&) = delete;
   OccViewport& operator=(const OccViewport&) = delete;
 
   bool isValid() const;
   bool isRobotReady() const { return isValid() && m_robot.isLoaded(); }
-  bool setRobot(const RobotPreviewState* state, const CadLoadResult* shapes);
-  bool applyPose(const RobotPose& pose);
-  // Applied flange-relative calibration; empty hides the TCP decoration.
-  void setSpindleTcpFrame(const std::optional<M4d>& frame);
-  // Applied flange-relative ER calibration; empty hides the collet decoration.
-  void setSpindleColletFrame(const std::optional<M4d>& frame);
+  // Ordered graphics, loaded shapes and transforms define the installation.
+  ViewportOperationResult setRobot(const RobotVisualModel& visuals, const CadLoadResult& shapes,
+                const DrawingPose& pose);
+  ViewportOperationResult applyTransforms(const DrawingPose& pose);
+  // BASE-relative drawing frames; absent values hide the corresponding axes.
+  void setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet);
   bool setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
-                      SceneEndEffectors::Tool active);
-  void synchronizeApplicationScene(SceneModel* applicationScene);
-  void synchronizeSceneObject(SceneObject* object);
-  void removeSceneObject(quint32 objectId);
+                      RobotTool active);
+  ViewportOperationResult insertObject(const DrawingObject& object);
+  void removeObject(quint32 id);
+  ViewportOperationResult setObjectVisible(quint32 id, bool visible);
+  ViewportOperationResult setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics);
   void setSelectedObjects(const QList<quint32>& ids);
-  void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
-  void setDiagnosticOverlays(bool showPoints, bool showNormals, SceneModel* applicationScene);
+  ViewportOperationResult setDraftAxis(const std::optional<DrawingAxis>& axis);
   void setExposed(bool exposed);
   void resize();
   std::optional<quint32> mousePress(const QPoint& pos, Qt::MouseButton button);

@@ -12,7 +12,7 @@ struct ViewportAssets
   QString occtResources;
 
   static ViewportAssets applicationAssets();
-  bool initializeOcct(QString& error) const;
+  QString initializeOcct() const;
 };
 
 } // namespace RoboCrap3D

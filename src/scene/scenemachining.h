@@ -2,9 +2,13 @@
 
 #include "scenemodel.h"
 #include "sceneendeffectors.h"
+#include "3d/occcontroller.h"
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QPointer>
 #include <future>
+
+namespace RoboCrap3D { class RobotController; }
 
 class SceneMachining : public QObject
 {
@@ -45,9 +49,10 @@ public:
   void failPlayback(const QString& error);
   void setRobotModel(const RoboCrap3D::Kr10KinematicModel& model);
   void setRobotAvailable(bool available);
-  std::optional<ChamferPathParameters> previewParameters() const;
+  void setRobotController(RoboCrap3D::RobotController* controller);
 
 signals:
+  void draftAxisChanged(const std::optional<RoboCrap3D::DrawingAxis>& axis);
   void settingsChanged();
   void inputChanged();
   void availabilityChanged();
@@ -55,10 +60,10 @@ signals:
   void generated(quint32 objectId);
   void calculatingChanged();
   void playbackChanged();
-  void playbackPoseRequested(QList<double> joints);
 
 private:
   std::optional<ChamferPathParameters> sourceParameters() const;
+  void synchronizeDraftAxis();
   void calibrationChanged();
   void refreshCompatibility();
   void onObjectAdded(SceneObject* object);
@@ -73,6 +78,7 @@ private:
 
   SceneModel* m_scene;
   SceneEndEffectors* m_effectors;
+  QPointer<RoboCrap3D::RobotController> m_robotController;
   SceneMachiningSettings m_settings;
   std::optional<RoboCrap3D::Kr10KinematicModel> m_model;
   quint64 m_revision = 0;

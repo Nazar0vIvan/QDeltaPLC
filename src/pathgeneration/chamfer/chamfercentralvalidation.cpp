@@ -238,7 +238,7 @@ class CentralValidator
 public:
   // Borrow the Generate worker's immutable inputs; this solver never outlives them.
   CentralValidator(const ChamferCentralPreparation& preparation, const ChamferRobotSetup& robot)
-    : m_preparation(preparation), m_motion(preparation.motion()), m_robot(robot), m_solver(robot.model),
+    : m_preparation(preparation), m_robot(robot), m_solver(robot.model),
       m_tcpToFlange(inverseRigidTransform(m_robot.flangeToTcp)) {}
 
   ChamferCentralValidationResult run(const Kr10Kinematics::IkSolution& seed)
@@ -272,27 +272,23 @@ private:
     for (const auto& span : m_preparation.spans()) {
       const ChamferProfileScope phaseScope(m_solver.diagnostics(), m_preparation.computationNanoseconds());
       const auto beforePoints = m_samples.size();
+      QString error;
+      double time = span.start;
       for (int index = 1; index <= span.intervals; ++index) {
-        const double time = index == span.intervals ? span.end
+        time = index == span.intervals ? span.end
             : span.start + (span.end - span.start) * (double(index) / span.intervals);
-        const QString error = appendPoint(time);
-        if (!error.isEmpty()) {
-          auto measured = phaseScope.finish(m_solver.diagnostics(), m_preparation.computationNanoseconds());
-          measured.insert("addedPoints", m_samples.size() - beforePoints);
-          measured.insert("plannedIntervals", span.intervals);
-          measured.insert("accelerationBound", span.accelerationBound);
-          measured.insert("complete", false);
-          measured.insert("error", atTime(error, time));
-          recordSegment(span.phase, measured);
-          return {{}, span.phase + QStringLiteral(": ") + atTime(error, time)};
-        }
+        error = appendPoint(time);
+        if (!error.isEmpty()) break;
       }
       auto measured = phaseScope.finish(m_solver.diagnostics(), m_preparation.computationNanoseconds());
       measured.insert("addedPoints", m_samples.size() - beforePoints);
       measured.insert("plannedIntervals", span.intervals);
       measured.insert("accelerationBound", span.accelerationBound);
-      measured.insert("complete", true);
+      measured.insert("complete", error.isEmpty());
+      if (!error.isEmpty()) measured.insert("error", atTime(error, time));
       recordSegment(span.phase, measured);
+      if (!error.isEmpty())
+        return {{}, span.phase + QStringLiteral(": ") + atTime(error, time)};
     }
     const ChamferProfileScope ratesScope(m_solver.diagnostics());
     const QString error = inspectRates();
@@ -336,7 +332,7 @@ private:
         || (actual.block<3, 3>(0, 0) - target->tcp.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
       return {{}, QStringLiteral("TCP FK reconstruction exceeds 0.0001 mm or 0.000001 rotation-entry tolerance.")};
     return {ChamferCentralJointSample{time, *target,
-        m_solver.configuration(solution->q, transforms)}, {}};
+        m_solver.configuration(solution->q, transforms), actual}, {}};
   }
 
   QString appendPoint(double time)
@@ -392,7 +388,7 @@ private:
       const auto& last = m_samples[index];
       const bool terminal = index == m_samples.size() - 1;
       const double step = last.time - first.time;
-      if (!terminal && (step < RateStep || m_motion.duration() - last.time < RateStep)) continue;
+      if (!terminal && (step < RateStep || m_preparation.motion().duration() - last.time < RateStep)) continue;
       if (!(step >= RateStep)) return QStringLiteral("Central motion is too short for resolved rate validation.");
       Rates current;
       current.seconds = step;
@@ -408,11 +404,10 @@ private:
       first = last;
     }
     const QString stop = accelerationError(previous, Rates{});
-    return stop.isEmpty() ? QString{} : atTime(stop, m_motion.duration());
+    return stop.isEmpty() ? QString{} : atTime(stop, m_preparation.motion().duration());
   }
 
   const ChamferCentralPreparation& m_preparation;
-  const ChamferCentralMotion& m_motion;
   const ChamferRobotSetup& m_robot;
   ChamferProfiledKinematics m_solver;
   M4d m_tcpToFlange = M4d::Identity();

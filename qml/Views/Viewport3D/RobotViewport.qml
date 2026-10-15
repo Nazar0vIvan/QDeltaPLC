@@ -29,11 +29,4 @@ Item {
       }
     }
   }
-
-  Component.onCompleted: {
-    if (!Viewport3D.OccController.ready
-        && !Viewport3D.OccController.loading) {
-      Viewport3D.OccController.loadRobot()
-    }
-  }
 }

@@ -1,7 +1,6 @@
 #include "occviewwindow.h"
 
 #include "occviewport.h"
-#include "scene/scenemodel.h"
 
 #include <QExposeEvent>
 #include <QMouseEvent>
@@ -17,7 +16,7 @@
 
 namespace RoboCrap3D {
 
-OccViewWindow::OccViewWindow()
+OccViewWindow::OccViewWindow(const DrawingDocument& document) : m_document(document)
 {
   setSurfaceType(QSurface::OpenGLSurface);
   QObject::connect(this, &QWindow::screenChanged, this, &OccViewWindow::resizeViewport);
@@ -33,81 +32,83 @@ OccViewWindow::~OccViewWindow()
   m_viewport.reset();
 }
 
-void OccViewWindow::setScene(std::shared_ptr<const RobotPreviewState> state,
-                             std::shared_ptr<const CadLoadResult> shapes)
+void OccViewWindow::setScene(const RobotVisualModel& visuals,
+                              std::shared_ptr<const CadLoadResult> shapes,
+                              const DrawingPose& pose)
 {
-  m_state = std::move(state);
+  if (m_shapes) return;
+  m_visuals = visuals;
+  m_pose = pose;
   m_shapes = std::move(shapes);
-  m_initializationFailed = false;
   if (m_viewport)
     attachRobot();
   else if (isExposed())
     initializeViewport();
 }
 
-void OccViewWindow::setApplicationScene(SceneModel* scene)
+ViewportOperationResult OccViewWindow::insertObject(const DrawingObject& object)
 {
-  m_applicationScene = scene;
-  synchronizeApplicationScene();
+  const auto result = m_viewport ? m_viewport->insertObject(object) : ViewportOperationResult{true, {}};
+  if (result.accepted && m_viewport) m_viewport->setSelectedObjects(m_document.selected);
+  return result;
 }
 
-void OccViewWindow::synchronizeApplicationScene()
+void OccViewWindow::removeObject(quint32 id)
 {
-  if (m_viewport) {
-    m_viewport->synchronizeApplicationScene(m_applicationScene);
-    m_viewport->setSelectedObjects(m_selectedObjects);
-  }
+  if (!m_viewport) return;
+  m_viewport->removeObject(id);
+  m_viewport->setSelectedObjects(m_document.selected);
 }
 
-void OccViewWindow::removeSceneObject(quint32 objectId)
+ViewportOperationResult OccViewWindow::setObjectVisible(quint32 id, bool visible)
 {
-  if (m_viewport) m_viewport->removeSceneObject(objectId);
+  const auto result = m_viewport ? m_viewport->setObjectVisible(id, visible) : ViewportOperationResult{true, {}};
+  if (result.accepted && m_viewport) m_viewport->setSelectedObjects(m_document.selected);
+  return result;
 }
 
-void OccViewWindow::synchronizeSceneObject(SceneObject* object)
+ViewportOperationResult OccViewWindow::setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics)
 {
-  if (m_viewport) {
-    m_viewport->synchronizeSceneObject(object);
-    m_viewport->setSelectedObjects(m_selectedObjects);
-  }
+  return m_viewport ? m_viewport->setObjectDiagnostics(id, diagnostics) : ViewportOperationResult{true, {}};
 }
 
 void OccViewWindow::setSelectedObjects(const QList<quint32>& ids)
 {
-  m_selectedObjects = ids;
   if (m_viewport) m_viewport->setSelectedObjects(ids);
 }
 
-void OccViewWindow::setMachiningPreview(const std::optional<ChamferPathParameters>& parameters)
+ViewportOperationResult OccViewWindow::setDraftAxis(const std::optional<DrawingAxis>& axis)
 {
-  m_machiningPreview = parameters;
-  if (m_viewport) m_viewport->setMachiningPreview(parameters);
+  return m_viewport ? m_viewport->setDraftAxis(axis) : ViewportOperationResult{true, {}};
 }
 
-void OccViewWindow::setDiagnosticOverlays(bool showPoints, bool showNormals)
+void OccViewWindow::setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet)
 {
-  if (m_viewport) m_viewport->setDiagnosticOverlays(showPoints, showNormals, m_applicationScene);
+  m_pose.tcp = tcp;
+  m_pose.collet = collet;
+  if (m_viewport) m_viewport->setSpindleFrames(tcp, collet);
 }
 
-void OccViewWindow::setSpindleTcpFrame(const std::optional<M4d>& frame)
+ViewportOperationResult OccViewWindow::applyTransforms(const DrawingPose& pose)
 {
-  m_spindleTcpFrame = frame;
-  if (m_viewport) m_viewport->setSpindleTcpFrame(frame);
-}
-
-void OccViewWindow::setSpindleColletFrame(const std::optional<M4d>& frame)
-{
-  m_spindleColletFrame = frame;
-  if (m_viewport) m_viewport->setSpindleColletFrame(frame);
-}
-
-bool OccViewWindow::applyPose(const RobotPose& pose)
-{
-  return isReady() && m_viewport->applyPose(pose);
+  if (!isReady()) return {false, QStringLiteral("Robot preview is unavailable.")};
+  const auto result = m_viewport->applyTransforms(pose);
+  if (result.accepted) {
+    m_pose = pose;
+    return result;
+  }
+  QString error = QStringLiteral("Robot pose update: ") + result.error;
+  const auto restored = m_viewport->applyTransforms(m_pose);
+  if (!restored.accepted) {
+    error += QStringLiteral("; Robot pose restoration: ") + restored.error;
+    m_presentationFailed = true;
+    emit readyChanged();
+  }
+  return {false, error};
 }
 
 void OccViewWindow::setEndEffectors(
-    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, SceneEndEffectors::Tool active)
+    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, RobotTool active)
 {
   m_toolShapes = shapes;
   m_activeTool = active;
@@ -122,7 +123,7 @@ void OccViewWindow::attachEndEffectors()
 
 bool OccViewWindow::isReady() const
 {
-  return m_viewport && m_viewport->isRobotReady();
+  return !m_presentationFailed && m_viewport && m_viewport->isRobotReady();
 }
 
 bool OccViewWindow::isViewportReady() const
@@ -135,6 +136,7 @@ void OccViewWindow::releaseSurface()
   const bool wasReady = isReady();
   const bool wasViewportReady = isViewportReady();
   m_viewport.reset();
+  m_presentationFailed = false;
   if (wasReady) emit readyChanged();
   if (wasViewportReady) emit viewportReadyChanged();
 }
@@ -146,7 +148,6 @@ bool OccViewWindow::event(QEvent* event)
       const auto* surface = static_cast<QPlatformSurfaceEvent*>(event);
       if (surface->surfaceEventType() == QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed) {
         releaseSurface();
-        m_initializationFailed = false;
       }
     } else if (event->type() == QEvent::DevicePixelRatioChange) {
       if (m_viewport) m_viewport->resize();
@@ -160,7 +161,7 @@ bool OccViewWindow::event(QEvent* event)
     return QWindow::event(event);
   } catch (const Standard_Failure& failure) {
     releaseSurface();
-    m_initializationFailed = true;
+    m_presentationFailed = true;
     emit errorOccurred(QStringLiteral("Viewport operation failed: %1")
                            .arg(QString::fromUtf8(failure.what())));
     return true;
@@ -222,24 +223,23 @@ void OccViewWindow::wheelEvent(QWheelEvent* event)
 
 void OccViewWindow::initializeViewport()
 {
-  if (m_viewport || m_initializationFailed || !isExposed()) return;
+  if (m_viewport || m_presentationFailed || !isExposed()) return;
   try {
-    auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()),
-                                                  m_applicationScene);
+    auto viewport = std::make_unique<OccViewport>(reinterpret_cast<Aspect_Handle>(winId()), m_document);
     if (!viewport->isValid()) {
-      m_initializationFailed = true;
+      m_presentationFailed = true;
       emit errorOccurred(QStringLiteral("Cannot create the OCCT viewport."));
       return;
     }
     m_viewport = std::move(viewport);
-    m_viewport->setMachiningPreview(m_machiningPreview);
-    m_viewport->setSpindleTcpFrame(m_spindleTcpFrame);
-    m_viewport->setSpindleColletFrame(m_spindleColletFrame);
-    m_viewport->setSelectedObjects(m_selectedObjects);
+    const auto axis = m_viewport->setDraftAxis(m_document.axis);
+    if (!axis.accepted) emit errorOccurred(axis.error);
+    m_viewport->setSpindleFrames(m_pose.tcp, m_pose.collet);
+    m_viewport->setSelectedObjects(m_document.selected);
     m_viewport->setExposed(true);
   } catch (const Standard_Failure& failure) {
     releaseSurface();
-    m_initializationFailed = true;
+    m_presentationFailed = true;
     emit errorOccurred(QStringLiteral("Cannot initialize the viewport: %1")
                            .arg(QString::fromUtf8(failure.what())));
     return;
@@ -251,17 +251,17 @@ void OccViewWindow::initializeViewport()
 
 void OccViewWindow::attachRobot()
 {
-  if (!isViewportReady()) return;
-  const bool wasReady = isReady();
+  if (!isViewportReady() || !m_visuals || !m_shapes || isReady() || m_presentationFailed) return;
   try {
-    if (!m_viewport->setRobot(m_state.get(), m_shapes.get()))
-      emit errorOccurred(QStringLiteral("Cannot create the OCCT robot presentation."));
+    const auto result = m_viewport->setRobot(*m_visuals, *m_shapes, m_pose);
+    m_presentationFailed = !result.accepted;
+    if (m_presentationFailed) emit errorOccurred(result.error);
+    else attachEndEffectors();
   } catch (const Standard_Failure& failure) {
-    emit errorOccurred(QStringLiteral("Cannot attach the robot presentation: %1")
-                           .arg(QString::fromUtf8(failure.what())));
+    m_presentationFailed = true;
+    emit errorOccurred(QStringLiteral("Robot installation: %1").arg(QString::fromUtf8(failure.what())));
   }
-  attachEndEffectors();
-  if (wasReady != isReady()) emit readyChanged();
+  emit readyChanged();
 }
 
 QPoint OccViewWindow::nativePosition(const QPointF& position) const

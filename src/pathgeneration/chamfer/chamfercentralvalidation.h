@@ -11,6 +11,7 @@ struct ChamferCentralJointSample
   double time = 0.0; // Seconds from lead-in start, unchanged prescribed timing.
   ChamferCentralPose target;
   RoboCrap3D::Kr10Kinematics::IkSolution solution; // Degrees with continuous winding, Status and Turn.
+  M4d actualTcp = M4d::Identity(); // FK-derived TCP, retained for nodal-point construction.
 };
 
 struct ChamferCentralValidationData

@@ -2,7 +2,6 @@
 #include "3d/robot/model/kr10model.h"
 #include "scene/sceneendeffectors.h"
 #include "pathgeneration/chamfer/chamferjob.h"
-#include "geometry/utils.h"
 
 #include <QDebug>
 #include <QDir>
@@ -72,7 +71,7 @@ int profileChamferPreparation(const QString& inputPath, const QString& reportPat
   const QDir directory = QFileInfo(inputPath).absoluteDir();
   const auto plane = BoundedPlane::fromJsonFile(directory.filePath(input.value("plane").toString()));
   const auto cylinder = BoundedCylinder::fromJsonFile(directory.filePath(input.value("cylinder").toString()));
-  const auto model = RoboCrap3D::Kr10Model::fromJson(directory.filePath(input.value("robot").toString()));
+  const auto model = RoboCrap3D::RobotDefinition::fromJson(directory.filePath(input.value("robot").toString()));
   if (!plane || !cylinder || !model) { qWarning() << "Cannot load profiling geometry or robot."; return 2; }
   const auto intersection = intersectSurfaces(*plane, *cylinder);
   if (!intersection.edge) { qWarning() << "Profiling intersection failed."; return 2; }
@@ -109,10 +108,9 @@ int profileChamferPreparation(const QString& inputPath, const QString& reportPat
       ? effectors.applySpindlePoses(poseValues(input.value("colletPose")), tcpInCollet)
       : effectors.setSpindleTcpInCollet(tcpInCollet);
   if (!calibrated) { qWarning() << "Invalid profiling TCP calibration."; return 2; }
-  const auto& tcp = effectors.spindleTcp();
   ChamferRobotSetup robot;
   robot.model = model->kinematics;
-  robot.flangeToTcp = makeTransform(euler2rot(tcp[3], tcp[4], tcp[5]), V3d{tcp[0], tcp[1], tcp[2]});
+  robot.flangeToTcp = *effectors.spindleTcpFrame();
   robot.timing.machiningFeed = settings.value("machiningFeed").toDouble(missing);
   robot.timing.accelerationDistanceFraction = settings.value("accelerationDistanceFraction").toDouble(missing);
   robot.timing.transferFeed = settings.value("transferFeed").toDouble(missing);
@@ -130,7 +128,7 @@ int profileChamferPreparation(const QString& inputPath, const QString& reportPat
   report.insert("scope", previewOnly ? "preview" : "preview-and-rsi");
   report.insert("geometryConstructionMs", geometryMs);
   QJsonArray calibration;
-  for (double coordinate : tcp) calibration.append(coordinate);
+  for (double coordinate : effectors.spindleTcp()) calibration.append(coordinate);
   report.insert("flangeToTcpXYZABC", calibration);
   report.insert("cartesianAccelerationBound", robot.timing.cartesianAcceleration);
   report.insert("jointAccelerationBound", robot.timing.jointAcceleration[0]);

@@ -308,7 +308,7 @@ private:
         return std::move(m_output);
       }
       const auto& sample = samples[i];
-      auto point = forward(sample.solution.q, sample.target.progress);
+      ChamferJointPoint point{sample.solution.q, sample.actualTcp, sample.target.progress};
       point.time = offset + sample.time;
       if (phase >= 3) {
         m_output.error = QStringLiteral("Unexpected sample after the central endpoint.");
@@ -353,7 +353,7 @@ private:
     return (1.0 - fraction) * joint.qMin + fraction * joint.qMax;
   }
 
-  std::optional<Kr10Kinematics::IkSolution> inverse(
+  std::optional<std::pair<Kr10Kinematics::IkSolution, M4d>> inverse(
       const M4d& tcp, const Kr10Kinematics::IkSolution& seed) const
   {
     const M4d flange = tcp * m_tcpToFlange;
@@ -362,7 +362,8 @@ private:
     const auto transforms = m_solver.solveFK(solution->q);
     if (!Kr10Kinematics::matchesFlange(flange, transforms.back()))
       return std::nullopt;
-    return m_solver.configuration(solution->q, transforms);
+    return std::pair{m_solver.configuration(solution->q, transforms),
+                     M4d(transforms.back() * m_robot.flangeToTcp)};
   }
 
   void appendStart(const V6d& seed, const M4d& target)
@@ -371,8 +372,8 @@ private:
     const auto solution = inverse(target, previous);
     if (!solution) return;
     for (const auto& existing : m_starts)
-      if ((existing.q - solution->q).cwiseAbs().maxCoeff() < 1e-6) return;
-    m_starts.append(*solution);
+      if ((existing.q - solution->first.q).cwiseAbs().maxCoeff() < 1e-6) return;
+    m_starts.append(solution->first);
   }
 
   ChamferJointPoint forward(const V6d& joints, double progress) const
@@ -473,14 +474,14 @@ private:
         if (!solution)
           return QStringLiteral("%1: IK, joint position or TCP reconstruction failed at %2 s.")
               .arg(centralPhaseName(m_phase)).arg(local, 0, 'g', 12);
-        auto point = forward(solution->q, profile->progress(local));
+        ChamferJointPoint point{solution->first.q, solution->second, profile->progress(local)};
         if ((point.tcp.block<3, 1>(0, 3) - target.block<3, 1>(0, 3)).norm() > Kr10PosEps
             || (point.tcp.block<3, 3>(0, 0) - target.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
           return QStringLiteral("%1: TCP fails FK reconstruction tolerance at %2 s.")
               .arg(centralPhaseName(m_phase)).arg(local, 0, 'g', 12);
         point.time = time;
         m_output.points.append(point);
-        m_previous = *solution;
+        m_previous = solution->first;
       }
     }
     return inspectTransferRates(first);
@@ -781,12 +782,12 @@ ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const Chamfer
   return {{}, error, std::move(diagnostics)};
 }
 
-std::optional<ChamferPlaybackPose> ChamferMotion::evaluate(double seconds) const
+std::optional<std::pair<V6d, ChamferMotionPhase>> ChamferMotion::evaluateJoints(double seconds) const
 {
   if (!std::isfinite(seconds) || m_points.isEmpty()) return std::nullopt;
   const double time = std::clamp(seconds, 0.0, duration());
-  if (time == 0.0) return ChamferPlaybackPose{m_points.front().joints, m_points.front().tcp, ChamferMotionPhase::Approach};
-  if (time == duration()) return ChamferPlaybackPose{m_points.back().joints, m_points.back().tcp, ChamferMotionPhase::ReturnHome};
+  if (time == 0.0) return std::pair{m_points.front().joints, ChamferMotionPhase::Approach};
+  if (time == duration()) return std::pair{m_points.back().joints, ChamferMotionPhase::ReturnHome};
   std::size_t phase = 0;
   while (phase < 6 && time >= m_points[m_boundaries[phase + 1]].time) ++phase;
   const auto first = m_boundaries[phase];
@@ -816,7 +817,17 @@ std::optional<ChamferPlaybackPose> ChamferMotion::evaluate(double seconds) const
                    + coefficients[1]) * fraction + coefficients[0];
   }
   if (!withinLimits(joints, m_robot.model)) return std::nullopt;
+  return std::pair{joints, static_cast<ChamferMotionPhase>(phase)};
+}
+
+std::optional<ChamferPlaybackPose> ChamferMotion::evaluate(double seconds) const
+{
+  const auto pose = evaluateJoints(seconds);
+  if (!pose) return std::nullopt;
+  const auto& [joints, phase] = *pose;
+  if (seconds <= 0.0) return ChamferPlaybackPose{joints, m_points.front().tcp, phase};
+  if (seconds >= duration()) return ChamferPlaybackPose{joints, m_points.back().tcp, phase};
   const M4d tcp = Kr10Kinematics(m_robot.model).solveFK(joints).back() * m_robot.flangeToTcp;
   if (!tcp.allFinite()) return std::nullopt;
-  return ChamferPlaybackPose{joints, tcp, static_cast<ChamferMotionPhase>(phase)};
+  return ChamferPlaybackPose{joints, tcp, phase};
 }

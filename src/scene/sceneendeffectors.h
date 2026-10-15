@@ -37,6 +37,7 @@ public:
   // Flange-relative X/Y/Z in mm, A/B/C in degrees (Z-Y-X composition).
   // Empty until explicitly configured; the screenshot is not calibration data.
   const QList<double>& spindleTcp() const { return m_spindleTcp; }
+  const std::optional<M4d>& spindleTcpFrame() const { return m_spindleTcpFrame; }
   // ER-relative XYZABC in the same mm/degrees convention as spindleTcp.
   QList<double> spindleTcpInCollet() const;
   // Flange-relative ER XYZABC and frame, initialized from the hardcoded collet calibration.
@@ -66,6 +67,7 @@ private:
   QUrl m_measuringCadSource;
   QUrl m_spindleCadSource;
   QList<double> m_spindleTcp;
+  std::optional<M4d> m_spindleTcpFrame;
   std::optional<M4d> m_spindleColletFrame;
   Tool m_activeTool = Measuring;
 };

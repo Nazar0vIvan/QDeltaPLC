@@ -10,28 +10,6 @@
 
 namespace RoboCrap3D {
 
-namespace {
-
-double posErr(const M4d& T)
-{
-  return T.block<3, 1>(0, 3).norm();
-}
-
-double rotErr(const M4d& T)
-{
-  double maxErr = 0.0;
-
-  for (int row = 0; row < 3; ++row) {
-    for (int col = 0; col < 3; ++col) {
-      const double want = row == col ? 1.0 : 0.0;
-      maxErr = std::max(maxErr, std::abs(T(row, col) - want));
-    }
-  }
-
-  return maxErr;
-}
-} // namespace
-
 Kr10Kinematics::Kr10Kinematics(const Kr10KinematicModel& model) : m_model(model)
 {}
 
@@ -304,8 +282,8 @@ bool Kr10Kinematics::matchesFlange(const M4d& targetT06, const M4d& actualT06)
 
   return
       errorTransform.allFinite() &&
-      posErr(errorTransform) <= Kr10PosEps &&
-      rotErr(errorTransform) <= Kr10RotEps;
+      errorTransform.block<3, 1>(0, 3).norm() <= Kr10PosEps &&
+      (errorTransform.block<3, 3>(0, 0) - M3d::Identity()).cwiseAbs().maxCoeff() <= Kr10RotEps;
 }
 
 uint8_t Kr10Kinematics::statusFrom(const IkBranch &branch) noexcept

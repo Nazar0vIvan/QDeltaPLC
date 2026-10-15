@@ -217,10 +217,7 @@ std::optional<LinkModel> readLink(const QJsonObject& obj)
         }
     }
 
-  OccPartProps props{};
-  props.color = rgb(arr.at(0).toInt(), arr.at(1).toInt(), arr.at(2).toInt());
-
-  return LinkModel{file, props};
+  return LinkModel{file, {arr.at(0).toInt(), arr.at(1).toInt(), arr.at(2).toInt()}};
 }
 
 std::optional<std::array<LinkModel, LinkCount>> readLinks(const QJsonArray& arr)
@@ -255,7 +252,7 @@ std::optional<std::array<LinkModel, LinkCount>> readLinks(const QJsonArray& arr)
 
 } // namespace
 
-std::optional<Kr10Model> Kr10Model::fromJson(const QString& file)
+std::optional<RobotDefinition> RobotDefinition::fromJson(const QString& file)
 {
   const std::optional<QJsonObject> root = readRoot(file);
 
@@ -317,7 +314,8 @@ std::optional<Kr10Model> Kr10Model::fromJson(const QString& file)
     }
   }
 
-  return Kr10Model{name, {*joints, *ik, *qHome, *pHome}, {*links}};
+  return RobotDefinition{name, {*joints, *ik, *qHome, *pHome},
+                         {QList<LinkModel>(links->begin(), links->end())}};
 }
 
 } // namespace RoboCrap3D

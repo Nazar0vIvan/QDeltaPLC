@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QJsonObject>
+#include <utility>
 
 #include "chamfercentralmotion.h"
 #include "3d/robot/model/kr10kinematicmodel.h"
@@ -63,6 +64,7 @@ public:
   double centralTimeScale() const { return 1.0; } // Compatibility: prescribed timing is never stretched.
   const std::optional<ChamferCentralMotion>& centralMotion() const { return m_centralMotion; }
   // Absolute elapsed seconds. Finite times outside the motion clamp to its ends.
+  std::optional<std::pair<V6d, ChamferMotionPhase>> evaluateJoints(double seconds) const;
   std::optional<ChamferPlaybackPose> evaluate(double seconds) const;
 
 private:

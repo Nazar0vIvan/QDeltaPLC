@@ -1,77 +1,24 @@
 #include "occcontroller.h"
-#include "scene/scenemachining.h"
-#include "geometry/utils.h"
 
 #include "occt/cadloadworker.h"
 #include "occt/occviewwindow.h"
-#include "robot/robotpreviewstate.h"
-#include "scene/scenemodel.h"
-#include "scene/sceneobject.h"
 #include "viewportassets.h"
 
 #include <QJSEngine>
-#include <QDir>
-#include <QFileInfo>
 #include <QThread>
 #include <QTimer>
 
-#include <Standard_Failure.hxx>
-
-#include <cmath>
 #include <functional>
-#include <optional>
 
 namespace RoboCrap3D {
 
-namespace {
-
-QVariantList toList(const V6d& values)
-{
-  QVariantList result;
-  result.reserve(6);
-  for (double value : values) result.append(value);
-  return result;
-}
-
-std::optional<V6d> readValues(const QVariantList& values)
-{
-  if (values.size() != 6) return std::nullopt;
-  V6d result{};
-  for (int i = 0; i < 6; ++i) {
-    const int type = values[i].metaType().id();
-    if (type != QMetaType::Double && type != QMetaType::Float
-        && type != QMetaType::Int && type != QMetaType::UInt
-        && type != QMetaType::LongLong && type != QMetaType::ULongLong) return std::nullopt;
-    bool ok = false;
-    result[i] = values[i].toDouble(&ok);
-    if (!ok || !std::isfinite(result[i])) return std::nullopt;
-  }
-  return result;
-}
-
-std::optional<QStringList> robotCadSources(const RobotVisualModel& visuals, const QString& directory)
-{
-  QStringList sources;
-  for (const LinkModel& link : visuals.links) {
-    // Robot manifests contain basenames, not arbitrary paths.
-    if (link.fileName.isEmpty() || QFileInfo(link.fileName).fileName() != link.fileName
-        || link.fileName.contains('/') || link.fileName.contains('\\')) return std::nullopt;
-    sources.append(QDir(directory).filePath(link.fileName));
-  }
-  return sources;
-}
-
-} // namespace
-
 OccController::OccController(QObject* parent) : QObject(parent)
 {
-  QObject::connect(this, &OccController::poseChanged, this, &OccController::tcpPoseChanged);
   createWindow();
 }
 
 OccController::~OccController()
 {
-  if (m_machining) m_machining->setRobotAvailable(false);
   m_shuttingDown = true;
   ++m_generation;
   for (ToolCadState& tool : m_toolCad)
@@ -103,150 +50,80 @@ bool OccController::isViewportReady() const
   return m_window && m_window->isViewportReady();
 }
 
-QVariantList OccController::jointAngles() const
+ViewportOperationResult OccController::insertObject(const DrawingObject& object)
 {
-  return m_state ? toList(m_state->pose().joints()) : QVariantList{};
+  if (!object.id || object.parts.isEmpty()) return {false, QStringLiteral("Empty object drawing.")};
+  const auto result = m_window ? m_window->insertObject(object) : ViewportOperationResult{true, {}};
+  if (result.accepted) m_document.objects.insert(object.id, object);
+  if (!result.error.isEmpty()) emit message(result.error, true);
+  return result;
 }
 
-QVariantList OccController::flangePose() const
+void OccController::removeObject(quint32 id)
 {
-  return m_state ? toList(m_state->pose().flange()) : QVariantList{};
+  m_document.objects.remove(id);
+  if (m_window) m_window->removeObject(id);
 }
 
-QList<double> OccController::tcpPose() const
+void OccController::setObjectVisible(quint32 id, bool visible)
 {
-  if (!m_state || !m_endEffectors) return {};
-  QList<double> flange;
-  for (double value : m_state->pose().flange()) flange.append(value);
-  return m_endEffectors->spindlePoseFromFlange(flange);
+  auto it = m_document.objects.find(id);
+  if (it == m_document.objects.end() || it->visible == visible) return;
+  const auto result = m_window ? m_window->setObjectVisible(id, visible) : ViewportOperationResult{true, {}};
+  if (result.accepted) it->visible = visible;
+  if (!result.error.isEmpty()) emit message(result.error, true);
 }
 
-void OccController::setApplicationScene(SceneModel* scene)
+void OccController::setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics)
 {
-  if (m_applicationScene == scene) return;
-  QObject::disconnect(m_sceneCollectionConnection);
-  QObject::disconnect(m_sceneVisibilityConnection);
-  QObject::disconnect(m_sceneDiagnosticConnection);
-  QObject::disconnect(m_sceneRemovalConnection);
-  QObject::disconnect(m_sceneDestroyedConnection);
-  m_applicationScene = scene;
-  if (scene) {
-    m_sceneCollectionConnection = QObject::connect(
-        scene, &SceneModel::objectAdded, this, &OccController::synchronizeSceneObject);
-    m_sceneRemovalConnection = QObject::connect(scene, &SceneModel::objectRemoved, this, &OccController::removeSceneObject);
-    m_sceneVisibilityConnection = QObject::connect(
-        scene, &SceneModel::objectVisibilityChanged, this, &OccController::synchronizeSceneObject);
-    m_sceneDiagnosticConnection = QObject::connect(
-        scene, &SceneModel::objectDiagnosticOverlaysChanged, this, &OccController::synchronizeSceneObject);
-    m_sceneDestroyedConnection = QObject::connect(
-        scene, &QObject::destroyed, this, &OccController::onSceneDestroyed);
-  }
-  if (m_window) m_window->setApplicationScene(scene);
+  auto it = m_document.objects.find(id);
+  if (it == m_document.objects.end()) return;
+  const auto result = m_window ? m_window->setObjectDiagnostics(id, diagnostics) : ViewportOperationResult{true, {}};
+  if (result.accepted) it->diagnostics = diagnostics;
+  if (!result.error.isEmpty()) emit message(result.error, true);
 }
 
-void OccController::setMachining(SceneMachining* machining)
+void OccController::setDraftAxis(const std::optional<DrawingAxis>& axis)
 {
-  if (m_machining == machining) return;
-  if (m_machining) {
-    disconnect(m_machining, nullptr, this, nullptr);
-    m_machining->setRobotAvailable(false);
-  }
-  m_machining = machining;
-  if (m_machining) {
-    connect(m_machining, &SceneMachining::inputChanged, this, &OccController::synchronizeMachiningPreview);
-    connect(m_machining, &SceneMachining::playbackPoseRequested, this,
-            &OccController::applyPlaybackPose, Qt::DirectConnection);
-    connect(m_machining, &SceneMachining::settingsChanged, this, &OccController::synchronizeMachiningPreview);
-    connect(m_machining, &SceneMachining::availabilityChanged, this, &OccController::synchronizeMachiningPreview);
-  }
-  connect(this, &OccController::readyChanged, this,
-          &OccController::synchronizeMachiningReadiness, Qt::UniqueConnection);
-  if (m_machining && m_state) m_machining->setRobotModel(m_state->model().kinematics);
-  synchronizeMachiningReadiness();
-  synchronizeMachiningPreview();
-}
-
-void OccController::synchronizeMachiningPreview()
-{
-  if (!m_window) return;
-  m_window->setMachiningPreview(m_machining ? m_machining->previewParameters() : std::nullopt);
-}
-
-void OccController::synchronizeMachiningReadiness()
-{
-  if (m_machining) m_machining->setRobotAvailable(isReady() && !m_loading);
-}
-
-void OccController::onSceneDestroyed()
-{
-  if (m_window) m_window->setApplicationScene(nullptr);
+  const auto& previous = m_document.axis;
+  if ((!axis && !previous) || (axis && previous && axis->center == previous->center
+      && axis->direction == previous->direction && axis->length == previous->length)) return;
+  const auto result = m_window ? m_window->setDraftAxis(axis) : ViewportOperationResult{true, {}};
+  if (result.accepted) m_document.axis = axis;
+  if (!result.error.isEmpty()) emit message(result.error, true);
 }
 
 bool OccController::isMeasuringCadLoading() const
 {
-  return m_toolCad[SceneEndEffectors::Measuring].worker != nullptr;
+  return m_toolCad[0].worker != nullptr;
 }
 
 bool OccController::isSpindleCadLoading() const
 {
-  return m_toolCad[SceneEndEffectors::Spindle].worker != nullptr;
+  return m_toolCad[1].worker != nullptr;
 }
 
 QString OccController::measuringCadError() const
 {
-  return m_toolCad[SceneEndEffectors::Measuring].error;
+  return m_toolCad[0].error;
 }
 
 QString OccController::spindleCadError() const
 {
-  return m_toolCad[SceneEndEffectors::Spindle].error;
-}
-
-void OccController::setEndEffectors(SceneEndEffectors* effectors)
-{
-  if (effectors && m_endEffectors == effectors) return;
-  if (m_endEffectors) QObject::disconnect(m_endEffectors, nullptr, this, nullptr);
-  m_endEffectors = effectors;
-  if (effectors) {
-    QObject::connect(effectors, &SceneEndEffectors::activeToolChanged,
-                     this, &OccController::synchronizeEndEffectors);
-    QObject::connect(effectors, &SceneEndEffectors::spindleTcpChanged,
-                     this, &OccController::tcpPoseChanged);
-    QObject::connect(effectors, &SceneEndEffectors::spindleTcpChanged,
-                     this, &OccController::synchronizeSpindleTcp);
-    QObject::connect(effectors, &SceneEndEffectors::spindleColletChanged,
-                     this, &OccController::synchronizeSpindleCollet);
-    QObject::connect(effectors, &SceneEndEffectors::measuringCadSourceChanged, this,
-                     std::bind(&OccController::reloadEndEffector, this, SceneEndEffectors::Measuring));
-    QObject::connect(effectors, &SceneEndEffectors::spindleCadSourceChanged, this,
-                     std::bind(&OccController::reloadEndEffector, this, SceneEndEffectors::Spindle));
-    QObject::connect(effectors, &QObject::destroyed, this,
-                     std::bind(&OccController::setEndEffectors, this, nullptr));
-  }
-  for (ToolCadState& tool : m_toolCad) {
-    tool.loadedSource.clear();
-    tool.shapes.reset();
-  }
-  reloadEndEffector(SceneEndEffectors::Measuring);
-  reloadEndEffector(SceneEndEffectors::Spindle);
-  emit tcpPoseChanged();
-  synchronizeEndEffectors();
+  return m_toolCad[1].error;
 }
 
 void OccController::synchronizeEndEffectors()
 {
   if (!m_window) return;
   m_window->setEndEffectors({m_toolCad[0].shapes, m_toolCad[1].shapes},
-      m_endEffectors ? m_endEffectors->activeTool() : SceneEndEffectors::Measuring);
-  synchronizeSpindleTcp();
-  synchronizeSpindleCollet();
+      m_activeTool);
 }
 
 void OccController::setShowSpindleTcp(bool visible)
 {
   if (m_showSpindleTcp == visible) return;
   m_showSpindleTcp = visible;
-  synchronizeSpindleTcp();
   emit showSpindleTcpChanged();
 }
 
@@ -254,40 +131,14 @@ void OccController::setShowSpindleCollet(bool visible)
 {
   if (m_showSpindleCollet == visible) return;
   m_showSpindleCollet = visible;
-  synchronizeSpindleCollet();
   emit showSpindleColletChanged();
 }
 
-void OccController::synchronizeSpindleTcp()
+void OccController::loadEndEffector(RobotTool tool, const QUrl& source)
 {
-  if (!m_window) return;
-  std::optional<M4d> frame;
-  if (m_showSpindleTcp && m_endEffectors
-      && m_endEffectors->activeTool() == SceneEndEffectors::Spindle) {
-    const auto& tcp = m_endEffectors->spindleTcp();
-    if (tcp.size() == 6) {
-      const M4d transform = makeTransform(euler2rot(tcp[3], tcp[4], tcp[5]),
-                                          V3d{tcp[0], tcp[1], tcp[2]});
-      if (transform.allFinite()) frame = transform;
-    }
-  }
-  m_window->setSpindleTcpFrame(frame);
-}
-
-void OccController::synchronizeSpindleCollet()
-{
-  if (!m_window) return;
-  std::optional<M4d> frame;
-  if (m_showSpindleCollet && m_endEffectors
-      && m_endEffectors->activeTool() == SceneEndEffectors::Spindle)
-    frame = m_endEffectors->spindleColletFrame();
-  m_window->setSpindleColletFrame(frame);
-}
-
-void OccController::reloadEndEffector(SceneEndEffectors::Tool tool)
-{
-  if (m_shuttingDown || (tool != SceneEndEffectors::Measuring && tool != SceneEndEffectors::Spindle)) return;
-  ToolCadState& state = m_toolCad[tool];
+  if (m_shuttingDown || (tool != RobotTool::Measuring && tool != RobotTool::Spindle)) return;
+  ToolCadState& state = m_toolCad[static_cast<std::size_t>(tool)];
+  state.source = source;
   ++state.generation;
   state.error.clear();
   if (state.worker) {
@@ -299,16 +150,25 @@ void OccController::reloadEndEffector(SceneEndEffectors::Tool tool)
   startEndEffectorLoad(tool);
 }
 
-void OccController::startEndEffectorLoad(SceneEndEffectors::Tool tool)
+void OccController::setActiveTool(RobotTool tool)
+{
+  if (m_activeTool == tool) return;
+  m_activeTool = tool;
+  synchronizeEndEffectors();
+}
+
+void OccController::setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet)
+{
+  m_pose.tcp = tcp;
+  m_pose.collet = collet;
+  if (m_window) m_window->setSpindleFrames(tcp, collet);
+}
+
+void OccController::startEndEffectorLoad(RobotTool tool)
 {
   if (m_shuttingDown) return;
-  ToolCadState& state = m_toolCad[tool];
-  if (!m_endEffectors) {
-    emit endEffectorLoadChanged();
-    return;
-  }
-  const QUrl source = tool == SceneEndEffectors::Measuring
-      ? m_endEffectors->measuringCadSource() : m_endEffectors->spindleCadSource();
+  ToolCadState& state = m_toolCad[static_cast<std::size_t>(tool)];
+  const QUrl source = state.source;
   if (source.isEmpty()) {
     emit endEffectorLoadChanged();
     return;
@@ -327,10 +187,10 @@ void OccController::startEndEffectorLoad(SceneEndEffectors::Tool tool)
   emit endEffectorLoadChanged();
 }
 
-void OccController::finishEndEffectorLoad(SceneEndEffectors::Tool tool, quint64 generation, const QUrl& source)
+void OccController::finishEndEffectorLoad(RobotTool tool, quint64 generation, const QUrl& source)
 {
   if (m_shuttingDown) return;
-  ToolCadState& state = m_toolCad[tool];
+  ToolCadState& state = m_toolCad[static_cast<std::size_t>(tool)];
   state.worker->wait();
   auto result = std::make_shared<CadLoadResult>(state.worker->takeResult());
   state.worker.reset();
@@ -339,51 +199,35 @@ void OccController::finishEndEffectorLoad(SceneEndEffectors::Tool tool, quint64 
     return;
   }
   if (result->error.isEmpty() && result->shapes.size() == 1) {
-    state.loadedSource = source;
     state.shapes = std::move(result);
     synchronizeEndEffectors();
     emit endEffectorLoaded(tool);
   } else {
     state.error = result->error.isEmpty() ? QStringLiteral("CAD import produced no tool shape.") : result->error;
-    const QString name = tool == SceneEndEffectors::Measuring ? QStringLiteral("MEE") : QStringLiteral("SEE");
+    const QString name = tool == RobotTool::Measuring ? QStringLiteral("MEE") : QStringLiteral("SEE");
     emit message(QStringLiteral("%1 CAD (%2): %3").arg(name, source.toLocalFile(), state.error), true);
   }
   emit endEffectorLoadChanged();
 }
 
-void OccController::removeSceneObject(quint32 objectId)
-{
-  if (m_window) m_window->removeSceneObject(objectId);
-}
-
-void OccController::synchronizeSceneObject(SceneObject* object)
-{
-  if (m_window) m_window->synchronizeSceneObject(object);
-  if (m_machining && object && object->objectId() == m_machining->inputId()) synchronizeMachiningPreview();
-}
-
 void OccController::setSelectedObjects(const QList<quint32>& ids)
 {
+  m_document.selected = ids;
   if (m_window) m_window->setSelectedObjects(ids);
-}
-
-void OccController::setDiagnosticOverlays(bool showPoints, bool showNormals)
-{
-  if (m_window) m_window->setDiagnosticOverlays(showPoints, showNormals);
 }
 
 void OccController::createWindow()
 {
   if (m_window || m_shuttingDown) return;
   if (!m_occtInitialized) {
-    QString error;
-    m_occtInitialized = ViewportAssets::applicationAssets().initializeOcct(error);
+    const QString error = ViewportAssets::applicationAssets().initializeOcct();
+    m_occtInitialized = error.isEmpty();
     if (!m_occtInitialized) {
       setError(error);
       return;
     }
   }
-  m_window = new OccViewWindow();
+  m_window = new OccViewWindow(m_document);
   QJSEngine::setObjectOwnership(m_window, QJSEngine::CppOwnership);
   QObject::connect(m_window, &OccViewWindow::readyChanged, this, &OccController::readyChanged);
   QObject::connect(m_window, &OccViewWindow::viewportReadyChanged, this, &OccController::viewportReadyChanged);
@@ -392,9 +236,7 @@ void OccController::createWindow()
   QObject::connect(m_window, &OccViewWindow::errorOccurred, this, &OccController::setError);
   QObject::connect(m_window, &QObject::destroyed, this, &OccController::onViewWindowDestroyed);
   QObject::connect(m_window, &OccViewWindow::deleteSelectionRequested, this, &OccController::deleteSelectionRequested);
-  m_window->setApplicationScene(m_applicationScene);
-  synchronizeMachiningPreview();
-  if (m_state && m_shapes) m_window->setScene(m_state, m_shapes);
+  if (m_visuals && m_shapes) m_window->setScene(*m_visuals, m_shapes, m_pose);
   synchronizeEndEffectors();
   emit viewWindowChanged();
 }
@@ -415,52 +257,28 @@ void OccController::setError(const QString& error)
   if (!error.isEmpty()) emit message(error, true);
 }
 
-void OccController::loadRobot()
+ViewportOperationResult OccController::loadRobot(const RobotVisualModel& visuals,
+                                                 const DrawingPose& pose)
 {
   Q_ASSERT(QThread::currentThread() == thread());
-  if (m_loading || m_shuttingDown) return;
+  if (m_shuttingDown) return {false, QStringLiteral("The viewport is shutting down.")};
+  if (m_visuals) return {m_error.isEmpty(), m_error};
   createWindow();
-  if (!m_window) return;
-  if (m_state && m_shapes) {
-    setError({});
-    if (!isReady()) m_window->setScene(m_state, m_shapes);
-    return;
-  }
-
-  const ViewportAssets assets = ViewportAssets::applicationAssets();
-  std::shared_ptr<RobotPreviewState> pending;
-  try {
-    const auto model = Kr10Model::fromJson(assets.modelFile);
-    if (!model) {
-      setError(QStringLiteral("Cannot read the robot definition: %1").arg(assets.modelFile));
-      return;
-    }
-    pending = std::make_shared<RobotPreviewState>(*model);
-    const auto initialized = pending->initialize();
-    if (!initialized.pose) {
-      setError(initialized.error);
-      return;
-    }
-  } catch (const Standard_Failure& failure) {
-    setError(QStringLiteral("Invalid robot definition: %1").arg(QString::fromUtf8(failure.what())));
-    return;
-  }
-
-  const auto sources = robotCadSources(pending->model().visuals, assets.cadDirectory);
-  if (!sources) {
-    setError(QStringLiteral("The robot definition contains an invalid CAD filename."));
-    return;
-  }
+  if (!m_window) return {false, m_error};
+  m_visuals = visuals;
+  m_pose = pose;
+  QStringList sources;
+  for (const auto& link : visuals.links) sources.append(link.fileName);
   setError({});
   m_loading = true;
   emit loadingChanged();
   emit readyChanged();
   const quint64 generation = ++m_generation;
-  m_worker = std::make_unique<CadLoadWorker>(*sources, assets.cacheDirectory);
+  m_worker = std::make_unique<CadLoadWorker>(sources, ViewportAssets::applicationAssets().cacheDirectory);
   QObject::connect(m_worker.get(), &QThread::finished, this,
-                   std::bind(&OccController::finishRobotLoad, this, generation, pending),
-                   Qt::QueuedConnection);
+                   std::bind(&OccController::finishRobotLoad, this, generation), Qt::QueuedConnection);
   m_worker->start();
+  return {true, {}};
 }
 
 void OccController::onViewWindowDestroyed()
@@ -469,11 +287,11 @@ void OccController::onViewWindowDestroyed()
   emit readyChanged();
   emit viewportReadyChanged();
   // A host may destroy its child QWindow before QML's detach handler runs.
-  // QPointer prevents double deletion; the persistent robot state is retained.
+  // QPointer prevents double deletion; renderer replay values are retained.
   QTimer::singleShot(0, this, &OccController::createWindow);
 }
 
-void OccController::finishRobotLoad(quint64 generation, std::shared_ptr<RobotPreviewState> pending)
+void OccController::finishRobotLoad(quint64 generation)
 {
   if (m_shuttingDown || generation != m_generation) return;
   m_worker->wait();
@@ -486,117 +304,28 @@ void OccController::finishRobotLoad(quint64 generation, std::shared_ptr<RobotPre
     emit readyChanged();
     return;
   }
-  m_state = pending;
-  if (IgnorePreviewJointPositionLimits)
-    emit message(QStringLiteral("Offline diagnostic: A1-A6 joint-position limits are disabled in the robot preview."), false);
-  if (m_machining) m_machining->setRobotModel(m_state->model().kinematics);
-  m_shapes = result;
+  m_shapes = std::move(result);
   if (m_window)
-    m_window->setScene(m_state, m_shapes);
+    m_window->setScene(*m_visuals, m_shapes, m_pose);
   else
     createWindow();
-  emit poseChanged();
   emit readyChanged();
 }
 
-bool OccController::applyPose(const RobotPose& pose)
+ViewportOperationResult OccController::applyRobotTransforms(const DrawingPose& pose)
 {
-  if (!isReady() || !m_state) return false;
-  try {
-    if (!m_window->applyPose(pose)) {
-      m_window->setScene(m_state, m_shapes);
-      return false;
-    }
-    m_state->commit(pose);
-    emit poseChanged();
-    return true;
-  } catch (const Standard_Failure&) {
-    // Restore only the robot from the last committed state after a partial update.
-    m_window->setScene(m_state, m_shapes);
-    return false;
-  }
-}
-
-QVariantList OccController::solve(const QVariantList& values, bool inverse)
-{
-  if (m_machining && m_machining->playbackActive()) {
-    setError(QStringLiteral("Stop Dry Run before changing the robot pose."));
-    return {};
-  }
   Q_ASSERT(QThread::currentThread() == thread());
-  if (!isReady() || !m_state) {
-    setError(QStringLiteral("The robot preview is not ready."));
-    return {};
-  }
-  const auto input = readValues(values);
-  if (!input) {
-    setError(QStringLiteral("Enter exactly six finite numeric values."));
-    return {};
-  }
-  try {
-    const auto result = inverse ? m_state->inverse(*input) : m_state->forward(*input);
-    if (!result.pose) {
-      setError(result.error);
-      return {};
-    }
-    if (!applyPose(*result.pose)) {
-      setError(QStringLiteral("Cannot update the robot presentation."));
-      return {};
-    }
+  if (!isReady()) return {false, QStringLiteral("The robot preview is not ready.")};
+  const auto result = m_window->applyTransforms(pose);
+  if (result.accepted) {
+    m_pose = pose;
     setError({});
-    return toList(inverse ? result.pose->joints() : result.pose->flange());
-  } catch (const Standard_Failure& failure) {
-    setError(QStringLiteral("Kinematics failed: %1").arg(QString::fromUtf8(failure.what())));
-    return {};
+  } else if (m_error == result.error) {
+    emit message(result.error, true);
+  } else {
+    setError(result.error);
   }
-}
-
-QVariantList OccController::solveFK(const QVariantList& joints)
-{
-  return solve(joints, false);
-}
-
-void OccController::applyPlaybackPose(QList<double> joints)
-{
-  if (!m_machining || !m_machining->playbackActive()) return;
-  if (!isReady() || m_loading || !m_state || joints.size() != 6) {
-    m_machining->failPlayback(QStringLiteral("Robot preview is not ready for playback."));
-    return;
-  }
-  V6d values = V6d::Zero();
-  for (int i = 0; i < 6; ++i) values[i] = joints[i];
-  const auto result = m_state->forward(values);
-  if (!result.pose || !applyPose(*result.pose)) {
-    m_machining->failPlayback(result.error.isEmpty() ? QStringLiteral("Cannot display the trajectory pose.") : result.error);
-  }
-}
-
-QVariantList OccController::solveIK(const QVariantList& flange)
-{
-  return solve(flange, true);
-}
-
-QVariantList OccController::solveTcpIK(const QVariantList& tcp)
-{
-  const auto values = readValues(tcp);
-  if (!values) {
-    setError(QStringLiteral("Enter exactly six finite numeric TCP values."));
-    return {};
-  }
-  if (!m_endEffectors || m_endEffectors->spindleTcp().isEmpty()) {
-    setError(QStringLiteral("Configure the spindle TCP relative to the flange first."));
-    return {};
-  }
-  QList<double> target;
-  for (double value : *values) target.append(value);
-  const QList<double> flange = m_endEffectors->flangePoseFromSpindle(target);
-  if (flange.isEmpty()) {
-    setError(QStringLiteral("The TCP target and calibration produced an invalid flange pose."));
-    return {};
-  }
-  QVariantList flangeValues;
-  for (double value : flange) flangeValues.append(value);
-  return solveIK(flangeValues);
+  return result;
 }
 
 } // namespace RoboCrap3D

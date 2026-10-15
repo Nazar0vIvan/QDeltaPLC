@@ -1,6 +1,8 @@
 #include "occscene.h"
 
 #include <QDebug>
+#include <algorithm>
+#include <limits>
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_SelectionModesConcurrency.hxx>
@@ -37,8 +39,8 @@ bool OccScene::isValid() const
 bool OccScene::hasVisibleParts() const
 {
   if (!isValid()) return false;
-  for (const auto& part : m_parts) {
-    if (part && !part->handle()->IsInfinite() && m_context->IsDisplayed(part->handle())) return true;
+  for (const auto& [id, part] : m_parts) {
+    if (!part.handle()->IsInfinite() && m_context->IsDisplayed(part.handle())) return true;
   }
   return false;
 }
@@ -223,7 +225,7 @@ double OccScene::currentWorldAxisLength() const
   return cameraScale * 0.05;
 }
 
-std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props)
+std::optional<OccScene::PartId> OccScene::createShapePart(const TopoDS_Shape& shape, const OccPartProps& props)
 {
   if (!isValid()) {
     qWarning() << "Cannot add OCCT shape part: context or view is null";
@@ -235,6 +237,11 @@ std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape&
     return std::nullopt;
   }
 
+  if (!m_nextPartId) {
+    qWarning() << "Cannot add OCCT shape part: part IDs are exhausted";
+    return std::nullopt;
+  }
+
   OccPart part(shape, props);
 
   if (!part.isValid()) {
@@ -242,15 +249,24 @@ std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape&
     return std::nullopt;
   }
 
-  const PartId id = m_parts.size();
-  m_parts.emplace_back(std::move(part));
+  const PartId id = *m_nextPartId;
+  m_parts.emplace(id, std::move(part));
+  if (id == std::numeric_limits<PartId>::max()) m_nextPartId.reset();
+  else ++*m_nextPartId;
+  return id;
+}
+
+std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props)
+{
+  const auto id = createShapePart(shape, props);
+  if (!id) return std::nullopt;
   try {
-    if (!displayPart(*m_parts.back())) {
-      (void)removePart(id);
+    if (!displayPart(m_parts.find(*id)->second)) {
+      (void)removePart(*id);
       return std::nullopt;
     }
   } catch (...) {
-    (void)removePart(id);
+    (void)removePart(*id);
     throw;
   }
 
@@ -259,30 +275,29 @@ std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape&
 
 bool OccScene::setPartTransform(const PartId id, const gp_Trsf& transform)
 {
-  if (id >= m_parts.size() || !m_parts[id]) {
+  const auto found = m_parts.find(id);
+  if (found == m_parts.end()) {
     qWarning() << "Invalid OCCT scene part id:" << id;
     return false;
   }
 
-  m_parts[id]->setTransform(transform);
-  const auto outline = m_selectionOutlines.find(id);
-  if (outline != m_selectionOutlines.end()) outline->second->SetLocalTransformation(transform);
+  found->second.setTransform(transform);
+  if (const auto selected = m_selectedParts.find(id);
+      selected != m_selectedParts.end() && !selected->second.first.IsNull())
+    selected->second.first->SetLocalTransformation(transform);
   return true;
 }
 
 bool OccScene::setPartVisible(const PartId id, const bool visible)
 {
-  if (!isValid() || id >= m_parts.size() || !m_parts[id]) {
+  const auto found = m_parts.find(id);
+  if (!isValid() || found == m_parts.end()) {
     qWarning() << "Invalid OCCT scene part id:" << id;
     return false;
   }
 
-  OccPart& part = *m_parts[id];
-  const auto outline = m_selectionOutlines.find(id);
-  if (!visible && outline != m_selectionOutlines.end()) {
-    m_context->Remove(outline->second, false);
-    m_selectionOutlines.erase(outline);
-  }
+  OccPart& part = found->second;
+  if (!visible) unselectPart(id);
   if (m_context->IsDisplayed(part.handle()) == visible
       && (!part.hasTrihedron() || m_context->IsDisplayed(part.trihedron()) == visible)) return true;
   if (visible) {
@@ -296,55 +311,74 @@ bool OccScene::setPartVisible(const PartId id, const bool visible)
 
 bool OccScene::removePart(const PartId id)
 {
-  if (!isValid() || id >= m_parts.size() || !m_parts[id]) {
+  const auto found = m_parts.find(id);
+  if (!isValid() || found == m_parts.end()) {
     qWarning() << "Invalid OCCT scene part id:" << id;
     return false;
   }
 
-  const OccPart& part = *m_parts[id];
-  const auto outline = m_selectionOutlines.find(id);
-  if (outline != m_selectionOutlines.end()) {
-    m_context->Remove(outline->second, false);
-    m_selectionOutlines.erase(outline);
-  }
+  const OccPart& part = found->second;
+  unselectPart(id);
   m_context->Remove(part.handle(), false);
   if (part.hasTrihedron()) m_context->Remove(part.trihedron(), false);
-  m_parts[id].reset();
+  m_parts.erase(found);
   return true;
 }
 
 Handle(AIS_Shape) OccScene::partHandle(const PartId id) const
 {
-  return id < m_parts.size() && m_parts[id] ? m_parts[id]->handle() : Handle(AIS_Shape){};
+  const auto found = m_parts.find(id);
+  return found != m_parts.end() ? found->second.handle() : Handle(AIS_Shape){};
+}
+
+void OccScene::unselectPart(const PartId id)
+{
+  const auto selected = m_selectedParts.find(id);
+  if (selected == m_selectedParts.end()) return;
+  auto& [outline, ready] = selected->second;
+  ready = false; // A failed removal must not leave a completed display record.
+  if (!outline.IsNull()) m_context->Remove(outline, false);
+  const auto handle = partHandle(id);
+  if (!handle.IsNull() && m_context->IsSelected(handle))
+    m_context->AddOrRemoveSelected(handle, false);
+  m_selectedParts.erase(selected);
 }
 
 void OccScene::selectParts(const std::vector<PartId>& ids)
 {
   if (!isValid()) return;
-  for (const auto& outline : m_selectionOutlines) m_context->Remove(outline.second, false);
-  m_selectionOutlines.clear();
-  m_context->ClearSelected(false);
+  for (auto selected = m_selectedParts.begin(); selected != m_selectedParts.end();) {
+    const PartId id = (selected++)->first;
+    const auto handle = partHandle(id);
+    if (std::find(ids.cbegin(), ids.cend(), id) == ids.cend()
+        || handle.IsNull() || !m_context->IsDisplayed(handle)) unselectPart(id);
+  }
   for (const PartId id : ids) {
     const Handle(AIS_Shape) handle = partHandle(id);
     if (handle.IsNull() || !m_context->IsDisplayed(handle)) continue;
-    m_context->AddOrRemoveSelected(handle, false);
+    if (!m_context->IsSelected(handle)) m_context->AddOrRemoveSelected(handle, false);
+    auto& [outline, ready] = m_selectedParts.try_emplace(id, Handle(AIS_Shape){}, false).first->second;
+    if (ready) continue;
     // Highlight color overrides face-boundary aspects. Keep the boundary in
     // its own unhighlighted presentation; standalone curves remain amber.
-    if (!TopExp_Explorer(handle->Shape(), TopAbs_FACE).More()) continue;
-    BRep_Builder builder;
-    TopoDS_Compound boundaries;
-    builder.MakeCompound(boundaries);
-    for (TopExp_Explorer edge(handle->Shape(), TopAbs_EDGE); edge.More(); edge.Next())
-      builder.Add(boundaries, edge.Current());
-    Handle(AIS_Shape) outline = new AIS_Shape(boundaries);
-    outline->SetColor(Quantity_Color(48.0 / 255.0, 48.0 / 255.0, 48.0 / 255.0, Quantity_TOC_sRGB));
-    outline->SetWidth(2.0);
-    outline->SetLocalTransformation(handle->LocalTransformation());
-    outline->SetInfiniteState(true); // Decoration must not affect camera fitting.
-    m_context->Display(outline, 0, -1, false);
-    // Share scene depth so rear boundaries are hidden by opaque faces.
-    m_context->SetZLayer(outline, Graphic3d_ZLayerId_Top);
-    m_selectionOutlines.emplace(id, outline);
+    if (outline.IsNull() && TopExp_Explorer(handle->Shape(), TopAbs_FACE).More()) {
+      BRep_Builder builder;
+      TopoDS_Compound boundaries;
+      builder.MakeCompound(boundaries);
+      for (TopExp_Explorer edge(handle->Shape(), TopAbs_EDGE); edge.More(); edge.Next())
+        builder.Add(boundaries, edge.Current());
+      outline = new AIS_Shape(boundaries); // Own it before any display/style operation can fail.
+    }
+    if (!outline.IsNull()) {
+      outline->SetColor(Quantity_Color(48.0 / 255.0, 48.0 / 255.0, 48.0 / 255.0, Quantity_TOC_sRGB));
+      outline->SetWidth(2.0);
+      outline->SetLocalTransformation(handle->LocalTransformation());
+      outline->SetInfiniteState(true); // Decoration must not affect camera fitting.
+      m_context->Display(outline, 0, -1, false);
+      // Share scene depth so rear boundaries are hidden by opaque faces.
+      m_context->SetZLayer(outline, Graphic3d_ZLayerId_Top);
+    }
+    ready = true;
   }
 }
 
@@ -358,14 +392,9 @@ void OccScene::updateViewer()
 void OccScene::clearParts()
 {
   if (!isValid()) return;
-  for (const auto& outline : m_selectionOutlines) m_context->Remove(outline.second, false);
-  m_selectionOutlines.clear();
-  for (auto& part : m_parts) {
-    if (!part) continue;
-    m_context->Remove(part->handle(), false);
-    if (part->hasTrihedron()) m_context->Remove(part->trihedron(), false);
-    part.reset();
-  }
+  while (!m_selectedParts.empty()) unselectPart(m_selectedParts.begin()->first);
+  while (!m_parts.empty())
+    if (!removePart(m_parts.begin()->first)) return;
 }
 
 } // namespace RoboCrap3D

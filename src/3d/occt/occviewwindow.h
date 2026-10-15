@@ -1,17 +1,12 @@
 #pragma once
 
-#include "3d/robot/robotpreviewstate.h"
+#include "3d/occcontroller.h"
 #include "cadloadresult.h"
-#include "scene/sceneendeffectors.h"
-#include "pathgeneration/chamfer/chamferpath.h"
 
 #include <QPointer>
 #include <QList>
 #include <QWindow>
 #include <memory>
-
-class SceneModel;
-class SceneObject;
 
 namespace RoboCrap3D {
 
@@ -22,24 +17,23 @@ class OccViewWindow final : public QWindow
   Q_OBJECT
 
 public:
-  OccViewWindow();
+  explicit OccViewWindow(const DrawingDocument& document);
   ~OccViewWindow() override;
 
-  void setScene(std::shared_ptr<const RobotPreviewState> state, std::shared_ptr<const CadLoadResult> shapes);
-  void setApplicationScene(SceneModel* scene);
-  void synchronizeApplicationScene();
-  void synchronizeSceneObject(SceneObject* object);
-  void removeSceneObject(quint32 objectId);
+  // Graphics, parsed shapes and transforms define one restorable robot presentation.
+  void setScene(const RobotVisualModel& visuals, std::shared_ptr<const CadLoadResult> shapes,
+                const DrawingPose& pose);
+  ViewportOperationResult insertObject(const DrawingObject& object);
+  void removeObject(quint32 id);
+  ViewportOperationResult setObjectVisible(quint32 id, bool visible);
+  ViewportOperationResult setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics);
   void setSelectedObjects(const QList<quint32>& ids);
-  void setMachiningPreview(const std::optional<ChamferPathParameters>& parameters);
-  void setDiagnosticOverlays(bool showPoints, bool showNormals);
-  bool applyPose(const RobotPose& pose);
-  // Applied flange-relative calibration; empty hides the TCP decoration.
-  void setSpindleTcpFrame(const std::optional<M4d>& frame);
-  // Applied flange-relative ER calibration; empty hides the collet decoration.
-  void setSpindleColletFrame(const std::optional<M4d>& frame);
+  ViewportOperationResult setDraftAxis(const std::optional<DrawingAxis>& axis);
+  ViewportOperationResult applyTransforms(const DrawingPose& pose);
+  // BASE-relative drawing frames; absent values hide the corresponding axes.
+  void setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet);
   void setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
-                      SceneEndEffectors::Tool active);
+                      RobotTool active);
   bool isReady() const;
   bool isViewportReady() const;
   void releaseSurface();
@@ -68,17 +62,14 @@ private:
   void resizeViewport();
   QPoint nativePosition(const QPointF& position) const;
 
-  std::shared_ptr<const RobotPreviewState> m_state;
+  std::optional<RobotVisualModel> m_visuals;
+  DrawingPose m_pose;
+  const DrawingDocument& m_document;
   std::shared_ptr<const CadLoadResult> m_shapes;
   std::array<std::shared_ptr<const CadLoadResult>, 2> m_toolShapes;
-  SceneEndEffectors::Tool m_activeTool = SceneEndEffectors::Measuring;
-  QPointer<SceneModel> m_applicationScene;
+  RobotTool m_activeTool = RobotTool::Measuring;
   std::unique_ptr<OccViewport> m_viewport;
-  bool m_initializationFailed = false;
-  std::optional<ChamferPathParameters> m_machiningPreview;
-  std::optional<M4d> m_spindleTcpFrame;
-  std::optional<M4d> m_spindleColletFrame;
-  QList<quint32> m_selectedObjects;
+  bool m_presentationFailed = false;
 };
 
 } // namespace RoboCrap3D

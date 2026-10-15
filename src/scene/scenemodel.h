@@ -5,6 +5,9 @@
 #include <QList>
 #include <QQmlListProperty>
 #include <QVariantList>
+#include <QPointer>
+
+namespace RoboCrap3D { class OccController; }
 
 class SceneModel : public QObject
 {
@@ -14,6 +17,7 @@ class SceneModel : public QObject
 public:
   explicit SceneModel(QObject* parent = nullptr);
 
+  void setViewport(RoboCrap3D::OccController* viewport);
   QQmlListProperty<SceneObject> objects();
   const QList<SceneObject*>& objectList() const { return m_objects; }
   Q_INVOKABLE SceneObject* findObject(quint32 objectId) const;
@@ -46,11 +50,12 @@ private:
   std::optional<std::array<const SceneObject*, 2>> intersectionPair(const QList<quint32>& ids) const;
   static qsizetype objectCount(QQmlListProperty<SceneObject>* list);
   static SceneObject* objectAt(QQmlListProperty<SceneObject>* list, qsizetype index);
-  void appendObject(SceneObject* object);
+  SceneObject* appendObject(SceneObject* object);
   SceneObject* createObject(SceneObject::Description description);
   void onObjectVisibilityChanged();
   void onObjectDiagnosticOverlaysChanged();
 
+  QPointer<RoboCrap3D::OccController> m_viewport;
   QList<SceneObject*> m_objects;
   QHash<quint32, SceneObject*> m_objectsById;
   quint32 m_nextId = 1; // Zero is never allocated, including after exhaustion.

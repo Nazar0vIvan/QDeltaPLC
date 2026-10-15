@@ -79,11 +79,11 @@ bool SceneEndEffectors::setSpindleCadSource(const QUrl& source)
 
 bool SceneEndEffectors::setSpindleTcp(const QList<double>& pose)
 {
-  if (pose.size() != 6) return false;
-  for (double value : pose)
-    if (!std::isfinite(value)) return false;
-  if (m_spindleTcp == pose) return true;
+  if (m_spindleTcpFrame && m_spindleTcp == pose) return true;
+  const auto frame = poseTransform(pose);
+  if (!frame) return false;
   m_spindleTcp = pose;
+  m_spindleTcpFrame = frame;
   emit spindleTcpChanged();
   return true;
 }
@@ -95,9 +95,8 @@ QList<double> SceneEndEffectors::spindleColletPose() const
 
 QList<double> SceneEndEffectors::spindleTcpInCollet() const
 {
-  const auto flangeToTcp = poseTransform(m_spindleTcp);
-  if (!m_spindleColletFrame || !flangeToTcp) return {};
-  const M4d colletToTcp = inverseRigidTransform(*m_spindleColletFrame) * *flangeToTcp;
+  if (!m_spindleColletFrame || !m_spindleTcpFrame) return {};
+  const M4d colletToTcp = inverseRigidTransform(*m_spindleColletFrame) * *m_spindleTcpFrame;
   // Normalize the composed basis before Euler extraction, including at pitch +/-90 degrees.
   const auto frame = Pose::fromAxes(colletToTcp.block<3, 1>(0, 0), colletToTcp.block<3, 1>(0, 1),
                                    colletToTcp.block<3, 1>(0, 2), colletToTcp.block<3, 1>(0, 3));
@@ -123,12 +122,16 @@ bool SceneEndEffectors::applySpindlePoses(const QList<double>& colletPose, const
   const M4d flangeToTcp = (colletChanged ? *flangeToCollet : *m_spindleColletFrame) * *colletToTcp;
   const QList<double> flangePose = transformPose(flangeToTcp);
   if (flangePose.size() != 6) return false;
-  const bool tcpChanged = !matchesTransform(poseTransform(m_spindleTcp), flangeToTcp);
+  const bool tcpChanged = !matchesTransform(m_spindleTcpFrame, flangeToTcp);
   if (!colletChanged) return tcpChanged ? setSpindleTcp(flangePose) : true;
+
+  const auto acceptedTcpFrame = tcpChanged ? poseTransform(flangePose) : m_spindleTcpFrame;
+  if (!acceptedTcpFrame) return false;
 
   // ER changes redefine the TCP conversion; commit both before either notification.
   m_spindleColletFrame = *flangeToCollet;
   if (tcpChanged) m_spindleTcp = flangePose;
+  m_spindleTcpFrame = acceptedTcpFrame;
   emit spindleColletChanged();
   emit spindleTcpChanged();
   return true;
@@ -146,15 +149,13 @@ bool SceneEndEffectors::setActiveTool(Tool tool)
 QList<double> SceneEndEffectors::spindlePoseFromFlange(const QList<double>& flange) const
 {
   const auto baseToFlange = poseTransform(flange);
-  const auto flangeToTcp = poseTransform(m_spindleTcp);
-  if (!baseToFlange || !flangeToTcp) return {};
-  return transformPose((*baseToFlange * *flangeToTcp).eval());
+  if (!baseToFlange || !m_spindleTcpFrame) return {};
+  return transformPose((*baseToFlange * *m_spindleTcpFrame).eval());
 }
 
 QList<double> SceneEndEffectors::flangePoseFromSpindle(const QList<double>& tcp) const
 {
   const auto baseToTcp = poseTransform(tcp);
-  const auto flangeToTcp = poseTransform(m_spindleTcp);
-  if (!baseToTcp || !flangeToTcp) return {};
-  return transformPose((*baseToTcp * inverseRigidTransform(*flangeToTcp)).eval());
+  if (!baseToTcp || !m_spindleTcpFrame) return {};
+  return transformPose((*baseToTcp * inverseRigidTransform(*m_spindleTcpFrame)).eval());
 }

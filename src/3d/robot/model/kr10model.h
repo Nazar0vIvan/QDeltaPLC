@@ -5,27 +5,16 @@
 #include <QString>
 
 #include "kr10kinematicmodel.h"
-#include "3d/occt/occpartprops.h"
+#include "3d/robotgraphics.h"
 
 namespace RoboCrap3D {
 
-struct LinkModel
-{
-  QString fileName;
-  OccPartProps props{};
-};
-
-struct RobotVisualModel
-{
-  std::array<LinkModel, LinkCount> links{};
-};
-
-struct Kr10Model
+struct RobotDefinition
 {
   QString name;
   Kr10KinematicModel kinematics;
   RobotVisualModel visuals;
 
-  static std::optional<Kr10Model> fromJson(const QString& file);
+  static std::optional<RobotDefinition> fromJson(const QString& file);
 };
 } // namespace RoboCrap3D

@@ -1,4 +1,5 @@
 #include "scenemodel.h"
+#include "3d/occcontroller.h"
 
 #include <utility>
 
@@ -26,6 +27,12 @@ QString intersectionMessage(IntersectionStatus status)
 
 SceneModel::SceneModel(QObject* parent) : QObject(parent)
 {}
+
+void SceneModel::setViewport(RoboCrap3D::OccController* viewport)
+{
+  Q_ASSERT(m_objects.isEmpty()); // main attaches the document before imports.
+  m_viewport = viewport;
+}
 
 QQmlListProperty<SceneObject> SceneModel::objects()
 {
@@ -69,6 +76,7 @@ void SceneModel::removeObjects(const QList<quint32>& ids)
     if (!object) continue;
     m_objects.removeOne(object);
     disconnect(object, nullptr, this, nullptr);
+    if (m_viewport) m_viewport->removeObject(id);
     emit objectRemoved(id);
     object->deleteLater();
     changed = true;
@@ -106,7 +114,10 @@ QList<quint32> SceneModel::intersect(const QList<quint32>& selectedIds)
                                        std::max(first->objectId(), second->objectId())};
   object->setEdgeGeometry(std::move(*result.edge), sources);
   ++m_nextEdgeNumber;
-  appendObject(object);
+  if (!appendObject(object)) {
+    emit intersectionFailed(tr("Cannot insert the intersection drawing."));
+    return {};
+  }
   return {object->objectId()};
 }
 
@@ -126,12 +137,18 @@ SceneObject* SceneModel::addMachiningPath(SceneMachiningData data, const QString
   if (!object) return nullptr;
   object->setMachiningPath(std::move(data));
   if (automaticName) ++m_nextMachiningPathNumber;
-  appendObject(object);
-  return object;
+  return appendObject(object);
 }
 
-void SceneModel::appendObject(SceneObject* object)
+SceneObject* SceneModel::appendObject(SceneObject* object)
 {
+  if (m_viewport) {
+    const auto drawing = object->drawing();
+    if (drawing && !m_viewport->insertObject(*drawing).accepted) {
+      delete object;
+      return nullptr;
+    }
+  }
   QJSEngine::setObjectOwnership(object, QJSEngine::CppOwnership);
   if (object->geometry()) QJSEngine::setObjectOwnership(object->geometry(), QJSEngine::CppOwnership);
   m_objects.append(object);
@@ -140,6 +157,7 @@ void SceneModel::appendObject(SceneObject* object)
   connect(object, &SceneObject::diagnosticOverlaysChanged, this, &SceneModel::onObjectDiagnosticOverlaysChanged);
   emit objectAdded(object);
   emit objectsChanged();
+  return object;
 }
 
 SceneObject* SceneModel::addObject(const QString& name,
@@ -153,8 +171,7 @@ SceneObject* SceneModel::addObject(const QString& name,
   }
   auto* object = createObject({trimmedName, kind, classification, {}});
   if (!object) return nullptr;
-  appendObject(object);
-  return object;
+  return appendObject(object);
 }
 
 SceneObject* SceneModel::addPlane(const QUrl& sourceUrl, const QString& name,
@@ -178,8 +195,7 @@ SceneObject* SceneModel::addPlane(const QUrl& sourceUrl, const QString& name,
                                SceneObject::Plane, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
   object->setPlaneGeometry(values);
-  appendObject(object);
-  return object;
+  return appendObject(object);
 }
 
 // Each insertion takes source metadata, display name and validated geometry.
@@ -190,8 +206,7 @@ SceneObject* SceneModel::addBoundedPlane(const QUrl& sourceUrl, const QString& n
                                SceneObject::Plane, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
   object->setPlaneGeometry(std::move(plane));
-  appendObject(object);
-  return object;
+  return appendObject(object);
 }
 
 SceneObject* SceneModel::addBoundedCylinder(const QUrl& sourceUrl, const QString& name,
@@ -201,8 +216,7 @@ SceneObject* SceneModel::addBoundedCylinder(const QUrl& sourceUrl, const QString
                                SceneObject::Cylinder, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
   object->setCylinderGeometry(std::move(cylinder));
-  appendObject(object);
-  return object;
+  return appendObject(object);
 }
 
 // Source metadata, display name and fitted geometry define a circle insertion.
@@ -212,18 +226,22 @@ SceneObject* SceneModel::addCircle(const QUrl& sourceUrl, const QString& name, C
                                SceneObject::Circle, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
   object->setCircleGeometry(std::move(circle));
-  appendObject(object);
-  return object;
+  return appendObject(object);
 }
 
 void SceneModel::onObjectVisibilityChanged()
 {
-  emit objectVisibilityChanged(qobject_cast<SceneObject*>(sender()));
+  auto* object = qobject_cast<SceneObject*>(sender());
+  if (m_viewport && object) m_viewport->setObjectVisible(object->objectId(), object->visible());
+  emit objectVisibilityChanged(object);
 }
 
 void SceneModel::onObjectDiagnosticOverlaysChanged()
 {
-  emit objectDiagnosticOverlaysChanged(qobject_cast<SceneObject*>(sender()));
+  auto* object = qobject_cast<SceneObject*>(sender());
+  if (m_viewport && object)
+    m_viewport->setObjectDiagnostics(object->objectId(), object->drawingDiagnostics());
+  emit objectDiagnosticOverlaysChanged(object);
 }
 
 bool SceneModel::setObjectDiagnosticOverlays(SceneObject* object, bool showPoints, bool showNormals)

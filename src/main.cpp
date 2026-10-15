@@ -19,8 +19,10 @@
 #include "3d/chamferprofile.h"
 #include "3d/viewportqmltypes.h"
 #include "3d/viewportassets.h"
+#include "3d/robot/robotpreviewstate.h"
 
 #include "backendqmltypes.h"
+#include "application/workspacecontroller.h"
 #include "network/devicehub.h"
 
 #include "network/fts/rdtmessage.h"
@@ -110,12 +112,25 @@ int main(int argc, char* argv[])
   QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);
 
   RoboCrap3D::OccController viewportController;
-  viewportController.setApplicationScene(&scene);
-  viewportController.setEndEffectors(&endEffectors);
-  viewportController.setMachining(&machining);
+  scene.setViewport(&viewportController);
+  QObject::connect(&machining, &SceneMachining::draftAxisChanged,
+                   &viewportController, &RoboCrap3D::OccController::setDraftAxis);
   OccControllerQml::s_inst = &viewportController;
+  RoboCrap3D::RobotController robotController(&viewportController, &endEffectors, &machining);
+  RobotControllerQml::s_inst = &robotController;
+  machining.setRobotController(&robotController);
+  WorkspaceController workspaceController(&scene, &machining, &robotController);
+  QObject::connect(&workspaceController, &WorkspaceController::selectionChanged,
+                   &viewportController, &RoboCrap3D::OccController::setSelectedObjects);
+  QObject::connect(&viewportController, &RoboCrap3D::OccController::applicationSelectionRequested,
+                   &workspaceController, &WorkspaceController::selectObject);
+  QObject::connect(&viewportController, &RoboCrap3D::OccController::deleteSelectionRequested,
+                   &workspaceController, &WorkspaceController::deleteSelected);
 
   QObject::connect(&viewportController, &RoboCrap3D::OccController::message, &app, &logViewportMessage);
+  QObject::connect(&robotController, &RoboCrap3D::RobotController::message, &app, &logViewportMessage);
+
+  robotController.loadRobot();
 
   QQmlApplicationEngine engine;
 

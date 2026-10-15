@@ -68,7 +68,7 @@ qt_add_library(RoboCrapScene STATIC
   scene/scenesurfaceimporter.cpp
 )
 target_include_directories(RoboCrapScene PUBLIC ${SRC_DIR})
-target_link_libraries(RoboCrapScene PUBLIC RoboCrapGeometry Qt6::Qml)
+target_link_libraries(RoboCrapScene PUBLIC RoboCrapGeometry Qt6::Qml Qt6::Gui)
 qt_extract_metatypes(RoboCrapScene)
 
 qt_add_library(RoboCrapDevices STATIC
@@ -119,10 +119,20 @@ target_include_directories(RoboCrapBackend PRIVATE
 target_link_libraries(RoboCrapBackend PUBLIC RoboCrapScene RoboCrapDevices)
 
 add_subdirectory(3d)
+# Document code projects drawing values into the viewport; no reverse dependency.
+target_link_libraries(RoboCrapScene PRIVATE RoboCrap3D)
 set(ROBOCRAP_OCCT_PREFIX "${ROBOCRAP_OCCT_PREFIX}" PARENT_SCOPE)
 
 target_sources(robocrap PRIVATE
+  application/workspacecontroller.h
+  application/workspacecontroller.cpp
+  3d/robot/robotpreviewstate.h
+  3d/robot/robotpreviewstate.cpp
+  3d/robot/model/kr10model.h
+  3d/robot/model/kr10model.cpp
+  3d/chamferprofile.h
+  3d/chamferprofile.cpp
   qmlchartbridge.h
   qmlchartbridge.cpp
 )
-target_include_directories(robocrap PRIVATE ${SRC_DIR})
+target_include_directories(robocrap PRIVATE ${SRC_DIR} ${SRC_DIR}/3d/robot ${SRC_DIR}/application)

@@ -32,8 +32,6 @@ qt_add_qml_module(RoboCrap3D
   ${QML_OPTIONS}
   DEPENDENCIES QtQml QtQuick
   SOURCES
-    chamferprofile.h
-    chamferprofile.cpp
     viewportqmltypes.h
     occcontroller.h
     occcontroller.cpp
@@ -67,16 +65,13 @@ qt_add_qml_module(RoboCrap3D
     occt/occviewcube.cpp
     occt/occworldaxes.h
     occt/occworldaxes.cpp
-    robot/robotpreviewstate.h
-    robot/robotpreviewstate.cpp
-    robot/model/kr10model.h
-    robot/model/kr10model.cpp
+    robotgraphics.h
 )
 
 target_include_directories(RoboCrap3D PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(RoboCrap3D
   PUBLIC RoboCrapGeometry Qt6::Core Qt6::Gui Qt6::Qml
-  PRIVATE RoboCrapScene TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP
+  PRIVATE TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP
 )
 
 set(ROBOCRAP_OCCT_PREFIX "${OpenCASCADE_INSTALL_PREFIX}" PARENT_SCOPE)

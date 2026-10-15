@@ -12,6 +12,7 @@
 #include <optional>
 #include <vector>
 #include <map>
+#include <utility>
 
 class AIS_InteractiveContext;
 class V3d_View;
@@ -36,6 +37,8 @@ public:
   [[nodiscard]] bool isValid() const;
   [[nodiscard]] bool hasVisibleParts() const;
 
+  // Creation returns ownership identity before any display call can fail.
+  [[nodiscard]] std::optional<PartId> createShapePart(const TopoDS_Shape& shape, const OccPartProps& props);
   [[nodiscard]] std::optional<PartId> addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props = {});
   [[nodiscard]] bool setPartTransform(PartId id, const gp_Trsf& transform);
   [[nodiscard]] bool setPartVisible(PartId id, bool visible);
@@ -60,15 +63,17 @@ private:
   void displayViewCube();
   bool displayPart(OccPart& part);
   void activateAllSelectionModes(const OccPart& part);
+  void unselectPart(PartId id);
   [[nodiscard]] double currentWorldAxisLength() const;
 
 private:
   Handle(AIS_InteractiveContext) m_context;
   Handle(V3d_View) m_view;
-  // Slots are never reused during this scene's lifetime. A removed part leaves
-  // a tombstone so a stale PartId cannot address a later presentation.
-  std::vector<std::optional<OccPart>> m_parts;
-  std::map<PartId, Handle(AIS_Shape)> m_selectionOutlines;
+  // Only live parts are retained; IDs, including zero, are never reused or reset on clear.
+  std::map<PartId, OccPart> m_parts;
+  std::optional<PartId> m_nextPartId = 0;
+  // Selected IDs with outline/completion state; curves have a null outline.
+  std::map<PartId, std::pair<Handle(AIS_Shape), bool>> m_selectedParts;
   OccWorldAxes m_worldAxes;
   OccWorldAxes m_spindleTcpAxes;
   OccWorldAxes m_spindleColletAxes;
