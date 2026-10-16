@@ -1,7 +1,7 @@
-#include "boundedplane.h"
+#include "geometry/boundedplane.h"
 
-#include "plane.h"
-#include "utils.h"
+#include "geometry/plane.h"
+#include "geometry/utils.h"
 
 #include <algorithm>
 #include <cmath>
@@ -61,12 +61,6 @@ std::optional<BoundedPlane> BoundedPlane::fromPoints(QVector<V3d> points)
   const std::array<double, 4> coefficients{plane->coeffs[0], plane->coeffs[1], plane->coeffs[2], plane->coeffs[3]};
   return BoundedPlane(std::move(points), coefficients,
                        {coordinates(origin), coordinates(u), coordinates(v)}, {width, height});
-}
-
-std::optional<BoundedPlane> BoundedPlane::fromJsonFile(const QString& path)
-{
-  auto samples = readProbeSamples(path);
-  return samples ? fromSamples(std::move(*samples)) : std::nullopt;
 }
 
 std::optional<BoundedPlane> BoundedPlane::fromSamples(ProbeSamples samples)

@@ -1,8 +1,8 @@
-#include "cylinder.h"
+#include "geometry/cylinder.h"
 
 #include <cmath>
 
-#include "utils.h"
+#include "geometry/utils.h"
 
 namespace {
 

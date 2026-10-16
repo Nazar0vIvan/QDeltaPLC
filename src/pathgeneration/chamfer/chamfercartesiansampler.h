@@ -2,7 +2,7 @@
 
 #include <QJsonObject>
 
-#include "chamfermotion.h"
+#include "trajectories/chamfermotion.h"
 
 struct ChamferCartesianSample
 {

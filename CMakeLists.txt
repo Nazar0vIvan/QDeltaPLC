@@ -13,10 +13,8 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
   Qml
   Network
   Charts
-  Xml
   Widgets
 )
-find_package(Qt6 REQUIRED COMPONENTS Core)
 
 option(
   FAST_QML_BUILD
@@ -52,121 +50,17 @@ endif()
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
 set(QML_IMPORT_PATH "${QT_QML_OUTPUT_DIRECTORY}" CACHE STRING "QML import paths for Qt Creator" FORCE)
 
-qt_add_executable(robocrap
-  src/main.cpp
-)
-
-if(USE_HOT_RELOAD)
-  qt_add_resources(robocrap "felgo_config"
-    PREFIX "/"
-    BASE "${CMAKE_CURRENT_SOURCE_DIR}"
-    FILES
-      "${CMAKE_CURRENT_SOURCE_DIR}/qml/config.json"
-  )
-
-  felgo_configure_executable(robocrap)
-  felgohotreload_configure_executable(robocrap)
-endif()
-
-add_subdirectory(src)
+add_subdirectory(src/geometry)
+add_subdirectory(src/kinematics)
+add_subdirectory(src/trajectories)
+add_subdirectory(src/devices)
+add_subdirectory(src/viewport)
 add_subdirectory(qml/Modules/Styles)
 add_subdirectory(qml/Modules/Components)
 
-set(QML_FILES
-  qml/Main.qml
-  qml/MenuBar/MainMenuBar.qml
-  qml/NavigationPanel/NavigationPanel.qml
-  qml/Views/Dashboard/DeltaPanel/DeltaModuleAP.qml
-  qml/Views/Dashboard/DeltaPanel/DeltaPanel.qml
-  qml/Views/Dashboard/DeltaPanel/LedsPanel.qml
-  qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml
-  qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml
-  qml/Views/Dashboard/FtsPanel/FtsPanel.qml
-  qml/Views/Dashboard/FtsPanel/FtsBars.qml
-  qml/Views/Dashboard/KukaPanel/KukaPanel.qml
-  qml/Views/Network/Network.qml
-  qml/Views/Network/NetworkPanel.qml
-  qml/Views/Network/ConnectionsTable.qml
-  qml/Views/Viewport3D/RobotViewport.qml
-  qml/Views/Workspace/WorkflowPanel.qml
-  qml/Views/Workspace/ModeToolBar.qml
-  qml/Views/Workspace/ScenePanel.qml
-  qml/Views/Workspace/PropertiesPanel.qml
-  qml/Views/Workspace/EndEffectorPanel.qml
-  qml/Views/Workspace/MachiningPanel.qml
-)
-
-set(RESOURCE_FILES
-  resources/pics.qrc
-  resources/fonts.qrc
-  resources/files.qrc
-  resources/json.qrc
-)
-
-if(USE_HOT_RELOAD)
-  qt_add_qml_module(robocrap
-    URI robocrap_qml_module
-    VERSION 1.0
-    ${QML_OPTIONS}
-    DEPENDENCIES RoboCrap.Backend/1.0
-  )
-else()
-  qt_add_qml_module(robocrap
-    URI robocrap_qml_module
-    VERSION 1.0
-    ${QML_OPTIONS}
-    DEPENDENCIES RoboCrap.Backend/1.0
-    IMPORTS
-      Styles
-      Components
-      RoboCrap.Viewport3D
-    QML_FILES
-      ${QML_FILES}
-  )
-endif()
-
-# Preserve rdtResponse in its existing application QML module after moving its implementation.
-qt_generate_foreign_qml_types(RoboCrapDevices robocrap)
-target_include_directories(robocrap PRIVATE
-  ${CMAKE_CURRENT_BINARY_DIR}
-  ${PROJECT_SOURCE_DIR}/src/network/fts
-)
-
-target_sources(robocrap PRIVATE
-  ${RESOURCE_FILES}
-)
-
-target_link_libraries(robocrap PRIVATE
-  RoboCrapBackend
-  RoboCrapBackendplugin
-  RoboCrapScene
-  RoboCrapDevices
-  RoboCrap3D
-  RoboCrap3Dplugin
-  Qt6::Core
-  Qt6::Gui
-  Qt6::Quick
-  Qt6::Qml
-  Qt6::Network
-  Qt6::Charts
-  Qt6::Xml
-  Qt6::Widgets
-  Styles
-  Components
-)
-
-if(USE_HOT_RELOAD)
-  target_link_libraries(robocrap PRIVATE Felgo)
-endif()
-
-if(NOT USE_HOT_RELOAD)
-  qt_import_qml_plugins(robocrap)
-endif()
-
 include(GNUInstallDirs)
-
 include(cmake/DeployOcct.cmake)
-robocrap_deploy_occt(robocrap "${ROBOCRAP_OCCT_PREFIX}")
+add_subdirectory(src/application)
 
 install(TARGETS robocrap
   BUNDLE DESTINATION .

@@ -1,7 +1,7 @@
 #include "rsiholeprotocol.h"
 
 #include "geometry/utils.h"
-#include "3d/robot/kinematics/kr10kinematics.h"
+#include "kinematics/kr10kinematics.h"
 
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>

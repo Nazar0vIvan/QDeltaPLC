@@ -6,33 +6,49 @@ to verify implementation claims. User instructions and the root mandatory rules 
 
 ## Build and modules
 
-- Root CMakeLists.txt owns robocrap and application QML/resources; src/CMakeLists.txt adds
-  WorkspaceController, RobotController, RobotDefinition, the profile CLI and QmlChartBridge to that executable.
-  src/CMakeLists.txt owns RoboCrapGeometry (geometry, KR10 numerics, paths), RoboCrapScene
-  (scene objects, synchronous importer), RoboCrapDevices (devices/protocols) and RoboCrapBackend
-  (backend QML registration only). Below, Geometry/Scene/Devices/Backend abbreviate these targets.
-  Scene/Devices link Geometry; Backend links both. Scene also publishes QtGui for its current
-  public drawing-notification header; its viewport implementation link remains private.
-- Geometry publicly supplies Eigen because public headers expose Eigen types. Scene/Devices
-  export Qt metatype metadata for backend foreign registration. Preserve RDTResponse's application
-  QML registration through qt_generate_foreign_qml_types.
-- src/3d/CMakeLists.txt owns RoboCrap3D, URI RoboCrap.Viewport3D. It requires bundled OCCT 8.0.0
-  and a Windows 64-bit MinGW Qt kit, and publicly links Geometry. It has no Scene/machining dependency; Scene privately links the viewport
-  to project document-owned drawing values.
-  Kr10Kinematics belongs to Geometry and uses geometry/mathtypes.h.
-- Preserve URIs robocrap_qml_module, RoboCrap.Backend, RoboCrap.Viewport3D, Components and Styles.
-  File/type moves or renames require owning CMake source-list and affected-import updates.
-  Asset moves require owning .qrc/qt_add_resources and resource-URL updates.
-- Backend types use src/backendqmltypes.h and src/CMakeLists.txt with QML_FOREIGN.
-  RobotController's foreign singleton and robotOperationResult value belong to robocrap_qml_module
-  through robotpreviewstate.h; WorkspaceController's typed singleton is declared in
-  application/workspacecontroller.h in that module. Declare its Backend/1.0 dependency only in
-  the application's qt_add_qml_module calls for both hot-reload modes. Shared QML_OPTIONS
-  contains build flags only; do not put application module dependencies in it.
-  Preserve C++ ownership and guarded
-  single-engine/thread checks; main constructs workspace after its document/machining/robot owners.
-  Preserve Hub's C++ ownership, engine/thread checks and lifetime. Use typed registration for
-  new exposure; do not add diagnostic context properties.
+- Root CMakeLists.txt owns project/options, dependency discovery, target subdirectories and installation.
+  src/application/CMakeLists.txt declares robocrap and all private application C++/QML/resource ownership.
+  It links Geometry, Kinematics, Trajectories, Devices and Viewport, plus the existing Qt/QML dependencies.
+  Keep QmlChartBridge under Application and its QtCharts requirement; RSI XML streams use QtCore.
+  Scene/Backend targets and the aggregate src/CMakeLists.txt no longer exist.
+- src/{geometry,kinematics,trajectories}/CMakeLists.txt own RoboCrapGeometry (surfaces/math),
+  RoboCrapKinematics (KR10 numerics) and RoboCrapTrajectories (animation and retained RSI numerics).
+  Kinematics publicly links Geometry; Trajectories publicly links Kinematics. Their own public
+  includes are limited to include/<capability>; Geometry additionally exports Eigen.
+- src/devices/CMakeLists.txt owns RoboCrapDevices (workers/codecs, including frozen RSI at legacy paths).
+  GUI DeviceHub/DeviceRunner/DeviceProfileModel belong to private Application. Devices links QtNetwork
+  and publicly retains Trajectories for its frozen RSI interface; its non-RSI headers use QtCore/Network.
+  PlcMessageManager remains a QObject with dictionary APIs and a published header for PlcDevice/PlcMessage enums.
+  Devices owns no QML registration or QQmlPropertyMap. Its metatype metadata is extracted for consumers.
+- src/viewport/CMakeLists.txt owns RoboCrap3D, URI RoboCrap.Viewport3D. It requires bundled OCCT 8.0.0
+  and a Windows 64-bit MinGW Qt kit. It publicly links Geometry and QtCore/Gui/Qml, privately OCCT,
+  and has no Application/Trajectories dependency. Only include/viewport is exported, including the
+  existing singleton wrapper needed by Application's C++ instance wiring.
+- Application has no public C++ include directory. All five libraries export only their selected include
+  directories (plus Eigen from Geometry). Frozen network/rsi and scene preparation/shared-data files
+  remain at their original paths, owned by Devices and Application respectively. Devices/Application
+  retain PRIVATE src access for those headers and generated moc; Trajectories limits it to its six
+  RSI numerical translation units. These consumers include canonical capability headers directly;
+  private socket/diagnostics/machining includes use explicit relative paths. No old-path forwarders remain.
+- Saved motions still expose central-motion/arc/path values; retain their published headers until
+  consumers/storage can change separately. Kr10Kinematics belongs to Kinematics.
+- Preserve URIs robocrap_qml_module, RoboCrap.Viewport3D, Components and Styles. The former
+  RoboCrap.Backend URI is retired; its existing element names are registered by private Application's
+  backendqmltypes.h. Main uses App; other QML files may retain Backend as an alias for the application URI.
+  RDTResponse remains the same queued Q_GADGET value, with rdtResponse registered by an Application foreign wrapper.
+- RobotController/robotOperationResult and WorkspaceController remain typed application registrations.
+  Keep C++ ownership, guarded single-engine/thread checks and construction/lifetime order. Main constructs
+  workspace after its document/machining/robot owners. Do not add diagnostic context properties.
+- Both hot-reload branches declare the same application module. QML_OPTIONS contains build flags only.
+  Application QML/config files live under src/application/qml; source paths relative to Application
+  preserve the qml/... resource paths and the ON branch's /qml/config.json resource. Root
+  hot_reload_config.json selects src/application/qml/Main.qml and mirrors src/application/qml;
+  retain its qml entry for Main's cached qml/Modules import path and the Components/Styles mappings.
+  Reusable modules remain under qml/Modules. robocrap defaults to the build root
+  (plus the normal configuration suffix); preserve explicit CMAKE_RUNTIME_OUTPUT_DIRECTORY overrides.
+- Attach the existing OCCT POST_BUILD deployment helper from Application, the executable's declaring
+  directory; root owns deployment setup and installation. Keep deployed CAD/cache/resources beside the executable.
+  File/type moves require owning source-list/import updates; asset moves require resource-URL updates.
 
 ## Viewport and CAD
 
@@ -48,8 +64,10 @@ to verify implementation claims. User instructions and the root mandatory rules 
   RobotController supplies DrawingPose with BASE-relative link, tool and composed TCP/collet matrices.
   Renderer axis setters accept those absolute frames; no tool-transform composition occurs there.
   OccRobotAdapter converts numerical matrices to gp_Trsf; OccScene/OccPart retain OCCT types.
+  OccPart applies style/transform inputs at creation and retains its AIS shape/selection/topmost state.
+  World/TCP/ER axes use separate OccWorldAxes objects, independent of part presentation.
 - OccScene stores only live parts keyed by PartId. Its optional increasing counter starts at zero,
-  permits the final representable ID and stays exhausted afterward; clear never resets identity.
+  permits the final representable ID and stays exhausted afterward; removal never resets identity.
   Erase a part only after OCCT removal succeeds. Track selected visible part IDs, including curves,
   and retain unchanged outlines. Same application IDs can resolve to hidden/replaced parts.
   Keep unfinished outline handles/completion state through external failures; remove selection
@@ -71,17 +89,21 @@ to verify implementation claims. User instructions and the root mandatory rules 
   reloading assets or republishing the model. It is not movement-error recovery. Preserve
   application presentations and tool CAD Browse/Retry. Stop initial camera fitting after a gesture
   on that surface. Decorative axes are non-selectable and excluded from camera-fit bounds.
-- RobotDefinition (kr10model.*) reads the numerical model and ordered filenames/RGB without OCCT.
+- RobotDefinition (application/robot/robotdefinition.*) reads the numerical model and ordered filenames/RGB without OCCT.
   robotgraphics.h supplies neutral graphics and RobotTool; adapters construct OCCT values.
   Renderer link count comes from the supplied graphics.
 - CadLoadWorker accepts absolute source paths and a cache directory, returning ordered shapes/errors.
   Serialize OCCT parsing/cache requests; robot loading includes only seven links. CadLoadResult
   is independent of the worker.
-- Application RobotController (robotpreviewstate.*) owns the stable model/solver and accepted pose.
+- Application RobotController (application/robot/robotcontroller.*) owns the stable model/solver and accepted pose.
   Keep the checked initial HOME candidate unpublished until graphics acceptance; publish the model
   to machining once, and commit later poses only after returned transform acceptance. Renderer
   drawing values/CAD results restore surfaces/windows without a robot-state/model pointer or a
   model revision change.
+- Application assetpaths.* selects deployed cache and OCCT resource directories and passes them to
+  OccController at construction. OccController owns those directory values for CAD jobs and initialization
+  retry/window recreation. Its initializeOcct retains resource checks, environment variables and external
+  Font_FontMgr failure handling; no Application header or path selection occurs in Viewport.
 - json.qrc embeds resources/json/kr10.json. cmake/DeployOcct.cmake stages OCCT DLLs/runtime resources
   and resources/cad/kr10 beside the executable and at installation.
 - Generated BREPs live in applicationDirPath()/resources/cad/kr10, never QStandardPaths system
@@ -90,13 +112,16 @@ to verify implementation claims. User instructions and the root mandatory rules 
   Missing/unreadable/invalid BREP falls back to STEP conversion and atomic QSaveFile saving.
   Valid BREP takes priority; STEP/content/OCCT-version changes require removing it to regenerate.
   Basenames define cache identity: equal basenames share the same deployed BREP.
+  Keep default .stp filename keys for BREP selection. Regeneration requires an existing STEP source;
+  the fixed KR10/tool resources currently provide nine BREPs without those authoring/STEP sources.
 
 ## Devices and protocols
 
-Before device/UI integration changes, read src/network/{devicehub,devicerunner,abstractdevice}.{h,cpp}
-and src/main.cpp. Also read Build and modules for QML registration changes.
+Before device/UI integration changes, read src/application/devices/{devicehub,devicerunner}.{h,cpp},
+src/devices/abstractdevice.cpp, src/devices/include/devices/abstractdevice.h and src/application/main.cpp.
+Also read Build and modules for QML registration changes.
 
-- Backend.Hub.device(key) returns a DeviceRunner on the application/QML thread; keep its
+- Application's Hub.device(key) returns a DeviceRunner on the application/QML thread; keep its
   QQmlPropertyMap there. DeviceHub::add takes a parentless AbstractDevice and moves it to I/O.
   FTS/RSI share ControlIO; PLC uses GeneralIO. main.cpp's FTS-to-RSI signal relies on this;
   recheck connections/data races before changing groups.
@@ -153,22 +178,37 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
   Decorative points/normals/axes do not participate in picking or camera-fit bounds.
 - Before import/intersection changes, read numerical geometry factories and
   SceneSurfaceImporter/SceneModel callers; preserve units and probe-compensation semantics.
+- BoundedPlane/BoundedCylinder accept points or decoded ProbeSamples, without file factories.
+  SceneSurfaceImporter reads/decodes inputs; src/application/chamferprofile.cpp reuses
+  readProbeSamples and fromSamples. Plane::fromJsonFile and utility readers remain legacy RSI exceptions.
 
 ## Machining and playback
 
 Current work covers animation preparation/playback only; RSI preparation remains closed unless
 the user explicitly reopens it. Apply Geometry and scene to numerical changes.
 
-- SceneMachining exposes SceneMachiningSettings as settings. Generate calls Backend.Machining.generate(),
+- SceneMachining exposes SceneMachiningSettings as settings. Main calls App.Machining.generate(),
   implemented by SceneMachining::generate. Keep it separate from dryRun, which only plays a prepared
   immutable ChamferMotion. End-effector Apply actions are separate.
-- Numerical stages live in src/pathgeneration/chamfer and invoke no scene/device APIs. Inspect
+- Animation implementations live in src/trajectories/chamfer, with published values under
+  src/trajectories/include/trajectories, and invoke no scene/device APIs. Inspect
   the relevant producer/consumer: chamferpath, chamferarclength, chamfercentralmotion,
   chamfercentralvalidation and chamfermotion.
+  ChamferPath provides analytical evaluation/differentials; arc maps expose progressAtDistance.
+  Keep ChamferSamplingParameters and saved lead intervals for frozen RSI/QML compatibility.
 - Keep geometric parameter, traveled distance and physical time distinct. Recover TCP position/
   orientation by evaluating the analytical curve at the inverse arc-length parameter; do not
   substitute stored XYZ/ABC interpolation without explicit redesign. Inverse-map knots,
   animation points and RSI cycles are different data.
+- Lead evaluation may skip overwritten machining transform composition only after the existing
+  machining axis-sign/basis, positive-depth and finite-position checks. Preserve the final lead
+  basis checks and exact complete junction poses. Fixed chamfer trigonometry belongs to each
+  immutable path; retain tangent division/reciprocal and copy the cache with its owned parameters.
+- Preserve the piecewise quintic Hermite inverse, all nine inverse-check fractions and endpoint
+  derivative conditions. Reuse accepted endpoint differentials and the original integral/error;
+  retain stored-distance rounding checks. The per-phase 800000 limit counts original logical
+  differential calls, including reused work; return actual/logical counts on success and failure
+  and expose both in phase diagnostics. Charge only reached work at the original check positions.
 - Fix central animation points/times before IK using curvature/time. Within one Generate worker,
   share three central arc-length maps, timing and schedule; construct them only when a candidate
   reaches central validation. Cache analytical targets/failures only at reached scheduled indices;
@@ -185,6 +225,7 @@ the user explicitly reopens it. Apply Geometry and scene to numerical changes.
 - Saved animation points are nodal points with joint angles and timestamps. Retain FK-derived
   TCP for accepted LIN/central nodes and reuse it when storing them; keep analytical targets
   separate for central XYZ acceleration. FK for interpolated playback angles is separate.
+  Saved points retain no velocity field; check HOME derivatives locally with the existing timing error.
 - LIN also fixes points before IK: N=max(1,ceil(T*sqrt(a/(8*0.01mm)))) per constant-acceleration
   span, with span duration T in seconds and acceleration magnitude a in mm/s²; cruise has one
   interval. No recursive subdivision, extra quarter-time IK checks, added central points or
@@ -193,6 +234,7 @@ the user explicitly reopens it. Apply Geometry and scene to numerical changes.
   continuous joint winding; never wrap saved angles modulo 360 degrees.
 - During Generate, prepare one independent clamped joint spline per LIN and one shared central
   spline, with zero endpoint joint velocities. Check polynomial position/speed extrema.
+  Write checked intervals into the candidate's final coefficient array; discard the candidate on failure.
   Reject failures without adding points or retiming. Dry Run performs no IK, geometry integration,
   inverse-map/spline construction or pauses to prepare more points. Displayed TCP between saved
   points is approximate; spline smoothness gives no exact Cartesian error guarantee.

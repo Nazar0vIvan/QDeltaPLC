@@ -1,6 +1,6 @@
-#include "boundedcylinder.h"
+#include "geometry/boundedcylinder.h"
 
-#include "utils.h"
+#include "geometry/utils.h"
 
 #include <Eigen/Cholesky>
 #include <Eigen/Eigenvalues>
@@ -235,12 +235,6 @@ std::optional<BoundedCylinder> BoundedCylinder::fromPoints(QVector<V3d> points)
   const V3d origin = centroid + best->center + (minimum + length / 2.0) * axis;
   if (!origin.allFinite()) return std::nullopt;
   return BoundedCylinder(std::move(points), {coordinates(origin), coordinates(axis)}, {best->radius, length}, rms);
-}
-
-std::optional<BoundedCylinder> BoundedCylinder::fromJsonFile(const QString& path)
-{
-  auto samples = readProbeSamples(path);
-  return samples ? fromSamples(std::move(*samples)) : std::nullopt;
 }
 
 std::optional<BoundedCylinder> BoundedCylinder::fromSamples(ProbeSamples samples)

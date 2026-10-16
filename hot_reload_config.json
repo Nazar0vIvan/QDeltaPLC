@@ -1,7 +1,8 @@
 {
-  "main_qml_file": "qml/Main.qml",
+  "main_qml_file": "src/application/qml/Main.qml",
   "qml_module_paths": [
     "qml",
+    "src/application/qml",
     {
       "path": "qml/Modules/Components",
       "target_path": "Components"

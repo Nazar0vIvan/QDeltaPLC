@@ -1,4 +1,4 @@
-#include "surfaceintersection.h"
+#include "geometry/surfaceintersection.h"
 
 #include <algorithm>
 #include <cmath>

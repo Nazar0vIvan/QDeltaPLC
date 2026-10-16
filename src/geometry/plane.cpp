@@ -1,5 +1,5 @@
-#include "plane.h"
-#include "utils.h"
+#include "geometry/plane.h"
+#include "geometry/utils.h"
 
 #include <Eigen/SVD>
 

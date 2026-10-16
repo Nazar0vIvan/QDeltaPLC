@@ -1,8 +1,8 @@
 #pragma once
 
 #include "geometry/mathtypes.h"
-#include "network/abstractdevice.h"
-#include "network/fts/rdtmessage.h"
+#include "devices/abstractdevice.h"
+#include "devices/fts/rdtmessage.h"
 #include "network/rsi/rsiprotocol.h"
 #include "pathgeneration/chamfer/chamferjob.h"
 

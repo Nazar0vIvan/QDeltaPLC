@@ -1,5 +1,5 @@
 #include "network/rsi/rsidevice.h"
-#include "network/common/socketconfigutils.h"
+#include "../../devices/common/socketconfigutils.h"
 
 #include <functional>
 

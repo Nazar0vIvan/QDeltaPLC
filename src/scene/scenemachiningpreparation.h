@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scenemachining.h"
+#include "../application/scene/scenemachining.h"
 #include "chamfershareddata.h"
 
 #include <QList>

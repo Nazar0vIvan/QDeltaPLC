@@ -1,0 +1,94 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Layouts
+
+import Styles 1.0
+import Components 1.0
+
+import robocrap_qml_module 1.0 as Backend
+
+QxPanel {
+  id: root
+
+  required property Backend.DeviceRunner plc
+  required property var xTags
+  required property var yTags
+  required property var xPlugged
+  required property var yPlugged
+
+  property var yDisplayOnly: []
+  property string xLabel: "Undefined"
+  property string yLabel: "Undefined"
+  property int moduleIndex: 1
+  property var xStates: new Array(8).fill(false)
+  property var yStates: new Array(8).fill(false)
+
+  RowLayout {
+    spacing: Metrics.sp24
+
+    ColumnLayout {
+      spacing: Metrics.sp8
+
+      Text {
+        text: root.xLabel
+        opacity: root.enabled ? 1.0 : Colors.overlays.disabled
+        textFormat: Text.RichText
+        font: Fonts.caption
+        color: Colors.foreground.high
+      }
+
+      Repeater {
+        model: 8
+
+        delegate: DeltaModuleInput {
+          id: input
+
+          required property int index
+
+          plugged: root.xPlugged[input.index]
+          ledSize: Metrics.sz20
+          labelText: "X" + root.moduleIndex + "." + input.index
+          tag: root.xTags[input.index]
+          isOn: root.xStates[input.index]
+        }
+      }
+    }
+
+    ColumnLayout {
+      spacing: Metrics.sp8
+
+      Text {
+        text: root.yLabel
+        opacity: root.enabled ? 1.0 : Colors.overlays.disabled
+        textFormat: Text.RichText
+        font: Fonts.caption
+        color: Colors.foreground.high
+      }
+
+      Repeater {
+        model: 8
+
+        delegate: DeltaModuleOutput {
+          id: output
+
+          required property int index
+
+          switchHeight: Metrics.sz20
+          switchWidth: Metrics.sz36
+          plugged: root.yPlugged[output.index]
+          displayOnly: root.yDisplayOnly.includes(output.index)
+          labelText: "Y" + root.moduleIndex + "." + output.index
+          tag: root.yTags[output.index]
+          isOn: root.yStates[output.index]
+
+          onClicked: root.plc.invoke("setOutput", {
+            "module": root.moduleIndex,
+            "index": output.index,
+            "enabled": !output.isOn
+          })
+        }
+      }
+    }
+  }
+}

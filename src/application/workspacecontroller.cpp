@@ -2,7 +2,7 @@
 
 #include "scene/scenemodel.h"
 #include "scene/scenemachining.h"
-#include "3d/robot/robotpreviewstate.h"
+#include "robot/robotcontroller.h"
 
 #include <utility>
 

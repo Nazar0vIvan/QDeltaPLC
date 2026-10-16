@@ -1,6 +1,6 @@
 #include "chamfercartesiansampler.h"
 
-#include "chamferpreparationdiagnostics.h"
+#include "../../trajectories/chamfer/chamferpreparationdiagnostics.h"
 #include "geometry/utils.h"
 
 #include <algorithm>

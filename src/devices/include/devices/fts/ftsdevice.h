@@ -1,0 +1,91 @@
+#pragma once
+
+#include "devices/abstractdevice.h"
+#include "devices/fts/rdtmessage.h"
+
+#include <QElapsedTimer>
+#include <QHostAddress>
+#include <QVector>
+
+#include <future>
+
+class QTimer;
+class QUdpSocket;
+
+class FtsDevice : public AbstractDevice
+{
+	Q_OBJECT
+
+public:
+	explicit FtsDevice(const QString& name, QObject* parent = nullptr);
+	~FtsDevice() override = default;
+
+	Q_INVOKABLE void startStreaming();
+	Q_INVOKABLE void stopStreaming();
+	Q_INVOKABLE void bias();
+	Q_INVOKABLE void connect(const QVariantMap& config);
+	Q_INVOKABLE void disconnect();
+	Q_INVOKABLE void startLogRecording();
+	Q_INVOKABLE void stopLogRecording();
+	Q_INVOKABLE void saveLogToDefaultFile();
+
+signals:
+	void dataSampleHFReady(const RDTResponse& sample);
+	void dataBatchReady(const QVector<RDTResponse>& samples);
+	void streamReset();
+
+protected:
+	void startDevice() override;
+	void stopDevice() override;
+
+private slots:
+	void onReadyRead();
+	void onRxTimeout();
+	void onLogSaveFinished();
+
+private:
+	struct LogSaveResult {
+		QString filePath;
+		QString error;
+		qsizetype sampleCount = 0;
+		qint64 byteCount = 0;
+	};
+
+	bool isSocketReady() const;
+	bool canRecord() const;
+	bool canSave() const;
+	void publishControlState();
+	void appendLogSample(const RDTResponse& sample);
+	void saveLogToFileImpl(const QString& filePath);
+	static LogSaveResult writeLogFile(QVector<RDTResponse> samples, QString filePath);
+	void publishState(const RDTResponse& sample);
+	bool sendRequest(quint16 cmd, quint32 count = 0);
+	void processBatch();
+
+	QUdpSocket* m_sock = nullptr;
+	QTimer* m_rxTimeout = nullptr;
+	QTimer* m_savePoll = nullptr;
+	std::future<LogSaveResult> m_saveFuture;
+
+	bool m_streaming = false;
+	bool m_streamRequested = false;
+	bool m_startPending = false;
+	bool m_stopRequested = false;
+
+	QVector<RDTResponse> m_batch;
+	QElapsedTimer m_batchClock;
+
+	RDTResponse m_lastPub{};
+	bool m_hasPub = false;
+
+	quint32 m_baseSeq = 0;
+	bool m_needBase = true;
+
+	QHostAddress m_la;
+	quint16 m_lp = 0;
+	QHostAddress m_pa;
+	quint16 m_pp = 0;
+
+	bool m_logEnabled = false;
+	QVector<RDTResponse> m_log;
+};
