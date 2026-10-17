@@ -2,8 +2,6 @@ qt_add_executable(robocrap
   assetpaths.cpp
   assetpaths.h
   backendqmltypes.h
-  chamferprofile.cpp
-  chamferprofile.h
   devices/devicehub.cpp
   devices/devicehub.h
   devices/deviceprofilemodel.cpp

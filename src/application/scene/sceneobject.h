@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QVariantList>
+#include <variant>
 #include "scenegeometry.h"
 
 namespace RoboCrap3D {
@@ -23,13 +25,18 @@ class SceneObject final : public QObject
   Q_PROPERTY(bool showPoints READ showPoints NOTIFY diagnosticOverlaysChanged)
   Q_PROPERTY(bool showNormals READ showNormals NOTIFY diagnosticOverlaysChanged)
   Q_PROPERTY(QUrl sourceUrl READ sourceUrl CONSTANT)
+  // The saved machining path's QObject; null for every other kind.
   Q_PROPERTY(QObject* geometry READ geometry CONSTANT)
+  // Formatted {label, value} rows for the Properties panel.
+  Q_PROPERTY(QVariantList properties READ properties CONSTANT)
 
 public:
-  enum Kind { Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath, Circle };
+  enum Kind { Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath };
   Q_ENUM(Kind)
   enum Classification { Unclassified, Rough, Precise };
   Q_ENUM(Classification)
+  // Fitted surface or intersection edge; empty for machining paths and metadata-only objects.
+  using Shape = std::variant<std::monostate, BoundedPlane, BoundedCylinder, SceneEdge>;
 
   std::optional<RoboCrap3D::DrawingObject> drawing() const;
   RoboCrap3D::DrawingDiagnostics drawingDiagnostics() const;
@@ -41,11 +48,11 @@ public:
     QUrl sourceUrl;
   };
 
-  const BoundedPlane* plane() const;
-  const BoundedCylinder* cylinder() const;
-  const ::Circle* circle() const;
-  const EdgeGeometry* edge() const;
-  const ChamferMotion* machiningPath() const;
+  const BoundedPlane* plane() const { return std::get_if<BoundedPlane>(&m_shape); }
+  const BoundedCylinder* cylinder() const { return std::get_if<BoundedCylinder>(&m_shape); }
+  const SceneEdge* edge() const { return std::get_if<SceneEdge>(&m_shape); }
+  const ChamferMotion* machiningPath() const { return m_machiningPath ? &m_machiningPath->motion() : nullptr; }
+  QVariantList properties() const;
   QString name() const { return m_name; }
   Kind kind() const { return m_kind; }
   Classification classification() const { return m_classification; }
@@ -53,7 +60,7 @@ public:
   bool showPoints() const { return m_showPoints; }
   bool showNormals() const { return m_showNormals; }
   QUrl sourceUrl() const { return m_sourceUrl; }
-  QObject* geometry() const { return m_geometry; }
+  QObject* geometry() const { return m_machiningPath; }
 
 signals:
   void nameChanged();
@@ -63,11 +70,7 @@ signals:
 private:
   friend class SceneModel;
   SceneObject(quint32 objectId, const Description& description, QObject* parent);
-  void setPlaneGeometry(BoundedPlane plane);
-  void setPlaneGeometry(const std::array<double, 4>& coefficients);
-  void setCylinderGeometry(BoundedCylinder cylinder);
-  void setCircleGeometry(::Circle circle);
-  void setEdgeGeometry(EdgeGeometry edge, const std::array<quint32, 2>& sources);
+  void setShape(Shape shape) { m_shape = std::move(shape); }
   void setMachiningPath(SceneMachiningData data);
   void setName(const QString& name);
   void setVisible(bool visible);
@@ -81,5 +84,6 @@ private:
   bool m_showPoints = false;
   bool m_showNormals = false;
   const QUrl m_sourceUrl;
-  QObject* m_geometry = nullptr;
+  Shape m_shape;
+  SceneMachiningPath* m_machiningPath = nullptr;
 };

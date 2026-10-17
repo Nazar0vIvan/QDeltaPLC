@@ -30,8 +30,7 @@ public:
   ViewportOperationResult applyTransforms(const DrawingPose& pose);
   // BASE-relative drawing frames; absent values hide the corresponding axes.
   void setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet);
-  bool setEndEffectors(const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes,
-                      RobotTool active);
+  bool setActiveTool(RobotTool active);
   ViewportOperationResult insertObject(const DrawingObject& object);
   void removeObject(quint32 id);
   ViewportOperationResult setObjectVisible(quint32 id, bool visible);

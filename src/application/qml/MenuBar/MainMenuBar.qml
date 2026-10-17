@@ -1,6 +1,5 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick.Controls.Basic
 
 import Styles 1.0
 
@@ -11,6 +10,11 @@ MenuBar {
   signal plcPanelRequested()
   signal ftsPanelRequested()
   signal settingsRequested()
+
+  component ContentMenu: Menu {
+    popupType: Popup.Window
+    height: opened ? implicitHeight : undefined
+  }
 
   leftPadding: Metrics.sp36
   spacing: 6
@@ -63,9 +67,8 @@ MenuBar {
     smooth: true
   }
 
-  Menu {
+  ContentMenu {
     title: qsTr("File")
-    popupType: Popup.Window
 
     Action {
       text: qsTr("Quit")
@@ -74,9 +77,8 @@ MenuBar {
     }
   }
 
-  Menu {
+  ContentMenu {
     title: qsTr("Edit")
-    popupType: Popup.Window
 
     Action {
       text: qsTr("Cut")
@@ -104,9 +106,8 @@ MenuBar {
     }
   }
 
-  Menu {
+  ContentMenu {
     title: qsTr("Views")
-    popupType: Popup.Window
 
     Action {
       text: qsTr("PLC Panel")
@@ -119,9 +120,8 @@ MenuBar {
     }
   }
 
-  Menu {
+  ContentMenu {
     title: qsTr("Help")
-    popupType: Popup.Window
 
     Action {
       text: qsTr("About ...")

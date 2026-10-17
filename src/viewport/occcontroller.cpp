@@ -1,6 +1,7 @@
 #include "viewport/occcontroller.h"
 
 #include "occt/cadloadworker.h"
+#include "occt/occviewport.h"
 #include "occt/occviewwindow.h"
 
 #include <QJSEngine>
@@ -16,8 +17,8 @@
 
 namespace RoboCrap3D {
 
-OccController::OccController(QString cacheDirectory, QString occtResources, QObject* parent)
-  : QObject(parent), m_cacheDirectory(std::move(cacheDirectory)), m_occtResources(std::move(occtResources))
+OccController::OccController(QString occtResources, QObject* parent)
+  : QObject(parent), m_occtResources(std::move(occtResources))
 {
   createWindow();
 }
@@ -26,14 +27,10 @@ OccController::~OccController()
 {
   m_shuttingDown = true;
   ++m_generation;
-  for (ToolCadState& tool : m_toolCad)
-    if (tool.worker) tool.worker->requestInterruption();
   if (m_worker) {
     m_worker->requestInterruption();
     m_worker->wait();
   }
-  for (ToolCadState& tool : m_toolCad)
-    if (tool.worker) tool.worker->wait();
   if (m_window) {
     detachViewWindow(m_window);
     delete m_window.data();
@@ -55,10 +52,18 @@ bool OccController::isViewportReady() const
   return m_window && m_window->isViewportReady();
 }
 
+OccViewport* OccController::viewport() const
+{
+  return m_window ? m_window->viewport() : nullptr;
+}
+
+// Without a native surface nothing is drawn now; the accepted document is replayed later.
 ViewportOperationResult OccController::insertObject(const DrawingObject& object)
 {
   if (!object.id || object.parts.isEmpty()) return {false, QStringLiteral("Empty object drawing.")};
-  const auto result = m_window ? m_window->insertObject(object) : ViewportOperationResult{true, {}};
+  auto* drawing = viewport();
+  const auto result = drawing ? drawing->insertObject(object) : ViewportOperationResult{true, {}};
+  if (result.accepted && drawing) drawing->setSelectedObjects(m_document.selected);
   if (result.accepted) m_document.objects.insert(object.id, object);
   if (!result.error.isEmpty()) emit message(result.error, true);
   return result;
@@ -67,14 +72,19 @@ ViewportOperationResult OccController::insertObject(const DrawingObject& object)
 void OccController::removeObject(quint32 id)
 {
   m_document.objects.remove(id);
-  if (m_window) m_window->removeObject(id);
+  if (auto* drawing = viewport()) {
+    drawing->removeObject(id);
+    drawing->setSelectedObjects(m_document.selected);
+  }
 }
 
 void OccController::setObjectVisible(quint32 id, bool visible)
 {
   auto it = m_document.objects.find(id);
   if (it == m_document.objects.end() || it->visible == visible) return;
-  const auto result = m_window ? m_window->setObjectVisible(id, visible) : ViewportOperationResult{true, {}};
+  auto* drawing = viewport();
+  const auto result = drawing ? drawing->setObjectVisible(id, visible) : ViewportOperationResult{true, {}};
+  if (result.accepted && drawing) drawing->setSelectedObjects(m_document.selected);
   if (result.accepted) it->visible = visible;
   if (!result.error.isEmpty()) emit message(result.error, true);
 }
@@ -83,7 +93,8 @@ void OccController::setObjectDiagnostics(quint32 id, const DrawingDiagnostics& d
 {
   auto it = m_document.objects.find(id);
   if (it == m_document.objects.end()) return;
-  const auto result = m_window ? m_window->setObjectDiagnostics(id, diagnostics) : ViewportOperationResult{true, {}};
+  auto* drawing = viewport();
+  const auto result = drawing ? drawing->setObjectDiagnostics(id, diagnostics) : ViewportOperationResult{true, {}};
   if (result.accepted) it->diagnostics = diagnostics;
   if (!result.error.isEmpty()) emit message(result.error, true);
 }
@@ -93,36 +104,10 @@ void OccController::setDraftAxis(const std::optional<DrawingAxis>& axis)
   const auto& previous = m_document.axis;
   if ((!axis && !previous) || (axis && previous && axis->center == previous->center
       && axis->direction == previous->direction && axis->length == previous->length)) return;
-  const auto result = m_window ? m_window->setDraftAxis(axis) : ViewportOperationResult{true, {}};
+  auto* drawing = viewport();
+  const auto result = drawing ? drawing->setDraftAxis(axis) : ViewportOperationResult{true, {}};
   if (result.accepted) m_document.axis = axis;
   if (!result.error.isEmpty()) emit message(result.error, true);
-}
-
-bool OccController::isMeasuringCadLoading() const
-{
-  return m_toolCad[0].worker != nullptr;
-}
-
-bool OccController::isSpindleCadLoading() const
-{
-  return m_toolCad[1].worker != nullptr;
-}
-
-QString OccController::measuringCadError() const
-{
-  return m_toolCad[0].error;
-}
-
-QString OccController::spindleCadError() const
-{
-  return m_toolCad[1].error;
-}
-
-void OccController::synchronizeEndEffectors()
-{
-  if (!m_window) return;
-  m_window->setEndEffectors({m_toolCad[0].shapes, m_toolCad[1].shapes},
-      m_activeTool);
 }
 
 void OccController::setShowSpindleTcp(bool visible)
@@ -139,86 +124,24 @@ void OccController::setShowSpindleCollet(bool visible)
   emit showSpindleColletChanged();
 }
 
-void OccController::loadEndEffector(RobotTool tool, const QUrl& source)
-{
-  if (m_shuttingDown || (tool != RobotTool::Measuring && tool != RobotTool::Spindle)) return;
-  ToolCadState& state = m_toolCad[static_cast<std::size_t>(tool)];
-  state.source = source;
-  ++state.generation;
-  state.error.clear();
-  if (state.worker) {
-    // Finish the current parse before replacing its worker; discard its stale result.
-    state.worker->requestInterruption();
-    emit endEffectorLoadChanged();
-    return;
-  }
-  startEndEffectorLoad(tool);
-}
-
 void OccController::setActiveTool(RobotTool tool)
 {
   if (m_activeTool == tool) return;
   m_activeTool = tool;
-  synchronizeEndEffectors();
+  if (m_window) m_window->setActiveTool(tool);
 }
 
 void OccController::setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet)
 {
   m_pose.tcp = tcp;
   m_pose.collet = collet;
-  if (m_window) m_window->setSpindleFrames(tcp, collet);
-}
-
-void OccController::startEndEffectorLoad(RobotTool tool)
-{
-  if (m_shuttingDown) return;
-  ToolCadState& state = m_toolCad[static_cast<std::size_t>(tool)];
-  const QUrl source = state.source;
-  if (source.isEmpty()) {
-    emit endEffectorLoadChanged();
-    return;
-  }
-  if (!m_occtInitialized) {
-    state.error = QStringLiteral("OCCT resources must be initialized before loading tool CAD.");
-    emit endEffectorLoadChanged();
-    return;
-  }
-  const QStringList sources{source.toLocalFile()};
-  state.worker = std::make_unique<CadLoadWorker>(sources, m_cacheDirectory);
-  QObject::connect(state.worker.get(), &QThread::finished, this,
-                   std::bind(&OccController::finishEndEffectorLoad, this, tool, state.generation, source),
-                   Qt::QueuedConnection);
-  state.worker->start();
-  emit endEffectorLoadChanged();
-}
-
-void OccController::finishEndEffectorLoad(RobotTool tool, quint64 generation, const QUrl& source)
-{
-  if (m_shuttingDown) return;
-  ToolCadState& state = m_toolCad[static_cast<std::size_t>(tool)];
-  state.worker->wait();
-  auto result = std::make_shared<CadLoadResult>(state.worker->takeResult());
-  state.worker.reset();
-  if (generation != state.generation) {
-    startEndEffectorLoad(tool);
-    return;
-  }
-  if (result->error.isEmpty() && result->shapes.size() == 1) {
-    state.shapes = std::move(result);
-    synchronizeEndEffectors();
-    emit endEffectorLoaded(tool);
-  } else {
-    state.error = result->error.isEmpty() ? QStringLiteral("CAD import produced no tool shape.") : result->error;
-    const QString name = tool == RobotTool::Measuring ? QStringLiteral("MEE") : QStringLiteral("SEE");
-    emit message(QStringLiteral("%1 CAD (%2): %3").arg(name, source.toLocalFile(), state.error), true);
-  }
-  emit endEffectorLoadChanged();
+  if (auto* drawing = viewport()) drawing->setSpindleFrames(tcp, collet);
 }
 
 void OccController::setSelectedObjects(const QList<quint32>& ids)
 {
   m_document.selected = ids;
-  if (m_window) m_window->setSelectedObjects(ids);
+  if (auto* drawing = viewport()) drawing->setSelectedObjects(ids);
 }
 
 QString OccController::initializeOcct() const
@@ -255,7 +178,7 @@ void OccController::createWindow()
       return;
     }
   }
-  m_window = new OccViewWindow(m_document);
+  m_window = new OccViewWindow(m_document, m_pose);
   QJSEngine::setObjectOwnership(m_window, QJSEngine::CppOwnership);
   QObject::connect(m_window, &OccViewWindow::readyChanged, this, &OccController::readyChanged);
   QObject::connect(m_window, &OccViewWindow::viewportReadyChanged, this, &OccController::viewportReadyChanged);
@@ -264,8 +187,8 @@ void OccController::createWindow()
   QObject::connect(m_window, &OccViewWindow::errorOccurred, this, &OccController::setError);
   QObject::connect(m_window, &QObject::destroyed, this, &OccController::onViewWindowDestroyed);
   QObject::connect(m_window, &OccViewWindow::deleteSelectionRequested, this, &OccController::deleteSelectionRequested);
-  if (m_visuals && m_shapes) m_window->setScene(*m_visuals, m_shapes, m_pose);
-  synchronizeEndEffectors();
+  if (m_visuals && m_shapes) m_window->setScene(*m_visuals, m_shapes);
+  m_window->setActiveTool(m_activeTool);
   emit viewWindowChanged();
 }
 
@@ -297,12 +220,13 @@ ViewportOperationResult OccController::loadRobot(const RobotVisualModel& visuals
   m_pose = pose;
   QStringList sources;
   for (const auto& link : visuals.links) sources.append(link.fileName);
+  sources += visuals.tools;
   setError({});
   m_loading = true;
   emit loadingChanged();
   emit readyChanged();
   const quint64 generation = ++m_generation;
-  m_worker = std::make_unique<CadLoadWorker>(sources, m_cacheDirectory);
+  m_worker = std::make_unique<CadLoadWorker>(sources);
   QObject::connect(m_worker.get(), &QThread::finished, this,
                    std::bind(&OccController::finishRobotLoad, this, generation), Qt::QueuedConnection);
   m_worker->start();
@@ -334,7 +258,7 @@ void OccController::finishRobotLoad(quint64 generation)
   }
   m_shapes = std::move(result);
   if (m_window)
-    m_window->setScene(*m_visuals, m_shapes, m_pose);
+    m_window->setScene(*m_visuals, m_shapes);
   else
     createWindow();
   emit readyChanged();

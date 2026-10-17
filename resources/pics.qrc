@@ -1,13 +1,11 @@
 <RCC>
     <qresource prefix="/">
         <file>pics/lock.svg</file>
-        <file>pics/open.svg</file>
         <file>pics/arrow_dropdown.svg</file>
         <file>pics/settings.svg</file>
         <file>pics/logo.svg</file>
         <file>pics/cylinder.svg</file>
         <file>pics/plane.svg</file>
-        <file>pics/circ.svg</file>
         <file>pics/cone.svg</file>
         <file>pics/edge.svg</file>
         <file>pics/eye.svg</file>

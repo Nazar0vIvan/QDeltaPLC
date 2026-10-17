@@ -12,8 +12,6 @@ double zeroSmallComponent(double value)
   return std::abs(value) <= GeomConst::Eps ? 0.0 : value;
 }
 
-} // namespace
-
 std::optional<V3d> jsonValueToPoint(const QJsonValue &value)
 {
   if (!value.isArray()) return std::nullopt;
@@ -43,15 +41,7 @@ std::optional<QVector<V3d>> jsonArrayToPoints(const QJsonArray &array)
   return points;
 }
 
-std::optional<QVector<V3d>> readJsonPoints(const QString& path)
-{
-  QFile file(path);
-  if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) return std::nullopt;
-  QJsonParseError error;
-  const auto document = QJsonDocument::fromJson(file.readAll(), &error);
-  if (error.error != QJsonParseError::NoError || !document.isArray()) return std::nullopt;
-  return jsonArrayToPoints(document.array());
-}
+} // namespace
 
 std::optional<ProbeSamples> readProbeSamples(const QString& path)
 {
@@ -281,18 +271,6 @@ M3d euler2rot(const double A, const double B, const double C)
   return R;
 }
 
-std::optional<V3d> prjPointOnLine(const V3d& linePoint, const V3d& lineDir, const V3d& point)
-{
-  const double dirLen2 = lineDir.squaredNorm();
-
-  if (dirLen2 <= GeomConst::Eps * GeomConst::Eps) {
-    return std::nullopt;
-  }
-
-  const double t = (point - linePoint).dot(lineDir) / dirLen2;
-  return linePoint + t * lineDir;
-}
-
 std::optional<V3d> prjUnitOnPlane(const V3d& vec, const V3d& normal)
 {
   const auto unitNormal = normalize(normal);
@@ -302,37 +280,6 @@ std::optional<V3d> prjUnitOnPlane(const V3d& vec, const V3d& normal)
     }
 
   return normalize(vec - vec.dot(*unitNormal) * *unitNormal);
-}
-
-std::optional<V3d> polyfit2d(const V3d& p0, const V3d& p1, const V3d& p2)
-{
-  if (!p0.allFinite() || !p1.allFinite() || !p2.allFinite()) {
-    return std::nullopt;
-  }
-
-  const double x0 = p0.x();
-  const double x1 = p1.x();
-  const double x2 = p2.x();
-
-  if (nearlyEqual(x0, x1) || nearlyEqual(x0, x2) || nearlyEqual(x1, x2)) {
-    return std::nullopt;
-  }
-
-  M3d lhs;
-  lhs << x0 * x0, x0, 1.0,
-         x1 * x1, x1, 1.0,
-         x2 * x2, x2, 1.0;
-
-  return lhs.colPivHouseholderQr().solve(V3d{p0.y(), p1.y(), p2.y()});
-}
-
-V3d deriv2d(const V3d& point, const V3d& coeffs)
-{
-  const double a = coeffs[0];
-  const double b = coeffs[1];
-  const double slope = 2.0 * a * point.x() + b;
-
-  return V3d{1.0, slope, 0.0}.normalized();
 }
 
 std::optional<V3d> prjPointToPlane(const V3d &point, const V4d &planeCoeffs)

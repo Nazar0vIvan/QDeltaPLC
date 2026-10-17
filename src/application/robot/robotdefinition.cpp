@@ -1,321 +1,62 @@
 #include "robotdefinition.h"
 
-#include <optional>
-#include <cmath>
-
-#include <QDebug>
-#include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonParseError>
-#include <QJsonValue>
-
 #include "geometry/utils.h"
 
 namespace RoboCrap3D {
 
-namespace
+namespace {
+
+// One joint: offset to the preceding frame (mm, Z-Y-X degrees), signed local Z axis,
+// position limits (degrees) and rated-payload speed (degrees per second).
+struct JointRow
 {
+  double dx, dy, dz, da, db, dc;
+  double axisZ;
+  double qMin, qMax;
+  double ratedSpeed;
+};
 
-std::optional<QJsonObject> readRoot(const QString& file)
-{
-  QFile fs(file);
-
-  if (!fs.open(QIODevice::ReadOnly)) {
-    qWarning() << "Cannot open KR10 JSON file:" << file;
-    return std::nullopt;
-  }
-
-  QJsonParseError err{};
-  const QJsonDocument doc = QJsonDocument::fromJson(fs.readAll(), &err);
-
-  if (err.error != QJsonParseError::NoError) {
-    qWarning() << "Cannot parse KR10 JSON:" << err.errorString();
-    return std::nullopt;
-  }
-
-  if (!doc.isObject()) {
-    qWarning() << "KR10 JSON root is not an object";
-    return std::nullopt;
-  }
-
-  return doc.object();
-}
-
-std::optional<double> readDouble(const QJsonObject& obj, const QString& key)
-{
-  const QJsonValue val = obj.value(key);
-
-  if (!val.isDouble() || !std::isfinite(val.toDouble())) {
-    qWarning() << "Missing or non-numeric JSON field:" << key;
-    return std::nullopt;
-  }
-
-  return val.toDouble();
-}
-
-std::optional<V6d> readV6d(const QJsonArray& arr, const QString& key)
-{
-  if (arr.size() != static_cast<int>(DofCount)) {
-    qWarning() << "Invalid array size for" << key << ":" << arr.size();
-    return std::nullopt;
-  }
-
-  V6d vals{};
-
-  for (std::size_t idx = 0; idx < DofCount; ++idx) {
-    const QJsonValue val = arr.at(static_cast<int>(idx));
-    if (!val.isDouble() || !std::isfinite(val.toDouble())) {
-      qWarning() << "Invalid numeric value in" << key << "at index" << idx;
-      return std::nullopt;
-    }
-
-    vals[idx] = val.toDouble();
-  }
-
-  return vals;
-}
-
-std::optional<V3d> readAxis(const QJsonObject& obj)
-{
-  const std::optional<V3d> axis = jsonValueToPoint(obj.value(QStringLiteral("axis")));
-
-  if (!axis) {
-    qWarning() << "Joint axis is missing or invalid";
-    return std::nullopt;
-  }
-
-  const std::optional<V3d> unitAxis = normalize(*axis);
-
-  if (!unitAxis || std::abs(unitAxis->x()) > GeomConst::Eps
-      || std::abs(unitAxis->y()) > GeomConst::Eps
-      || !nearlyEqual(std::abs(unitAxis->z()), 1.0)) {
-    qWarning() << "KR10 analytical IK requires signed local Z joint axes";
-    return std::nullopt;
-  }
-
-  return unitAxis;
-}
-
-std::optional<JointModel> readJoint(const QJsonObject& obj)
-{
-  const QJsonValue offVal = obj.value(QStringLiteral("offset"));
-
-  if (!offVal.isObject()) {
-    qWarning() << "Joint offset is missing or invalid";
-    return std::nullopt;
-  }
-
-  const QJsonObject off = offVal.toObject();
-
-  const std::optional<double> dx = readDouble(off, QStringLiteral("dx"));
-  const std::optional<double> dy = readDouble(off, QStringLiteral("dy"));
-  const std::optional<double> dz = readDouble(off, QStringLiteral("dz"));
-  const std::optional<double> da = readDouble(off, QStringLiteral("da"));
-  const std::optional<double> db = readDouble(off, QStringLiteral("db"));
-  const std::optional<double> dc = readDouble(off, QStringLiteral("dc"));
-  const std::optional<V3d> axis = readAxis(obj);
-  const std::optional<double> qMin = readDouble(obj, QStringLiteral("min"));
-  const std::optional<double> qMax = readDouble(obj, QStringLiteral("max"));
-  const auto ratedSpeed = readDouble(obj, QStringLiteral("ratedPayloadSpeedDegreesPerSecond"));
-
-  if (!dx || !dy || !dz || !da || !db || !dc || !axis || !qMin || !qMax || !ratedSpeed) {
-    return std::nullopt;
-  }
-
-  if (*qMin > *qMax || std::abs(*qMin) > 36000.0 || std::abs(*qMax) > 36000.0) {
-    qWarning() << "Invalid KR10 joint limits";
-    return std::nullopt;
-  }
-
-  if (*ratedSpeed <= 0.0) {
-    qWarning() << "KR10 rated-payload joint speed must be positive";
-    return std::nullopt;
-  }
-
-  const M4d T = makeTranslation(V3d{*dx, *dy, *dz})
-          * makeRotation(*da, V3d{0.0, 0.0, 1.0})
-          * makeRotation(*db, V3d{0.0, 1.0, 0.0})
-          * makeRotation(*dc, V3d{1.0, 0.0, 0.0});
-
-  JointModel result;
-  result.axis = *axis;
-  result.localTransform = T;
-  result.qMin = *qMin;
-  result.qMax = *qMax;
-  result.ratedPayloadSpeedDegreesPerSecond = *ratedSpeed;
-  return result;
-}
-
-std::optional<Kr10KinematicModel::IkParams> readIk(const QJsonObject& obj)
-{
-  const std::optional<double> sx = readDouble(obj, QStringLiteral("sx"));
-  const std::optional<double> sz = readDouble(obj, QStringLiteral("sz"));
-  const std::optional<double> a =  readDouble(obj, QStringLiteral("a"));
-  const std::optional<double> bx = readDouble(obj, QStringLiteral("bx"));
-  const std::optional<double> by = readDouble(obj, QStringLiteral("by"));
-  const std::optional<double> dF = readDouble(obj, QStringLiteral("dF"));
-
-  if (!sx || !sz || !a || !bx || !by || !dF) {
-    return std::nullopt;
-  }
-
-  return Kr10KinematicModel::IkParams{*sx, *sz, *a, *bx, *by, *dF};
-}
-
-std::optional<std::array<JointModel, DofCount>> readJoints(const QJsonArray& arr)
-{
-  if (arr.size() != static_cast<int>(DofCount)) {
-    qWarning() << "Invalid joints array size:" << arr.size();
-    return std::nullopt;
-  }
-
-  std::array<JointModel, DofCount> joints{};
-
-  for (std::size_t idx = 0; idx < DofCount; ++idx) {
-    const QJsonValue val = arr.at(static_cast<int>(idx));
-
-    if (!val.isObject()) {
-      qWarning() << "Invalid joint object at index:" << idx;
-      return std::nullopt;
-    }
-
-    const std::optional<JointModel> joint = readJoint(val.toObject());
-
-    if (!joint) {
-      qWarning() << "Cannot parse joint at index:" << idx;
-      return std::nullopt;
-    }
-
-    joints[idx] = *joint;
-  }
-
-  return joints;
-}
-
-std::optional<LinkModel> readLink(const QJsonObject& obj)
-{
-  const QString file = obj.value(QStringLiteral("filename")).toString();
-
-  if (file.isEmpty()) {
-    qWarning() << "Link filename is missing";
-    return std::nullopt;
-  }
-
-  const QJsonArray arr = obj.value(QStringLiteral("rgb")).toArray();
-
-  if (arr.size() != 3) {
-      qWarning() << "Invalid RGB array for link:" << file;
-      return std::nullopt;
-    }
-
-  for (int idx = 0; idx < 3; ++idx) {
-      if (!arr.at(idx).isDouble()) {
-          qWarning() << "Invalid RGB value for link:" << file;
-          return std::nullopt;
-        }
-    }
-
-  return LinkModel{file, {arr.at(0).toInt(), arr.at(1).toInt(), arr.at(2).toInt()}};
-}
-
-std::optional<std::array<LinkModel, LinkCount>> readLinks(const QJsonArray& arr)
-{
-  if (arr.size() != static_cast<int>(LinkCount)) {
-    qWarning() << "Invalid links array size:" << arr.size();
-    return std::nullopt;
-  }
-
-  std::array<LinkModel, LinkCount> links{};
-
-  for (std::size_t idx = 0; idx < LinkCount; ++idx) {
-    const QJsonValue val = arr.at(static_cast<int>(idx));
-
-    if (!val.isObject()) {
-      qWarning() << "Invalid link object at index:" << idx;
-      return std::nullopt;
-    }
-
-    const std::optional<LinkModel> link = readLink(val.toObject());
-
-    if (!link) {
-      qWarning() << "Cannot parse link at index:" << idx;
-      return std::nullopt;
-    }
-
-    links[idx] = *link;
-  }
-
-  return links;
-}
+constexpr std::array<JointRow, DofCount> Joints{{
+  {0.0, 0.0, 227.0, 0.0, 0.0, 0.0, -1.0, -170.0, 170.0, 220.0},
+  {150.0, -90.4, 223.0, 0.0, 0.0, -90.0, 1.0, -185.0, 65.0, 210.0},
+  {0.0, -610.0, -11.1, 90.0, 0.0, 0.0, 1.0, -137.0, 163.0, 270.0},
+  {-20.0, -357.0, 101.5, 0.0, 0.0, -90.0, 1.0, -185.0, 185.0, 381.0},
+  {0.0, -39.0, -303.0, 0.0, 0.0, 90.0, 1.0, -120.0, 120.0, 311.0},
+  {0.0, -80.0, -39.0, 0.0, 0.0, 90.0, -1.0, -350.0, 350.0, 492.0},
+}};
 
 } // namespace
 
-std::optional<RobotDefinition> RobotDefinition::fromJson(const QString& file)
+RobotDefinition RobotDefinition::kr10()
 {
-  const std::optional<QJsonObject> root = readRoot(file);
-
-  if (!root) return std::nullopt;
-
-  const QString name = root->value(QStringLiteral("name")).toString();
-
-  if (name.isEmpty()) {
-    qWarning() << "KR10 model name is missing";
-    return std::nullopt;
-  }
-
-  const std::optional<std::array<JointModel, DofCount>> joints = readJoints(root->value(QStringLiteral("joints")).toArray());
-
-  if (!joints) {
-    qWarning() << "Cannot parse KR10 joints";
-    return std::nullopt;
-  }
-
-  const std::optional<std::array<LinkModel, LinkCount>> links = readLinks(root->value(QStringLiteral("links")).toArray());
-
-  if (!links) {
-    qWarning() << "Cannot parse KR10 links";
-    return std::nullopt;
-  }
-
-  const QJsonValue ikVal = root->value(QStringLiteral("IkParams"));
-
-  if (!ikVal.isObject()) {
-    qWarning() << "KR10 analyticalIK is missing";
-    return std::nullopt;
-  }
-
-  const std::optional<Kr10KinematicModel::IkParams> ik = readIk(ikVal.toObject());
-
-  if (!ik) {
-    qWarning() << "Cannot parse KR10 analyticalIK";
-    return std::nullopt;
-  }
-
-  const std::optional<V6d> qHome = readV6d(root->value(QStringLiteral("qHome")).toArray(), QStringLiteral("qHome"));
-
-  if (!qHome) {
-    qWarning() << "Cannot parse KR10 qHome";
-    return std::nullopt;
-  }
-
-  const std::optional<V6d> pHome = readV6d(root->value(QStringLiteral("pHome")).toArray(), QStringLiteral("pHome"));
-
-  if (!pHome) {
-    qWarning() << "Cannot parse KR10 pHome";
-    return std::nullopt;
-  }
-
+  RobotDefinition result;
   for (std::size_t i = 0; i < DofCount; ++i) {
-    if ((*qHome)[i] < (*joints)[i].qMin || (*qHome)[i] > (*joints)[i].qMax) {
-      qWarning() << "KR10 home joint is outside its limits:" << i;
-      return std::nullopt;
-    }
+    const JointRow& row = Joints[i];
+    JointModel& joint = result.kinematics.joints[i];
+    joint.axis = V3d{0.0, 0.0, row.axisZ};
+    joint.localTransform = makeTranslation(V3d{row.dx, row.dy, row.dz})
+        * makeRotation(row.da, V3d{0.0, 0.0, 1.0})
+        * makeRotation(row.db, V3d{0.0, 1.0, 0.0})
+        * makeRotation(row.dc, V3d{1.0, 0.0, 0.0});
+    joint.qMin = row.qMin;
+    joint.qMax = row.qMax;
+    joint.ratedPayloadSpeedDegreesPerSecond = row.ratedSpeed;
   }
-
-  return RobotDefinition{name, {*joints, *ik, *qHome, *pHome},
-                         {QList<LinkModel>(links->begin(), links->end())}};
+  result.kinematics.ik = {150.0, 450.0, 610.0, 20.0, 660.0, 80.0};
+  result.kinematics.qHome = V6d{0.0, -90.0, 90.0, 0.0, 0.0, 0.0};
+  result.kinematics.pHome = V6d{890.0, 0.0, 1080.0, 0.0, 90.0, 0.0};
+  const std::array<int, 3> black{0, 0, 0};
+  const std::array<int, 3> orange{255, 106, 0};
+  result.visuals.links = {
+    {QStringLiteral("0_BASE.brep"), black},
+    {QStringLiteral("1_ROTATING_COLUMN.brep"), orange},
+    {QStringLiteral("2_LINK_ARM.brep"), orange},
+    {QStringLiteral("3_IN-LINE_WRIST.brep"), orange},
+    {QStringLiteral("4_WRIST1.brep"), orange},
+    {QStringLiteral("5_WRIST2.brep"), orange},
+    {QStringLiteral("6_WRIST3.brep"), black},
+  };
+  return result;
 }
 
 } // namespace RoboCrap3D

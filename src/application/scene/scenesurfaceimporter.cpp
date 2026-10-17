@@ -8,11 +8,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QPointer>
-#include <QJsonObject>
 
 namespace {
 
-enum class ReadError { None, Source, File, Json, Samples, CircleSamples };
+enum class ReadError { None, Source, File, Json, Samples };
 
 struct ReadResult {
   std::optional<ProbeSamples> samples;
@@ -20,7 +19,7 @@ struct ReadResult {
   ReadError error = ReadError::None;
 };
 
-ReadResult readSamples(const QUrl& source, bool circle)
+ReadResult readSamples(const QUrl& source)
 {
   QString path;
   if (source.isLocalFile()) path = source.toLocalFile();
@@ -34,17 +33,6 @@ ReadResult readSamples(const QUrl& source, bool circle)
   if (file.error() != QFileDevice::NoError) return {{}, {}, ReadError::File};
   const QJsonDocument document = QJsonDocument::fromJson(contents);
   if (document.isNull()) return {{}, {}, ReadError::Json};
-  if (circle) {
-    const QJsonValue pointValue = document.isObject()
-        ? document.object().value(QStringLiteral("points")) : QJsonValue(document.array());
-    if (!pointValue.isArray()) return {{}, {}, ReadError::CircleSamples};
-    auto points = jsonArrayToPoints(pointValue.toArray());
-    if (!points) return {{}, {}, ReadError::CircleSamples};
-    for (const V3d& point : std::as_const(*points))
-      if (!point.allFinite()) return {{}, {}, ReadError::CircleSamples};
-    // Circle samples are raw coordinates; no probe metadata is read or applied.
-    return {ProbeSamples{std::move(*points)}, QFileInfo(path).completeBaseName(), ReadError::None};
-  }
   auto samples = decodeProbeSamples(document);
   if (!samples) return {{}, {}, ReadError::Samples};
   return {std::move(samples), QFileInfo(path).completeBaseName(), ReadError::None};
@@ -59,8 +47,6 @@ QString readErrorText(ReadError error)
     case ReadError::Samples: return SceneSurfaceImporter::tr(
         "Expected finite [x, y, z] points in an array, or an object with points, "
         "a finite nonnegative radius and dir equal to 1 or -1.");
-    case ReadError::CircleSamples: return SceneSurfaceImporter::tr(
-        "Expected finite [x, y, z] circle points in an array or an object with a points array.");
     case ReadError::None: return {};
   }
   return {};
@@ -81,11 +67,6 @@ void SceneSurfaceImporter::loadCylinder(const QUrl& sourceUrl, SceneModel* scene
   importSurface(sourceUrl, scene, Surface::Cylinder);
 }
 
-void SceneSurfaceImporter::loadCircle(const QUrl& sourceUrl, SceneModel* scene)
-{
-  importSurface(sourceUrl, scene, Surface::Circle);
-}
-
 void SceneSurfaceImporter::importSurface(const QUrl& sourceUrl, SceneModel* scene, Surface surface)
 {
   if (m_busy || !scene) {
@@ -97,7 +78,7 @@ void SceneSurfaceImporter::importSurface(const QUrl& sourceUrl, SceneModel* scen
   QPointer<SceneModel> destination(scene);
   m_busy = true;
   emit busyChanged();
-  ReadResult input = readSamples(sourceUrl, surface == Surface::Circle);
+  ReadResult input = readSamples(sourceUrl);
   QString error = readErrorText(input.error);
   QPointer<SceneObject> object;
   if (input.samples && destination) {
@@ -105,15 +86,10 @@ void SceneSurfaceImporter::importSurface(const QUrl& sourceUrl, SceneModel* scen
       auto plane = BoundedPlane::fromSamples(std::move(*input.samples));
       if (plane) object = destination->addBoundedPlane(sourceUrl, input.name, std::move(*plane));
       else error = tr("Could not fit a bounded plane from these samples.");
-    } else if (surface == Surface::Cylinder) {
+    } else {
       auto cylinder = BoundedCylinder::fromSamples(std::move(*input.samples));
       if (cylinder) object = destination->addBoundedCylinder(sourceUrl, input.name, std::move(*cylinder));
       else error = tr("Could not fit a bounded cylinder with a positive compensated radius from these samples.");
-    } else {
-      auto circle = Circle::fromPoints(std::move(input.samples->points));
-      if (circle) object = destination->addCircle(sourceUrl, input.name, std::move(*circle));
-      else error = tr("Could not fit a circle. Supply at least three non-collinear points "
-                      "that determine a finite circle.");
     }
   }
   if (!object && error.isEmpty()) error = tr("Could not insert the surface into the destination scene.");

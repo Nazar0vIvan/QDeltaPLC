@@ -12,11 +12,8 @@
 #include <QMetaType>
 #include <QQmlApplicationEngine>
 #include <QQmlEngine>
-#include <QUrl>
-#include <QDir>
 #include <QStandardPaths>
 
-#include "chamferprofile.h"
 #include "viewport/viewportqmltypes.h"
 #include "assetpaths.h"
 #include "robot/robotcontroller.h"
@@ -46,15 +43,6 @@ int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
   qSetMessagePattern(QStringLiteral("[%{time yyyy-MM-dd hh:mm:ss}] %{message}"));
-  if (app.arguments().contains(QStringLiteral("--profile-chamfer"))) {
-    const auto arguments = app.arguments();
-    const int option = arguments.indexOf(QStringLiteral("--profile-chamfer"));
-    if (option + 3 != arguments.size()) {
-      qWarning() << "Usage: robocrap --profile-chamfer input.json report.json";
-      return 2;
-    }
-    return profileChamferPreparation(arguments[option + 1], arguments[option + 2]);
-  }
 
 #ifdef USE_FELGO_HOT_RELOAD
   FelgoApplication felgo;
@@ -96,10 +84,6 @@ int main(int argc, char* argv[])
   SceneModel scene;
   SceneSingletonQml::s_inst = &scene;
   SceneEndEffectors endEffectors;
-  const auto assets = RoboCrap3D::ViewportAssets::applicationAssets();
-  const QDir robotCadDirectory(assets.cadDirectory);
-  endEffectors.setMeasuringCadSource(QUrl::fromLocalFile(robotCadDirectory.filePath(QStringLiteral("MEE.stp"))));
-  endEffectors.setSpindleCadSource(QUrl::fromLocalFile(robotCadDirectory.filePath(QStringLiteral("SEE.stp"))));
   SceneEndEffectorsQml::s_inst = &endEffectors;
 
   SceneMachining machining(&scene, &endEffectors);
@@ -112,15 +96,15 @@ int main(int argc, char* argv[])
   QObject::connect(&app, &QApplication::aboutToQuit, &preparation, &SceneMachiningPreparation::shutdown);
   QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);
 
-  RoboCrap3D::OccController viewportController(assets.cacheDirectory, assets.occtResources);
+  RoboCrap3D::OccController viewportController(
+      RoboCrap3D::ViewportAssets::applicationAssets().occtResources);
   scene.setViewport(&viewportController);
   QObject::connect(&machining, &SceneMachining::draftAxisChanged,
                    &viewportController, &RoboCrap3D::OccController::setDraftAxis);
   OccControllerQml::s_inst = &viewportController;
   RoboCrap3D::RobotController robotController(&viewportController, &endEffectors, &machining);
-  RobotControllerQml::s_inst = &robotController;
   machining.setRobotController(&robotController);
-  WorkspaceController workspaceController(&scene, &machining, &robotController);
+  WorkspaceController workspaceController(&scene, &machining, &endEffectors);
   QObject::connect(&workspaceController, &WorkspaceController::selectionChanged,
                    &viewportController, &RoboCrap3D::OccController::setSelectedObjects);
   QObject::connect(&viewportController, &RoboCrap3D::OccController::applicationSelectionRequested,

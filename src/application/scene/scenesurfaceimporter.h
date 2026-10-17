@@ -17,7 +17,6 @@ public:
   bool busy() const { return m_busy; }
   Q_INVOKABLE void load(const QUrl& sourceUrl, SceneModel* scene);
   Q_INVOKABLE void loadCylinder(const QUrl& sourceUrl, SceneModel* scene);
-  Q_INVOKABLE void loadCircle(const QUrl& sourceUrl, SceneModel* scene);
 
 signals:
   void busyChanged();
@@ -25,7 +24,7 @@ signals:
   void failed(const QString& message);
 
 private:
-  enum class Surface { Plane, Cylinder, Circle };
+  enum class Surface { Plane, Cylinder };
   // Source, destination and requested surface define one import operation.
   void importSurface(const QUrl& sourceUrl, SceneModel* scene, Surface surface);
   bool m_busy = false;

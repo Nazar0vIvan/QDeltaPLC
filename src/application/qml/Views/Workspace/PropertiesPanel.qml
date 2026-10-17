@@ -17,7 +17,7 @@ QxPanel {
       ...[qsTr("Name"), qsTr("Type"), qsTr("State"), qsTr("Source"), qsTr("Visible"),
           qsTr("Show Points"), qsTr("Show Normals"), qsTr("Normal"), qsTr("Origin"),
           qsTr("Width"), qsTr("Height"), qsTr("Points"), qsTr("Offset (d)"),
-          qsTr("Center"), qsTr("Radius"), qsTr("Fit RMS"), qsTr("Axis"),
+          qsTr("Radius"), qsTr("Axis"),
           qsTr("Diameter"), qsTr("Length")].map(label => labelMetrics.advanceWidth(label))))
 
   FontMetrics {
@@ -28,33 +28,18 @@ QxPanel {
       && (root.selectedObject.kind === Backend.SceneObject.Plane
           || root.selectedObject.kind === Backend.SceneObject.Cylinder
           || root.selectedObject.kind === Backend.SceneObject.Cone
-          || root.selectedObject.kind === Backend.SceneObject.Circle
           || root.selectedObject.kind === Backend.SceneObject.Edge)
-  readonly property Backend.PlaneGeometry planeGeometry: root.selectedObject
-                                                         ? root.selectedObject.geometry as Backend.PlaneGeometry : null
-  readonly property Backend.CylinderGeometry cylinderGeometry: root.selectedObject
-                                                               ? root.selectedObject.geometry as Backend.CylinderGeometry : null
-
-  readonly property Backend.CircleGeometry circleGeometry: root.selectedObject
-                                                           ? root.selectedObject.geometry as Backend.CircleGeometry : null
+  // Formatted {label, value} rows built by the selected object.
+  readonly property var geometryRows: root.selectedObject ? root.selectedObject.properties : []
 
   signal renameRequested(Backend.SceneObject object, string name)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
 
-  function formatReal(value: real): string {
-    return (Math.abs(value) < 0.00005 ? 0 : value).toFixed(4)
-  }
-
-  function formatVector(values: list<real>): string {
-    return "[" + values.map(value => root.formatReal(value)).join("; ") + "]"
-  }
-
   function typeLabel(kind: int): string {
     switch (kind) {
       case Backend.SceneObject.Plane: return qsTr("Plane")
-      case Backend.SceneObject.Circle: return qsTr("Circle")
       case Backend.SceneObject.Cylinder: return qsTr("Cylinder")
       case Backend.SceneObject.Cone: return qsTr("Cone")
       case Backend.SceneObject.Edge: return qsTr("Edge")
@@ -66,7 +51,6 @@ QxPanel {
 
   component PropertyValue: QxHField {
     property alias valueText: valueLabel.text
-    property alias valueObjectName: valueLabel.objectName
 
     Layout.fillWidth: true
     labelWidth: root.labelColumnWidth
@@ -309,144 +293,20 @@ QxPanel {
       Label {
         Layout.fillWidth: true
         Layout.topMargin: Metrics.sp8
-        visible: root.planeGeometry !== null || root.cylinderGeometry !== null || root.circleGeometry !== null
+        visible: root.geometryRows.length > 0
         text: qsTr("Geometry")
         color: Colors.foreground.medium
         font: Fonts.body
       }
 
-      // Plane geometry.
-      PropertyValue {
-        visible: root.planeGeometry !== null
-        labelText: qsTr("Normal")
-        valueObjectName: "planeNormalValue"
-        valueText: root.planeGeometry
-              ? root.formatVector([root.planeGeometry.normalX, root.planeGeometry.normalY,
-                 root.planeGeometry.normalZ]) : ""
-      }
-
-      PropertyValue {
-        visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelText: qsTr("Origin")
-        valueObjectName: "planeOriginValue"
-        valueText: root.planeGeometry && root.planeGeometry.hasBounds
-              ? root.formatVector([root.planeGeometry.originX, root.planeGeometry.originY,
-                 root.planeGeometry.originZ]) : ""
-      }
-
-      PropertyValue {
-        visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelText: qsTr("Width")
-        valueObjectName: "planeWidthValue"
-        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.formatReal(root.planeGeometry.width) : ""
-      }
-
-      PropertyValue {
-        visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelText: qsTr("Height")
-        valueObjectName: "planeHeightValue"
-        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? root.formatReal(root.planeGeometry.height) : ""
-      }
-
-      PropertyValue {
-        visible: root.planeGeometry !== null && root.planeGeometry.hasBounds
-        labelText: qsTr("Points")
-        valueObjectName: "planePointCountValue"
-        valueText: root.planeGeometry && root.planeGeometry.hasBounds ? String(root.planeGeometry.pointCount) : ""
-      }
-
-      PropertyValue {
-        visible: root.planeGeometry !== null
-        labelText: qsTr("Offset (d)")
-        valueObjectName: "planeOffsetValue"
-        valueText: root.planeGeometry ? root.formatReal(root.planeGeometry.offset) : ""
-      }
-
-      // Circle geometry.
-      PropertyValue {
-        visible: root.circleGeometry !== null
-        labelText: qsTr("Center")
-        valueObjectName: "circleCenterValue"
-        valueText: root.circleGeometry
-                   ? root.formatVector([root.circleGeometry.centerX, root.circleGeometry.centerY,
-                      root.circleGeometry.centerZ]) : ""
-      }
-
-      PropertyValue {
-        visible: root.circleGeometry !== null
-        labelText: qsTr("Radius")
-        valueObjectName: "circleRadiusValue"
-        valueText: root.circleGeometry ? root.formatReal(root.circleGeometry.radius) : ""
-      }
-
-      PropertyValue {
-        visible: root.circleGeometry !== null
-        labelText: qsTr("Normal")
-        valueObjectName: "circleNormalValue"
-        valueText: root.circleGeometry
-                   ? root.formatVector([root.circleGeometry.normalX, root.circleGeometry.normalY,
-                      root.circleGeometry.normalZ]) : ""
-      }
-
-      PropertyValue {
-        visible: root.circleGeometry !== null
-        labelText: qsTr("Points")
-        valueObjectName: "circlePointCountValue"
-        valueText: root.circleGeometry ? String(root.circleGeometry.pointCount) : ""
-      }
-
-      PropertyValue {
-        visible: root.circleGeometry !== null
-        labelText: qsTr("Fit RMS")
-        valueObjectName: "circleResidualValue"
-        valueText: root.circleGeometry ? root.formatReal(root.circleGeometry.rmsResidual) : ""
-      }
-
-      // Cylinder geometry.
-      PropertyValue {
-        visible: root.cylinderGeometry !== null
-        labelText: qsTr("Origin")
-        valueObjectName: "cylinderOriginValue"
-        valueText: root.cylinderGeometry
-              ? root.formatVector([root.cylinderGeometry.originX, root.cylinderGeometry.originY,
-                 root.cylinderGeometry.originZ]) : ""
-      }
-
-      PropertyValue {
-        visible: root.cylinderGeometry !== null
-        labelText: qsTr("Axis")
-        valueObjectName: "cylinderAxisValue"
-        valueText: root.cylinderGeometry
-              ? root.formatVector([root.cylinderGeometry.axisX, root.cylinderGeometry.axisY,
-                 root.cylinderGeometry.axisZ]) : ""
-      }
-
-      PropertyValue {
-        visible: root.cylinderGeometry !== null
-        labelText: qsTr("Radius")
-        valueObjectName: "cylinderRadiusValue"
-        valueText: root.cylinderGeometry ? root.formatReal(root.cylinderGeometry.radius) : ""
-      }
-
-      PropertyValue {
-        visible: root.cylinderGeometry !== null
-        labelText: qsTr("Diameter")
-        valueObjectName: "cylinderDiameterValue"
-        valueText: root.cylinderGeometry ? root.formatReal(2 * root.cylinderGeometry.radius) : ""
-      }
-
-      PropertyValue {
-        visible: root.cylinderGeometry !== null
-        labelText: qsTr("Length")
-        valueObjectName: "cylinderLengthValue"
-        valueText: root.cylinderGeometry ? root.formatReal(root.cylinderGeometry.length) : ""
-      }
-
-      PropertyValue {
-        visible: root.cylinderGeometry !== null
-        labelText: qsTr("Points")
-        valueObjectName: "cylinderPointCountValue"
-        valueText: root.cylinderGeometry ? String(root.cylinderGeometry.pointCount) : ""
+      Repeater {
+        model: root.geometryRows
+        delegate: PropertyValue {
+          id: geometryRow
+          required property var modelData
+          labelText: geometryRow.modelData.label
+          valueText: geometryRow.modelData.value
+        }
       }
     }
   }

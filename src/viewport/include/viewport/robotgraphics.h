@@ -4,6 +4,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 #include <array>
 #include <optional>
 
@@ -20,6 +21,7 @@ struct LinkModel
 struct RobotVisualModel
 {
   QList<LinkModel> links;
+  QStringList tools; // Absolute CAD paths in RobotTool order, loaded with the links.
 };
 
 struct ViewportOperationResult

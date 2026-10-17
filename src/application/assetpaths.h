@@ -6,9 +6,7 @@ namespace RoboCrap3D {
 
 struct ViewportAssets
 {
-  QString modelFile;
   QString cadDirectory;
-  QString cacheDirectory;
   QString occtResources;
 
   static ViewportAssets applicationAssets();

@@ -1,10 +1,8 @@
 #include "trajectories/chamfermotion.h"
 #include "chamfercentralvalidation.h"
 
-#include "chamferpreparationdiagnostics.h"
 #include "geometry/utils.h"
 
-#include <QJsonArray>
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -249,37 +247,8 @@ public:
 
   CompiledPoints compile(const Kr10Kinematics::IkSolution& start)
   {
-    const qint64 sharedBefore = m_central.computationNanoseconds();
-    QElapsedTimer timer;
-    timer.start();
-    m_attempt = {};
-    QJsonArray angles;
-    for (int joint = 0; joint < 6; ++joint) angles.append(start.q[joint]);
-    m_attempt.insert("psJointAnglesDegrees", angles);
-    auto result = compileImpl(start);
-    const qint64 elapsed = timer.nsecsElapsed() - (m_central.computationNanoseconds() - sharedBefore);
-    m_attempt.insert("totalMs", std::max(qint64{0}, elapsed) / 1e6);
-    m_attempt.insert("error", result.error);
-    m_attempt.insert("assembledPoints", result.points.size());
-    m_attempts.append(m_attempt);
-    return result;
-  }
-
-  QJsonObject diagnostics() const
-  {
-    auto result = m_solver.diagnostics();
-    result.insert("attempts", m_attempts);
-    result.insert("centralPreparation", m_central.diagnostics());
-    return result;
-  }
-
-private:
-  CompiledPoints compileImpl(const Kr10Kinematics::IkSolution& start)
-  {
     m_output = {};
-    const ChamferProfileScope homeScope(m_solver.diagnostics());
     m_output.points.append(forward(m_robot.model.qHome, 0.0));
-    m_attempt.insert("initialHomePose", homeScope.finish(m_solver.diagnostics()));
     m_phase = ChamferMotionPhase::Approach;
     if (!appendPtp(start.q)) return std::move(m_output);
     m_previous = start;
@@ -289,7 +258,6 @@ private:
     if (!m_output.error.isEmpty()) return std::move(m_output);
     m_output.boundaries[2] = m_output.points.size() - 1;
     auto validated = m_central.validate(m_robot, m_previous);
-    m_attempt.insert("central", validated.diagnostics);
     if (!validated.data) { m_output.error = validated.error; return std::move(m_output); }
     const auto& central = m_central.motion();
     const auto& samples = validated.data->samples;
@@ -298,8 +266,6 @@ private:
       m_output.error = QStringLiteral("Lead-in does not retain the transfer's joint configuration.");
       return std::move(m_output);
     }
-    QElapsedTimer assemblyTimer;
-    assemblyTimer.start();
     const double offset = m_output.points.back().time;
     std::size_t phase = 0;
     for (qsizetype i = 1; i < samples.size(); ++i) {
@@ -326,7 +292,6 @@ private:
       m_output.error = QStringLiteral("Validated central motion is missing a phase endpoint.");
       return std::move(m_output);
     }
-    m_attempt.insert("centralAssemblyMs", assemblyTimer.nsecsElapsed() / 1e6);
     m_previous = samples.back().solution;
     m_output.central = central; // Keep the shared preparation for any later candidate.
     m_phase = ChamferMotionPhase::TransferOut;
@@ -336,13 +301,11 @@ private:
     m_phase = ChamferMotionPhase::ReturnHome;
     if (!appendPtp(m_robot.model.qHome)) return std::move(m_output);
     m_output.boundaries[7] = m_output.points.size() - 1;
-    const ChamferProfileScope finalScope(m_solver.diagnostics());
     for (const auto& point : m_output.points)
       if (!rigid(point.tcp) || !withinLimits(point.joints, m_robot.model)) {
         m_output.error = QStringLiteral("Invalid FK pose or joint position in the assembled motion.");
         break;
       }
-    m_attempt.insert("wholeMotionChecks", finalScope.finish(m_solver.diagnostics()));
     return std::move(m_output);
   }
 
@@ -383,18 +346,6 @@ private:
 
   bool appendPtp(const V6d& end)
   {
-    const ChamferProfileScope scope(m_solver.diagnostics());
-    const auto before = m_output.points.size();
-    const bool success = appendPtpImpl(end);
-    auto measured = scope.finish(m_solver.diagnostics());
-    measured.insert("addedPoints", m_output.points.size() - before);
-    measured.insert("complete", success);
-    m_attempt.insert(m_phase == ChamferMotionPhase::Approach ? "homeToPs" : "psToHome", measured);
-    return success;
-  }
-
-  bool appendPtpImpl(const V6d& end)
-  {
     const V6d start = m_output.points.back().joints;
     const int intervals = std::max(1, static_cast<int>(std::ceil((end - start).cwiseAbs().maxCoeff() / 2.0)));
     if (intervals > 400000 - m_output.points.size()) {
@@ -411,27 +362,6 @@ private:
 
   QString appendTransfer(ChamferPhase side)
   {
-    QElapsedTimer timer;
-    timer.start();
-    const auto before = m_output.points.size();
-    const ChamferProfileScope scope(m_solver.diagnostics());
-    const QString error = appendTransferImpl(side);
-    auto measured = scope.finish(m_solver.diagnostics());
-    measured.insert("addedPoints", m_output.points.size() - before);
-    measured.insert("schedule", m_transferSchedule);
-    measured.insert("complete", error.isEmpty());
-    measured.insert("samplingCriterion", "cartesian-acceleration-time-bound");
-    measured.insert("positionToleranceMm", TransferPositionTolerance);
-    m_attempt.insert(side == ChamferPhase::LeadIn ? "psToLeadIn" : "leadOutToPs", measured);
-    const QString prefix = side == ChamferPhase::LeadIn ? "transferIn" : "transferOut";
-    m_attempt.insert(prefix + "Ms", timer.nsecsElapsed() / 1e6);
-    m_attempt.insert(prefix + "Points", m_output.points.size() - before);
-    return error;
-  }
-
-  QString appendTransferImpl(ChamferPhase side)
-  {
-    m_transferSchedule = {};
     const auto profile = transferProfile(m_path, side, m_robot.timing);
     if (!profile) return QStringLiteral("Invalid or degenerate staging transfer profile.");
     const qsizetype first = m_output.points.size() - 1;
@@ -455,9 +385,6 @@ private:
         return QStringLiteral("Transfer schedule exceeds numerical range or 200000 points.");
       intervals[stage] = static_cast<int>(count);
       plannedPoints += intervals[stage];
-      m_transferSchedule.append(QJsonObject{{"startSeconds", stops[stage]},
-          {"endSeconds", stops[stage + 1]}, {"intervals", intervals[stage]},
-          {"accelerationBoundMmPerSecondSquared", acceleration}});
     }
     if (plannedPoints - 1 > 400000 - m_output.points.size())
       return QStringLiteral("Complete motion exceeds the 400000-point limit.");
@@ -529,16 +456,13 @@ private:
 
   const ChamferPath& m_path;
   const ChamferRobotSetup& m_robot;
-  ChamferProfiledKinematics m_solver;
+  Kr10Kinematics m_solver;
   M4d m_tcpToFlange = M4d::Identity();
   ChamferCentralPreparation m_central;
   ChamferMotionPhase m_phase = ChamferMotionPhase::TransferIn;
   CompiledPoints m_output;
   QVector<Kr10Kinematics::IkSolution> m_starts;
   Kr10Kinematics::IkSolution m_previous;
-  QJsonObject m_attempt;
-  QJsonArray m_attempts;
-  QJsonArray m_transferSchedule;
 };
 
 double smoothProgress(double u)
@@ -719,8 +643,6 @@ QString ChamferMotion::prepareJointSpline(qsizetype first, qsizetype last)
 
 ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const ChamferRobotSetup& robot)
 {
-  QElapsedTimer totalTimer;
-  totalTimer.start();
   if (!validRobot(robot)) return {{}, QStringLiteral("Invalid robot model, rated joint speeds, HOME limits or flange-to-TCP transform.")};
   ChamferRobotSetup boundedRobot = robot;
   // The model is authoritative, including regeneration of paths saved with the old cap.
@@ -728,54 +650,20 @@ ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const Chamfer
     boundedRobot.timing.jointSpeed[joint] = robot.model.joints[joint].ratedPayloadSpeedDegreesPerSecond;
   if (!validTiming(boundedRobot.timing)) return {{}, QStringLiteral("Feeds, transfer acceleration and simulation limits must be finite and positive; acceleration distance and auxiliary scale must be in (0, 1].")};
   MotionCompiler compiler(path, boundedRobot);
-  QElapsedTimer searchTimer;
-  searchTimer.start();
-  const auto starts = compiler.starts();
-  const double searchMs = searchTimer.nsecsElapsed() / 1e6;
-  QJsonArray splineAttempts;
   QString error = QStringLiteral("No IK solution for the approach P_s pose in the searched configurations.");
-  for (const auto& start : starts) {
+  for (const auto& start : compiler.starts()) {
     auto compiled = compiler.compile(start);
     if (!compiled.error.isEmpty()) { error = compiled.error; continue; }
-    QElapsedTimer homeTiming;
-    homeTiming.start();
     auto timed = HomeTimer(std::move(compiled), boundedRobot).run();
-    const double homeTimingMs = homeTiming.nsecsElapsed() / 1e6;
     if (!timed.error.isEmpty()) { error = timed.error; continue; }
     ChamferMotion motion(path, boundedRobot, std::move(timed.points), timed.boundaries);
     if (!timed.central) return {{}, QStringLiteral("Missing prescribed central trajectory.")};
     motion.setCentralMotion(std::move(*timed.central));
-    QElapsedTimer splineTimer;
-    splineTimer.start();
     const QString splineError = motion.preparePlaybackSplines();
-    QJsonObject splineDiagnostic;
-    splineDiagnostic.insert("computationMs", splineTimer.nsecsElapsed() / 1e6);
-    splineDiagnostic.insert("centralIntervals", timed.boundaries[5] - timed.boundaries[2]);
-    splineDiagnostic.insert("transferInIntervals", timed.boundaries[2] - timed.boundaries[1]);
-    splineDiagnostic.insert("transferOutIntervals", timed.boundaries[6] - timed.boundaries[5]);
-    splineDiagnostic.insert("attemptIndex", compiler.diagnostics().value("attempts").toArray().size() - 1);
-    splineDiagnostic.insert("error", splineError);
-    splineAttempts.append(splineDiagnostic);
     if (!splineError.isEmpty()) { error = splineError; continue; }
-    auto diagnostics = compiler.diagnostics();
-    diagnostics.insert("jointSplineAttempts", splineAttempts);
-    diagnostics.insert("homeTimingAndTimestampChecksMs", homeTimingMs);
-    diagnostics.insert("totalMs", totalTimer.nsecsElapsed() / 1e6);
-    diagnostics.insert("configurationSearchMs", searchMs);
-    diagnostics.insert("candidateCount", starts.size());
-    diagnostics.insert("retainedPoints", motion.points().size());
-    QJsonArray phasePoints;
-    for (std::size_t phase = 0; phase < 7; ++phase)
-      phasePoints.append(motion.boundaries()[phase + 1] - motion.boundaries()[phase]);
-    diagnostics.insert("phaseIntervals", phasePoints);
-    return {std::move(motion), {}, std::move(diagnostics)};
+    return {std::move(motion), {}};
   }
-  auto diagnostics = compiler.diagnostics();
-  diagnostics.insert("jointSplineAttempts", splineAttempts);
-  diagnostics.insert("totalMs", totalTimer.nsecsElapsed() / 1e6);
-  diagnostics.insert("configurationSearchMs", searchMs);
-  diagnostics.insert("candidateCount", starts.size());
-  return {{}, error, std::move(diagnostics)};
+  return {{}, error};
 }
 
 std::optional<std::pair<V6d, ChamferMotionPhase>> ChamferMotion::evaluateJoints(double seconds) const

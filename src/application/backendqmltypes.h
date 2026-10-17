@@ -17,6 +17,19 @@
 #include <QQmlEngine>
 #include <QtQml/qqmlregistration.h>
 
+// Hands a main()-owned singleton to its one GUI-thread QML engine. CppOwnership keeps the
+// engine from deleting it (Qt's documented QML_FOREIGN + create() instance pattern).
+inline QObject* claimQmlSingleton(QObject* instance, QJSEngine* engine)
+{
+  static QPointer<QJSEngine> claimedEngine;
+  if (!instance || engine->thread() != instance->thread() || (claimedEngine && claimedEngine != engine))
+    qFatal("%s must be used by one GUI-thread QML engine at a time",
+           instance ? instance->metaObject()->className() : "A QML singleton");
+  claimedEngine = engine;
+  QJSEngine::setObjectOwnership(instance, QJSEngine::CppOwnership);
+  return instance;
+}
+
 struct SceneMachiningQml
 {
   Q_GADGET
@@ -26,15 +39,7 @@ struct SceneMachiningQml
 public:
   inline static SceneMachining* s_inst = nullptr;
   static SceneMachining* create(QQmlEngine*, QJSEngine* engine)
-  {
-    if (!s_inst || engine->thread() != s_inst->thread() || (s_engine && s_engine != engine))
-      qFatal("Machining must be used by one GUI-thread QML engine at a time");
-    s_engine = engine;
-    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
-    return s_inst;
-  }
-private:
-  inline static QPointer<QJSEngine> s_engine;
+  { return static_cast<SceneMachining*>(claimQmlSingleton(s_inst, engine)); }
 };
 
 struct SceneMachiningPreparationQml
@@ -46,15 +51,7 @@ struct SceneMachiningPreparationQml
 public:
   inline static SceneMachiningPreparation* s_inst = nullptr;
   static SceneMachiningPreparation* create(QQmlEngine*, QJSEngine* engine)
-  {
-    if (!s_inst || engine->thread() != s_inst->thread() || (s_engine && s_engine != engine))
-      qFatal("MachiningPreparation must be used by one GUI-thread QML engine at a time");
-    s_engine = engine;
-    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
-    return s_inst;
-  }
-private:
-  inline static QPointer<QJSEngine> s_engine;
+  { return static_cast<SceneMachiningPreparation*>(claimQmlSingleton(s_inst, engine)); }
 };
 
 struct SceneMachiningSettingsQml
@@ -78,21 +75,10 @@ struct SceneEndEffectorsQml
   QML_FOREIGN(SceneEndEffectors)
   QML_NAMED_ELEMENT(EndEffectors)
   QML_SINGLETON
-
 public:
   inline static SceneEndEffectors* s_inst = nullptr;
-
   static SceneEndEffectors* create(QQmlEngine*, QJSEngine* engine)
-  {
-    if (!s_inst || engine->thread() != s_inst->thread() || (s_engine && s_engine != engine))
-      qFatal("EndEffectors must be used by one GUI-thread QML engine at a time");
-    s_engine = engine;
-    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
-    return s_inst;
-  }
-
-private:
-  inline static QPointer<QJSEngine> s_engine;
+  { return static_cast<SceneEndEffectors*>(claimQmlSingleton(s_inst, engine)); }
 };
 
 struct SceneObjectQml
@@ -101,38 +87,6 @@ struct SceneObjectQml
   QML_FOREIGN(SceneObject)
   QML_NAMED_ELEMENT(SceneObject)
   QML_UNCREATABLE("Scene objects are owned by SceneModel")
-};
-
-struct ScenePlaneGeometryQml
-{
-  Q_GADGET
-  QML_FOREIGN(ScenePlaneGeometry)
-  QML_NAMED_ELEMENT(PlaneGeometry)
-  QML_UNCREATABLE("Plane geometry is owned by its scene object")
-};
-
-struct SceneCylinderGeometryQml
-{
-  Q_GADGET
-  QML_FOREIGN(SceneCylinderGeometry)
-  QML_NAMED_ELEMENT(CylinderGeometry)
-  QML_UNCREATABLE("Cylinder geometry is owned by its scene object")
-};
-
-struct SceneCircleGeometryQml
-{
-  Q_GADGET
-  QML_FOREIGN(SceneCircleGeometry)
-  QML_NAMED_ELEMENT(CircleGeometry)
-  QML_UNCREATABLE("Circle geometry is owned by its scene object")
-};
-
-struct SceneEdgeGeometryQml
-{
-  Q_GADGET
-  QML_FOREIGN(SceneEdgeGeometry)
-  QML_NAMED_ELEMENT(EdgeGeometry)
-  QML_UNCREATABLE("Edge geometry is owned by its scene object")
 };
 
 struct SceneModelQml
@@ -148,24 +102,10 @@ struct SceneSingletonQml
   QML_FOREIGN(SceneModel)
   QML_NAMED_ELEMENT(Scene)
   QML_SINGLETON
-
 public:
   inline static SceneModel* s_inst = nullptr;
-
   static SceneModel* create(QQmlEngine*, QJSEngine* engine)
-  {
-    Q_ASSERT(s_inst);
-    Q_ASSERT(engine->thread() == s_inst->thread());
-    if (s_engine)
-      Q_ASSERT(engine == s_engine);
-    else
-      s_engine = engine;
-    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
-    return s_inst;
-  }
-
-private:
-  inline static QJSEngine* s_engine = nullptr;
+  { return static_cast<SceneModel*>(claimQmlSingleton(s_inst, engine)); }
 };
 
 struct SceneSurfaceImporterQml
@@ -204,26 +144,10 @@ struct DeviceHubQml
   QML_FOREIGN(DeviceHub)
   QML_NAMED_ELEMENT(Hub)
   QML_SINGLETON
-
 public:
   inline static DeviceHub* s_inst = nullptr;
-
   static DeviceHub* create(QQmlEngine*, QJSEngine* engine)
-  {
-    Q_ASSERT(s_inst);
-    Q_ASSERT(engine->thread() == s_inst->thread());
-
-    if (s_engine)
-      Q_ASSERT(engine == s_engine);
-    else
-      s_engine = engine;
-
-    QJSEngine::setObjectOwnership(s_inst, QJSEngine::CppOwnership);
-    return s_inst;
-  }
-
-private:
-  inline static QJSEngine* s_engine = nullptr;
+  { return static_cast<DeviceHub*>(claimQmlSingleton(s_inst, engine)); }
 };
 
 struct RDTResponseQml

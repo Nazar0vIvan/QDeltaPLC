@@ -33,7 +33,6 @@ public:
                                       const ChamferArcLengthParameters& parameters = {});
 
   double length() const { return m_knots.last().distance; }
-  qsizetype knotCount() const { return m_knots.size(); } // Inverse-map knots, not animation points.
   // Locate the distance interval by binary search and evaluate its saved quintic.
   // Evaluate the returned progress with the original ChamferPath::evaluatePhase;
   // do not interpolate XYZ or orientation between table entries.
@@ -52,6 +51,4 @@ struct ChamferArcLengthResult
 {
   std::optional<ChamferArcLength> arcLength;
   QString error;
-  int actualEvaluations = 0; // Analytical differential calls, including failed results.
-  int logicalEvaluations = 0; // Original work budget, including reused calls.
 };

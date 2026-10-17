@@ -120,8 +120,7 @@ struct ArcTableResult
   QVector<ChamferArcLengthKnot> knots;
   QVector<Polynomial> polynomials;
   QString error;
-  int actualEvaluations = 0;
-  int logicalEvaluations = 0;
+  int logicalEvaluations = 0; // Original work budget, including reused differential calls.
 };
 
 class ArcTableBuilder
@@ -160,7 +159,6 @@ private:
   std::optional<ArcPoint> point(double progress)
   {
     if (!chargeEvaluations(1)) return std::nullopt;
-    ++m_result.actualEvaluations;
     const auto differential = m_path.phaseArcDifferential(m_phase, progress);
     if (!differential) {
       m_result.error = QStringLiteral("Invalid analytical TCP differential during arc-length calculation.");
@@ -334,10 +332,8 @@ ChamferArcLengthResult ChamferArcLength::create(const ChamferPath& path, Chamfer
   auto result = ArcTableBuilder(path, phase, parameters).run();
   if (!result.error.isEmpty())
     return {{}, QStringLiteral("Cannot measure chamfer phase %1: %2")
-                    .arg(static_cast<int>(phase)).arg(result.error),
-            result.actualEvaluations, result.logicalEvaluations};
-  return {ChamferArcLength(std::move(result.knots), std::move(result.polynomials)), {},
-          result.actualEvaluations, result.logicalEvaluations};
+                    .arg(static_cast<int>(phase)).arg(result.error)};
+  return {ChamferArcLength(std::move(result.knots), std::move(result.polynomials)), {}};
 }
 
 std::optional<double> ChamferArcLength::progressAtDistance(double distance) const

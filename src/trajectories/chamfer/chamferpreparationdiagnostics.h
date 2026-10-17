@@ -63,28 +63,3 @@ private:
   mutable qint64 m_ikNanoseconds = 0;
   mutable qint64 m_fkNanoseconds = 0;
 };
-
-// A scope snapshot returns elapsed work without mutating the worker's result.
-// Optional cumulative shared work is excluded from the scope's computation time.
-class ChamferProfileScope
-{
-public:
-  explicit ChamferProfileScope(QJsonObject before, qint64 sharedNanoseconds = 0)
-    : m_before(std::move(before)), m_sharedNanoseconds(sharedNanoseconds)
-  { m_timer.start(); }
-
-  QJsonObject finish(const QJsonObject& after, qint64 sharedNanoseconds = 0) const
-  {
-    QJsonObject result;
-    for (const auto& key : {"ikCalls", "explicitFkCalls", "ikMs", "explicitFkMs"})
-      result.insert(key, after.value(key).toDouble() - m_before.value(key).toDouble());
-    const qint64 elapsed = m_timer.nsecsElapsed() - (sharedNanoseconds - m_sharedNanoseconds);
-    result.insert("computationMs", std::max(qint64{0}, elapsed) / 1e6);
-    return result;
-  }
-
-private:
-  QJsonObject m_before;
-  qint64 m_sharedNanoseconds = 0;
-  QElapsedTimer m_timer;
-};

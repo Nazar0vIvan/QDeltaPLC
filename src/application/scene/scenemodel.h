@@ -4,7 +4,6 @@
 #include <QHash>
 #include <QList>
 #include <QQmlListProperty>
-#include <QVariantList>
 #include <QPointer>
 
 namespace RoboCrap3D { class OccController; }
@@ -26,13 +25,8 @@ public:
   Q_INVOKABLE QList<quint32> intersect(const QList<quint32>& selectedIds);
   SceneObject* addMachiningPath(SceneMachiningData data, const QString& name);
   // Source metadata, display name and geometry define a surface insertion.
-	Q_INVOKABLE SceneObject* addPlane(const QUrl& sourceUrl, const QString& name, const QVariantList& coefficients);
 	SceneObject* addBoundedPlane(const QUrl& sourceUrl, const QString& name, BoundedPlane plane);
 	SceneObject* addBoundedCylinder(const QUrl& sourceUrl, const QString& name, BoundedCylinder cylinder);
-	SceneObject* addCircle(const QUrl& sourceUrl, const QString& name, Circle circle);
-  // Name, kind and classification describe metadata-only objects.
-  // Metadata-only objects do not carry renderable geometry.
-	Q_INVOKABLE SceneObject* addObject(const QString& name, SceneObject::Kind kind, SceneObject::Classification classification);
   Q_INVOKABLE bool renameObject(SceneObject* object, const QString& name);
   Q_INVOKABLE bool setObjectVisible(SceneObject* object, bool visible);
   // The target object and its two diagnostic preferences form one display operation.

@@ -1,28 +1,24 @@
 #include "workspacecontroller.h"
 
+#include "backendqmltypes.h"
 #include "scene/scenemodel.h"
 #include "scene/scenemachining.h"
-#include "robot/robotcontroller.h"
 
 #include <utility>
 
 WorkspaceController::WorkspaceController(SceneModel* scene, SceneMachining* machining,
-                                         RoboCrap3D::RobotController* robot)
-  : m_scene(scene), m_machining(machining), m_robot(robot)
+                                         SceneEndEffectors* effectors)
+  : m_scene(scene), m_machining(machining), m_effectors(effectors)
 {
-  Q_ASSERT(scene && machining && robot && !s_instance);
-  Q_ASSERT(scene->thread() == thread() && machining->thread() == thread() && robot->thread() == thread());
+  Q_ASSERT(scene && machining && effectors && !s_instance);
+  Q_ASSERT(scene->thread() == thread() && machining->thread() == thread() && effectors->thread() == thread());
   s_instance = this;
   connect(scene, &SceneModel::objectsChanged, this, &WorkspaceController::pruneSelection);
 }
 
 WorkspaceController* WorkspaceController::create(QQmlEngine*, QJSEngine* engine)
 {
-  if (!s_instance || engine->thread() != s_instance->thread() || (s_engine && s_engine != engine))
-    qFatal("WorkspaceController must be used by one GUI-thread QML engine at a time");
-  s_engine = engine;
-  QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-  return s_instance;
+  return static_cast<WorkspaceController*>(claimQmlSingleton(s_instance.data(), engine));
 }
 
 void WorkspaceController::setMode(Mode mode)
@@ -37,7 +33,7 @@ void WorkspaceController::synchronizeMode()
   if (m_mode != Machining) m_machining->stop();
   // QML cancels the old editor before tool/input settings change.
   emit modeChanged();
-  m_robot->setActiveTool(m_mode == Machining ? SceneEndEffectors::Spindle : SceneEndEffectors::Measuring);
+  m_effectors->setActiveTool(m_mode == Machining ? SceneEndEffectors::Spindle : SceneEndEffectors::Measuring);
   synchronizeMachiningInput();
 }
 

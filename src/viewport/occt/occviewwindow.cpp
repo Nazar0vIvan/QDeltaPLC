@@ -16,7 +16,8 @@
 
 namespace RoboCrap3D {
 
-OccViewWindow::OccViewWindow(const DrawingDocument& document) : m_document(document)
+OccViewWindow::OccViewWindow(const DrawingDocument& document, const DrawingPose& pose)
+  : m_document(document), m_pose(pose)
 {
   setSurfaceType(QSurface::OpenGLSurface);
   QObject::connect(this, &QWindow::screenChanged, this, &OccViewWindow::resizeViewport);
@@ -33,12 +34,10 @@ OccViewWindow::~OccViewWindow()
 }
 
 void OccViewWindow::setScene(const RobotVisualModel& visuals,
-                              std::shared_ptr<const CadLoadResult> shapes,
-                              const DrawingPose& pose)
+                              std::shared_ptr<const CadLoadResult> shapes)
 {
   if (m_shapes) return;
   m_visuals = visuals;
-  m_pose = pose;
   m_shapes = std::move(shapes);
   if (m_viewport)
     attachRobot();
@@ -46,57 +45,12 @@ void OccViewWindow::setScene(const RobotVisualModel& visuals,
     initializeViewport();
 }
 
-ViewportOperationResult OccViewWindow::insertObject(const DrawingObject& object)
-{
-  const auto result = m_viewport ? m_viewport->insertObject(object) : ViewportOperationResult{true, {}};
-  if (result.accepted && m_viewport) m_viewport->setSelectedObjects(m_document.selected);
-  return result;
-}
-
-void OccViewWindow::removeObject(quint32 id)
-{
-  if (!m_viewport) return;
-  m_viewport->removeObject(id);
-  m_viewport->setSelectedObjects(m_document.selected);
-}
-
-ViewportOperationResult OccViewWindow::setObjectVisible(quint32 id, bool visible)
-{
-  const auto result = m_viewport ? m_viewport->setObjectVisible(id, visible) : ViewportOperationResult{true, {}};
-  if (result.accepted && m_viewport) m_viewport->setSelectedObjects(m_document.selected);
-  return result;
-}
-
-ViewportOperationResult OccViewWindow::setObjectDiagnostics(quint32 id, const DrawingDiagnostics& diagnostics)
-{
-  return m_viewport ? m_viewport->setObjectDiagnostics(id, diagnostics) : ViewportOperationResult{true, {}};
-}
-
-void OccViewWindow::setSelectedObjects(const QList<quint32>& ids)
-{
-  if (m_viewport) m_viewport->setSelectedObjects(ids);
-}
-
-ViewportOperationResult OccViewWindow::setDraftAxis(const std::optional<DrawingAxis>& axis)
-{
-  return m_viewport ? m_viewport->setDraftAxis(axis) : ViewportOperationResult{true, {}};
-}
-
-void OccViewWindow::setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet)
-{
-  m_pose.tcp = tcp;
-  m_pose.collet = collet;
-  if (m_viewport) m_viewport->setSpindleFrames(tcp, collet);
-}
-
 ViewportOperationResult OccViewWindow::applyTransforms(const DrawingPose& pose)
 {
   if (!isReady()) return {false, QStringLiteral("Robot preview is unavailable.")};
   const auto result = m_viewport->applyTransforms(pose);
-  if (result.accepted) {
-    m_pose = pose;
-    return result;
-  }
+  if (result.accepted) return result;
+  // m_pose is still the controller's last accepted pose: it commits only after acceptance.
   QString error = QStringLiteral("Robot pose update: ") + result.error;
   const auto restored = m_viewport->applyTransforms(m_pose);
   if (!restored.accepted) {
@@ -107,17 +61,15 @@ ViewportOperationResult OccViewWindow::applyTransforms(const DrawingPose& pose)
   return {false, error};
 }
 
-void OccViewWindow::setEndEffectors(
-    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, RobotTool active)
+void OccViewWindow::setActiveTool(RobotTool active)
 {
-  m_toolShapes = shapes;
   m_activeTool = active;
-  attachEndEffectors();
+  attachActiveTool();
 }
 
-void OccViewWindow::attachEndEffectors()
+void OccViewWindow::attachActiveTool()
 {
-  if (m_viewport && !m_viewport->setEndEffectors(m_toolShapes, m_activeTool))
+  if (m_viewport && !m_viewport->setActiveTool(m_activeTool))
     emit errorOccurred(QStringLiteral("Cannot update the end-effector presentation."));
 }
 
@@ -256,7 +208,7 @@ void OccViewWindow::attachRobot()
     const auto result = m_viewport->setRobot(*m_visuals, *m_shapes, m_pose);
     m_presentationFailed = !result.accepted;
     if (m_presentationFailed) emit errorOccurred(result.error);
-    else attachEndEffectors();
+    else attachActiveTool();
   } catch (const Standard_Failure& failure) {
     m_presentationFailed = true;
     emit errorOccurred(QStringLiteral("Robot installation: %1").arg(QString::fromUtf8(failure.what())));

@@ -19,7 +19,6 @@ set(runtime_roots
   [==[$<TARGET_FILE:TKService>]==]
   [==[$<TARGET_FILE:TKV3d>]==]
   [==[$<TARGET_FILE:TKOpenGl>]==]
-  [==[$<TARGET_FILE:TKDESTEP>]==]
 )
 ")
     set(deploy_script "${PROJECT_SOURCE_DIR}/cmake/DeployOcct.cmake")
@@ -67,7 +66,7 @@ file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}")
 file(COPY ${runtime_roots} ${resolved} DESTINATION "${ROBOCRAP_DEPLOY_DEST}")
 file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/cad/kr10")
 file(COPY "${cad_source}/" DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/cad/kr10"
-  FILES_MATCHING PATTERN "*.stp" PATTERN "*.step" PATTERN "*.brep")
+  FILES_MATCHING PATTERN "*.brep")
 file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/occt")
 file(COPY "${occt_prefix}/share/opencascade/resources/"
   DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/occt")

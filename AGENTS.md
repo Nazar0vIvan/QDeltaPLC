@@ -104,6 +104,19 @@
   required behavior and smaller alternative considered. Keep checks, recovery, diagnostics and
   readable formatting; report source size separately from computation.
 
+## Mandatory interface stability
+
+- Introducing UI elements or state-dependent sizing that makes the interface jump is unacceptable.
+  Showing, hiding or updating messages, progress indicators or controls must not resize the scene
+  viewport, panels or windows, or displace existing controls during ordinary state changes.
+  For example, showing "Select a generated machining path" must not shrink the scene viewport.
+- Reserve stable layout space for transient content, replace content within a stable region, or
+  use an overlay outside the parent layout. Keep control sizes stable when their text changes;
+  hiding content with opacity is insufficient if text wrapping still changes its layout size.
+- Inspect hidden/visible, loading/error, selection and playback states for layout shifts.
+  Deliberate user resizing, navigation and requested expand/collapse actions may change layout;
+  incidental status or content updates must not cause those changes.
+
 ## Scope and workflow
 
 - Machining scope is animation preparation/playback. Do not change or run RSI preparation

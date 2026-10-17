@@ -2,8 +2,6 @@
 #include "geometry/pose.h"
 #include "geometry/utils.h"
 
-#include <QFileInfo>
-
 #include <cmath>
 
 namespace {
@@ -46,36 +44,11 @@ bool matchesTransform(const std::optional<M4d>& current, const M4d& candidate)
   return current && (candidate - *current).cwiseAbs().maxCoeff() <= GeomConst::Eps;
 }
 
-bool isLocalCadSource(const QUrl& source)
-{
-  // File readability and CAD decoding are the loader's responsibility.
-  return source.isValid() && source.isLocalFile() && !source.hasQuery()
-      && !source.hasFragment() && QFileInfo(source.toLocalFile()).isAbsolute();
-}
-
 } // namespace
 
 SceneEndEffectors::SceneEndEffectors(QObject* parent)
     : QObject(parent), m_spindleColletFrame(spindleColletTransform())
 {}
-
-bool SceneEndEffectors::setMeasuringCadSource(const QUrl& source)
-{
-  if (!isLocalCadSource(source)) return false;
-  if (m_measuringCadSource == source) return true;
-  m_measuringCadSource = source;
-  emit measuringCadSourceChanged();
-  return true;
-}
-
-bool SceneEndEffectors::setSpindleCadSource(const QUrl& source)
-{
-  if (!isLocalCadSource(source)) return false;
-  if (m_spindleCadSource == source) return true;
-  m_spindleCadSource = source;
-  emit spindleCadSourceChanged();
-  return true;
-}
 
 bool SceneEndEffectors::setSpindleTcp(const QList<double>& pose)
 {
@@ -101,11 +74,6 @@ QList<double> SceneEndEffectors::spindleTcpInCollet() const
   const auto frame = Pose::fromAxes(colletToTcp.block<3, 1>(0, 0), colletToTcp.block<3, 1>(0, 1),
                                    colletToTcp.block<3, 1>(0, 2), colletToTcp.block<3, 1>(0, 3));
   return frame ? transformPose(frame->transform()) : QList<double>{};
-}
-
-bool SceneEndEffectors::setSpindleTcpInCollet(const QList<double>& pose)
-{
-  return applySpindlePoses(spindleColletPose(), pose);
 }
 
 bool SceneEndEffectors::applySpindlePoses(const QList<double>& colletPose, const QList<double>& tcpInCollet)
@@ -144,18 +112,4 @@ bool SceneEndEffectors::setActiveTool(Tool tool)
   m_activeTool = tool;
   emit activeToolChanged();
   return true;
-}
-
-QList<double> SceneEndEffectors::spindlePoseFromFlange(const QList<double>& flange) const
-{
-  const auto baseToFlange = poseTransform(flange);
-  if (!baseToFlange || !m_spindleTcpFrame) return {};
-  return transformPose((*baseToFlange * *m_spindleTcpFrame).eval());
-}
-
-QList<double> SceneEndEffectors::flangePoseFromSpindle(const QList<double>& tcp) const
-{
-  const auto baseToTcp = poseTransform(tcp);
-  if (!baseToTcp || !m_spindleTcpFrame) return {};
-  return transformPose((*baseToTcp * inverseRigidTransform(*m_spindleTcpFrame)).eval());
 }

@@ -9,7 +9,6 @@ ToolBar {
   required property int mode
   required property int submode
   property bool planeImportAvailable: false
-  property bool circleImportAvailable: false
   property bool cylinderImportAvailable: false
   property bool intersectionAvailable: false
   property bool generationAvailable: false
@@ -28,7 +27,6 @@ ToolBar {
   signal stopRequested()
 
   signal planeImportRequested()
-  signal circleImportRequested()
   signal cylinderImportRequested()
   signal intersectionRequested()
   signal generationRequested()
@@ -148,13 +146,6 @@ ToolBar {
           iconSource: "qrc:/pics/plane.svg"
           available: root.planeImportAvailable
           onTriggered: root.planeImportRequested()
-        }
-
-        Tool {
-          text: qsTr("Circle from JSON")
-          iconSource: "qrc:/pics/circ.svg"
-          available: root.circleImportAvailable
-          onTriggered: root.circleImportRequested()
         }
 
         Tool {

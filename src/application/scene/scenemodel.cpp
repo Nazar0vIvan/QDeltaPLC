@@ -6,7 +6,6 @@
 #include <QJSEngine>
 
 #include <array>
-#include <cmath>
 #include <algorithm>
 
 namespace {
@@ -112,7 +111,7 @@ QList<quint32> SceneModel::intersect(const QList<quint32>& selectedIds)
   }
   const std::array<quint32, 2> sources{std::min(first->objectId(), second->objectId()),
                                        std::max(first->objectId(), second->objectId())};
-  object->setEdgeGeometry(std::move(*result.edge), sources);
+  object->setShape(SceneEdge{std::move(*result.edge), sources});
   ++m_nextEdgeNumber;
   if (!appendObject(object)) {
     emit intersectionFailed(tr("Cannot insert the intersection drawing."));
@@ -160,44 +159,6 @@ SceneObject* SceneModel::appendObject(SceneObject* object)
   return object;
 }
 
-SceneObject* SceneModel::addObject(const QString& name,
-                                  SceneObject::Kind kind, SceneObject::Classification classification)
-{
-  const QString trimmedName = name.trimmed();
-  if (trimmedName.isEmpty()
-      || kind < SceneObject::Plane || kind > SceneObject::Circle
-      || classification < SceneObject::Unclassified || classification > SceneObject::Precise) {
-    return nullptr;
-  }
-  auto* object = createObject({trimmedName, kind, classification, {}});
-  if (!object) return nullptr;
-  return appendObject(object);
-}
-
-SceneObject* SceneModel::addPlane(const QUrl& sourceUrl, const QString& name,
-                                 const QVariantList& coefficients)
-{
-  if (coefficients.size() != 4) return nullptr;
-
-  std::array<double, 4> values{};
-  for (int i = 0; i < 4; ++i) {
-    const int type = coefficients[i].metaType().id();
-    if (type != QMetaType::Double && type != QMetaType::Float
-        && type != QMetaType::Int && type != QMetaType::UInt
-        && type != QMetaType::LongLong && type != QMetaType::ULongLong) return nullptr;
-    values[i] = coefficients[i].toDouble();
-    if (!std::isfinite(values[i])) return nullptr;
-  }
-  const double norm = std::hypot(values[0], values[1], values[2]);
-  if (std::abs(norm - 1.0) > 1e-6) return nullptr;
-
-  auto* object = createObject({name.trimmed().isEmpty() ? tr("Plane") : name,
-                               SceneObject::Plane, SceneObject::Rough, sourceUrl});
-  if (!object) return nullptr;
-  object->setPlaneGeometry(values);
-  return appendObject(object);
-}
-
 // Each insertion takes source metadata, display name and validated geometry.
 SceneObject* SceneModel::addBoundedPlane(const QUrl& sourceUrl, const QString& name,
                                         BoundedPlane plane)
@@ -205,7 +166,7 @@ SceneObject* SceneModel::addBoundedPlane(const QUrl& sourceUrl, const QString& n
   auto* object = createObject({name.trimmed().isEmpty() ? tr("Plane") : name,
                                SceneObject::Plane, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
-  object->setPlaneGeometry(std::move(plane));
+  object->setShape(std::move(plane));
   return appendObject(object);
 }
 
@@ -215,17 +176,7 @@ SceneObject* SceneModel::addBoundedCylinder(const QUrl& sourceUrl, const QString
   auto* object = createObject({name.trimmed().isEmpty() ? tr("Cylinder") : name,
                                SceneObject::Cylinder, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
-  object->setCylinderGeometry(std::move(cylinder));
-  return appendObject(object);
-}
-
-// Source metadata, display name and fitted geometry define a circle insertion.
-SceneObject* SceneModel::addCircle(const QUrl& sourceUrl, const QString& name, Circle circle)
-{
-  auto* object = createObject({name.trimmed().isEmpty() ? tr("Circle") : name,
-                               SceneObject::Circle, SceneObject::Rough, sourceUrl});
-  if (!object) return nullptr;
-  object->setCircleGeometry(std::move(circle));
+  object->setShape(std::move(cylinder));
   return appendObject(object);
 }
 

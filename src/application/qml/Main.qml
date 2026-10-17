@@ -86,14 +86,6 @@ ApplicationWindow {
   }
 
   Dialogs.FileDialog {
-    id: circleFileDialog
-    title: qsTr("Import rough circle")
-    fileMode: Dialogs.FileDialog.OpenFile
-    nameFilters: [qsTr("JSON point files (*.json)")]
-    onAccepted: surfaceImporter.loadCircle(circleFileDialog.selectedFile, root.sceneModel)
-  }
-
-  Dialogs.FileDialog {
     id: cylinderFileDialog
     title: qsTr("Import rough cylinder")
     fileMode: Dialogs.FileDialog.OpenFile
@@ -108,7 +100,7 @@ ApplicationWindow {
   }
 
   readonly property bool geometryImportAvailable: !surfaceImporter.busy && !planeFileDialog.visible
-                                                 && !circleFileDialog.visible && !cylinderFileDialog.visible
+                                                 && !cylinderFileDialog.visible
   readonly property App.SceneModel sceneModel: App.Scene
   readonly property bool intersectionAvailable: App.WorkspaceController.intersectionAvailable
 
@@ -124,25 +116,6 @@ ApplicationWindow {
     id: intersectionError
     title: qsTr("Surface intersection failed")
     buttons: Dialogs.MessageDialog.Ok
-  }
-
-  Dialogs.FileDialog {
-    id: endEffectorFileDialog
-    property bool measuring: true
-    title: endEffectorFileDialog.measuring ? qsTr("Choose measuring end-effector CAD") : qsTr("Choose spindle end-effector CAD")
-    fileMode: Dialogs.FileDialog.OpenFile
-    nameFilters: [qsTr("STEP files (*.step *.stp *.STEP *.STP)")]
-    onAccepted: {
-      const currentSource = endEffectorFileDialog.measuring
-                            ? App.EndEffectors.measuringCadSource : App.EndEffectors.spindleCadSource
-      if (currentSource.toString() === endEffectorFileDialog.selectedFile.toString()) {
-        App.RobotController.reloadEndEffector(endEffectorFileDialog.measuring
-                                              ? App.EndEffectors.Measuring : App.EndEffectors.Spindle)
-      } else if (endEffectorFileDialog.measuring)
-        App.EndEffectors.setMeasuringCadSource(endEffectorFileDialog.selectedFile)
-      else
-        App.EndEffectors.setSpindleCadSource(endEffectorFileDialog.selectedFile)
-    }
   }
 
   width: 1366
@@ -277,7 +250,24 @@ ApplicationWindow {
 
 
   footer: ToolBar {
+    id: statusBar
+
+    readonly property string message: {
+      if (surfaceImporter.busy) return qsTr("Importing surface…")
+      if (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen) return ""
+      const preparation = App.MachiningPreparation
+      if (preparation.preparing) return qsTr("Sampling RSI…")
+      if (preparation.error.length > 0) return preparation.error
+      if (!preparation.prepared) return preparation.unavailableReason || qsTr("Ready for RSI Sampling.")
+      return qsTr("RSI sampled · %1 samples · %2 corrections\nPath: %3 s · RSI cycles: %4 s")
+             .arg(preparation.sampleCount).arg(preparation.correctionCount)
+             .arg(preparation.duration.toFixed(3)).arg(preparation.controllerDuration.toFixed(3))
+             + "\n" + (preparation.encodingReady ? qsTr("Encoding ready.") : preparation.encodingUnavailableReason)
+             + "\n" + preparation.sharedDataStatus
+    }
+
     padding: Metrics.sp8
+    implicitHeight: Metrics.h40
 
     background: Rectangle {
       color: Colors.background.dp01
@@ -285,15 +275,27 @@ ApplicationWindow {
       border.width: Metrics.w1
     }
 
-    contentItem: Label {
-      text: surfaceImporter.busy ? qsTr("Importing surface…")
-            : root.workflowMode === WorkflowPanel.Machining
-            ? qsTr("Mode: Machining")
-            : qsTr("Mode: Measuring / %1").arg(
-                root.measurementSubmode === WorkflowPanel.Rough
-                ? qsTr("Rough") : qsTr("Precise"))
+    contentItem: QxHField {
+      spacing: Metrics.sp16
+      fixedLabelWidth: true
+      labelWidth: Metrics.w200
       color: Colors.foreground.medium
-      font: Fonts.body
+      labelText: root.workflowMode === WorkflowPanel.Machining
+                 ? qsTr("Mode: Machining") : qsTr("Mode: Measuring / %1").arg(
+                     root.measurementSubmode === WorkflowPanel.Rough ? qsTr("Rough") : qsTr("Precise"))
+
+      Label {
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        text: statusBar.message.replace(/[\r\n]+/g, " · ")
+        textFormat: Text.PlainText
+        horizontalAlignment: Text.AlignRight
+        elide: Text.ElideRight
+        color: statusBar.message.length > 0 && !surfaceImporter.busy
+               && App.MachiningPreparation.error.length > 0 ? Colors.maxColor : Colors.foreground.medium
+        font: Fonts.body
+        Accessible.name: statusBar.message
+      }
     }
   }
 
@@ -355,7 +357,6 @@ ApplicationWindow {
         mode: root.workflowMode
         submode: root.measurementSubmode
         planeImportAvailable: root.geometryImportAvailable
-        circleImportAvailable: root.geometryImportAvailable
         cylinderImportAvailable: root.geometryImportAvailable
         playbackAvailable: App.Machining.canPlay
         playing: App.Machining.playing
@@ -390,32 +391,7 @@ ApplicationWindow {
         intersectionAvailable: root.intersectionAvailable
         onIntersectionRequested: App.WorkspaceController.intersectSelected()
         onPlaneImportRequested: planeFileDialog.open()
-        onCircleImportRequested: circleFileDialog.open()
         onCylinderImportRequested: cylinderFileDialog.open()
-      }
-
-      Label {
-        Layout.fillWidth: true
-        visible: root.workflowMode === WorkflowPanel.Machining && !root.chamferEditorOpen
-        font: Fonts.caption
-        color: App.MachiningPreparation.error.length > 0 ? Colors.maxColor : Colors.foreground.medium
-        wrapMode: Text.WordWrap
-        text: {
-          if (App.MachiningPreparation.preparing) return qsTr("Sampling RSI…")
-          if (App.MachiningPreparation.error.length > 0) return App.MachiningPreparation.error
-          if (App.MachiningPreparation.prepared) {
-            const duration = App.MachiningPreparation.duration.toFixed(3)
-            const controllerDuration = App.MachiningPreparation.controllerDuration.toFixed(3)
-            const samples = App.MachiningPreparation.sampleCount
-            const corrections = App.MachiningPreparation.correctionCount
-            const status = qsTr("RSI sampled · %1 samples · %2 corrections\nPath: %3 s · RSI cycles: %4 s")
-                           .arg(samples).arg(corrections).arg(duration).arg(controllerDuration)
-            return status + "\n" + (App.MachiningPreparation.encodingReady ? qsTr("Encoding ready.")
-                                   : App.MachiningPreparation.encodingUnavailableReason)
-                          + "\n" + App.MachiningPreparation.sharedDataStatus
-          }
-          return App.MachiningPreparation.unavailableReason || qsTr("Ready for RSI Sampling.")
-        }
       }
 
       RobotViewport {
@@ -455,9 +431,6 @@ ApplicationWindow {
         visible: root.toolSetupOpen && root.workflowMode === WorkflowPanel.Measuring
         onCloseRequested: root.toolSetupOpen = false
         measuring: true
-        cadSource: App.EndEffectors.measuringCadSource
-        loading: Viewport3D.OccController.measuringCadLoading
-        loadError: Viewport3D.OccController.measuringCadError
         measuringName: App.EndEffectors.measuringName
         ballDiameter: App.EndEffectors.rubyBallDiameter
         stylusLength: App.EndEffectors.stylusLength
@@ -465,20 +438,12 @@ ApplicationWindow {
         tcp: App.EndEffectors.spindleTcp
         tcpVisible: false
         colletVisible: false
-        onRetryRequested: App.RobotController.reloadEndEffector(App.EndEffectors.Measuring)
-        onBrowseRequested: {
-          endEffectorFileDialog.measuring = true
-          endEffectorFileDialog.open()
-        }
       }
       EndEffectorPanel {
         anchors.fill: parent
         visible: root.toolSetupOpen && root.workflowMode === WorkflowPanel.Machining
         onCloseRequested: root.toolSetupOpen = false
         measuring: false
-        cadSource: App.EndEffectors.spindleCadSource
-        loading: Viewport3D.OccController.spindleCadLoading
-        loadError: Viewport3D.OccController.spindleCadError
         measuringName: App.EndEffectors.measuringName
         ballDiameter: App.EndEffectors.rubyBallDiameter
         stylusLength: App.EndEffectors.stylusLength
@@ -491,11 +456,6 @@ ApplicationWindow {
         onPosesRequested: (colletValues, tcpValues) => {
           if (App.EndEffectors.applySpindlePoses(colletValues, tcpValues))
             Viewport3D.OccController.showSpindleTcp = true
-        }
-        onRetryRequested: App.RobotController.reloadEndEffector(App.EndEffectors.Spindle)
-        onBrowseRequested: {
-          endEffectorFileDialog.measuring = false
-          endEffectorFileDialog.open()
         }
       }
       MachiningPanel {

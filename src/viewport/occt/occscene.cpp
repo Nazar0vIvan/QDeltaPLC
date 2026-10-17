@@ -250,23 +250,6 @@ std::optional<OccScene::PartId> OccScene::createShapePart(const TopoDS_Shape& sh
   return id;
 }
 
-std::optional<OccScene::PartId> OccScene::addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props)
-{
-  const auto id = createShapePart(shape, props);
-  if (!id) return std::nullopt;
-  try {
-    if (!displayPart(m_parts.find(*id)->second)) {
-      (void)removePart(*id);
-      return std::nullopt;
-    }
-  } catch (...) {
-    (void)removePart(*id);
-    throw;
-  }
-
-  return id;
-}
-
 bool OccScene::setPartTransform(const PartId id, const gp_Trsf& transform)
 {
   const auto found = m_parts.find(id);

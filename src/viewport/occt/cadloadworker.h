@@ -11,7 +11,8 @@ namespace RoboCrap3D {
 class CadLoadWorker final : public QThread
 {
 public:
-  CadLoadWorker(QStringList sourcePaths, QString cacheDirectory);
+  // Absolute BREP file paths, loaded in order.
+  explicit CadLoadWorker(QStringList sourcePaths);
   CadLoadResult takeResult();
 
 protected:
@@ -19,7 +20,6 @@ protected:
 
 private:
   QStringList m_sourcePaths;
-  QString m_cacheDirectory;
   CadLoadResult m_result;
 };
 

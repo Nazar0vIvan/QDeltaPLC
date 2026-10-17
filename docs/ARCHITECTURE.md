@@ -3,7 +3,9 @@
 A verified map of the current code for future sessions. File references are relative to the
 repository root. "Verified" means the claim was checked against constructors, `connect` calls
 or call sites; anything else is listed under [Open questions](#7-open-questions).
-Source map checked on 2026-10-16 against the working tree, including uncommitted changes.
+Source map checked on 2026-10-17 against the working tree, including uncommitted changes.
+Some `file:line` references in unchanged paragraphs predate the 2026-10-17 code reduction and may
+have shifted; the named function or file is authoritative.
 Compilation and runtime behavior remain unverified. Application owns robot configuration/state,
 document/machining code, device GUI adaptation and asset-path selection; numerical and renderer
 libraries publish their selected value/operation headers. Historical user-confirmed notes record
@@ -79,10 +81,10 @@ Library notes:
   private socket/diagnostics/machining headers with explicit relative paths; no old-path forwarders remain.
   Saved motions still publicly expose central/arc/path values. These are retained dependencies.
 - **Drawing and assets.** Viewport includes no Application/Trajectories objects. Application
-  supplies numerical drawings/transforms, absolute CAD sources and the selected cache/resource
-  directories. OccController retains the latter for CAD jobs and OCCT initialization retries;
+  supplies numerical drawings/transforms, absolute BREP paths for the seven links and two tools, and
+  the OCCT resource directory. OccController retains that directory for OCCT initialization retries;
   its initialization operation owns OCCT calls and returns a QString error. Application assetpaths.*
-  selects directories and has no OCCT includes.
+  selects directories and has no OCCT includes. The viewport links no STEP translator (TKDESTEP).
 - **QML registration.** Scene/Backend targets are removed. Existing foreign wrappers compile
   directly into robocrap in both hot-reload modes, including the rdtResponse wrapper for the
   unchanged queued RDTResponse value. Backend's element names now belong to robocrap_qml_module;
@@ -112,9 +114,8 @@ Plain value types with `std::optional` factories. There are no QObjects, signals
 - **Fitting factories**:
   - `Plane` and `BoundedPlane`: SVD plane fit.
   - `BoundedCylinder`: Levenberg–Marquardt (LM) fit from 6 seed axes; RMS acceptance threshold max(0.1 mm, 2 % R).
-  - `Circle`: circumcircle for 3 points, otherwise an algebraic start refined by LM.
   - `Cylinder::fromAxis`: analytic, not a fit.
-- **Probe compensation**: `BoundedPlane::fromSamples` and `BoundedCylinder::fromSamples` fit the original coordinates, then call `applyProbe`. The plane moves by `dir·radius` along its fitted unit normal; the cylinder radius becomes `fittedRadius + dir·radius` and must remain greater than `GeomConst::Eps`. Their file factories are removed; SceneSurfaceImporter and the application profiler supply decoded samples. `Plane::fromJsonFile` and utility file readers remain legacy RSI exceptions. Circle import reads raw coordinates without decoding or applying probe metadata.
+- **Probe compensation**: `BoundedPlane::fromSamples` and `BoundedCylinder::fromSamples` fit the original coordinates, then call `applyProbe`. The plane moves by `dir·radius` along its fitted unit normal; the cylinder radius becomes `fittedRadius + dir·radius` and must remain greater than `GeomConst::Eps`. Their file factories are removed; SceneSurfaceImporter supplies decoded samples. `Plane::fromJsonFile` and `readProbeSamples` remain legacy RSI exceptions. There is no circle fitting or import.
 - **`surfaceintersection`**: `intersectSurfaces(BoundedPlane, BoundedCylinder)` returns an analytic ellipse (`EdgeGeometry`), or the status `ParallelCylinderAxis` or `InvalidGeometry`.
 - **`Kr10Kinematics`** (`src/kinematics/`, published headers in `include/kinematics/`) is a closed-form solver for forward kinematics (FK) and inverse kinematics (IK).
   - `solveFK(q)` returns 7 link transforms; the last is the flange.
@@ -122,9 +123,9 @@ Plain value types with `std::optional` factories. There are no QObjects, signals
   - Wrist decomposition multiplies only the first three joint transforms, in the same order as FK. The caller runs full FK for the resulting six angles and checks the flange/TCP using that array.
   - `configuration(q, transforms)` derives Status and Turn from those already computed frames and angles. Initial arbitrary seeds require an FK once; accepted sequence points reuse their bits. Refreshing bits from the existing array retains the preceding-angle branch classification at boundaries.
   - It rejects a wrist singularity (|sin q5| ≤ Eps), a target out of reach, and joints outside their limits.
-  - `matchesFlange(target, actual)` checks the target-relative flange residual against `Kr10PosEps = 1e-4` mm and `Kr10RotEps = 1e-6` rotation entries without FK. Animation/manual callers use it; the checked compatibility `solveIK(T06, previousAngles)` still derives seed configuration and performs candidate FK internally for separate RSI callers.
+  - `matchesFlange(target, actual)` checks the target-relative flange residual against `Kr10PosEps = 1e-4` mm and `Kr10RotEps = 1e-6` rotation entries without FK. Animation callers use it; the checked compatibility `solveIK(T06, previousAngles)` still derives seed configuration and performs candidate FK internally for separate RSI callers.
   - It stores `const Kr10KinematicModel&`, so the model must outlive the solver. `RobotController` disables copy/move and destroys its solver before its model.
-- **`Kr10KinematicModel`** (`kr10kinematicmodel.h`) holds the joints (axis, limits, rated payload speed in °/s), the IK parameters, `qHome` and `pHome`.
+- **`Kr10KinematicModel`** (`kr10kinematicmodel.h`) holds the joints (axis, limits, rated payload speed in °/s), the IK parameters, `qHome` and `pHome`. The application fills it from the constant table in `RobotDefinition::kr10()` (`src/application/robot/robotdefinition.cpp`); there is no robot JSON file.
   - `IgnorePreviewJointPositionLimits = false` is a compile-time diagnostic switch that turns off joint-limit checks. It is read in the kinematics, in `RobotController` and in `chamfermotion.cpp`.
 
 ### 3.2 Scene (private Application code)
@@ -134,30 +135,30 @@ files under src/scene. They reach QML through src/application/backendqmltypes.h 
 
 | Class | Responsibility |
 |---|---|
-| `SceneModel` | Owns `SceneObject`s (QObject parent) and their geometry views. IDs come from `m_nextId`, which starts at 1 and is never reused; 0 means no object. `objects` is a read-only `QQmlListProperty`; the class is not an item model. Signals: `objectAdded`, `objectRemoved(id)`, `objectVisibilityChanged`, `objectDiagnosticOverlaysChanged`, `objectsChanged`, `intersectionFailed`. `intersect()` creates an Edge from one plane and one cylinder. `addMachiningPath()` stores a `SceneMachiningData`. main attaches the empty document to the concrete viewport; appendObject requests drawing acceptance before publishing a renderable object and deletes an unpublished rejected candidate. Visibility/diagnostic changes send explicit drawing updates. |
-| `SceneObject` | Holds id, kind (Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath, Circle), classification, name, visibility, overlays and one geometry QObject. Setters are private; `SceneModel` is a friend and calls named setters. Geometry member assignment occurs inside its named setters. drawing() supplies analytic dimensions/styles or saved TCP phase polylines; drawingDiagnostics() supplies bounded markers and normal-line endpoints. |
-| `scenegeometry.h` | QObject views: `ScenePlaneGeometry`, `SceneCylinderGeometry`, `SceneCircleGeometry`, `SceneEdgeGeometry` and `SceneMachiningPath`. `SceneMachiningPath` wraps `SceneMachiningData{shared_ptr<const ChamferMotion>, sourceEdgeId, calibrationRevision}`. `SceneMachiningSettings` is a Q_GADGET value type. The views are read-only except `SceneMachiningPath`, whose incompatibility text `SceneMachining::updateCompatibility` sets through `SceneObject::geometry()` (`scenemachining.cpp:272-278`). |
-| `SceneSurfaceImporter` | Synchronous, GUI-thread JSON point import. Plane and cylinder files are compensated for the probe; circle files are not. It sets `busy` true and emits `busyChanged` before reading/fitting, then clears it before returning. Synchronous signal handlers can observe true; normal event-loop painting waits for this read/fit call to return (`scenesurfaceimporter.cpp:96-125`). |
-| `SceneEndEffectors` | Stores CAD sources (`MEE.stp`, `SEE.stp`), measuring stylus data, the collet frame `FLANGE_ER` (initially a provisional constant), and accepted spindle XYZABC with its optional reconstructed transform, exposed by `spindleTcpFrame`. `applySpindlePoses` preserves `FLANGE_ER * ER_TCP`; the stored TCP matrix is reconstructed from the accepted coordinates. Both commit paths update list/frame before notifications. A collet change emits `spindleColletChanged` then `spindleTcpChanged`, even when TCP is equivalent; a TCP-only change emits the latter. Unchanged values emit neither. Generate, profiling, pose conversions and presentation reuse the matrix; workers copy its value. |
+| `SceneModel` | Owns `SceneObject`s (QObject parent). IDs come from `m_nextId`, which starts at 1 and is never reused; 0 means no object. `objects` is a read-only `QQmlListProperty`; the class is not an item model. Signals: `objectAdded`, `objectRemoved(id)`, `objectVisibilityChanged`, `objectDiagnosticOverlaysChanged`, `objectsChanged`, `intersectionFailed`. `intersect()` creates an Edge from one plane and one cylinder. `addMachiningPath()` stores a `SceneMachiningData`. main attaches the empty document to the concrete viewport; appendObject requests drawing acceptance before publishing a renderable object and deletes an unpublished rejected candidate. Visibility/diagnostic changes send explicit drawing updates. |
+| `SceneObject` | Holds id, kind (Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath), classification, name, visibility and overlays. A fitted `BoundedPlane`, `BoundedCylinder` or `SceneEdge` (ellipse plus its two source IDs) is stored by value in `std::variant` `Shape`; `plane()`/`cylinder()`/`edge()` are `std::get_if` lookups. Only a machining path has a child QObject (`SceneMachiningPath`), exposed as the QML `geometry` property. Setters are private; `SceneModel` is a friend and calls `setShape`/`setMachiningPath`. drawing() supplies analytic dimensions/styles or saved TCP phase polylines; drawingDiagnostics() supplies bounded markers and normal-line endpoints. The CONSTANT `properties` list supplies the Properties panel's formatted `{label, value}` rows (4 decimals, `[x; y; z]` vectors). |
+| `scenegeometry.h` | `SceneMachiningSettings` (Q_GADGET value type), `SceneMachiningData{shared_ptr<const ChamferMotion>, sourceEdgeId, calibrationRevision}`, the `SceneMachiningPath` QObject that wraps it, and the `SceneEdge` value. `SceneMachining::updateCompatibility` sets the path's incompatibility text through `SceneObject::geometry()`. |
+| `SceneSurfaceImporter` | Synchronous, GUI-thread JSON point import of planes and cylinders, both compensated for the probe. It sets `busy` true and emits `busyChanged` before reading/fitting, then clears it before returning. Synchronous signal handlers can observe true; normal event-loop painting waits for this read/fit call to return (`scenesurfaceimporter.cpp:96-125`). |
+| `SceneEndEffectors` | Stores the active tool, measuring stylus data, the collet frame `FLANGE_ER` (initially a provisional constant), and accepted spindle XYZABC with its optional reconstructed transform, exposed by `spindleTcpFrame`. `applySpindlePoses` preserves `FLANGE_ER * ER_TCP`; the stored TCP matrix is reconstructed from the accepted coordinates. Both commit paths update list/frame before notifications. A collet change emits `spindleColletChanged` then `spindleTcpChanged`, even when TCP is equivalent; a TCP-only change emits the latter. Unchanged values emit neither. Generate and presentation reuse the matrix; workers copy its value. The tool CAD models are fixed and are not stored here. |
 | `SceneMachining` | Coordinates Generate and Dry Run (§5.2). It holds the `Kr10KinematicModel` copy received once from `RobotController` after initial graphics acceptance, a calibration revision counter, and the playback state. It derives the signed unit draft-axis direction and 5–40 mm display length from the selected source/settings and emits the drawing value. |
 | `SceneMachiningPreparation` | Builds the RSI job ("RSI Sampling"; outside the current animation scope). An `std::async` worker produces a `PreparedChamferJob`. On the GUI thread it then writes `C:/RoboCrapJobs/shared_data.txt` with `QSaveFile` and emits `preparedJobReady`. It watches `<appDir>/rsi-correction-limits.json`. |
 | `chamfershareddata` | Free functions. `prepareChamferSharedData` (worker side) and `writeChamferSharedData` (GUI side). |
 
 QML singletons (`application/backendqmltypes.h`):
 
-- `App.Scene`, `App.Hub`, `App.Machining`, `App.MachiningPreparation` and `App.EndEffectors` each return a stack object from `main()` through `s_inst`, with `CppOwnership`.
-- The Machining, Preparation and EndEffectors wrappers call `qFatal` on a wrong thread or a second engine. Scene and Hub use only `Q_ASSERT`.
-- Creatable types: `PlaneImporter` (`SceneSurfaceImporter`), `DeviceProfileModel`, and `SceneModel` (named element without `QML_UNCREATABLE`).
+- `App.Scene`, `App.Hub`, `App.Machining`, `App.MachiningPreparation`, `App.EndEffectors` and `App.WorkspaceController` each return a stack object from `main()`. Their `create()` functions share `claimQmlSingleton`, which `qFatal`s on a null instance, a wrong thread or a second live engine, and sets `CppOwnership`. This QML_FOREIGN + `create()` pattern is the documented Qt 6.8 replacement for `qmlRegisterSingletonInstance` and does not support several engines.
+- Creatable types: `PlaneImporter` (`SceneSurfaceImporter`), `DeviceProfileModel`, and `SceneModel` (named element without `QML_UNCREATABLE`; QML only uses it as a type annotation).
 
 ### 3.3 Path generation (`RoboCrapTrajectories`)
 
 Numerical code on copied inputs. It calls no scene or device API and has no mutable statics.
 Animation implementations live under src/trajectories/chamfer; published motion/path/arc/central
-headers live under src/trajectories/include/trajectories. IK and FK call counters live in the
-private per-worker ChamferProfiledKinematics. Frozen RSI bodies remain under src/pathgeneration.
+headers live under src/trajectories/include/trajectories. Animation stages use the plain
+`Kr10Kinematics` solver; the call-counting `ChamferProfiledKinematics` remains only for the frozen
+RSI sampler. Frozen RSI bodies remain under src/pathgeneration.
 Trajectories retains file I/O in RSI correction-limit loading and the offset writer; Geometry
-retains utility readers and Plane::fromJsonFile for legacy RSI. Bounded surface fitting accepts
-decoded samples; the application profiler selects/reads files using the existing utility reader.
+retains `readProbeSamples` and Plane::fromJsonFile for legacy RSI. Bounded surface fitting accepts
+decoded samples.
 TCP means tool center point; LIN denotes a prescribed straight Cartesian transfer, and PTP
 denotes a synchronized joint movement.
 
@@ -206,9 +207,8 @@ coefficient array. The factory returns a motion only after all three spline rang
 Arc-map accuracy checks reuse the two accepted endpoint differentials and original full-interval
 integral, retaining its length/error separately from the rounded stored distance width. All nine
 check fractions, positivity/tolerance checks and refinement order are retained. The original
-800000 differential-call limit applies to logical work, including reused calls; actual calls are
-counted separately. Each reached phase reports actualDifferentialEvaluations and
-logicalDifferentialEvaluations in centralPreparation.arcLengthPhases, including failed construction.
+800000 differential-call limit applies to logical work, including reused calls, and rejects the
+phase when exceeded; the count is internal and not reported.
 
 **Shared central preparation.** One `ChamferCentralPreparation` belongs to `MotionCompiler`
 for the whole `ChamferMotion::create` call. Its constructor only borrows the worker-owned path
@@ -228,14 +228,10 @@ total, versus nine previously. This is a source-derived operation count, not an 
 comparison. The target cache adds worker-local storage and is destroyed after Generate;
 inverse-map knots, saved animation points and separately prepared RSI samples remain distinct.
 
-Job diagnostics contain `centralPreparation` once: map attempts/completions, schedule construction,
-shared computation milliseconds, target evaluations/cache hits, zero-based failed target index,
-and target-cache payload/capacity bytes (`sizeof(optional<ChamferCentralPose>)` per entry, excluding
-allocator/container overhead). Candidate `totalMs`, central `samplingAndValidationMs` and central
-segment `computationMs` exclude newly performed shared work. Top-level `totalMs` includes all
-elapsed Generate work; shared construction/map/schedule/target timings and attempt substage
-timings are nested measurements, not additional disjoint totals. Failed candidates retain their
-errors and attempted-stage/IK diagnostics. Movement durations remain seconds.
+Generate produces no timing or statistics report. `ChamferMotion::create` returns the motion or
+the last candidate's error; `SceneMachining` logs one console line (`Chamfer preparation: <points>
+points, <seconds> s movement` or `Chamfer preparation failed: <error>`) and shows the error in the
+Machining panel. Movement durations remain seconds.
 
 Animation preparation carries one accepted angle/configuration value through incoming LIN,
 central samples and outgoing LIN. Each angle-only IK call uses its predecessor's Status and
@@ -245,27 +241,10 @@ used by XYZ acceleration. LIN nodal-point construction and the later central cop
 FK-derived TCP without another FK; stored nodal points already contain that matrix. Playback FK
 for interpolated angles is separate. Dry Run calls the joint-only evaluator and RobotController runs one FK; the TCP-returning compatibility evaluator shares interpolation and retains its existing endpoint behavior.
 
-Manual `RobotController::inverse` uses the committed pose's configuration, calls angle-only IK,
-and calls `forward` once. That FK array supplies the flange check and read-only RobotPose. A
-successful call therefore evaluates three wrist-prefix joints and six FK joints, versus 24 joint
-steps previously; these are source-derived counts, not measured speed. `initialize`, `forward`
-and `inverse` return RobotPoseResult with an optional pose and error text. RobotController consumes
-the candidate and commits only after OccController returns transform acceptance. Forward/manual and playback pose
-construction derive configuration from the same FK array, so later manual IK has a current seed.
-
-ChamferProfiledKinematics times angle-only IK (including its three-joint prefix) separately from
-explicit full FK. Initial search-seed FK is now explicit and counted; accepted preceding angles
-need no such call. Checked compatibility IK still includes its internal FK in IK time. No measured
-before/after runtime or accepted-motion equivalence is claimed.
-
-`src/application/chamferprofile.*` is a CLI profiler: `robocrap --profile-chamfer in.json out.json`, checked at
-`main.cpp:47-55`. It runs before any device or QML object, and before the application's scene objects, are
-created. It constructs its own `SceneEndEffectors` (`chamferprofile.cpp:106`). With `previewOnly=true` it
-skips RSI preparation; with `previewOnly=false` it runs RSI preparation with default limits.
-`in.json` and `out.json` above are argument placeholders, not supplied files. The preview input
-named in `AGENTS.md`, `codex_plans/chamfer_profile_spatial_leads_input.json`, is absent in this
-snapshot; there is no verified executable baseline using that path. No profiling or RSI
-preparation was run for this documentation update.
+`RobotController` has no manual FK/IK command. `initialize` and `forward` return `RobotPoseResult`
+with optional BASE-relative link transforms and error text; `forward` checks finite joints, joint
+limits and finite FK transforms. RobotController commits a pose only after OccController returns
+transform acceptance. There is no profiling command line.
 
 ### 3.4 Devices and network (`RoboCrapDevices` and private Application adaptation)
 
@@ -291,14 +270,14 @@ Cross-device wiring in `main.cpp`:
 
 | Class | Responsibility |
 |---|---|
-| `OccController` | Viewport3D singleton; owns the native window, robot/tool CAD workers, neutral ordered graphics, accepted drawing matrices and tool display state. Receives absolute CAD sources from Application, returns transform acceptance/error and restores drawings from renderer-local values. Owns one accepted DrawingDocument cache with stable-ID-order replay; its window borrows that cache read-only. No application QObject, numerical robot state/solver or motion internals are retained. |
-| `OccViewWindow` | QWindow hosted by RobotViewport's WindowContainer. First expose builds the viewport. Missing robot data waits; successful or failed installation is not repeated in a surviving scene. A pose failure reapplies the saved accepted matrices once; failure of that restoration sets the existing presentation-failure flag and disables robot readiness while keeping the viewer. Actual surface destruction releases the scene; genuine recreation installs cached accepted drawing values in a new scene. |
+| `OccController` | Viewport3D singleton; owns the native window, the single robot CAD worker, neutral ordered graphics, accepted drawing matrices and tool display state. Receives absolute BREP paths for seven links and two tools from Application, returns transform acceptance/error and restores drawings from renderer-local values. Owns the accepted DrawingDocument and DrawingPose with stable-ID-order replay; its window borrows both read-only. It calls the window's `OccViewport` directly (looked up per call, null without a native surface) for object, selection, draft-axis and spindle-frame updates, re-applying selection after insert/remove/visibility changes. No application QObject, numerical robot state/solver or motion internals are retained. |
+| `OccViewWindow` | QWindow hosted by RobotViewport's WindowContainer. Owns native-surface lifetime, input events, robot installation and the active tool; exposes `viewport()`. First expose builds the viewport. Missing robot data waits; successful or failed installation is not repeated in a surviving scene. A pose failure reapplies the borrowed last accepted pose once; failure of that restoration sets the existing presentation-failure flag and disables robot readiness while keeping the viewer. Actual surface destruction releases the scene; genuine recreation installs cached accepted drawing values in a new scene. |
 | `OccViewport`, `OccViewer`, `OccScene`, `OccPart`, `OccInputController`, `OccViewCube`, `OccWorldAxes` | OCCT stack: `OpenGl_GraphicDriver` → `V3d_Viewer`/`V3d_View` on a `WNT_Window`, plus `AIS_InteractiveContext`. Rendering is coalesced with a 0 ms single-shot `QTimer` on the GUI thread. There is no render thread and no `QOpenGLContext`. |
-| `OccRobotAdapter` | Converts supplied Eigen matrices to gp_Trsf for existing links, tools and axes. Installation records each created part ID before its OCCT display call. Failed insertion/HOME application cleans only that installation, retaining IDs whose removal fails and returning stage/exception/cleanup errors. Ordinary updates/restoration never remove or recreate links. |
+| `OccRobotAdapter` | Converts supplied Eigen matrices to gp_Trsf for existing links, tools and axes. One installation creates the seven links and then the measuring and spindle tools (`m_partIds`: links in model order, then tools), records each part ID before its OCCT display call, applies HOME and shows only the active tool. Failed insertion/HOME application cleans every part of that installation, retaining IDs whose removal fails and returning stage/exception/cleanup errors. `setActiveTool` only toggles tool visibility. Ordinary updates/restoration never remove or recreate parts. |
 | `OccSceneAdapter` | Turns supplied analytic patches/curves, polylines and diagnostic/axis drawing values into OCCT parts. It creates a candidate presentation before replacing accepted part mappings, returns errors and reports cleanup failures. Visibility/diagnostics/selection use stable application IDs; picking returns the same ID. |
-| `CadLoadWorker` / `CachedShapeLoader` / `StepImporter` | `CadLoadWorker` is the `QThread` subclass; a function-local static mutex serializes parsing/cache access. The cache is `<appDir>/resources/cad/kr10/<completeBaseName>.brep`; a readable, valid BREP takes priority without opening or hashing the STEP. Missing, unreadable or invalid BREPs fall back to STEP import and atomic `QSaveFile` storage (`cachedshapeloader.cpp:24-82`). |
-| `RobotDefinition` / `RobotController` / `RobotPose` (application target) | Private application/robot/robotdefinition.* and robotcontroller.* implement application ownership. Definition parses the same JSON into numerical data and neutral filename/RGB records. Controller owns the stable solver/model, a temporary checked initial HOME candidate and one optional accepted pose. Pose stores angles/configuration, flange coordinates and a shared immutable matrix list. App.RobotController exposes loading, manual FK/flange IK/TCP IK and pose properties; command results contain accepted, values and error. |
-| `ViewportAssets` (private Application assetpaths.*) | Selects model/CAD/cache/OCCT resource paths beside the executable. Main supplies the cache/resource directories to OccController, whose private initializeOcct sets CSF_* variables and initializes the font manager. |
+| `CadLoadWorker` | `QThread` subclass; a function-local static mutex serializes parsing. It reads each absolute `.brep` path through `QFile` bytes into `BRepTools::Read` and returns ordered shapes or `Cannot read CAD file: <path>`. There is no STEP import or cache writing. |
+| `RobotDefinition` / `RobotController` (application target) | Private application/robot/robotdefinition.* and robotcontroller.* implement application ownership. `RobotDefinition::kr10()` builds the fixed numerical model and link filename/RGB records from a constant table. Controller owns that model (const), the solver, a temporary checked initial HOME candidate and one optional accepted pose (link transforms). It is not a QML type; its public operations are `loadRobot()` and `applyPlayback(joints, flangeToTcp)`, both returning `ViewportOperationResult`. |
+| `ViewportAssets` (private Application assetpaths.*) | Selects the CAD and OCCT resource directories beside the executable. Main supplies the OCCT resource directory to OccController, whose private initializeOcct sets CSF_* variables and initializes the font manager. |
 
 OccScene stores live OccPart values by non-reused PartId, with a separate optional counter that
 preserves zero and detects exhaustion without resetting after removal. Selection records cover curves
@@ -311,14 +290,13 @@ separate OccWorldAxes objects; parts have no individual trihedron state.
 
 SceneModel sends explicit object drawing changes; main connects SceneMachining's draftAxisChanged
 value to OccController. The renderer never observes either application owner.
-Application RobotController observes end-effector/tool/source changes and sends explicit drawing
-values/CAD requests, composing tool-axis matrices in Application. SceneMachining calls its playback operation directly with angles and the motion's saved tool matrix. It calculates one pose and commits
+Application RobotController observes active-tool, TCP/collet and axis-visibility changes and sends
+explicit drawing values, composing tool-axis matrices in Application. SceneMachining calls its playback operation directly with angles and the motion's saved tool matrix. It calculates one pose and commits
 only after returned drawing acceptance. Readiness accepts pending HOME and publishes the numerical
 model once; later restoration changes availability without resetting model/revision. main requests
-the robot load once after console wiring; QML tool Retry still uses App.RobotController. Window,
-drawing flags and CAD status remain in Viewport3D. Pose failures return
-through OccController's console path; manual commands do not report the same drawing failure again,
-and numerical playback errors pass through the robot console path before SceneMachining handles the returned failure. SceneMachining keeps a guarded RobotController pointer attached in main after construction, and a local immutable motion handle protects saved inputs through synchronous callbacks.
+the robot load once after console wiring. Window, drawing flags and CAD status remain in Viewport3D.
+Pose failures return through OccController's console path, and numerical playback errors pass
+through the robot console path before SceneMachining handles the returned failure. SceneMachining keeps a guarded RobotController pointer attached in main after construction, and a local immutable motion handle protects saved inputs through synchronous callbacks.
 
 ### 3.6 QML UI (`src/application/qml/`, reusable modules under `qml/Modules/`)
 
@@ -329,7 +307,7 @@ and numerical playback errors pass through the robot console path before SceneMa
     - Right: `PropertiesPanel`, `EndEffectorPanel` ×2 and `MachiningPanel`, switched by `visible`.
   - Tool windows hold the device panels: PLC `DeltaPanel`, FTS `FtsPanel`, Settings/`Network`.
   - A modal calculation window is bound to `App.Machining.calculating`.
-- **Application decisions in C++.** WorkspaceController in `src/application/workspacecontroller.*` owns mode (Measuring/Machining), submode (Rough/Precise) and selected IDs. It reuses SceneModel removal/intersection, SceneMachining input/Stop and RobotController's active-tool command. main constructs this application QML singleton after its three collaborators and connects viewport picks/Delete and selection drawing through typed signals. Main exposes read-only bindings; its creation calls reset to Measuring/Rough/empty selection. Leaving Machining stops at HOME before the tool/input changes. The UI-only dryScanActive/dryScanRunning flags remain in Main.
+- **Application decisions in C++.** WorkspaceController in `src/application/workspacecontroller.*` owns mode (Measuring/Machining), submode (Rough/Precise) and selected IDs. It reuses SceneModel removal/intersection, SceneMachining input/Stop and SceneEndEffectors' active-tool setter. main constructs this application QML singleton after its three collaborators (document, machining session, end effectors) and connects viewport picks/Delete and selection drawing through typed signals. Main exposes read-only bindings; its creation calls reset to Measuring/Rough/empty selection. Leaving Machining stops at HOME before the tool/input changes. The UI-only dryScanActive/dryScanRunning flags remain in Main.
 - **Local UI state.** `chamferEditorOpen` and `toolSetupOpen` choose the right panel. `MachiningPanel` owns draft text, `draftFlipAxis` and captured original settings; `EndEffectorPanel` owns pose draft strings. Focus and `ScenePanel` group expansion are UI state, separate from document/robot state (`MachiningPanel.qml:17-19,42-84`, `EndEffectorPanel.qml:27-69`, `ScenePanel.qml:25-29,138`).
 - **Retained RSI UI.** `KukaPanel.qml` is listed in CMake but never instantiated; its invokable commands belong to the separate RSI workflow.
 - **Device panels.** They use `App.Hub.device(key)`, `isConnected`, `data.<key>` and `invoke(name, map)`. Every `invoke` name used in QML exists as a `Q_INVOKABLE` on the target device; `generateTrajectory`'s only caller, `KukaPanel.qml`, is never instantiated.
@@ -339,9 +317,10 @@ and numerical playback errors pass through the robot console path before SceneMa
 - **Resources.**
   - `pics.qrc`: SVG icons.
   - `fonts.qrc`: Roboto.
-  - `json.qrc`: `kr10.json`, `db.json`.
+  - `json.qrc`: `db.json`.
   - `resources/files` retains its blade/RSI inputs; they are not embedded in a qrc.
-  - `cmake/DeployOcct.cmake` copies available STEP/BREP files beside the executable. The fixed KR10/tool inputs currently contain nine BREPs, with no authoring or STEP sources.
+  - `cmake/DeployOcct.cmake` copies the nine `*.brep` files (seven KR10 links, `MEE`, `SEE`) beside the executable; there are no STEP sources.
+- **Properties panel.** `PropertiesPanel.qml` renders `selectedObject.properties` with one `Repeater` of `PropertyValue` rows; the label column width comes from a fixed label list, so it does not change with the selection.
 
 ## 4. Threading and ownership model
 
@@ -353,13 +332,13 @@ and numerical playback errors pass through the robot console path before SceneMa
 | Generate worker (`std::async`) | `ChamferMotion::create` on a copied `ChamferPath` + `ChamferRobotSetup`; polled by a 30 ms GUI timer | `SceneMachining::generate` |
 | RSI preparation worker (`std::async`) | `prepareChamferSharedData` on a copied source + limit configuration; polled by a 30 ms timer | `SceneMachiningPreparation::prepare` |
 | FTS save worker (`std::async`) | JSON write of a copied sample buffer | `FtsDevice` |
-| CAD workers (`QThread` subclass) | STEP/BREP loading, serialized by a static mutex | `OccController` |
+| CAD worker (`QThread` subclass) | BREP loading of the seven links and two tools, serialized by a static mutex | `OccController` |
 
 Ownership and lifetime rules:
 
-- **Stack objects in `main()`.** The application singletons are stack objects without a QObject parent. The QML engine is declared last, so it is destroyed first. QML gets these objects through `s_inst` with `CppOwnership`.
+- **Stack objects in `main()`.** The application singletons are stack objects without a QObject parent. The QML engine is declared last, so it is destroyed first. QML gets these objects through the wrappers' `s_inst` (or `WorkspaceController::s_instance`) and `claimQmlSingleton`, which sets `CppOwnership`.
 - **Devices.** Each device is created parentless, then moved to its I/O thread. It is deleted on that thread by `deleteLater` when the thread finishes. Runners are children of the hub.
-- **Scene objects.** Each `SceneObject` is a child of `SceneModel`, and each geometry view is a child of its object. Removal emits `objectRemoved`, then calls `deleteLater`.
+- **Scene objects.** Each `SceneObject` is a child of `SceneModel`; fitted geometry is held by value, and a machining path's `SceneMachiningPath` is a child of its object. Removal emits `objectRemoved`, then calls `deleteLater`.
 - **Immutable shared data.** These are shared across threads as `shared_ptr<const ...>`:
   - `ChamferMotion` (scene path, playback, RSI job);
   - `PreparedChamferJob` (GUI thread to ControlIO);
@@ -367,8 +346,8 @@ Ownership and lifetime rules:
 - **Worker result acceptance.** Results are accepted only on the GUI thread, and stale ones are rejected:
   - Generate compares the input id, the calibration revision, robot availability and the source;
   - preparation compares a generation counter, the source, the motion pointer and the revision;
-  - CAD loading compares per-slot generation counters.
-- **Thread affinity checks.** `Q_ASSERT` checks thread affinity in `AbstractDevice::start/stop/invoke`, `DeviceRunner::invoke`, `RsiDevice::setPreparedJob`, `OccController::loadRobot`, application RobotController commands and `SceneMachiningPreparation`.
+  - CAD loading compares a generation counter.
+- **Thread affinity checks.** `Q_ASSERT` checks thread affinity in `AbstractDevice::start/stop/invoke`, `DeviceRunner::invoke`, `RsiDevice::setPreparedJob`, `OccController::loadRobot`, `RobotController::loadRobot/applyPlayback` and `SceneMachiningPreparation`; `claimQmlSingleton` `qFatal`s on a wrong-thread QML engine.
 
 ## 5. Traced workflows
 
@@ -376,37 +355,34 @@ Ownership and lifetime rules:
 
 **Probe point JSON into `SceneModel`.** This is the only path that adds imported geometry to the scene. There is no STEP import into `SceneModel`.
 
-1. `ModeToolBar` emits a plane, circle or cylinder import request. `Main.qml:475-477` opens a `FileDialog` filtered to `*.json` (`:158-180`).
-2. `onAccepted` calls `surfaceImporter.load`, `loadCircle` or `loadCylinder(url, App.Scene)` (`Main.qml:163,171,179`).
-3. `SceneSurfaceImporter::importSurface` (`scenesurfaceimporter.cpp:89`) runs synchronously:
-   - `readSamples` reads/parses JSON; for plane/cylinder it calls `decodeProbeSamples` to validate coordinates and probe metadata, without compensating them;
-   - `BoundedPlane::fromSamples` or `BoundedCylinder::fromSamples` fits the coordinates and applies probe compensation once; circle import instead reads raw coordinates and calls `Circle::fromPoints`;
-   - then `SceneModel::addBoundedPlane`, `addBoundedCylinder` or `addCircle` (`:105-114`).
+1. `ModeToolBar` emits a plane or cylinder import request. `Main.qml` opens the matching `FileDialog` filtered to `*.json`.
+2. `onAccepted` calls `surfaceImporter.load` or `loadCylinder(url, App.Scene)`.
+3. `SceneSurfaceImporter::importSurface` runs synchronously:
+   - `readSamples` reads/parses JSON and calls `decodeProbeSamples` to validate coordinates and probe metadata, without compensating them;
+   - `BoundedPlane::fromSamples` or `BoundedCylinder::fromSamples` fits the coordinates and applies probe compensation once;
+   - then `SceneModel::addBoundedPlane` or `addBoundedCylinder` stores the value in the new `SceneObject`.
 4. `SceneModel::appendObject` obtains SceneObject::drawing() and asks OccController to install/cache that value. OccSceneAdapter constructs the trimmed OCCT face/edge and returns acceptance/error. Only accepted insertion publishes objectAdded/objectsChanged; failure deletes the unpublished candidate and the importer reports failure.
 5. The importer emits `loaded(object)`; Main requests `WorkspaceController::selectObject(objectId, false)` to select the inserted object.
 6. Optional: "Intersect Selected" calls `SceneModel::intersect`, which uses `intersectSurfaces` to add an Edge object. That Edge is the Generate input.
 
-**STEP CAD for robot and end effectors.** This goes to the viewport only.
+**BREP CAD for robot and end effectors.** This goes to the viewport only.
 
 1. main.cpp calls RobotController.loadRobot once after connecting viewport/robot console messages.
    Recreating RobotViewport does not submit another loading request.
-2. RobotController parses the definition, runs the existing HOME FK/model comparison once and
-   retains its successful initial candidate while supplying absolute CAD sources, RGB and matrices.
-3. OccController starts the serialized CAD worker, rejects stale results and installs shapes with
-   those matrices. On graphics readiness, RobotController accepts HOME, supplies the model to
-   SceneMachining once and enables robot commands. Later surface/window restoration replays
-   renderer drawing values without FK or replacement of the application model. Repeated attach/load
-   notifications keep existing links. Failed insertion or initial HOME application reports its stage,
-   removes only that attempted installation and leaves HOME/model unpublished. Failed cleanup keeps
-   unresolved part IDs, reports the error and does not retry automatically.
-4. End effectors:
-   - `main.cpp:101-102` sets logical source names `MEE.stp` and `SEE.stp`; both panels offer Browse and Retry (`Main.qml:212-228,551-555,578-582`). Choosing the same source requests a reload; another source updates its setting. A valid basename-matching BREP still takes priority (§7).
-   - That calls `SceneEndEffectors::set*CadSource`, which emits `*CadSourceChanged`.
-   - `RobotController::reloadEndEffector` supplies the selected source to OccController, which runs a `CadLoadWorker` for one file; `finishEndEffectorLoad` then calls `synchronizeEndEffectors` → `OccRobotAdapter`.
-
-The seven robot filenames in kr10.json and both default tool names retain their .stp suffix: the
-loader validates STEP/STP names before trying the matching BREP basename. The default STEP files
-are absent; a missing/unreadable/invalid default BREP therefore cannot regenerate from its source.
+2. RobotController uses its constant `RobotDefinition::kr10()` model, runs the existing HOME
+   FK/model comparison once and retains its successful initial candidate while supplying absolute
+   paths of the seven link BREPs plus `MEE.brep` and `SEE.brep`, the link RGB and matrices.
+3. OccController starts the serialized CAD worker for those nine files, rejects stale results and
+   installs links and tools in one installation with those matrices, showing only the active tool.
+   On graphics readiness, RobotController accepts HOME and supplies the model to SceneMachining once.
+   Later surface/window restoration replays renderer drawing values without FK or replacement of
+   the application model. Repeated attach/load notifications keep existing parts. Failed insertion
+   or initial HOME application reports its stage, removes every part of that installation and
+   leaves HOME/model unpublished; a missing tool BREP therefore fails the robot load. Failed cleanup
+   keeps unresolved part IDs, reports the error and does not retry automatically.
+4. Switching Measuring/Machining calls `SceneEndEffectors::setActiveTool`; RobotController forwards
+   the tool to OccController, which only toggles which tool part is visible. Tool CAD files cannot
+   be changed from the UI.
 
 ### 5.2 Generate → Dry Run
 
@@ -419,8 +395,8 @@ are absent; a missing/unreadable/invalid default BREP therefore cannot regenerat
    - copies `Kr10KinematicModel`, `flangeToTcp` and the timing into `ChamferRobotSetup`;
    - records the input id and revision;
    - starts `std::async(ChamferMotion::create, path, robot)` and a 30 ms poll timer.
-3. `finishCalculation` (`:194-236`), once the future is ready:
-   - logs the diagnostics;
+3. `finishCalculation`, once the future is ready:
+   - logs one line: point count and movement seconds, or the error;
    - rejects the result if the input, revision, robot availability or source changed;
    - otherwise calls `SceneModel::addMachiningPath` with `make_shared<const ChamferMotion>`;
    - when regenerating a saved path, copies its name and visibility, then removes the old object;
@@ -444,7 +420,7 @@ are absent; a missing/unreadable/invalid default BREP therefore cannot regenerat
 4. `pause()` stops the timer. Calling `dryRun()` again resumes from `m_elapsed`.
 5. `stop()` presents time zero while the robot preview is available, then ends playback (`SceneMachining::stop`). Time zero returns the saved `qHome` (`ChamferMotion::evaluateJoints`), so Stop returns immediately to HOME without an animated return.
 6. Playback also ends when t reaches the duration (the last point is `qHome`), and on any of: `aboutToQuit`, robot unavailable, calibration change (`spindleTcpChanged` or `setRobotModel` increments the revision and invalidates saved paths), removal of the active path. Leaving Machining mode calls `SceneMachining::stop()` from WorkspaceController before changing tool/input, so the robot jumps to HOME.
-7. While playback is active, `RobotController::solve` refuses manual FK/IK, and `generate()` is unavailable.
+7. While playback is active, `generate()` is unavailable. There are no manual robot pose commands.
 
 ### 5.3 Device request from QML and state back
 
@@ -476,7 +452,7 @@ Startup:
    - `stopAll()` asserts that the caller is outside both I/O threads (`devicehub.cpp:65-66`): a blocking queued stop from its receiving thread would deadlock. The current shutdown caller is the GUI thread; sharing ControlIO does not by itself establish a race or deadlock.
 3. **`app.exec()` returns.** Stack objects are destroyed in reverse declaration order:
    1. `QQmlApplicationEngine`. QML is destroyed; `RobotViewport` `onDestruction` calls `detachViewWindow`.
-   2. RobotController marks machining unavailable; OccController then interrupts and **waits** for the CAD workers (a STEP parse cannot be interrupted mid-file), then deletes the window.
+   2. RobotController marks machining unavailable; OccController then interrupts and **waits** for the CAD worker (a BREP read cannot be interrupted mid-file), then deletes the window.
    3. `SceneMachiningPreparation`. Its destructor calls `shutdown()` again, which is a no-op.
    4. `SceneMachining`. There is no explicit wait, but destroying a `std::future` returned by `std::async` blocks until an in-flight `ChamferMotion::create` finishes.
    5. `SceneEndEffectors`, then `SceneModel`.
@@ -501,7 +477,7 @@ Startup:
   - `cmake/DeployOcct.cmake` stages the TK DLLs and their dependencies, the OCCT resources and `resources/cad/kr10` at POST_BUILD and install time.
   - External-library calls retain exception handling: OCCT Standard_Failure, worker std::exception and scene cleanup/rethrow. AGENTS.md permits these external exceptions and requires expected failures through returned values; project exception types/new throws are prohibited.
   - Scene drawing insertion catches OCCT failures, cleans candidate part IDs and returns the original error plus any cleanup errors; previously accepted mappings/cache are retained when candidate construction fails.
-  - `ready` requires the robot CAD to be presented, so Generate depends on OCCT initialization and on the STEP/BREP load. While the native surface is destroyed and not yet rebuilt (on exit or during Felgo hot reload), availability is false; a Generate result arriving then is rejected. The user confirmed this behaviour stays.
+  - `ready` requires the robot CAD to be presented, so Generate depends on OCCT initialization and on the BREP load of all seven links and both tools. While the native surface is destroyed and not yet rebuilt (on exit or during Felgo hot reload), availability is false; a Generate result arriving then is rejected. The user confirmed this behaviour stays.
 - **Eigen 5.0.0.** Header-only, vendored in `libs/`, exported PUBLIC by `RoboCrapGeometry` because `mathtypes.h`, `Pose`, the kinematics and the path types expose Eigen in their headers.
 - **Felgo.** Only in hot-reload builds (`FelgoApplication`, `FelgoHotReload` in `main.cpp`).
 - **Standard library concurrency.** `std::async` / `std::future` is used for the Generate, RSI preparation and FTS save workers. `QtConcurrent` is not used.
@@ -530,19 +506,19 @@ Source-level facts, unresolved decisions and runtime/hardware checks not perform
 **Runtime behaviour not exercised**
 - Whether `QQmlPropertyMap::insert(QVariantHash)` notifies bindings for every key in practice. Assumed from Qt documentation; not run.
 - ControlIO latency. The 4 ms RSI reply loop shares an event loop with FTS datagram handling (timestamps assume 7000 Hz; actual arrival rate is unmeasured), the `setForce` direct calls, the dormant synchronous demo `generateTrajectory` and `FtsDevice::stopDevice` waiting for a save. Latency is unmeasured; the shared thread alone does not prove a race or deadlock.
-- Shutdown can block on an in-flight Generate (future destructor), an RSI preparation or a STEP parse. Durations not measured.
+- Shutdown can block on an in-flight Generate (future destructor), an RSI preparation or a BREP read. Durations not measured.
 - Felgo hot reload with the `qFatal` "one engine" singleton checks. Not run.
 - Differential selection and live PartId storage are implemented in OccScene. Outline reuse, picking, hide/show/replacement, partial OCCT failures and drawing replay have not been observed in a rebuilt runtime; source inspection establishes the intended operations only.
 
 **Data and units**
 - Imported files contain no unit tag that the importer validates or converts; point coordinates and probe radius must already use scene units (millimeters).
 - `SceneEndEffectors` uses a hard-coded collet frame `FLANGE_ER` with a roll explicitly marked provisional (`sceneendeffectors.cpp:11-20`). Source inspection does not establish physical calibration.
-- The BREP cache is keyed only by `completeBaseName`, not directory, content hash or OCCT version. A user-chosen `X/MEE.stp` reuses a valid `kr10/MEE.brep`; STEP/content/version changes require removing that BREP to regenerate it (`cachedshapeloader.cpp:36-62`). `applicationDirPath()` may be read-only when installed.
-- Both end-effector panels currently allow Browse/Retry (§5.1). The review records a future fixed-configuration intent; whether to remove this existing user choice is unresolved, and that intent is not current behavior.
-- `IkSolution::status` now selects the next animation/manual IK branch. `turn` remains angle-sign metadata; nearest winding uses the preceding six angles. Exact compatibility of the project's bit mapping with installed KUKA controller semantics remains unverified.
+- The nine BREPs in `resources/cad/kr10` are the only CAD inputs; there are no STEP sources to regenerate them from, and a missing or unreadable file fails the robot load. Their compatibility with the linked OCCT version is not checked beyond `BRepTools::Read` succeeding.
+- End-effector CAD models are fixed (user decision, 2026-10-17); there is no Browse/Retry.
+- `IkSolution::status` now selects the next animation IK branch. `turn` remains angle-sign metadata; nearest winding uses the preceding six angles. Exact compatibility of the project's bit mapping with installed KUKA controller semantics remains unverified.
 
 **Retained interfaces and code hygiene**
-- `SceneModel` is QML-creatable. The Scene and Hub singleton checks are `Q_ASSERT` only.
+- `SceneModel` is QML-creatable (registered under both `SceneModel` and the singleton `Scene`; one C++ class under two QML names is not a documented Qt pattern, though the build has used it). All application singletons share the `qFatal` check in `claimQmlSingleton`.
 - `QmlChartBridge` is retained as compiled Application code with its existing API. Absence of an active instance does not authorize removing it.
 - Dormant callable/separate-workflow code: `KukaPanel.qml` is listed but not instantiated, yet contains the `generateTrajectory` invoke. The demo remains callable; `RsiHoleProtocol` is compiled with no active caller, and its controller schema is separately unresolved. Neither is equivalent to an empty file.
 - `ChamferSamplingParameters` remains used by the RSI Cartesian sampler (`chamfercartesiansampler.cpp:396`); `ChamferPathSample`/`ChamferPathResult` serve analytical evaluation/construction. `FtsDevice::dataBatchReady` and `streamReset` have no active connections; recording lifecycle calls and console diagnostics remain live.

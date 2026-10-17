@@ -1,9 +1,7 @@
 #include "chamfercentralvalidation.h"
 
-#include "chamferpreparationdiagnostics.h"
 #include "geometry/utils.h"
 
-#include <QJsonArray>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -166,9 +164,9 @@ PreviewSchedule makePreviewSchedule(const ChamferPath& path, const ChamferCentra
       const int intervals = static_cast<int>(count);
       if (!(duration / intervals > 1e-9))
         return {{}, 0, QStringLiteral("Preview geometric interval is below time resolution.")};
-      schedule.spans.append({stops[part - 1], stops[part], bound, intervals,
+      schedule.spans.append({stops[part - 1], stops[part], intervals,
           index == 0 ? QStringLiteral("leadIn") : index == 1 ? QStringLiteral("machining")
-                                                           : QStringLiteral("leadOut"), (*curvature)[index]});
+                                                           : QStringLiteral("leadOut")});
       schedule.points += intervals;
     }
   }
@@ -243,35 +241,11 @@ public:
 
   ChamferCentralValidationResult run(const Kr10Kinematics::IkSolution& seed)
   {
-    const qint64 sharedBefore = m_preparation.computationNanoseconds();
-    QElapsedTimer timer;
-    timer.start();
-    auto result = runImpl(seed);
-    const qint64 elapsed = timer.nsecsElapsed()
-        - (m_preparation.computationNanoseconds() - sharedBefore);
-    result.diagnostics = m_solver.diagnostics();
-    result.diagnostics.insert("samplingAndValidationMs", std::max(qint64{0}, elapsed) / 1e6);
-    result.diagnostics.insert("retainedSamples", result.data ? result.data->samples.size() : m_samples.size());
-    result.diagnostics.insert("interpolationChecks", 0);
-    result.diagnostics.insert("plannedSamples", m_preparation.plannedSamples());
-    result.diagnostics.insert("samplingCriterion", "cartesian-curvature-time-bound");
-    result.diagnostics.insert("segments", m_segments);
-    return result;
-  }
-
-private:
-  ChamferCentralValidationResult runImpl(const Kr10Kinematics::IkSolution& seed)
-  {
     m_samples.reserve(m_preparation.plannedSamples());
-    const ChamferProfileScope initialScope(m_solver.diagnostics(), m_preparation.computationNanoseconds());
     const auto first = sample(0.0, seed);
-    m_segments.insert("initialCentralPose", initialScope.finish(m_solver.diagnostics(),
-        m_preparation.computationNanoseconds()));
     if (!first.sample) return {{}, atTime(first.error, 0.0)};
     m_samples.append(*first.sample);
     for (const auto& span : m_preparation.spans()) {
-      const ChamferProfileScope phaseScope(m_solver.diagnostics(), m_preparation.computationNanoseconds());
-      const auto beforePoints = m_samples.size();
       QString error;
       double time = span.start;
       for (int index = 1; index <= span.intervals; ++index) {
@@ -280,35 +254,15 @@ private:
         error = appendPoint(time);
         if (!error.isEmpty()) break;
       }
-      auto measured = phaseScope.finish(m_solver.diagnostics(), m_preparation.computationNanoseconds());
-      measured.insert("addedPoints", m_samples.size() - beforePoints);
-      measured.insert("plannedIntervals", span.intervals);
-      measured.insert("accelerationBound", span.accelerationBound);
-      measured.insert("complete", error.isEmpty());
-      if (!error.isEmpty()) measured.insert("error", atTime(error, time));
-      recordSegment(span.phase, measured);
       if (!error.isEmpty())
         return {{}, span.phase + QStringLiteral(": ") + atTime(error, time)};
     }
-    const ChamferProfileScope ratesScope(m_solver.diagnostics());
     const QString error = inspectRates();
-    m_segments.insert("wholeCentralRateChecks", ratesScope.finish(m_solver.diagnostics()));
     if (!error.isEmpty()) return {{}, error};
     return {ChamferCentralValidationData{std::move(m_samples)}, {}};
   }
 
 private:
-  void recordSegment(const QString& phase, QJsonObject measured)
-  {
-    const auto previous = m_segments.value(phase).toObject();
-    for (const auto& key : {"computationMs", "ikCalls", "explicitFkCalls", "ikMs", "explicitFkMs",
-                            "addedPoints", "plannedIntervals"})
-      measured.insert(key, measured.value(key).toDouble() + previous.value(key).toDouble());
-    measured.insert("accelerationBound", std::max(measured.value("accelerationBound").toDouble(),
-        previous.value("accelerationBound").toDouble()));
-    m_segments.insert(phase, measured);
-  }
-
   QString atTime(const QString& error, double time) const
   {
     return QStringLiteral("%1 (central t=%2 s)").arg(error).arg(time, 0, 'g', 12);
@@ -409,10 +363,9 @@ private:
 
   const ChamferCentralPreparation& m_preparation;
   const ChamferRobotSetup& m_robot;
-  ChamferProfiledKinematics m_solver;
+  Kr10Kinematics m_solver;
   M4d m_tcpToFlange = M4d::Identity();
   QVector<ChamferCentralJointSample> m_samples;
-  QJsonObject m_segments;
 };
 
 } // namespace
@@ -425,40 +378,17 @@ QString ChamferCentralPreparation::prepare()
 {
   if (m_attempted) return m_error;
   m_attempted = true;
-  QElapsedTimer timer;
-  timer.start();
   auto motion = ChamferCentralMotion::create(m_path, m_timing);
-  m_diagnostics.insert("analyticalConstructionMs", timer.nsecsElapsed() / 1e6);
-  m_diagnostics.insert("arcLengthPhases", motion.diagnostics);
-  m_diagnostics.insert("arcMapAttempts", motion.diagnostics.size());
-  int completedMaps = 0;
-  for (const auto& phase : motion.diagnostics)
-    if (phase.toObject().contains("lengthMm")) ++completedMaps;
-  m_diagnostics.insert("arcMapsBuilt", completedMaps);
   m_error = motion.error;
   if (motion.motion) {
     m_motion = std::move(motion.motion);
-    QElapsedTimer scheduleTimer;
-    scheduleTimer.start();
     auto schedule = makePreviewSchedule(m_path, *m_motion);
-    QJsonObject scheduleDiagnostics{{"computationMs", scheduleTimer.nsecsElapsed() / 1e6},
-                                    {"error", schedule.error}};
-    QJsonArray spans;
-    for (const auto& span : schedule.spans)
-      spans.append(QJsonObject{{"phase", span.phase}, {"startSeconds", span.start},
-          {"endSeconds", span.end}, {"movementSeconds", span.end - span.start},
-          {"intervals", span.intervals}, {"curvatureBoundPerMm", span.curvatureBound},
-          {"accelerationBoundMmPerSecondSquared", span.accelerationBound}});
-    scheduleDiagnostics.insert("spans", spans);
-    m_diagnostics.insert("previewSchedule", scheduleDiagnostics);
-    m_diagnostics.insert("scheduleBuilds", 1);
     m_error = schedule.error;
     if (m_error.isEmpty()) {
       m_spans = std::move(schedule.spans);
       m_plannedSamples = schedule.points;
     }
   }
-  m_preparationNanoseconds = timer.nsecsElapsed();
   return m_error;
 }
 
@@ -469,49 +399,17 @@ ChamferCentralValidationResult ChamferCentralPreparation::validate(const Chamfer
   const QString error = positionError(initialSeed.q, robot.model);
   if (!error.isEmpty()) return {{}, QStringLiteral("Invalid initial IK seed: %1").arg(error)};
   const QString preparationError = prepare();
-  if (!preparationError.isEmpty())
-    return {{}, preparationError, {{"sharedPreparationFailed", true}, {"error", preparationError}}};
+  if (!preparationError.isEmpty()) return {{}, preparationError};
   return CentralValidator(*this, robot).run(initialSeed);
 }
 
 std::optional<ChamferCentralPose> ChamferCentralPreparation::evaluateTarget(qsizetype index,
                                                                          double seconds) const
 {
-  if (index >= 0 && index < m_targets.size()) {
-    ++m_targetCacheHits;
-    return m_targets[index];
-  }
+  if (index >= 0 && index < m_targets.size()) return m_targets[index];
   if (!m_motion || index != m_targets.size() || index >= m_plannedSamples)
     return std::nullopt;
-  QElapsedTimer timer;
-  timer.start();
   const auto target = m_motion->evaluate(seconds);
   m_targets.append(target); // A failed target remains at this exact scheduled index.
-  m_targetNanoseconds += timer.nsecsElapsed();
   return target;
-}
-
-QJsonObject ChamferCentralPreparation::diagnostics() const
-{
-  auto result = m_diagnostics;
-  result.insert("preparationAttempts", m_attempted ? 1 : 0);
-  result.insert("arcMapAttempts", m_diagnostics.value("arcMapAttempts").toInt());
-  result.insert("arcMapsBuilt", m_diagnostics.value("arcMapsBuilt").toInt());
-  result.insert("scheduleBuilds", m_diagnostics.value("scheduleBuilds").toInt());
-  result.insert("error", m_error);
-  result.insert("computationMs", computationNanoseconds() / 1e6);
-  result.insert("plannedSamples", m_plannedSamples);
-  result.insert("targetEvaluations", m_targets.size());
-  result.insert("targetCacheHits", m_targetCacheHits);
-  result.insert("targetComputationMs", m_targetNanoseconds / 1e6);
-  const bool failedTarget = !m_targets.isEmpty() && !m_targets.back();
-  result.insert("cachedTargets", m_targets.size() - (failedTarget ? 1 : 0));
-  if (failedTarget) {
-    result.insert("failedTargetIndex", m_targets.size() - 1); // Zero-based.
-    result.insert("targetEvaluationError", QStringLiteral("Cannot evaluate prescribed TCP target."));
-  }
-  const qint64 entryBytes = sizeof(std::optional<ChamferCentralPose>);
-  result.insert("targetCachePayloadBytes", m_targets.size() * entryBytes);
-  result.insert("targetCacheCapacityBytes", m_targets.capacity() * entryBytes);
-  return result;
 }

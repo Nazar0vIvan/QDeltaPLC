@@ -3,8 +3,6 @@ qt_add_library(RoboCrapGeometry STATIC
   boundedplane.cpp
   include/geometry/boundedcylinder.h
   boundedcylinder.cpp
-  include/geometry/circle.h
-  circle.cpp
   include/geometry/surfaceintersection.h
   surfaceintersection.cpp
   include/geometry/plane.h

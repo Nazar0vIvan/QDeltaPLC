@@ -2,7 +2,6 @@
 
 #include "trajectories/chamfermotion.h"
 
-#include <QElapsedTimer>
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -119,35 +118,17 @@ ChamferCentralMotionResult ChamferCentralMotion::create(const ChamferPath& path,
   if (!positiveFinite(timing.accelerationDistanceFraction)
       || timing.accelerationDistanceFraction > 1.0)
     return {{}, QStringLiteral("Acceleration/deceleration distance must be in (0, 100] percent.")};
-  QJsonObject diagnostics;
   std::array<std::optional<ChamferArcLength>, 3> lengths;
-  const std::array<QString, 3> names{QStringLiteral("leadIn"), QStringLiteral("machining"),
-                                     QStringLiteral("leadOut")};
   for (std::size_t index = 0; index < lengths.size(); ++index) {
-    QElapsedTimer timer;
-    timer.start();
     auto result = ChamferArcLength::create(path, static_cast<ChamferPhase>(index));
-    QJsonObject phase{{"computationMs", timer.nsecsElapsed() / 1e6}, {"error", result.error},
-                      {"actualDifferentialEvaluations", result.actualEvaluations},
-                      {"logicalDifferentialEvaluations", result.logicalEvaluations}};
-    if (result.arcLength) {
-      phase.insert("lengthMm", result.arcLength->length());
-      phase.insert("inverseKnots", result.arcLength->knotCount());
-    }
-    diagnostics.insert(names[index], phase);
-    if (!result.arcLength) return {{}, result.error, std::move(diagnostics)};
+    if (!result.arcLength) return {{}, result.error};
     lengths[index] = std::move(result.arcLength);
   }
   ChamferCentralMotion motion(path, {std::move(*lengths[0]), std::move(*lengths[1]),
                                      std::move(*lengths[2])}, timing);
   const QString error = motion.initializeTiming(timing.accelerationDistanceFraction);
-  if (!error.isEmpty()) return {{}, error, std::move(diagnostics)};
-  for (std::size_t index = 0; index < lengths.size(); ++index) {
-    auto phase = diagnostics.value(names[index]).toObject();
-    phase.insert("movementSeconds", motion.profile(static_cast<ChamferPhase>(index))->duration());
-    diagnostics.insert(names[index], phase);
-  }
-  return {std::move(motion), {}, std::move(diagnostics)};
+  if (!error.isEmpty()) return {{}, error};
+  return {std::move(motion), {}};
 }
 
 std::optional<ChamferCentralProfile> ChamferCentralMotion::profile(ChamferPhase phase) const

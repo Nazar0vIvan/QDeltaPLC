@@ -7,6 +7,8 @@ namespace RoboCrap3D {
 
 namespace {
 
+constexpr qsizetype ToolCount = 2; // RobotTool::Measuring and RobotTool::Spindle.
+
 gp_Trsf toOccTransform(const M4d& transform)
 {
   gp_Trsf result;
@@ -22,22 +24,28 @@ gp_Trsf toOccTransform(const M4d& transform)
 ViewportOperationResult OccRobotAdapter::load(const RobotVisualModel& visuals, const CadLoadResult& shapes, const DrawingPose& pose)
 {
   if (m_loaded) return {true, {}};
-  if (!m_scene.isValid() || visuals.links.isEmpty() || !m_linkIds.isEmpty()
-      || shapes.shapes.size() != visuals.links.size())
+  const qsizetype linkCount = visuals.links.size();
+  if (!m_scene.isValid() || visuals.links.isEmpty() || !m_partIds.isEmpty()
+      || visuals.tools.size() != ToolCount || shapes.shapes.size() != linkCount + ToolCount)
     return {false, QStringLiteral("Robot installation: invalid graphics or unfinished installation.")};
 
   QString operation;
   QString error;
   try {
-    for (qsizetype i = 0; i < visuals.links.size(); ++i) {
-      operation = QStringLiteral("Robot link %1 creation").arg(i + 1);
-      const auto& color = visuals.links[i].color;
+    for (qsizetype i = 0; i < shapes.shapes.size(); ++i) {
+      const bool link = i < linkCount;
+      operation = link ? QStringLiteral("Robot link %1 creation").arg(i + 1)
+                       : QStringLiteral("Robot tool %1 creation").arg(i - linkCount + 1);
       OccPartProps props;
-      props.color = rgb(color[0], color[1], color[2]);
+      if (link) {
+        const auto& color = visuals.links[i].color;
+        props.color = rgb(color[0], color[1], color[2]);
+      }
       const auto id = m_scene.createShapePart(shapes.shapes[i], props);
       if (!id) { error = operation + QStringLiteral(" failed."); break; }
-      m_linkIds.append(*id);
-      if (!m_scene.setPartVisible(*id, true)) {
+      m_partIds.append(*id);
+      // Tools stay hidden until the HOME transforms place them on the flange.
+      if (link && !m_scene.setPartVisible(*id, true)) {
         error = operation + QStringLiteral(" display failed.");
         break;
       }
@@ -48,14 +56,8 @@ ViewportOperationResult OccRobotAdapter::load(const RobotVisualModel& visuals, c
       m_loaded = true;
       const auto applied = applyTransforms(pose);
       if (!applied.accepted) error = operation + QStringLiteral(": ") + applied.error;
-      if (error.isEmpty()) {
-        operation = QStringLiteral("Robot initial tool display");
-        for (std::size_t i = 0; i < m_tools.size(); ++i)
-          if (m_tools[i].id && !m_scene.setPartVisible(*m_tools[i].id, i == static_cast<std::size_t>(m_activeTool))) {
-            error = operation + QStringLiteral(" failed.");
-            break;
-          }
-      }
+      operation = QStringLiteral("Robot initial tool display");
+      if (error.isEmpty() && !showActiveTool()) error = operation + QStringLiteral(" failed.");
     }
   } catch (const Standard_Failure& failure) {
     error = operation + QStringLiteral(": ") + QString::fromUtf8(failure.what());
@@ -72,16 +74,13 @@ QString OccRobotAdapter::clear()
   QStringList errors;
   try {
     synchronizeSpindleFrames();
-    for (const ToolPart& tool : m_tools)
-      if (tool.id && !m_scene.setPartVisible(*tool.id, false))
-        errors.append(QStringLiteral("cannot hide tool"));
   } catch (const Standard_Failure& failure) {
-    errors.append(QStringLiteral("tool/axes: ") + QString::fromUtf8(failure.what()));
+    errors.append(QStringLiteral("axes: ") + QString::fromUtf8(failure.what()));
   }
-  for (qsizetype i = m_linkIds.size(); i > 0; --i) {
-    const auto id = m_linkIds[i - 1];
+  for (qsizetype i = m_partIds.size(); i > 0; --i) {
+    const auto id = m_partIds[i - 1];
     try {
-      if (m_scene.removePart(id)) m_linkIds.removeAt(i - 1);
+      if (m_scene.removePart(id)) m_partIds.removeAt(i - 1);
       else errors.append(QStringLiteral("cannot remove part %1").arg(id));
     } catch (const Standard_Failure& failure) {
       errors.append(QStringLiteral("part %1: %2").arg(id).arg(QString::fromUtf8(failure.what())));
@@ -92,26 +91,26 @@ QString OccRobotAdapter::clear()
 
 ViewportOperationResult OccRobotAdapter::applyTransforms(const DrawingPose& pose)
 {
-  if (m_linkIds.isEmpty() || m_linkIds.size() != pose.links.size())
+  const qsizetype linkCount = pose.links.size();
+  if (linkCount == 0 || m_partIds.size() != linkCount + ToolCount)
     return {false, QStringLiteral("Robot transform count does not match installed links.")};
   QString operation = QStringLiteral("link transform");
   qsizetype link = 0;
   try {
-    for (; link < m_linkIds.size(); ++link) {
-      if (!m_scene.setPartTransform(m_linkIds[link], toOccTransform(pose.links[link])))
+    for (; link < linkCount; ++link) {
+      if (!m_scene.setPartTransform(m_partIds[link], toOccTransform(pose.links[link])))
         return {false, QStringLiteral("link %1 transform rejected").arg(link + 1)};
     }
     operation = QStringLiteral("tool transform");
-    for (const ToolPart& tool : m_tools)
-      if (tool.id && !m_scene.setPartTransform(*tool.id, toOccTransform(pose.tool)))
+    for (qsizetype i = linkCount; i < m_partIds.size(); ++i)
+      if (!m_scene.setPartTransform(m_partIds[i], toOccTransform(pose.tool)))
         return {false, operation + QStringLiteral(" rejected")};
-    m_toolFrame = pose.tool;
     m_spindleTcpFrame = pose.tcp;
     m_spindleColletFrame = pose.collet;
     operation = QStringLiteral("tool axes");
     synchronizeSpindleFrames();
   } catch (const Standard_Failure& failure) {
-    if (link < m_linkIds.size()) operation += QStringLiteral(" %1").arg(link + 1);
+    if (link < linkCount) operation += QStringLiteral(" %1").arg(link + 1);
     return {false, operation + QStringLiteral(": ") + QString::fromUtf8(failure.what())};
   }
   return {true, {}};
@@ -132,35 +131,21 @@ void OccRobotAdapter::synchronizeSpindleFrames()
       ? std::optional<gp_Trsf>{toOccTransform(*m_spindleColletFrame)} : std::nullopt);
 }
 
-bool OccRobotAdapter::setEndEffectors(
-    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, RobotTool active)
+bool OccRobotAdapter::setActiveTool(RobotTool active)
 {
   if (active != RobotTool::Measuring && active != RobotTool::Spindle) return false;
-  bool success = true;
-  for (std::size_t i = 0; i < m_tools.size(); ++i) {
-    ToolPart& tool = m_tools[i];
-    if (tool.shapes == shapes[i]) continue;
-    if (!shapes[i]) {
-      if (tool.id) (void)m_scene.removePart(*tool.id);
-      tool = ToolPart{};
-      continue;
-    }
-    if (shapes[i]->shapes.size() != 1) { success = false; continue; }
-    OccPartProps props;
-    props.transform = toOccTransform(m_toolFrame);
-    const auto replacement = m_scene.addShapePartWithId(shapes[i]->shapes.front(), props);
-    if (!replacement) { success = false; continue; }
-    if (tool.id) (void)m_scene.removePart(*tool.id);
-    tool.id = replacement;
-    tool.shapes = shapes[i];
-  }
   m_activeTool = active;
-  synchronizeSpindleFrames();
-  for (std::size_t i = 0; i < m_tools.size(); ++i) {
-    if (!m_tools[i].id) continue;
-    success = m_scene.setPartVisible(*m_tools[i].id,
-        m_loaded && i == static_cast<std::size_t>(active)) && success;
-  }
+  return showActiveTool();
+}
+
+bool OccRobotAdapter::showActiveTool()
+{
+  if (!m_loaded) return true; // Installation displays the active tool after HOME.
+  bool success = true;
+  const qsizetype firstTool = m_partIds.size() - ToolCount;
+  for (qsizetype i = 0; i < ToolCount; ++i)
+    success = m_scene.setPartVisible(m_partIds[firstTool + i],
+        i == static_cast<qsizetype>(m_activeTool)) && success;
   return success;
 }
 

@@ -42,10 +42,6 @@ qt_add_qml_module(RoboCrap3D
     occt/cadloadresult.h
     occt/cadloadworker.h
     occt/cadloadworker.cpp
-    occt/cachedshapeloader.h
-    occt/cachedshapeloader.cpp
-    occt/stepimporter.h
-    occt/stepimporter.cpp
     occt/occviewwindow.h
     occt/occviewwindow.cpp
     occt/occviewport.h
@@ -72,7 +68,7 @@ target_include_directories(RoboCrap3D
 )
 target_link_libraries(RoboCrap3D
   PUBLIC RoboCrapGeometry Qt6::Core Qt6::Gui Qt6::Qml
-  PRIVATE TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl TKDESTEP
+  PRIVATE TKernel TKMath TKG3d TKBRep TKTopAlgo TKService TKV3d TKOpenGl
 )
 
 set(ROBOCRAP_OCCT_PREFIX "${OpenCASCADE_INSTALL_PREFIX}" PARENT_SCOPE)

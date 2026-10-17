@@ -3,7 +3,6 @@
 
 #include <utility>
 #include <QDebug>
-#include <QJsonDocument>
 #include <algorithm>
 #include <chrono>
 #include <QCoreApplication>
@@ -120,11 +119,11 @@ std::optional<ChamferPathParameters> SceneMachining::sourceParameters() const
   const auto* object = m_scene->findObject(m_inputId);
   if (!object) return std::nullopt;
   if (const auto* motion = object->machiningPath()) return motion->parameters();
-  const auto* edge = qobject_cast<const SceneEdgeGeometry*>(object->geometry());
+  const auto* edge = object->edge();
   if (!edge) return std::nullopt;
   const BoundedCylinder* cylinder = nullptr;
   bool hasPlane = false;
-  for (quint32 id : edge->sourceIds()) {
+  for (quint32 id : edge->sources) {
     const auto* source = m_scene->findObject(id);
     if (!source) return std::nullopt;
     if (source->plane()) hasPlane = true;
@@ -132,7 +131,7 @@ std::optional<ChamferPathParameters> SceneMachining::sourceParameters() const
   }
   if (!hasPlane || !cylinder) return std::nullopt;
   ChamferPathParameters parameters;
-  parameters.edge = edge->edge().ellipse();
+  parameters.edge = edge->edge.ellipse();
   const auto& origin = cylinder->origin();
   const auto& axis = cylinder->axis();
   parameters.cylinderOrigin = V3d{origin[0], origin[1], origin[2]};
@@ -176,10 +175,7 @@ void SceneMachining::generate()
   const auto source = sourceParameters();
   const auto timing = m_settings.timing();
   if (!source || !timing) { setError(tr("Six joint speed and acceleration limits are required.")); return; }
-  QElapsedTimer geometryTimer;
-  geometryTimer.start();
   const auto path = ChamferPath::create(m_settings.applyTo(*source));
-  m_geometryConstructionMs = geometryTimer.nsecsElapsed() / 1e6;
   if (!path.path) { setError(path.error); return; }
   ChamferRobotSetup robot;
   robot.model = *m_model;
@@ -208,9 +204,11 @@ void SceneMachining::finishCalculation()
   if (m_calculation.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
   m_calculationTimer.stop();
   auto result = m_calculation.get();
-  result.diagnostics.insert("geometryConstructionMs", m_geometryConstructionMs);
-  if (result.motion) result.diagnostics.insert("movementSeconds", result.motion->duration());
-  qInfo().noquote() << "Chamfer preparation:" << QJsonDocument(result.diagnostics).toJson(QJsonDocument::Compact);
+  if (result.motion)
+    qInfo().noquote() << QStringLiteral("Chamfer preparation: %1 points, %2 s movement")
+                             .arg(result.motion->points().size()).arg(result.motion->duration(), 0, 'g', 12);
+  else
+    qInfo().noquote() << "Chamfer preparation failed:" << result.error;
   const auto* previous = m_scene->findObject(m_calculationInputId);
   if (!previous || m_inputId != m_calculationInputId || m_revision != m_calculationRevision
       || !m_robotAvailable || !sourceParameters()) {

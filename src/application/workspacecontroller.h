@@ -10,7 +10,7 @@
 
 class SceneModel;
 class SceneMachining;
-namespace RoboCrap3D { class RobotController; }
+class SceneEndEffectors;
 
 class WorkspaceController final : public QObject
 {
@@ -28,8 +28,8 @@ public:
   enum Submode { Rough, Precise };
   Q_ENUM(Submode)
 
-  // Document operations, machining lifecycle and robot tool commands are distinct collaborators.
-  WorkspaceController(SceneModel* scene, SceneMachining* machining, RoboCrap3D::RobotController* robot);
+  // Document operations, machining lifecycle and the active tool are distinct collaborators.
+  WorkspaceController(SceneModel* scene, SceneMachining* machining, SceneEndEffectors* effectors);
   static WorkspaceController* create(QQmlEngine*, QJSEngine* engine);
 
   Mode mode() const { return m_mode; }
@@ -58,10 +58,9 @@ private:
 
   SceneModel* m_scene;
   SceneMachining* m_machining;
-  RoboCrap3D::RobotController* m_robot;
+  SceneEndEffectors* m_effectors;
   Mode m_mode = Measuring;
   Submode m_submode = Rough;
   QList<quint32> m_selectedIds;
   inline static QPointer<WorkspaceController> s_instance;
-  inline static QPointer<QJSEngine> s_engine;
 };

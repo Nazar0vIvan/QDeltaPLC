@@ -1,7 +1,5 @@
 #pragma once
 
-#include <QJsonObject>
-
 #include "trajectories/chamfercentralmotion.h"
 #include "trajectories/chamfermotion.h"
 #include "kinematics/kr10kinematics.h"
@@ -23,17 +21,14 @@ struct ChamferCentralValidationResult
 {
   std::optional<ChamferCentralValidationData> data;
   QString error;
-  QJsonObject diagnostics; // Owned worker result, also returned on failure.
 };
 
 struct ChamferCentralPreviewSpan
 {
   double start = 0.0;
   double end = 0.0;
-  double accelerationBound = 0.0; // mm/s^2, geometric criterion, not a robot limit.
   int intervals = 0;
   QString phase;
-  double curvatureBound = 0.0; // per mm
 };
 
 // Internal Generate stage. Borrowed path/timing outlive this worker-local cache.
@@ -53,8 +48,6 @@ public:
   // Logical-const memoization of scheduled targets, including a failed evaluation.
   // Calls visit a consecutive prefix; a cache hit returns the original result.
   std::optional<ChamferCentralPose> evaluateTarget(qsizetype index, double seconds) const;
-  qint64 computationNanoseconds() const { return m_preparationNanoseconds + m_targetNanoseconds; }
-  QJsonObject diagnostics() const;
 
 private:
   QString prepare();
@@ -66,9 +59,5 @@ private:
   qsizetype m_plannedSamples = 0;
   bool m_attempted = false;
   QString m_error;
-  QJsonObject m_diagnostics;
-  qint64 m_preparationNanoseconds = 0;
   mutable QVector<std::optional<ChamferCentralPose>> m_targets;
-  mutable qint64 m_targetNanoseconds = 0;
-  mutable qint64 m_targetCacheHits = 0;
 };

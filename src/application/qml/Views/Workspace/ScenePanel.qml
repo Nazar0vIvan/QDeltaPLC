@@ -45,7 +45,6 @@ QxPanel {
   function objectIcon(kind: int): url {
     switch (kind) {
     case Backend.SceneObject.Plane: return "qrc:/pics/plane.svg"
-    case Backend.SceneObject.Circle: return "qrc:/pics/circ.svg"
     case Backend.SceneObject.Cylinder: return "qrc:/pics/cylinder.svg"
     case Backend.SceneObject.Cone: return "qrc:/pics/cone.svg"
     case Backend.SceneObject.Edge: return "qrc:/pics/edge.svg"

@@ -38,11 +38,10 @@ ViewportOperationResult OccViewport::setRobot(const RobotVisualModel& visuals,
   return result;
 }
 
-bool OccViewport::setEndEffectors(
-    const std::array<std::shared_ptr<const CadLoadResult>, 2>& shapes, RobotTool active)
+bool OccViewport::setActiveTool(RobotTool active)
 {
   if (!isValid()) return false;
-  const bool success = m_robot.setEndEffectors(shapes, active);
+  const bool success = m_robot.setActiveTool(active);
   requestRender();
   return success;
 }

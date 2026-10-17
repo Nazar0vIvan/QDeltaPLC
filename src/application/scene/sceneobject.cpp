@@ -1,10 +1,33 @@
 #include "sceneobject.h"
 #include "viewport/occcontroller.h"
 
+#include <QVariantMap>
+
 #include <algorithm>
 #include <cmath>
 
 #include <utility>
+
+namespace {
+
+// Four decimals; magnitudes below half the last digit show as zero, never "-0.0000".
+QString formatReal(double value)
+{
+  return QString::number(std::abs(value) < 0.00005 ? 0.0 : value, 'f', 4);
+}
+
+QString formatVector(const std::array<double, 3>& value)
+{
+  return QStringLiteral("[%1; %2; %3]")
+      .arg(formatReal(value[0]), formatReal(value[1]), formatReal(value[2]));
+}
+
+QVariant propertyRow(const QString& label, const QString& value)
+{
+  return QVariantMap{{QStringLiteral("label"), label}, {QStringLiteral("value"), value}};
+}
+
+} // namespace
 
 // Identity, description and QObject ownership are the three constructor responsibilities.
 SceneObject::SceneObject(quint32 objectId, const Description& description, QObject* parent)
@@ -12,53 +35,26 @@ SceneObject::SceneObject(quint32 objectId, const Description& description, QObje
     m_classification(description.classification), m_sourceUrl(description.sourceUrl)
 {}
 
-void SceneObject::setPlaneGeometry(BoundedPlane plane)
+QVariantList SceneObject::properties() const
 {
-  m_geometry = new ScenePlaneGeometry(std::move(plane), this);
-}
-
-void SceneObject::setPlaneGeometry(const std::array<double, 4>& coefficients)
-{
-  m_geometry = new ScenePlaneGeometry(coefficients, this);
-}
-
-void SceneObject::setCylinderGeometry(BoundedCylinder cylinder)
-{
-  m_geometry = new SceneCylinderGeometry(std::move(cylinder), this);
-}
-
-const BoundedPlane* SceneObject::plane() const
-{
-  const auto* geometry = qobject_cast<const ScenePlaneGeometry*>(m_geometry);
-  return geometry ? geometry->boundedPlane() : nullptr;
-}
-
-const BoundedCylinder* SceneObject::cylinder() const
-{
-  const auto* geometry = qobject_cast<const SceneCylinderGeometry*>(m_geometry);
-  return geometry ? &geometry->boundedCylinder() : nullptr;
-}
-
-void SceneObject::setCircleGeometry(::Circle circle)
-{
-  m_geometry = new SceneCircleGeometry(std::move(circle), this);
-}
-
-const ::Circle* SceneObject::circle() const
-{
-  const auto* geometry = qobject_cast<const SceneCircleGeometry*>(m_geometry);
-  return geometry ? &geometry->circle() : nullptr;
-}
-
-void SceneObject::setEdgeGeometry(EdgeGeometry edge, const std::array<quint32, 2>& sources)
-{
-  m_geometry = new SceneEdgeGeometry(std::move(edge), sources, this);
-}
-
-const EdgeGeometry* SceneObject::edge() const
-{
-  const auto* geometry = qobject_cast<const SceneEdgeGeometry*>(m_geometry);
-  return geometry ? &geometry->edge() : nullptr;
+  if (const auto* value = plane()) {
+    const auto& normal = value->coefficients();
+    return {propertyRow(tr("Normal"), formatVector({normal[0], normal[1], normal[2]})),
+            propertyRow(tr("Origin"), formatVector(value->origin())),
+            propertyRow(tr("Width"), formatReal(value->width())),
+            propertyRow(tr("Height"), formatReal(value->height())),
+            propertyRow(tr("Points"), QString::number(value->points().size())),
+            propertyRow(tr("Offset (d)"), formatReal(normal[3]))};
+  }
+  if (const auto* value = cylinder()) {
+    return {propertyRow(tr("Origin"), formatVector(value->origin())),
+            propertyRow(tr("Axis"), formatVector(value->axis())),
+            propertyRow(tr("Radius"), formatReal(value->radius())),
+            propertyRow(tr("Diameter"), formatReal(2 * value->radius())),
+            propertyRow(tr("Length"), formatReal(value->length())),
+            propertyRow(tr("Points"), QString::number(value->points().size()))};
+  }
+  return {};
 }
 
 void SceneObject::setName(const QString& name)
@@ -70,13 +66,7 @@ void SceneObject::setName(const QString& name)
 
 void SceneObject::setMachiningPath(SceneMachiningData data)
 {
-  m_geometry = new SceneMachiningPath(std::move(data), this);
-}
-
-const ChamferMotion* SceneObject::machiningPath() const
-{
-  const auto* geometry = qobject_cast<const SceneMachiningPath*>(m_geometry);
-  return geometry ? &geometry->motion() : nullptr;
+  m_machiningPath = new SceneMachiningPath(std::move(data), this);
 }
 
 void SceneObject::setVisible(bool visible)
@@ -110,11 +100,8 @@ std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
     const auto& axis = value->axis();
     result.parts.append({DrawingCylinder{{origin[0], origin[1], origin[2]},
         {axis[0], axis[1], axis[2]}, value->radius(), value->length()}, {}});
-  } else if (const auto* value = circle()) {
-    result.parts.append({DrawingCurve{value->center(), value->normal(), V3d::UnitX(),
-        value->radius(), value->radius()}, {{80, 157, 253}, 2.0}});
   } else if (const auto* value = edge()) {
-    const auto& ellipse = value->ellipse();
+    const auto& ellipse = value->edge.ellipse();
     result.parts.append({DrawingCurve{ellipse.center, ellipse.majorAxis.cross(ellipse.minorAxis),
         ellipse.majorAxis, ellipse.majorRadius, ellipse.minorRadius}, {{0, 197, 197}, 2.0}});
   } else if (const auto* motion = machiningPath()) {
@@ -139,15 +126,14 @@ RoboCrap3D::DrawingDiagnostics SceneObject::drawingDiagnostics() const
   RoboCrap3D::DrawingDiagnostics result;
   const auto* plane = this->plane();
   const auto* cylinder = this->cylinder();
-  const auto* circle = this->circle();
-  const auto* edge = this->edge();
+  const auto* sceneEdge = this->edge();
+  const EdgeGeometry* edge = sceneEdge ? &sceneEdge->edge : nullptr;
   for (const bool normals : {false, true}) {
     if (!(normals ? showNormals() : showPoints())) continue;
     const QVector<V3d>* samples = nullptr;
     QVector<V3d> edgeSamples;
     if (plane) samples = &plane->points();
     else if (cylinder) samples = &cylinder->points();
-    else if (circle) samples = &circle->points();
     else if (edge) {
       const auto& ellipse = edge->ellipse();
       if (normals) edgeSamples.append(ellipse.center);
@@ -165,22 +151,20 @@ RoboCrap3D::DrawingDiagnostics SceneObject::drawingDiagnostics() const
     } else continue;
     if (samples->isEmpty()) continue;
     const qsizetype limit = normals ? 128 : 256;
-    const qsizetype count = circle && normals ? 1 : samples->size();
+    const qsizetype count = samples->size();
     const qsizetype stride = 1 + (count - 1) / limit;
-    const double radius = cylinder ? cylinder->radius()
-        : circle ? circle->radius() : edge ? edge->ellipse().minorRadius : 0.0;
+    const double radius = cylinder ? cylinder->radius() : edge ? edge->ellipse().minorRadius : 0.0;
     const double length = plane
         ? std::clamp(0.05 * std::min(plane->width(), plane->height()), 1.0, 20.0)
         : std::clamp(0.25 * radius, 1.0, 20.0);
     for (qsizetype i = 0; i < count; i += stride) {
-      const V3d& position = circle && normals ? circle->center() : (*samples)[i];
+      const V3d& position = (*samples)[i];
       if (!normals) { result.markers.append(position); continue; }
       V3d normal = V3d::Zero();
       if (plane) {
         const auto& coefficients = plane->coefficients();
         normal = {coefficients[0], coefficients[1], coefficients[2]};
-      } else if (circle) normal = circle->normal();
-      else if (edge) normal = edge->ellipse().majorAxis.cross(edge->ellipse().minorAxis).normalized();
+      } else if (edge) normal = edge->ellipse().majorAxis.cross(edge->ellipse().minorAxis).normalized();
       else {
         const auto& origin = cylinder->origin();
         const auto& axis = cylinder->axis();

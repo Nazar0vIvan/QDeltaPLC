@@ -7,9 +7,6 @@ import Styles 1.0
 QxPanel {
   id: root
   required property bool measuring
-  required property url cadSource
-  required property bool loading
-  required property string loadError
   required property string measuringName
   required property real ballDiameter
   required property real stylusLength
@@ -18,8 +15,6 @@ QxPanel {
   required property bool tcpVisible
   required property bool colletVisible
   signal closeRequested()
-  signal browseRequested()
-  signal retryRequested()
   signal posesRequested(var colletValues, var tcpValues)
   signal tcpVisibilityRequested(bool visible)
   signal colletVisibilityRequested(bool visible)
@@ -78,46 +73,6 @@ QxPanel {
       id: fields
       width: scroll.availableWidth
       spacing: Metrics.sp8
-      QxHField {
-        Layout.fillWidth: true
-        labelText: qsTr("CAD")
-        QxTextInput {
-          id: sourceField
-          Layout.fillWidth: true
-          Layout.minimumWidth: 0
-          readOnly: true
-          text: root.cadSource.toString()
-          Accessible.name: qsTr("End-effector CAD file")
-          background: Rectangle {
-            color: "transparent"
-            radius: sourceField.radius
-            border.width: Metrics.w1
-            border.color: sourceField.activeFocus ? Colors.primary.base : Colors.background.dp12
-          }
-        }
-        QxToolButton {
-          id: browseButton
-          imageSource: "qrc:/pics/open.svg"
-          imageSize: Metrics.sz16
-          Accessible.name: qsTr("Browse CAD file")
-          ToolTip.visible: browseButton.hovered
-          ToolTip.text: qsTr("Browse CAD file")
-          onClicked: root.browseRequested()
-        }
-      }
-      Label {
-        Layout.fillWidth: true
-        visible: root.loading || root.loadError.length > 0
-        text: root.loading ? qsTr("Loading CAD…") : root.loadError
-        wrapMode: Text.Wrap
-        color: Colors.foreground.medium
-        font: Fonts.caption
-      }
-      QxButton {
-        visible: !root.loading && root.loadError.length > 0
-        text: qsTr("Retry CAD load")
-        onClicked: root.retryRequested()
-      }
       Repeater {
         model: root.measuring ? [qsTr("Name"), qsTr("Ruby ball diameter, mm"), qsTr("Stylus length, mm")] : []
         delegate: ColumnLayout {

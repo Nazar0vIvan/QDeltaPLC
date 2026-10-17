@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QJsonObject>
 #include <utility>
 
 #include "trajectories/chamfercentralmotion.h"
@@ -86,5 +85,4 @@ struct ChamferMotionResult
 {
   std::optional<ChamferMotion> motion;
   QString error;
-  QJsonObject diagnostics; // Owned worker result, also returned on failure.
 };

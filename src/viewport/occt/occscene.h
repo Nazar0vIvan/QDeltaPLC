@@ -39,7 +39,6 @@ public:
 
   // Creation returns ownership identity before any display call can fail.
   [[nodiscard]] std::optional<PartId> createShapePart(const TopoDS_Shape& shape, const OccPartProps& props);
-  [[nodiscard]] std::optional<PartId> addShapePartWithId(const TopoDS_Shape& shape, const OccPartProps& props = {});
   [[nodiscard]] bool setPartTransform(PartId id, const gp_Trsf& transform);
   [[nodiscard]] bool setPartVisible(PartId id, bool visible);
   [[nodiscard]] bool removePart(PartId id);

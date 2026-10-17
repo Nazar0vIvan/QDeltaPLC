@@ -1,7 +1,6 @@
 #pragma once
 
 #include "robotgraphics.h"
-#include <QUrl>
 
 #include <QObject>
 #include <QMap>
@@ -82,6 +81,7 @@ struct DrawingPose {
 
 class CadLoadWorker;
 class OccViewWindow;
+class OccViewport;
 struct CadLoadResult;
 
 class OccController final : public QObject
@@ -94,14 +94,10 @@ class OccController final : public QObject
   Q_PROPERTY(bool viewportReady READ isViewportReady NOTIFY viewportReadyChanged)
   Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged)
   Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
-  Q_PROPERTY(bool measuringCadLoading READ isMeasuringCadLoading NOTIFY endEffectorLoadChanged)
-  Q_PROPERTY(bool spindleCadLoading READ isSpindleCadLoading NOTIFY endEffectorLoadChanged)
-  Q_PROPERTY(QString measuringCadError READ measuringCadError NOTIFY endEffectorLoadChanged)
-  Q_PROPERTY(QString spindleCadError READ spindleCadError NOTIFY endEffectorLoadChanged)
 
 public:
-  // Retain selected cache/runtime directories and the existing QObject lifetime owner.
-  OccController(QString cacheDirectory, QString occtResources, QObject* parent = nullptr);
+  // Retain the selected OCCT runtime directory and the existing QObject lifetime owner.
+  explicit OccController(QString occtResources, QObject* parent = nullptr);
   ~OccController() override;
   Q_DISABLE_COPY_MOVE(OccController)
 
@@ -119,11 +115,6 @@ public:
   void setShowSpindleTcp(bool visible);
   bool showSpindleCollet() const { return m_showSpindleCollet; }
   void setShowSpindleCollet(bool visible);
-  bool isMeasuringCadLoading() const;
-  bool isSpindleCadLoading() const;
-  QString measuringCadError() const;
-  QString spindleCadError() const;
-  void loadEndEffector(RobotTool tool, const QUrl& source);
   void setActiveTool(RobotTool tool);
   void setSpindleFrames(const std::optional<M4d>& tcp, const std::optional<M4d>& collet);
   Q_INVOKABLE void setSelectedObjects(const QList<quint32>& ids);
@@ -143,31 +134,17 @@ signals:
   void message(const QString& text, bool error);
   void applicationSelectionRequested(quint32 objectId, bool additive);
   void deleteSelectionRequested();
-  void endEffectorLoadChanged();
-  void endEffectorLoaded(RobotTool tool);
 
 private:
   QString initializeOcct() const;
   void createWindow();
-  void synchronizeEndEffectors();
   void onViewWindowDestroyed();
+  // The window's current OCCT viewer, or null without a native surface; looked up per call.
+  OccViewport* viewport() const;
   void finishRobotLoad(quint64 generation);
-  void startEndEffectorLoad(RobotTool tool);
-  // Tool identity, request generation and source identify an asynchronous result.
-  void finishEndEffectorLoad(RobotTool tool, quint64 generation, const QUrl& source);
   void setError(const QString& error);
 
-  struct ToolCadState {
-    QUrl source;
-    std::shared_ptr<const CadLoadResult> shapes;
-    std::unique_ptr<CadLoadWorker> worker;
-    QString error;
-    quint64 generation = 0;
-  };
-
-  const QString m_cacheDirectory;
   const QString m_occtResources;
-  std::array<ToolCadState, 2> m_toolCad;
   std::optional<RobotVisualModel> m_visuals;
   DrawingPose m_pose;
   DrawingDocument m_document;

@@ -99,5 +99,4 @@ private:
   quint32 m_calculationInputId = 0;
   quint64 m_calculationRevision = 0;
   bool m_calculating = false;
-  double m_geometryConstructionMs = 0.0;
 };
