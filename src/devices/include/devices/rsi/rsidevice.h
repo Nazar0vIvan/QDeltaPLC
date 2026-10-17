@@ -1,0 +1,65 @@
+#pragma once
+
+#include "devices/abstractdevice.h"
+#include "geometry/mathtypes.h"
+
+#include <QHostAddress>
+#include <QVector>
+
+#include <optional>
+
+class QNetworkDatagram;
+class QUdpSocket;
+
+// KUKA RSI UDP partner for RSI_Hole: answers every controller cycle and plays
+// the sampled correction stream while the controller reports Start = 1.
+class RsiDevice : public AbstractDevice
+{
+  Q_OBJECT
+
+public:
+  // One PC reply. Stop ends RSI_MOVECORR; Result = 1 reports normal completion.
+  struct Reply
+  {
+    quint64 ipoc = 0;
+    V6d correction = V6d::Zero(); // Relative X/Y/Z mm, A/B/C deg.
+    bool stop = false;
+    qint64 result = 0;
+  };
+
+  explicit RsiDevice(const QString& name, QObject* parent = nullptr);
+
+  Q_INVOKABLE void connect(const QVariantMap& config);
+  Q_INVOKABLE void disconnect();
+
+public slots:
+  // Applied at the next Start = 0; an empty vector clears the stream.
+  void setCorrections(const QVector<V6d>& increments);
+
+protected:
+  void startDevice() override;
+  void stopDevice() override;
+
+private:
+  enum class RunState { Idle, Streaming, Finished, Stopping };
+
+  void onReadyRead();
+  bool acceptsSender(const QNetworkDatagram& datagram) const;
+  // State-machine step for the newest accepted request.
+  Reply advance(bool start, qint64 echoedResult);
+  void resetRun();
+  void setState(RunState state);
+  void publishState();
+
+  QUdpSocket* m_sock = nullptr;
+  QHostAddress m_la;
+  quint16 m_lp = 0;
+  QHostAddress m_pa;
+  quint16 m_pp = 0; // Learned from the first accepted controller packet.
+
+  QVector<V6d> m_corrections;
+  std::optional<QVector<V6d>> m_pending; // Received while a run is active.
+  qsizetype m_index = 0;
+  RunState m_state = RunState::Idle;
+  bool m_decodeFailureLogged = false; // Once per connection; packets arrive every 4 ms.
+};

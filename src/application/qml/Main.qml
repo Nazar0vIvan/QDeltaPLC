@@ -252,18 +252,16 @@ ApplicationWindow {
   footer: ToolBar {
     id: statusBar
 
+    readonly property App.DeviceRunner rsi: App.Hub.device("rsi")
     readonly property string message: {
       if (surfaceImporter.busy) return qsTr("Importing surface…")
       if (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen) return ""
       const preparation = App.MachiningPreparation
-      if (preparation.preparing) return qsTr("Sampling RSI…")
-      if (preparation.error.length > 0) return preparation.error
-      if (!preparation.prepared) return preparation.unavailableReason || qsTr("Ready for RSI Sampling.")
-      return qsTr("RSI sampled · %1 samples · %2 corrections\nPath: %3 s · RSI cycles: %4 s")
-             .arg(preparation.sampleCount).arg(preparation.correctionCount)
-             .arg(preparation.duration.toFixed(3)).arg(preparation.controllerDuration.toFixed(3))
-             + "\n" + (preparation.encodingReady ? qsTr("Encoding ready.") : preparation.encodingUnavailableReason)
-             + "\n" + preparation.sharedDataStatus
+      // While sampling, unavailableReason reports progress.
+      const status = preparation.error || preparation.summary
+                     || preparation.unavailableReason || qsTr("Ready for RSI Sampling.")
+      return statusBar.rsi && statusBar.rsi.isConnected
+             ? status + "\n" + qsTr("Controller: %1").arg(statusBar.rsi.data.rsiState ?? "idle") : status
     }
 
     padding: Metrics.sp8

@@ -1,5 +1,6 @@
 #include "chamfercentralvalidation.h"
 
+#include "chamfertcpsolver.h"
 #include "geometry/utils.h"
 
 #include <algorithm>
@@ -206,18 +207,6 @@ bool validRobot(const ChamferRobotSetup& robot)
   return true;
 }
 
-QString positionError(const V6d& joints, const Kr10KinematicModel& model)
-{
-  if (!joints.allFinite()) return QStringLiteral("Nonfinite joint coordinates.");
-  for (std::size_t axis = 0; axis < DofCount; ++axis) {
-    const auto& joint = model.joints[axis];
-    if (joints[axis] < joint.qMin || joints[axis] > joint.qMax)
-      return QStringLiteral("A%1 position %2 deg is outside [%3, %4].")
-          .arg(axis + 1).arg(joints[axis], 0, 'g', 12).arg(joint.qMin).arg(joint.qMax);
-  }
-  return {};
-}
-
 struct SampleResult
 {
   std::optional<ChamferCentralJointSample> sample;
@@ -236,8 +225,7 @@ class CentralValidator
 public:
   // Borrow the Generate worker's immutable inputs; this solver never outlives them.
   CentralValidator(const ChamferCentralPreparation& preparation, const ChamferRobotSetup& robot)
-    : m_preparation(preparation), m_robot(robot), m_solver(robot.model),
-      m_tcpToFlange(inverseRigidTransform(m_robot.flangeToTcp)) {}
+    : m_preparation(preparation), m_robot(robot), m_solver(robot) {}
 
   ChamferCentralValidationResult run(const Kr10Kinematics::IkSolution& seed)
   {
@@ -272,21 +260,9 @@ private:
   {
     const auto target = m_preparation.evaluateTarget(m_samples.size(), time);
     if (!target) return {{}, QStringLiteral("Cannot evaluate prescribed TCP target.")};
-    const M4d flange = target->tcp * m_tcpToFlange;
-    const auto solution = m_solver.calculateIK(flange, seed);
-    if (!solution) return {{}, QStringLiteral("IK failed: unreachable, singular or outside the seeded configuration/limits.")};
-    const QString error = positionError(solution->q, m_robot.model);
-    if (!error.isEmpty()) return {{}, error};
-    const auto transforms = m_solver.solveFK(solution->q);
-    if (!Kr10Kinematics::matchesFlange(flange, transforms.back()))
-      return {{}, QStringLiteral("Flange FK reconstruction exceeds 0.0001 mm or 0.000001 rotation-entry tolerance.")};
-    const M4d actual = transforms.back() * m_robot.flangeToTcp;
-    if (!actual.allFinite()
-        || (actual.block<3, 1>(0, 3) - target->tcp.block<3, 1>(0, 3)).norm() > Kr10PosEps
-        || (actual.block<3, 3>(0, 0) - target->tcp.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
-      return {{}, QStringLiteral("TCP FK reconstruction exceeds 0.0001 mm or 0.000001 rotation-entry tolerance.")};
-    return {ChamferCentralJointSample{time, *target,
-        m_solver.configuration(solution->q, transforms), actual}, {}};
+    const auto inverse = m_solver.solveTcp(target->tcp, seed);
+    if (!inverse.solution) return {{}, inverse.error};
+    return {ChamferCentralJointSample{time, *target, *inverse.solution, inverse.actualTcp}, {}};
   }
 
   QString appendPoint(double time)
@@ -363,8 +339,7 @@ private:
 
   const ChamferCentralPreparation& m_preparation;
   const ChamferRobotSetup& m_robot;
-  Kr10Kinematics m_solver;
-  M4d m_tcpToFlange = M4d::Identity();
+  ChamferTcpSolver m_solver;
   QVector<ChamferCentralJointSample> m_samples;
 };
 
@@ -396,7 +371,7 @@ ChamferCentralValidationResult ChamferCentralPreparation::validate(const Chamfer
                                                                   const Kr10Kinematics::IkSolution& initialSeed)
 {
   if (!validRobot(robot)) return {{}, QStringLiteral("Invalid robot model, TCP calibration or simulation rate bounds.")};
-  const QString error = positionError(initialSeed.q, robot.model);
+  const QString error = chamferJointPositionError(initialSeed.q, robot.model);
   if (!error.isEmpty()) return {{}, QStringLiteral("Invalid initial IK seed: %1").arg(error)};
   const QString preparationError = prepare();
   if (!preparationError.isEmpty()) return {{}, preparationError};

@@ -51,18 +51,6 @@ std::optional<Plane> Plane::fromPoints(const QVector<V3d>& points, double eps)
   return Plane{coeffs};
 }
 
-std::optional<Plane> Plane::fromJsonFile(const QString &jsonFilePath, double eps)
-{
-  const auto samples = readProbeSamples(jsonFilePath);
-  if (!samples) return std::nullopt;
-  auto plane = Plane::fromPoints(samples->points, eps);
-  if (!plane) return std::nullopt;
-  // Translating by s*n changes n dot p + d = 0 to n dot p + d - s = 0.
-  plane->coeffs.w() -= samples->dir * samples->radius;
-  if (!plane->coeffs.allFinite()) return std::nullopt;
-  return plane;
-}
-
 V3d Plane::normal() const noexcept
 {
   return coeffs.head<3>();

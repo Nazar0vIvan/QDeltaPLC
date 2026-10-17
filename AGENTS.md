@@ -119,8 +119,8 @@
 
 ## Scope and workflow
 
-- Machining scope is animation preparation/playback. Do not change or run RSI preparation
-  unless the user explicitly reopens it.
+- Machining scope is animation preparation/playback plus nominal RSI Sampling/streaming for the
+  RSI_Hole T1 run. Force correction stays out of scope unless the user explicitly reopens it.
 - Before behavior/API changes, read affected files/callers. For changed QML components/uses,
   inspect definitions and custom base types: properties, signals, default content and sizing.
 - Stay within the task; preserve unrelated edits/formatting. Reuse suitable project/Qt helpers;

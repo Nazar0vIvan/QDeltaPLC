@@ -17,7 +17,6 @@ struct ProbeSamples {
 
 // Legacy arrays have zero compensation; objects require points, radius and dir.
 std::optional<ProbeSamples> decodeProbeSamples(const QJsonDocument& document);
-std::optional<ProbeSamples> readProbeSamples(const QString& path);
 
 bool nearlyEqual(double lhs, double rhs, double eps = GeomConst::Eps);
 std::optional<V3d> normalize(const V3d& v, double eps = GeomConst::Eps);

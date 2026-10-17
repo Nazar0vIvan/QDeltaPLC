@@ -24,7 +24,7 @@ DEF RSI_Hole()
 
    $TOOL=TOOL_DATA[6]
    $LOAD=LOAD_DATA[6]
-   $BASE=BASE_DATA[1]
+   $BASE=$NULLFRAME
    $IPO_MODE=#BASE
    $ORI_TYPE=#VAR
    Mode=#SYNC
@@ -81,8 +81,9 @@ DEF RSI_Hole()
    ENDIF
    $SEN_PINT[1]=1
    RSI_MOVECORR(#RSIBRAKE)
-   $SEN_PINT[1]=0
+   ; Read the result before Start=0 lets the PC reset Result to 0.
    Completed=($SEN_PINT[2]==1)
+   $SEN_PINT[1]=0
    Ret=RSI_OFF()
    IF Ret <> RSIOK THEN
       RETURN

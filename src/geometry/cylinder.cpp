@@ -120,22 +120,6 @@ std::optional<Cylinder> Cylinder::fromAxis(const V3d& axisDir, const V3d& origin
   return cylinder;
 }
 
-void Cylinder::setSurfacePose(double offset, double angleDeg)
-{
-  if (!std::isfinite(offset) || !std::isfinite(angleDeg)) {
-    return;
-  }
-
-  const M4d localTf =
-      makeTranslation(axisVec(m_axis, offset)) *
-      makeRotation(angleDeg, m_axis) *
-      makeTranslation(axisVec(radialAxis(m_axis), m_radius));
-
-  const auto pose = Pose::fromTransform(m_originPose.transform() * localTf);
-
-  if (pose) m_surfacePose = *pose;
-}
-
 QVector<Pose> Cylinder::surfaceRing(int n, double offset) const
 {
   QVector<Pose> poses;
@@ -183,9 +167,4 @@ double Cylinder::radius() const
 Axis Cylinder::axis() const
 {
   return m_axis;
-}
-
-Pose Cylinder::surfacePose() const
-{
-  return m_surfacePose;
 }

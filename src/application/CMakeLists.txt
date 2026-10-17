@@ -18,6 +18,8 @@ qt_add_executable(robocrap
   scene/scenegeometry.h
   scene/scenemachining.cpp
   scene/scenemachining.h
+  scene/scenemachiningpreparation.cpp
+  scene/scenemachiningpreparation.h
   scene/scenemodel.cpp
   scene/scenemodel.h
   scene/sceneobject.cpp
@@ -26,10 +28,6 @@ qt_add_executable(robocrap
   scene/scenesurfaceimporter.h
   workspacecontroller.cpp
   workspacecontroller.h
-  ../scene/scenemachiningpreparation.h
-  ../scene/scenemachiningpreparation.cpp
-  ../scene/chamfershareddata.h
-  ../scene/chamfershareddata.cpp
   qmlchartbridge.h
   qmlchartbridge.cpp
 )
@@ -72,7 +70,6 @@ else()
       "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml"
       "qml/Views/Dashboard/FtsPanel/FtsPanel.qml"
       "qml/Views/Dashboard/FtsPanel/FtsBars.qml"
-      "qml/Views/Dashboard/KukaPanel/KukaPanel.qml"
       "qml/Views/Network/Network.qml"
       "qml/Views/Network/NetworkPanel.qml"
       "qml/Views/Network/ConnectionsTable.qml"
@@ -100,9 +97,6 @@ target_include_directories(robocrap PRIVATE
   # Original header names used by the foreign-type registrar.
   ${PROJECT_SOURCE_DIR}/src/devices/include/devices/fts
   ${PROJECT_SOURCE_DIR}/src/devices/include/devices/plc
-  # Frozen RSI preparation/coordination headers and their generated moc consumers.
-  ${PROJECT_SOURCE_DIR}/src
-  ${PROJECT_SOURCE_DIR}/src/scene
 )
 target_link_libraries(robocrap PRIVATE
   RoboCrapGeometry

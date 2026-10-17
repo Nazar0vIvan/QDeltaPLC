@@ -12,12 +12,12 @@ to verify implementation claims. User instructions and the root mandatory rules 
   Keep QmlChartBridge under Application and its QtCharts requirement; RSI XML streams use QtCore.
   Scene/Backend targets and the aggregate src/CMakeLists.txt no longer exist.
 - src/{geometry,kinematics,trajectories}/CMakeLists.txt own RoboCrapGeometry (surfaces/math),
-  RoboCrapKinematics (KR10 numerics) and RoboCrapTrajectories (animation and retained RSI numerics).
+  RoboCrapKinematics (KR10 numerics) and RoboCrapTrajectories (animation and RSI sampling numerics).
   Kinematics publicly links Geometry; Trajectories publicly links Kinematics. Their own public
   includes are limited to include/<capability>; Geometry additionally exports Eigen.
-- src/devices/CMakeLists.txt owns RoboCrapDevices (workers/codecs, including frozen RSI at legacy paths).
+- src/devices/CMakeLists.txt owns RoboCrapDevices (workers/codecs, including RsiDevice in src/devices/rsi).
   GUI DeviceHub/DeviceRunner/DeviceProfileModel belong to private Application. Devices links QtNetwork
-  and publicly retains Trajectories for its frozen RSI interface; its non-RSI headers use QtCore/Network.
+  and publicly links Geometry only for the `QVector<V6d>` RSI correction stream; it has no Trajectories dependency.
   PlcMessageManager remains a QObject with dictionary APIs and a published header for PlcDevice/PlcMessage enums.
   Devices owns no QML registration or QQmlPropertyMap. Its metatype metadata is extracted for consumers.
 - src/viewport/CMakeLists.txt owns RoboCrap3D, URI RoboCrap.Viewport3D. It requires bundled OCCT 8.0.0
@@ -25,11 +25,8 @@ to verify implementation claims. User instructions and the root mandatory rules 
   and has no Application/Trajectories dependency. Only include/viewport is exported, including the
   existing singleton wrapper needed by Application's C++ instance wiring.
 - Application has no public C++ include directory. All five libraries export only their selected include
-  directories (plus Eigen from Geometry). Frozen network/rsi and scene preparation/shared-data files
-  remain at their original paths, owned by Devices and Application respectively. Devices/Application
-  retain PRIVATE src access for those headers and generated moc; Trajectories limits it to its six
-  RSI numerical translation units. These consumers include canonical capability headers directly;
-  private socket/diagnostics/machining includes use explicit relative paths. No old-path forwarders remain.
+  directories (plus Eigen from Geometry). No target uses the legacy src include directory; the former
+  src/pathgeneration, src/network and src/scene trees are gone. No old-path forwarders remain.
 - Saved motions still expose central-motion/arc/path values; retain their published headers until
   consumers/storage can change separately. Kr10Kinematics belongs to Kinematics.
 - Preserve URIs robocrap_qml_module, RoboCrap.Viewport3D, Components and Styles. The former
@@ -187,12 +184,11 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
   SceneSurfaceImporter/SceneModel callers; preserve units and probe-compensation semantics.
 - BoundedPlane/BoundedCylinder accept points or decoded ProbeSamples, without file factories.
   SceneSurfaceImporter reads/decodes plane and cylinder inputs; there is no circle import.
-  Plane::fromJsonFile and readProbeSamples remain legacy RSI exceptions.
 
 ## Machining and playback
 
-Current work covers animation preparation/playback only; RSI preparation remains closed unless
-the user explicitly reopens it. Apply Geometry and scene to numerical changes.
+Current work covers animation preparation/playback and nominal RSI Sampling/streaming for the T1
+RSI_Hole run; force correction is out of scope. Apply Geometry and scene to numerical changes.
 
 - SceneMachining exposes SceneMachiningSettings as settings. Main calls App.Machining.generate(),
   implemented by SceneMachining::generate. Keep it separate from dryRun, which only plays a prepared
@@ -202,7 +198,7 @@ the user explicitly reopens it. Apply Geometry and scene to numerical changes.
   the relevant producer/consumer: chamferpath, chamferarclength, chamfercentralmotion,
   chamfercentralvalidation and chamfermotion.
   ChamferPath provides analytical evaluation/differentials; arc maps expose progressAtDistance.
-  Keep ChamferSamplingParameters and saved lead intervals for frozen RSI/QML compatibility.
+  Keep saved lead intervals for QML compatibility.
 - Keep geometric parameter, traveled distance and physical time distinct. Recover TCP position/
   orientation by evaluating the analytical curve at the inverse arc-length parameter; do not
   substitute stored XYZ/ABC interpolation without explicit redesign. Inverse-map knots,
@@ -246,12 +242,13 @@ the user explicitly reopens it. Apply Geometry and scene to numerical changes.
   inverse-map/spline construction or pauses to prepare more points. Displayed TCP between saved
   points is approximate; spline smoothness gives no exact Cartesian error guarantee.
   Curvature derivation: codex_plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
-- Rated joint-speed bounds come from the robot model, without fixed simulation caps. Configured
-  accelerations are simulation assumptions, not verified KUKA ratings. User-requested exception:
-  joint-acceleration magnitude rejection stays disabled in central preview, LIN (including terminal
-  stops) and spline checks. Retain acceleration finiteness, joint position/speed and central XYZ
-  acceleration checks. HOME timing still uses configured joint acceleration; RSI checks are separate.
-  Do not restore or extend the exception without a user request.
+- Rated joint-speed bounds come from the robot model (equal to the KR C4 machine data), without fixed
+  simulation caps. The Cartesian XYZ bound defaults to $ACC_MA.CP = 10000 mm/s², the KSS ceiling for
+  programmed CP path acceleration; the controller does not monitor it for RSI. The controller has no
+  fixed joint-acceleration value (dynamic model), so joint-acceleration magnitude rejection stays
+  disabled in central preview, LIN (including terminal stops), spline checks and RSI Sampling. Retain
+  acceleration finiteness, joint position/speed and XYZ acceleration checks. HOME timing still uses
+  configured joint acceleration. Do not restore joint-acceleration rejection without a user request.
 - Generate workers own copied numerical inputs and return cohesive results through futures.
   Accept results/insert scene objects on the GUI thread; reject stale source/model/TCP revisions.
   Publish only complete motions. Insert a successful replacement before removing its old object,
@@ -260,20 +257,25 @@ the user explicitly reopens it. Apply Geometry and scene to numerical changes.
   Model or TCP calibration changes invalidate playback until regeneration. Preserve pause/resume,
   Stop-to-HOME, completion-at-HOME and cleanup on readiness loss, mode change or path deletion.
   Selection cannot replace running motion; block generation during playback.
-- Generate has no profiling command or timing/statistics output. The animation code uses the plain
-  Kr10Kinematics solver; ChamferProfiledKinematics remains only for the frozen RSI sampler. After a
+- Generate has no profiling command or timing/statistics output. Central validation and RSI sampling share
+  ChamferTcpSolver (chamfertcpsolver.h) for checked TCP IK; LIN transfers use the plain Kr10Kinematics. After a
   Generate worker finishes, SceneMachining logs one console line: point count and movement seconds, or
   the error. The candidate's last error string remains the UI error. Keep inverse-map knots,
   animation points and RSI samples distinct.
-- Only for explicitly authorized RSI work, first read resources/files/rsi/RSI_Hole_CONTRACT.md and
-  RSI_Hole_DIAGRAM.md, then the current encoder/sampler/coordinator. Preparation, execution and
-  controller readiness differ. Numerical/wire checks do not establish installed compatibility:
-  PC protocol/minimal XML still need alignment; nominal execution and force correction are unconnected.
-  Preparation success never grants permission to execute.
-- Preserve queued immutable prepared-job delivery to ControlIO, stale-result rejection and invalidation
-  on regeneration/calibration changes. Keep numerical preparation/file I/O outside receive callbacks.
-  Shared-file publication is not controller readiness; an old disk file may survive invalidation.
-  Read the actual shared-data/KRL contract before edits.
+- Before RSI edits, read resources/files/rsi/RSI_Hole_CONTRACT.md, then chamferrsistream,
+  scenemachiningpreparation and devices/rsi/rsidevice. Sampling success, a bound socket and a
+  delivered reply are not controller readiness and never grant permission to move the robot.
+- sampleChamferRsiStream targets come only from ChamferCentralMotion::evaluate (inverse quintic arc
+  map); never interpolate stored poses. One seeded checked IK/FK per 4 ms cycle; the chord bound
+  relies on every saved central Generate interval being at least 4 ms. Increments reconcile against
+  the sum already sent at six decimals; the stream ends with 50 zero settle cycles.
+- The stream belongs to its sampled path, not the selection. Drop it and delete shared_data.txt when
+  the path is removed, regenerated or incompatible, at a new request, at startup and at shutdown.
+  Deliver it to ControlIO only as an implicitly shared QVector<V6d> through the queued main.cpp link.
+- RsiDevice answers each accepted packet once (newest of a queued burst), advances one increment per
+  packet only while Start = 1, holds a replacement stream until Start = 0, and sends Stop only after
+  the controller echoes Result = 1 (Stop with Result 0 when Start arrives without a stream). Keep
+  numerical work and file I/O out of the receive callback and publish state only on change.
 
 ## QML
 

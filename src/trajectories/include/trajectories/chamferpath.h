@@ -45,12 +45,6 @@ struct ChamferArcDifferential
 
 struct ChamferPathResult;
 
-struct ChamferSamplingParameters
-{
-  double positionTolerance = 0.01; // mm, deviation from linear interpolation.
-  double orientationToleranceDegrees = 0.1; // Deviation from quaternion interpolation.
-};
-
 // Internal chamfer with a specified longitudinal-section angle.
 // Owns numerical geometry, not source samples.
 class ChamferPath

@@ -38,6 +38,7 @@ public:
   static ChamferCentralMotionResult create(const ChamferPath& path,
                                           const ChamferTimingParameters& timing);
 
+  const ChamferPath& path() const { return m_path; }
   const std::array<double, 4>& phaseTimes() const { return m_phaseTimes; }
   double duration() const { return m_phaseTimes.back(); }
   std::optional<ChamferCentralProfile> profile(ChamferPhase phase) const;

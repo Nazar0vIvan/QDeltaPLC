@@ -25,7 +25,7 @@
 #include "devices/fts/rdtmessage.h"
 #include "devices/fts/ftsdevice.h"
 #include "devices/plc/plcdevice.h"
-#include "network/rsi/rsidevice.h"
+#include "devices/rsi/rsidevice.h"
 
 #include <QWindow>
 #include <QDebug>
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 
   qRegisterMetaType<RDTResponse>("RDTResponse");
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
-  qRegisterMetaType<PreparedChamferJobPtr>("PreparedChamferJobPtr");
+  qRegisterMetaType<QVector<V6d>>("QVector<V6d>");
 
   auto* plcDev = new PlcDevice(QStringLiteral("PLC_AS332T"));
   auto* ftsDev = new FtsDevice(QStringLiteral("FTS_Delta"));
@@ -71,8 +71,6 @@ int main(int argc, char* argv[])
   hub.add(QStringLiteral("rsi"), rsiDev, DeviceHub::DeviceGroup::Control);
 
   DeviceHubQml::s_inst = &hub;
-
-  QObject::connect(ftsDev, &FtsDevice::dataSampleHFReady, rsiDev, &RsiDevice::setForce);
 
   hub.startAll();
 
@@ -91,7 +89,9 @@ int main(int argc, char* argv[])
 
   SceneMachiningPreparation preparation(&scene, &machining);
   SceneMachiningPreparationQml::s_inst = &preparation;
-	QObject::connect(&preparation, &SceneMachiningPreparation::preparedJobReady, rsiDev, &RsiDevice::setPreparedJob, Qt::QueuedConnection);
+  // Implicitly shared, immutable corrections cross to the ControlIO thread.
+  QObject::connect(&preparation, &SceneMachiningPreparation::correctionsReady,
+                   rsiDev, &RsiDevice::setCorrections, Qt::QueuedConnection);
   // Disable result dispatch and finish the worker before shutting down ControlIO.
   QObject::connect(&app, &QApplication::aboutToQuit, &preparation, &SceneMachiningPreparation::shutdown);
   QObject::connect(&app, &QApplication::aboutToQuit, &hub, &DeviceHub::stopAll);

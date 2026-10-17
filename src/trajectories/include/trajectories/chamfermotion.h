@@ -14,10 +14,13 @@ struct ChamferTimingParameters
   double accelerationDistanceFraction = 0.30; // Fraction of each lead length, (0, 1].
   double transferFeed = 10.0; // mm/s, shared by both staging transfers.
   double transferAcceleration = 20.0; // mm/s^2, same acceleration and deceleration.
-  double cartesianAcceleration = 20.0; // Existing simulation bound, not controller $ACC_MA.
+  // mm/s^2, $ACC_MA.CP of the installed KR C4 (resources/files/KR C4/R1/Mada/$machine.dat):
+  // the maximum programmable CP path acceleration. The controller does not monitor it for RSI.
+  double cartesianAcceleration = 10000.0;
   // Resolved from the robot model by ChamferMotion::create; retained in saved motion.
   V6d jointSpeed = V6d::Zero(); // deg/s; zero means no model has been applied yet.
-  // Simulation acceleration assumptions, not calibrated KUKA controller limits.
+  // HOME PTP animation timing only. The controller has no fixed axis
+  // acceleration ($ADAP_ACC=#STEP2 dynamic model), so none is enforced.
   V6d jointAcceleration = V6d::Constant(60.0); // deg/s^2
   double auxiliaryScale = 1.0; // (0, 1], scales joint limits for HOME movements.
 };
@@ -59,7 +62,6 @@ public:
   const ChamferRobotSetup& robot() const { return m_robot; }
   const ChamferPathParameters& parameters() const { return m_parameters; }
   double duration() const { return m_points.isEmpty() ? 0.0 : m_points.back().time; }
-  double centralTimeScale() const { return 1.0; } // Compatibility: prescribed timing is never stretched.
   const std::optional<ChamferCentralMotion>& centralMotion() const { return m_centralMotion; }
   // Absolute elapsed seconds. Finite times outside the motion clamp to its ends.
   std::optional<std::pair<V6d, ChamferMotionPhase>> evaluateJoints(double seconds) const;

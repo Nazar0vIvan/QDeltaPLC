@@ -1,7 +1,6 @@
 #include "geometry/utils.h"
 
 #include <algorithm>
-#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 
@@ -42,17 +41,6 @@ std::optional<QVector<V3d>> jsonArrayToPoints(const QJsonArray &array)
 }
 
 } // namespace
-
-std::optional<ProbeSamples> readProbeSamples(const QString& path)
-{
-  QFile file(path);
-  if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) return std::nullopt;
-  QJsonParseError error;
-  const auto document = QJsonDocument::fromJson(file.readAll(), &error);
-  if (error.error != QJsonParseError::NoError) return std::nullopt;
-
-  return decodeProbeSamples(document);
-}
 
 std::optional<ProbeSamples> decodeProbeSamples(const QJsonDocument& document)
 {

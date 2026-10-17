@@ -51,7 +51,7 @@ public:
   double accelerationDistanceFraction = 0.30;
   double transferFeed = 10.0; // mm/s, shared staging-transfer setting.
   double transferAcceleration = 20.0; // mm/s^2, requested transfer setting.
-  double acceleration = 20.0; // Existing simulation bound, not controller $ACC_MA.
+  double acceleration = 10000.0; // mm/s^2, maximum programmable CP path acceleration $ACC_MA.CP.
   double auxiliaryScale = 1.0;
   QList<double> jointSpeed{0, 0, 0, 0, 0, 0}; // Model-derived snapshot; unresolved before model loading.
   QList<double> jointAcceleration{60, 60, 60, 60, 60, 60};
@@ -74,7 +74,6 @@ class SceneMachiningPath final : public QObject
   Q_PROPERTY(double duration READ duration CONSTANT)
   Q_PROPERTY(double centralDuration READ centralDuration CONSTANT)
   Q_PROPERTY(QList<double> phaseTimes READ phaseTimes CONSTANT)
-  Q_PROPERTY(double centralTimeScale READ centralTimeScale CONSTANT)
   Q_PROPERTY(quint32 sourceEdgeId READ sourceEdgeId CONSTANT)
   Q_PROPERTY(SceneMachiningSettings settings READ settings CONSTANT)
   Q_PROPERTY(QString incompatibility READ incompatibility NOTIFY compatibilityChanged)
@@ -87,14 +86,13 @@ public:
   double duration() const { return motion().duration(); }
   double centralDuration() const
   { return motion().centralMotion() ? motion().centralMotion()->duration() : 0.0; }
-  // Eight HOME-relative phase boundaries; preparation exposes four central-relative times.
+  // Eight HOME-relative phase boundaries.
   QList<double> phaseTimes() const
   {
     QList<double> times;
     for (qsizetype index : motion().boundaries()) times.append(motion().points()[index].time);
     return times;
   }
-  double centralTimeScale() const { return motion().centralTimeScale(); }
   quint32 sourceEdgeId() const { return m_data.sourceEdgeId; }
   SceneMachiningSettings settings() const { return SceneMachiningSettings::fromMotion(motion()); }
   QString incompatibility() const { return m_incompatibility; }

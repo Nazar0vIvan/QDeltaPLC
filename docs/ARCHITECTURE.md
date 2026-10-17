@@ -37,10 +37,10 @@ declares its own target; src/application/CMakeLists.txt declares robocrap and it
 graph TD
   robocrap["robocrap (exe)<br/>src/application: document, robot, machining, GUI adaptation<br/>URI robocrap_qml_module"]
   R3D["RoboCrap3D (static QML module)<br/>src/viewport: OCCT/CAD/drawing<br/>URI RoboCrap.Viewport3D"]
-  Devices["RoboCrapDevices (static)<br/>src/devices + frozen src/network/rsi"]
+  Devices["RoboCrapDevices (static)<br/>src/devices: workers incl. RSI"]
   Geometry["RoboCrapGeometry (static)<br/>src/geometry: surfaces/math"]
   Kinematics["RoboCrapKinematics (static)<br/>src/kinematics: KR10 numerics"]
-  Trajectories["RoboCrapTrajectories (static)<br/>src/trajectories + frozen src/pathgeneration"]
+  Trajectories["RoboCrapTrajectories (static)<br/>src/trajectories: animation + RSI sampling"]
   Eigen["Eigen 5.0.0 (header-only)"]
   OCCT["OCCT 8.0.0 TK*"]
   Styles["Styles (QML, NO_PLUGIN)"]
@@ -56,7 +56,7 @@ graph TD
   Components --> Styles
   R3D -->|PUBLIC| Geometry
   R3D -->|PRIVATE| OCCT
-  Devices -->|PUBLIC, retained RSI| Trajectories
+  Devices -->|PUBLIC, V6d stream| Geometry
   Trajectories -->|PUBLIC| Kinematics
   Kinematics -->|PUBLIC| Geometry
   Geometry -->|PUBLIC include| Eigen
@@ -65,21 +65,17 @@ graph TD
 Library notes:
 
 - **Qt dependencies.** Geometry links QtCore; Kinematics/Trajectories inherit QtCore/Eigen.
-  Devices adds QtNetwork, with numerical dependencies retained for frozen RSI. Viewport adds
+  Devices adds QtNetwork and publicly links Geometry for the `V6d` RSI correction stream. Viewport adds
   QtGui/Qml and private OCCT. Application keeps Core/Gui/Quick/Qml/Network/Charts/Widgets
-  and conditional Felgo. QmlChartBridge lives in src/application and retains QtCharts; frozen RSI
-  XML stream parsing/writing uses QtCore, without a QtXml requirement.
+  and conditional Felgo. QmlChartBridge lives in src/application and retains QtCharts; RSI
+  XML parsing/writing uses QtCore, without a QtXml requirement.
 - **Published headers.** Libraries export only include/<capability>, plus Eigen from Geometry.
   Viewport publishes drawing/graphics values, OccController and its existing QML singleton wrapper
   needed by C++ startup. Devices publishes workers/values and the retained PlcMessageManager API.
   Application exports no C++ include directory. No whole-src directory is PUBLIC.
-- **Legacy compatibility.** Frozen RSI wire/device files stay under src/network/rsi, numerical
-  code under src/pathgeneration and preparation/shared-data coordination under src/scene.
-  Their owners are Devices, Trajectories and Application. Devices/Application use PRIVATE src
-  includes for legacy headers and generated moc; only six frozen Trajectories cpp files receive
-  source-local src access. RSI consumers include canonical capability headers directly and reach
-  private socket/diagnostics/machining headers with explicit relative paths; no old-path forwarders remain.
-  Saved motions still publicly expose central/arc/path values. These are retained dependencies.
+- **Module layout.** RSI code follows the canonical layout: numerics in src/trajectories, the device in
+  src/devices/rsi and RSI Sampling coordination in src/application/scene. No target uses the legacy
+  src include directory. Saved motions still publicly expose central/arc/path values.
 - **Drawing and assets.** Viewport includes no Application/Trajectories objects. Application
   supplies numerical drawings/transforms, absolute BREP paths for the seven links and two tools, and
   the OCCT resource directory. OccController retains that directory for OCCT initialization retries;
@@ -115,7 +111,7 @@ Plain value types with `std::optional` factories. There are no QObjects, signals
   - `Plane` and `BoundedPlane`: SVD plane fit.
   - `BoundedCylinder`: Levenberg–Marquardt (LM) fit from 6 seed axes; RMS acceptance threshold max(0.1 mm, 2 % R).
   - `Cylinder::fromAxis`: analytic, not a fit.
-- **Probe compensation**: `BoundedPlane::fromSamples` and `BoundedCylinder::fromSamples` fit the original coordinates, then call `applyProbe`. The plane moves by `dir·radius` along its fitted unit normal; the cylinder radius becomes `fittedRadius + dir·radius` and must remain greater than `GeomConst::Eps`. Their file factories are removed; SceneSurfaceImporter supplies decoded samples. `Plane::fromJsonFile` and `readProbeSamples` remain legacy RSI exceptions. There is no circle fitting or import.
+- **Probe compensation**: `BoundedPlane::fromSamples` and `BoundedCylinder::fromSamples` fit the original coordinates, then call `applyProbe`. The plane moves by `dir·radius` along its fitted unit normal; the cylinder radius becomes `fittedRadius + dir·radius` and must remain greater than `GeomConst::Eps`. Their file factories are removed; SceneSurfaceImporter supplies decoded samples. There is no circle fitting or import.
 - **`surfaceintersection`**: `intersectSurfaces(BoundedPlane, BoundedCylinder)` returns an analytic ellipse (`EdgeGeometry`), or the status `ParallelCylinderAxis` or `InvalidGeometry`.
 - **`Kr10Kinematics`** (`src/kinematics/`, published headers in `include/kinematics/`) is a closed-form solver for forward kinematics (FK) and inverse kinematics (IK).
   - `solveFK(q)` returns 7 link transforms; the last is the flange.
@@ -130,8 +126,7 @@ Plain value types with `std::optional` factories. There are no QObjects, signals
 
 ### 3.2 Scene (private Application code)
 
-Classes live under src/application/scene on the GUI thread, apart from frozen preparation/shared-data
-files under src/scene. They reach QML through src/application/backendqmltypes.h in the application module.
+Classes live under src/application/scene on the GUI thread. They reach QML through src/application/backendqmltypes.h in the application module.
 
 | Class | Responsibility |
 |---|---|
@@ -141,8 +136,7 @@ files under src/scene. They reach QML through src/application/backendqmltypes.h 
 | `SceneSurfaceImporter` | Synchronous, GUI-thread JSON point import of planes and cylinders, both compensated for the probe. It sets `busy` true and emits `busyChanged` before reading/fitting, then clears it before returning. Synchronous signal handlers can observe true; normal event-loop painting waits for this read/fit call to return (`scenesurfaceimporter.cpp:96-125`). |
 | `SceneEndEffectors` | Stores the active tool, measuring stylus data, the collet frame `FLANGE_ER` (initially a provisional constant), and accepted spindle XYZABC with its optional reconstructed transform, exposed by `spindleTcpFrame`. `applySpindlePoses` preserves `FLANGE_ER * ER_TCP`; the stored TCP matrix is reconstructed from the accepted coordinates. Both commit paths update list/frame before notifications. A collet change emits `spindleColletChanged` then `spindleTcpChanged`, even when TCP is equivalent; a TCP-only change emits the latter. Unchanged values emit neither. Generate and presentation reuse the matrix; workers copy its value. The tool CAD models are fixed and are not stored here. |
 | `SceneMachining` | Coordinates Generate and Dry Run (§5.2). It holds the `Kr10KinematicModel` copy received once from `RobotController` after initial graphics acceptance, a calibration revision counter, and the playback state. It derives the signed unit draft-axis direction and 5–40 mm display length from the selected source/settings and emits the drawing value. |
-| `SceneMachiningPreparation` | Builds the RSI job ("RSI Sampling"; outside the current animation scope). An `std::async` worker produces a `PreparedChamferJob`. On the GUI thread it then writes `C:/RoboCrapJobs/shared_data.txt` with `QSaveFile` and emits `preparedJobReady`. It watches `<appDir>/rsi-correction-limits.json`. |
-| `chamfershareddata` | Free functions. `prepareChamferSharedData` (worker side) and `writeChamferSharedData` (GUI side). |
+| `SceneMachiningPreparation` | RSI Sampling (`App.MachiningPreparation`). For the selected compatible saved path, an `std::async` worker runs `sampleChamferRsiStream` on a copied motion handle, polled by a 30 ms timer. On the GUI thread it accepts only a result whose path still exists, is compatible and holds the same motion. It then writes the five-row `C:/RoboCrapJobs/shared_data.txt` with `QSaveFile` and emits `correctionsReady(QVector<V6d>)`. The stream belongs to its path, not the selection. It is dropped, and the file deleted, at startup, at a new request, when `SceneMachining::availabilityChanged` shows the path gone or incompatible, and at shutdown. QML reads `canPrepare`, `unavailableReason`, `preparing`, `error` and `summary`. |
 
 QML singletons (`application/backendqmltypes.h`):
 
@@ -153,24 +147,21 @@ QML singletons (`application/backendqmltypes.h`):
 
 Numerical code on copied inputs. It calls no scene or device API and has no mutable statics.
 Animation implementations live under src/trajectories/chamfer; published motion/path/arc/central
-headers live under src/trajectories/include/trajectories. Animation stages use the plain
-`Kr10Kinematics` solver; the call-counting `ChamferProfiledKinematics` remains only for the frozen
-RSI sampler. Frozen RSI bodies remain under src/pathgeneration.
-Trajectories retains file I/O in RSI correction-limit loading and the offset writer; Geometry
-retains `readProbeSamples` and Plane::fromJsonFile for legacy RSI. Bounded surface fitting accepts
+headers live under src/trajectories/include/trajectories. LIN transfer stages use the plain
+`Kr10Kinematics` solver; central validation and RSI sampling share `ChamferTcpSolver`
+(`chamfertcpsolver.h`) for the checked TCP IK. Bounded surface fitting accepts
 decoded samples.
 TCP means tool center point; LIN denotes a prescribed straight Cartesian transfer, and PTP
 denotes a synchronized joint movement.
 
 | Stage | File | Product |
 |---|---|---|
-| Analytical curve | `chamferpath` | `ChamferPath::evaluate(angleRad)` evaluates the machining curve at an ellipse parameter in radians. `evaluatePhase(phase, progress)` evaluates LeadIn, Machining or LeadOut at dimensionless phase-local progress in [0,1]. Neither parameter is traveled distance or physical seconds. The path also supplies staging point P_s; `create(parameters)` validates the input. ChamferPath exposes analytical evaluation/differentials; ChamferSamplingParameters remains for the separate RSI sampler. |
+| Analytical curve | `chamferpath` | `ChamferPath::evaluate(angleRad)` evaluates the machining curve at an ellipse parameter in radians. `evaluatePhase(phase, progress)` evaluates LeadIn, Machining or LeadOut at dimensionless phase-local progress in [0,1]. Neither parameter is traveled distance or physical seconds. The path also supplies staging point P_s; `create(parameters)` validates the input. ChamferPath exposes analytical evaluation/differentials. |
 | Arc length | `chamferarclength` | Per-phase map from progress to distance in mm. Uses adaptive Gauss–Kronrod (G7/K15) integration and a piecewise quintic Hermite inverse matching endpoint progress and its first two distance derivatives (see the [numerical study](../codex_plans/CHAMFER_ARCLENGTH_STUDY.md)). Stored boundaries are "inverse-map knots"; progressAtDistance selects an interval and evaluates its inverse quintic for timed motion. There is no public distanceAt lookup. |
 | Central timing | `chamfercentralmotion` | For elapsed seconds, calculate traveled distance in mm, recover phase-local progress through the inverse arc-length map, then evaluate the analytical TCP pose. All three phases use `machiningFeed`; there is an acceleration ramp over `accelerationDistanceFraction` of each lead. `leadInFeed`/`leadOutFeed` are carried through the settings but do not define central timing. |
 | Point schedule + IK | `chamfercentralvalidation` | `ChamferCentralPreparation` builds the central maps/timing and curvature/acceleration point schedule (0.01 mm) once per Generate, on the first reached central attempt. Scheduled analytical targets and target failures are cached as reached. Each candidate solves its own seeded IK sequence and checks joint limits, speed and Cartesian XYZ acceleration. Joint-acceleration magnitude rejection is commented out (temporary exception, see `AGENTS.md`). |
 | Whole motion | `chamfermotion` | `ChamferMotion::create(path, robot)` prepares HOME to P_s (PTP), P_s to lead-in start (LIN), the central three phases, lead-out end to P_s (LIN), and P_s to HOME (PTP). It prepares three clamped cubic joint splines: one per LIN and one shared across LeadIn/Machining/LeadOut, each with zero endpoint joint velocities. `evaluate(seconds)` uses quintic smoothstep for PTP and the prepared splines for LIN/central, then FK; it performs no IK. Times 0 and `duration()` return `qHome`. The outer motion stores `ChamferPathParameters`; the complete `ChamferPath` is inside `ChamferCentralMotion`, so parameters are repeated, not two full path objects (`chamfermotion.h:75-81`, `chamfercentralmotion.h:65`). |
-| RSI preparation | `chamferjob`, `chamfercartesiansampler`, `rsiposeencoder`, `rsicorrectionlimits` | `PreparedChamferJob` with 4 ms samples of the central part. Each sample runs IK and checks limits, **including per-joint acceleration**. Correction is encoded as an absolute first sample plus per-cycle increments, then checked against the limits file. |
-| Legacy RSI demo | `pathgeneration/rsi/*` | `RsiPath::fromSurfPose`, `RsiPath::lin` and `writeOffsetsToJson` are used by `RsiDevice::generateTrajectory` (`rsidevice.cpp:206-220`). The demo remains a callable invokable; its only QML caller is the uninstantiated `KukaPanel`. |
+| RSI sampling | `chamferrsistream` | `sampleChamferRsiStream(motion)` evaluates `ChamferCentralMotion::evaluate` at $t_k = 0.004k$ s (the last target is the exact end). Per cycle it runs one seeded `solveTcp`, joint position/speed checks and a Cartesian acceleration check, then the continuous Z-Y-X Euler step. It emits the increment $q(\bar{c}(t_k) - \bar{c}(t_0) - \bar{S}_{k-1})$, rounded to $10^{-6}$ against the sum of previously sent values, then 50 zero settle increments. It fails if any saved central Generate interval is shorter than 4 ms, so that every 4 ms chord stays within 0.01 mm. It also returns the start/end/staging frames and the cumulative offset range. |
 
 Analytical lead evaluation shares checked machining edge/radial/position data and constructs
 the final lead orientation directly. The discarded machining transform composition is skipped;
@@ -255,16 +246,14 @@ transform acceptance. There is no profiling command line.
 | `AbstractDevice` | Public slots `start`, `stop`, `invoke` with an `m_started` guard. `buildApi()` indexes public `Q_INVOKABLE` methods that return `void` and take no arguments or one `QVariantMap`; slots are excluded. Signals: `stateReady`, `socketStateReady`. `attachSocket()` forwards socket state and logs socket errors directly through Qt. |
 | `PlcDevice` (GeneralIO) | `QTcpSocket` bound to a local port, then `connectToHost`. Invokables: `connect`, `disconnect`, `setOutput`, `writeMessage`. `PlcMessageManager` builds frames: a 6-byte big-endian header (0xAA55, version, type, transaction id (tid), length) plus a command, and the whole frame is swapped in 16-bit words. Responses are fixed 32-byte frames. Sends SNAPSHOT on connect. State keys: `x1`, `y1`, `x2`, `y2` (8 bools each) and `cellState`. `writeMessage` accepts raw WRITE_RAW/WRITE_REG/SET_VAR frames and is reachable from QML through `invoke()`, although no QML calls it. Pending requests have no deadline and can exhaust all 256 IDs (§7). The framing is defined by the PLC program (not in the repository); the user confirmed on 2026-10-13 that the protocol works. That historical statement does not establish behavior under response loss. |
 | `FtsDevice` (ControlIO) | `QUdpSocket`. Invokables: `connect`, `disconnect`, `startStreaming`, `stopStreaming`, `bias`, `startLogRecording`, `stopLogRecording`, `saveLogToDefaultFile`. RDT request: 0x1234, then command, then count = 0. Parses one 36-byte record per datagram; timestamps use the sequence difference divided by the assumed 7000 Hz, and force/torque scaling uses 1e6 counts per unit. Each accepted packet emits `dataSampleHFReady`. While processing packets, elapsed time ≥16 ms triggers `processBatch`, which uses the last sample for recording and GUI publication; this is not a fixed publication timer. First publication includes all six axes; later publications include changes of at least the 0.05 deadband (`FtsDevice::onReadyRead`, `publishState`, `processBatch`, and the local `acceptAxis` helper in `ftsdevice.cpp`). Stream/log control flags are published separately. Recording is saved by `std::async` + `QSaveFile` to `<appDir>/records/`. The 7000 Hz value is not a measured arrival rate or verified sensor setting. |
-| `RsiDevice` (ControlIO) | `QUdpSocket`. Answers every received `<Rob>` datagram synchronously in `readyRead`, echoing IPOC and sending `<RKorr>` (`RsiProtocol`). Invokables: `connect`, `disconnect`, `generateTrajectory` (hard-coded demo line; if reached, it dereferences an empty optional from the absent `://files/blank-plane-bottom.json`, causing undefined behavior, `rsidevice.cpp:156`), `startStreaming`, `stopStreaming`. The demo is dormant in the current UI but callable through `DeviceRunner::invoke`. Slots outside the invoke API: `setForce` (stores Fz, never read) and `setPreparedJob` (stores and publishes the `preparedJob*` keys; never arms motion). |
-| `RsiHoleProtocol` | Compiled but has no callers. `RSI_Hole_CONTRACT.md` describes its State schema as out of date. |
+| `RsiDevice` (ControlIO, `src/devices/rsi`) | `QUdpSocket`. Drains queued datagrams from the configured peer, answers only the newest valid `<Rob>` (IPOC, Start, Result) and echoes its IPOC. State machine Idle → Streaming (one stored increment per packet) → Finished (zeros, Result 1) → Stopping (Stop 1 once Result 1 is echoed); Start = 0 resets to Idle and index 0. Start without a stream replies Stop 1, Result 0. Invokables: `connect`, `disconnect`. Slot outside the invoke API: `setCorrections(QVector<V6d>)`, deferred to the next Start = 0 during a run. Publishes `rsiState` and `rsiCorrections` only on change. The wire codec is private to `rsidevice.cpp`. |
 | `DeviceProfileModel` | Read-only table loaded from `:/json/db.json`. Provides the default endpoints shown in the Network view. |
 | Console diagnostics | Device call sites use `qInfo().noquote()` on their owning threads; viewport messages are formatted by `logViewportMessage` in main. Output retains the used `[ERROR]`/`[OK]`/`[INFO]`/`[WRITE]` labels, source names and message text. Qt's message pattern supplies timestamps. Diagnostics have no QML context property, custom message type, or queued GUI logging relay. |
 | `QmlChartBridge` | Retained under `src/application` and compiled into `robocrap` with QtCharts; construction/connections at `main.cpp:91-93` are commented out. |
 
 Cross-device wiring in `main.cpp`:
 
-- `FtsDevice::dataSampleHFReady` → `RsiDevice::setForce` (`:85`). This uses AutoConnection, so it is a direct call because both devices are on ControlIO.
-- `SceneMachiningPreparation::preparedJobReady` → `RsiDevice::setPreparedJob`, queued (`:107`).
+- `SceneMachiningPreparation::correctionsReady` → `RsiDevice::setCorrections`, queued; `QVector<V6d>` is registered in main.
 
 ### 3.5 3D viewport (`RoboCrap3D`, namespace `RoboCrap3D`)
 
@@ -309,8 +298,7 @@ through the robot console path before SceneMachining handles the returned failur
   - A modal calculation window is bound to `App.Machining.calculating`.
 - **Application decisions in C++.** WorkspaceController in `src/application/workspacecontroller.*` owns mode (Measuring/Machining), submode (Rough/Precise) and selected IDs. It reuses SceneModel removal/intersection, SceneMachining input/Stop and SceneEndEffectors' active-tool setter. main constructs this application QML singleton after its three collaborators (document, machining session, end effectors) and connects viewport picks/Delete and selection drawing through typed signals. Main exposes read-only bindings; its creation calls reset to Measuring/Rough/empty selection. Leaving Machining stops at HOME before the tool/input changes. The UI-only dryScanActive/dryScanRunning flags remain in Main.
 - **Local UI state.** `chamferEditorOpen` and `toolSetupOpen` choose the right panel. `MachiningPanel` owns draft text, `draftFlipAxis` and captured original settings; `EndEffectorPanel` owns pose draft strings. Focus and `ScenePanel` group expansion are UI state, separate from document/robot state (`MachiningPanel.qml:17-19,42-84`, `EndEffectorPanel.qml:27-69`, `ScenePanel.qml:25-29,138`).
-- **Retained RSI UI.** `KukaPanel.qml` is listed in CMake but never instantiated; its invokable commands belong to the separate RSI workflow.
-- **Device panels.** They use `App.Hub.device(key)`, `isConnected`, `data.<key>` and `invoke(name, map)`. Every `invoke` name used in QML exists as a `Q_INVOKABLE` on the target device; `generateTrajectory`'s only caller, `KukaPanel.qml`, is never instantiated.
+- **Device panels.** They use `App.Hub.device(key)`, `isConnected`, `data.<key>` and `invoke(name, map)`. Every `invoke` name used in QML exists as a `Q_INVOKABLE` on the target device. The RSI status label in Main shows `data.rsiState` while the RSI socket is bound.
 - **Selection and machining input.** WorkspaceController::synchronizeMachiningInput chooses the sole selected Edge/MachiningPath in Machining mode, otherwise zero. setSelection notifies QML's selected-object binding before applying input settings, preserving editor Cancel order; successful Generate first closes the editor, then requests selection. Import and scene-list requests use the same selectObject operation; document changes prune removed IDs. SceneMachining still captures the pending Generate source and retains active playback independently. Window visibility/native recreation already reapply cached selection, so Main has no selection replay handlers.
 - **Tools and placeholders.** Dry Scan only toggles `Main.qml` flags; no scan motion is prepared or played. Scan and Start Machining use the toolbar action's default `available: false` and remain disabled (`Main.qml:450-459`, `ModeToolBar.qml:62,197-219,239-244`). Measuring name/ball diameter/stylus length are displayed read-only; spindle ER coordinates are disabled read-only fields, while TCP relative to ER has Apply. Apply passes the original ER coordinates, not their four-decimal display values (`EndEffectorPanel.qml:121-178,261-267`). This UI does not implement measuring calibration or scan execution.
 - **Reusable modules.** `Components` contains the `Qx*` wrappers around Qt Quick Controls. `Styles` contains the singletons `Colors`, `Fonts` and `Metrics`. Both are NO_PLUGIN static modules with maintained `qmldir` files.
@@ -330,7 +318,7 @@ through the robot console path before SceneMachining handles the returned failur
 | `ControlIO` (`QThread`) | `FtsDevice`, `RsiDevice` and their sockets/timers | `DeviceHub` |
 | `GeneralIO` (`QThread`) | `PlcDevice` and its socket | `DeviceHub` |
 | Generate worker (`std::async`) | `ChamferMotion::create` on a copied `ChamferPath` + `ChamferRobotSetup`; polled by a 30 ms GUI timer | `SceneMachining::generate` |
-| RSI preparation worker (`std::async`) | `prepareChamferSharedData` on a copied source + limit configuration; polled by a 30 ms timer | `SceneMachiningPreparation::prepare` |
+| RSI sampling worker (`std::async`) | `sampleChamferRsiStream` on a copied `shared_ptr<const ChamferMotion>`; polled by a 30 ms timer | `SceneMachiningPreparation::prepare` |
 | FTS save worker (`std::async`) | JSON write of a copied sample buffer | `FtsDevice` |
 | CAD worker (`QThread` subclass) | BREP loading of the seven links and two tools, serialized by a static mutex | `OccController` |
 
@@ -340,14 +328,14 @@ Ownership and lifetime rules:
 - **Devices.** Each device is created parentless, then moved to its I/O thread. It is deleted on that thread by `deleteLater` when the thread finishes. Runners are children of the hub.
 - **Scene objects.** Each `SceneObject` is a child of `SceneModel`; fitted geometry is held by value, and a machining path's `SceneMachiningPath` is a child of its object. Removal emits `objectRemoved`, then calls `deleteLater`.
 - **Immutable shared data.** These are shared across threads as `shared_ptr<const ...>`:
-  - `ChamferMotion` (scene path, playback, RSI job);
-  - `PreparedChamferJob` (GUI thread to ControlIO);
+  - `ChamferMotion` (scene path, playback, RSI sampling worker);
+  - the RSI correction stream, as an implicitly shared `QVector<V6d>` (GUI thread to ControlIO);
   - `CadLoadResult` (controller, window and adapter).
 - **Worker result acceptance.** Results are accepted only on the GUI thread, and stale ones are rejected:
   - Generate compares the input id, the calibration revision, robot availability and the source;
-  - preparation compares a generation counter, the source, the motion pointer and the revision;
+  - RSI sampling requires the sampled path to still exist, be compatible and hold the same motion pointer;
   - CAD loading compares a generation counter.
-- **Thread affinity checks.** `Q_ASSERT` checks thread affinity in `AbstractDevice::start/stop/invoke`, `DeviceRunner::invoke`, `RsiDevice::setPreparedJob`, `OccController::loadRobot`, `RobotController::loadRobot/applyPlayback` and `SceneMachiningPreparation`; `claimQmlSingleton` `qFatal`s on a wrong-thread QML engine.
+- **Thread affinity checks.** `Q_ASSERT` checks thread affinity in `AbstractDevice::start/stop/invoke`, `DeviceRunner::invoke`, `OccController::loadRobot`, `RobotController::loadRobot/applyPlayback` and `SceneMachiningPreparation`; `claimQmlSingleton` `qFatal`s on a wrong-thread QML engine.
 
 ## 5. Traced workflows
 
@@ -444,10 +432,10 @@ Startup:
 
 1. **`aboutToQuit`.** Slots run in connection order:
    1. `SceneMachining::endPlayback` (connected in its constructor, `scenemachining.cpp:88`).
-   2. `SceneMachiningPreparation::shutdown` (`main.cpp:109`). It invalidates its generation, clears any prepared job (emitting `preparedJobReady(nullptr)` to ControlIO if a job existed), and **blocks** on an in-flight preparation future.
+   2. `SceneMachiningPreparation::shutdown` (`main.cpp:109`). It **blocks** on an in-flight sampling future, then drops any held stream (emitting an empty `correctionsReady` to ControlIO if one existed) and deletes `C:/RoboCrapJobs/shared_data.txt`.
    3. `DeviceHub::stopAll` (`main.cpp:110`).
 2. **`stopAll`** (`devicehub.cpp:60-79`). It returns at once if both threads are already stopped. Otherwise:
-   - for each device: `invokeMethod(dev, &AbstractDevice::stop, BlockingQueuedConnection)`. When a prepared job exists, shutdown posts its null-job invalidation from the GUI thread to `rsiDev` before this same GUI thread posts that device's blocking stop (`main.cpp:107-110`, `scenemachiningpreparation.cpp:173-201`). This orders those queued calls to the same receiver; it is not a universal FIFO claim across unrelated senders, receivers or Qt event kinds. If no job exists, `setPreparedJob({})` emits no redundant invalidation. `FtsDevice::stopDevice` waits for an outstanding save.
+   - for each device: `invokeMethod(dev, &AbstractDevice::stop, BlockingQueuedConnection)`. When a stream exists, preparation shutdown posts its empty `setCorrections` from the GUI thread to `rsiDev` before this same GUI thread posts that device's blocking stop. This orders those queued calls to the same receiver; it is not a universal FIFO claim across unrelated senders, receivers or Qt event kinds. `FtsDevice::stopDevice` waits for an outstanding save.
    - `quit()` and `wait()` both I/O threads. `QThread::finished` triggers `deleteLater`, which deletes each device on its own thread.
    - `stopAll()` asserts that the caller is outside both I/O threads (`devicehub.cpp:65-66`): a blocking queued stop from its receiving thread would deadlock. The current shutdown caller is the GUI thread; sharing ControlIO does not by itself establish a race or deadlock.
 3. **`app.exec()` returns.** Stack objects are destroyed in reverse declaration order:
@@ -467,7 +455,7 @@ Startup:
     - `USE_HOT_RELOAD=ON`: app QML is not compiled in; `FelgoHotReload` uses root `hot_reload_config.json`, whose main_qml_file is `src/application/qml/Main.qml`. qml_module_paths contains both `src/application/qml` and the original `qml` reusable-module tree, with unchanged Components/Styles target mappings. Main still adds its cached qml/Modules import directory. Application embeds the unchanged config.json at /qml/config.json. CMake requires Felgo/FelgoHotReload and uses their existing helpers; the C++ branch uses `USE_FELGO_HOT_RELOAD`.
     - `OFF` (current source default, `CMakeLists.txt:29-33`): QML is embedded and loaded with `engine.loadFromModule("robocrap_qml_module", "Main")`. An existing build cache can choose a different option value.
   - `FAST_QML_BUILD=ON` (default) adds `NO_CACHEGEN`.
-  - Devices links QtNetwork and retained numerical RSI dependencies, inheriting QtCore. QQmlPropertyMap belongs to Application's DeviceRunner; Devices' value/manager headers have no QML dependency. PlcMessageManager remains a QObject and dictionary codec. Ordinary 8/16-bit readers retain strict numeric acceptance and typed stream writes; Qt stream reads retain their immediate status checks.
+  - Devices links QtNetwork and Geometry (for `V6d`), inheriting QtCore. QQmlPropertyMap belongs to Application's DeviceRunner; Devices' value/manager headers have no QML dependency. PlcMessageManager remains a QObject and dictionary codec. Ordinary 8/16-bit readers retain strict numeric acceptance and typed stream writes; Qt stream reads retain their immediate status checks.
   - Numerical code uses only QtCore: containers, JSON, `QElapsedTimer`.
 - **OCCT 8.0.0.**
   - Used only by src/viewport/occt, src/viewport/adapters and OccController's initialization/drawing implementation; Application's asset-path and robot configuration/state code has no OCCT include. `Kr10KinematicModel` and `Kr10Kinematics` remain independent of OCCT.
@@ -480,7 +468,7 @@ Startup:
   - `ready` requires the robot CAD to be presented, so Generate depends on OCCT initialization and on the BREP load of all seven links and both tools. While the native surface is destroyed and not yet rebuilt (on exit or during Felgo hot reload), availability is false; a Generate result arriving then is rejected. The user confirmed this behaviour stays.
 - **Eigen 5.0.0.** Header-only, vendored in `libs/`, exported PUBLIC by `RoboCrapGeometry` because `mathtypes.h`, `Pose`, the kinematics and the path types expose Eigen in their headers.
 - **Felgo.** Only in hot-reload builds (`FelgoApplication`, `FelgoHotReload` in `main.cpp`).
-- **Standard library concurrency.** `std::async` / `std::future` is used for the Generate, RSI preparation and FTS save workers. `QtConcurrent` is not used.
+- **Standard library concurrency.** `std::async` / `std::future` is used for the Generate, RSI sampling and FTS save workers. `QtConcurrent` is not used.
 
 ## 7. Open questions
 
@@ -495,18 +483,15 @@ Source-level facts, unresolved decisions and runtime/hardware checks not perform
   - counts per force and counts per torque set by the calibration.
 
   Unverified in code: the configured RDT rate (the code assumes 7000 Hz for timestamps) and the counts per force/torque (hard-coded to 1e6 for both). With command 0x0002 each datagram carries one record, so parsing 36 bytes is consistent with the manual.
-- **RSI.** The RSI 3.3 manual confirms IPO_FAST = 4 ms (12 ms in IPO mode), that a packet is valid only with the echoed IPOC, that late packets are counted and stop the robot, and that `HOLDON` controls output behaviour on late packets. `resources/files/rsi/RSI_Hole.src:77` uses `RSI_ON(#RELATIVE, #IPO_FAST)`.
-  - Not available: the `RSI_Hole.rsi` context, which sets the POSCORR correction frame (BASE/TOOL) and limits.
-  - Not verified on the controller: `RsiProtocol`'s omission of `<Stop>`, the late-packet count limit, and the stale-datagram behaviour (every queued datagram is answered).
-  - `RsiHoleProtocol` is documented as out of date and is unused.
-- **RSI execution.** Not connected. `RsiDevice` stores the prepared job but executes only the demo `m_offsets` path. `setForce` stores Fz but nothing reads it.
-- **RSI preparation vs. Dry Run.** RSI preparation enforces per-joint acceleration (60 °/s² default), but Dry Run validation does not (temporary exception). A path accepted for Dry Run may therefore fail RSI Sampling. This is inferred from code, not observed.
+- **RSI.** The RSI 3.3 manual confirms IPO_FAST = 4 ms (12 ms in IPO mode), that a packet is valid only with the echoed IPOC, that late packets are counted and stop the robot, and that `HOLDON` controls output behaviour on late packets. `resources/files/rsi/RSI_Hole.src` uses `RSI_ON(#RELATIVE, #IPO_FAST)`; its contract is `resources/files/rsi/RSI_Hole_CONTRACT.md`.
+  - Not verified on the controller: the ETHERNET1 `Timeout`/`Precision` semantics, the BOOL spelling of `Start`, whether POSCORR1 MaxRotAngle covers the sampled A/B/C range, and the behaviour when the T1 Start key is released during RSI_MOVECORR.
+- **RSI execution.** Implemented, never run on the robot. Neither a local wire check nor a T1 run has been done.
 - **PLC pending lifetime.** `availableTid()` scans all 256 8-bit IDs. If complete socket writes keep succeeding, matching replies never arrive and the connection stays open, pending entries accumulate until every ID is occupied; another write is rejected with "All PLC transaction ids are pending" (`plcdevice.cpp:153-179,206-247`). Matching responses, including matched error replies, remove their entry; a failed/partial write removes its entry, and partial writes also abort the socket. Explicit disconnect, socket transition to UnconnectedState and device stop clear pending requests (`plcdevice.cpp:33-45,113-116,311`). No timeout/retry policy exists. This response-loss condition is derived from code, not an observed hardware incident or a contradiction of the historical working-protocol report.
 
 **Runtime behaviour not exercised**
 - Whether `QQmlPropertyMap::insert(QVariantHash)` notifies bindings for every key in practice. Assumed from Qt documentation; not run.
-- ControlIO latency. The 4 ms RSI reply loop shares an event loop with FTS datagram handling (timestamps assume 7000 Hz; actual arrival rate is unmeasured), the `setForce` direct calls, the dormant synchronous demo `generateTrajectory` and `FtsDevice::stopDevice` waiting for a save. Latency is unmeasured; the shared thread alone does not prove a race or deadlock.
-- Shutdown can block on an in-flight Generate (future destructor), an RSI preparation or a BREP read. Durations not measured.
+- ControlIO latency. The 4 ms RSI reply loop shares an event loop with FTS datagram handling (timestamps assume 7000 Hz; actual arrival rate is unmeasured) and `FtsDevice::stopDevice` waiting for a save. Latency is unmeasured; the shared thread alone does not prove a race or deadlock.
+- Shutdown can block on an in-flight Generate (future destructor), an RSI sampling worker or a BREP read. Durations not measured.
 - Felgo hot reload with the `qFatal` "one engine" singleton checks. Not run.
 - Differential selection and live PartId storage are implemented in OccScene. Outline reuse, picking, hide/show/replacement, partial OCCT failures and drawing replay have not been observed in a rebuilt runtime; source inspection establishes the intended operations only.
 
@@ -520,8 +505,7 @@ Source-level facts, unresolved decisions and runtime/hardware checks not perform
 **Retained interfaces and code hygiene**
 - `SceneModel` is QML-creatable (registered under both `SceneModel` and the singleton `Scene`; one C++ class under two QML names is not a documented Qt pattern, though the build has used it). All application singletons share the `qFatal` check in `claimQmlSingleton`.
 - `QmlChartBridge` is retained as compiled Application code with its existing API. Absence of an active instance does not authorize removing it.
-- Dormant callable/separate-workflow code: `KukaPanel.qml` is listed but not instantiated, yet contains the `generateTrajectory` invoke. The demo remains callable; `RsiHoleProtocol` is compiled with no active caller, and its controller schema is separately unresolved. Neither is equivalent to an empty file.
-- `ChamferSamplingParameters` remains used by the RSI Cartesian sampler (`chamfercartesiansampler.cpp:396`); `ChamferPathSample`/`ChamferPathResult` serve analytical evaluation/construction. `FtsDevice::dataBatchReady` and `streamReset` have no active connections; recording lifecycle calls and console diagnostics remain live.
+- `ChamferPathSample`/`ChamferPathResult` serve analytical evaluation/construction. `FtsDevice::dataBatchReady` and `streamReset` have no active connections; recording lifecycle calls and console diagnostics remain live.
 - Device/viewport diagnostics use Qt console output. Additional operation-status/error properties and QML error displays are deferred at the user's request; existing socket/control state channels remain live.
 - Retained assets: nine KR10/tool BREPs and `resources/files` blade/RSI inputs. RSI contract/controller/example files are separate workflow assets; lack of embedding does not make them disposable.
 - Robot pose and OCCT initialization failures return values; their former QString& output channels were removed. External-library exception handlers preserve the recovery described in §6 under the current AGENTS.md allowance.
