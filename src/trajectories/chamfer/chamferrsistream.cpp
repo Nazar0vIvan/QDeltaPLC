@@ -136,7 +136,6 @@ public:
   }
 
 private:
-
   QString startCycle()
   {
     const auto target = m_motion.centralMotion()->evaluate(0.0);
@@ -188,10 +187,10 @@ private:
   QString jointSpeedError(const V6d& joints) const
   {
     const V6d speed = (joints - m_seed.q).cwiseAbs() / CyclePeriod;
-    const auto& robot = m_motion.robot();
+    // ChamferMotion::create stores the model's rated speeds here.
+    const V6d& limits = m_motion.robot().timing.jointSpeed;
     for (std::size_t axis = 0; axis < DofCount; ++axis) {
-      const double limit = std::min(robot.timing.jointSpeed[axis],
-                                    robot.model.joints[axis].ratedPayloadSpeedDegreesPerSecond);
+      const double limit = limits[axis];
       if (!std::isfinite(speed[axis]) || speed[axis] > limit * (1.0 + RateTolerance))
         return QStringLiteral("A%1 speed %2 deg/s exceeds bound %3.")
             .arg(axis + 1).arg(speed[axis], 0, 'g', 12).arg(limit);

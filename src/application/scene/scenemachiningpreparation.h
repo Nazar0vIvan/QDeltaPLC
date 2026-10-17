@@ -48,7 +48,7 @@ private:
     ChamferRsiStream stream;
   };
 
-  SceneMachiningPath* selectedPath() const;
+  SceneMachiningPath* pathById(quint32 objectId) const;
   bool isCurrent(const PreparedRsiStream& prepared) const;
   void onAvailabilityChanged();
   void finishPreparation();

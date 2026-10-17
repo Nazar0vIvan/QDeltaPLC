@@ -6,6 +6,7 @@
 #include <QSaveFile>
 #include <QStringList>
 #include <QThread>
+#include <algorithm>
 #include <chrono>
 #include <utility>
 
@@ -60,16 +61,13 @@ QString writeSharedData(const QByteArray& contents)
   return {};
 }
 
-// First of three consecutive X/Y/Z or A/B/C components.
-QString offsetRange(const ChamferRsiStream& stream, int first)
+// Largest cumulative |correction| of three consecutive components (X/Y/Z from 0, A/B/C from 3),
+// the value POSCORR1 LowerLim/UpperLim and MaxRotAngle must cover.
+QString largestOffset(const ChamferRsiStream& stream, int first)
 {
-  static const char* const names[6] = {"X", "Y", "Z", "A", "B", "C"};
-  QStringList ranges;
-  for (int axis = first; axis < first + 3; ++axis)
-    ranges.append(QStringLiteral("%1 [%2, %3]").arg(QLatin1String(names[axis]))
-                      .arg(stream.minimumOffset[axis], 0, 'f', 3)
-                      .arg(stream.maximumOffset[axis], 0, 'f', 3));
-  return ranges.join(QStringLiteral(" · "));
+  return QString::number(std::max(stream.minimumOffset.segment<3>(first).cwiseAbs().maxCoeff(),
+                                  stream.maximumOffset.segment<3>(first).cwiseAbs().maxCoeff()),
+                         'f', 3);
 }
 
 } // namespace
@@ -94,17 +92,16 @@ SceneMachiningPreparation::~SceneMachiningPreparation()
   shutdown();
 }
 
-SceneMachiningPath* SceneMachiningPreparation::selectedPath() const
+// Only machining paths have a geometry QObject.
+SceneMachiningPath* SceneMachiningPreparation::pathById(quint32 objectId) const
 {
-  const auto* object = m_scene->findObject(m_machining->inputId());
-  if (!object || object->kind() != SceneObject::MachiningPath) return nullptr;
-  return qobject_cast<SceneMachiningPath*>(object->geometry());
+  const auto* object = m_scene->findObject(objectId);
+  return object ? qobject_cast<SceneMachiningPath*>(object->geometry()) : nullptr;
 }
 
 bool SceneMachiningPreparation::isCurrent(const PreparedRsiStream& prepared) const
 {
-  const auto* object = m_scene->findObject(prepared.pathId);
-  const auto* path = object ? qobject_cast<const SceneMachiningPath*>(object->geometry()) : nullptr;
+  const auto* path = pathById(prepared.pathId);
   return path && path->compatible() && path->data().motion == prepared.motion;
 }
 
@@ -112,7 +109,7 @@ QString SceneMachiningPreparation::unavailableReason() const
 {
   if (m_shuttingDown) return tr("Application is shutting down.");
   if (m_preparing) return tr("Sampling RSI…");
-  const auto* path = selectedPath();
+  const auto* path = pathById(m_machining->inputId());
   if (!path) return tr("Select a generated machining path.");
   return path->incompatibility();
 }
@@ -121,11 +118,12 @@ QString SceneMachiningPreparation::summary() const
 {
   if (!m_prepared) return {};
   const auto& stream = m_prepared->stream;
-  // One multi-argument substitution: a '%' in the user-editable path name stays literal.
-  return tr("RSI: %1 · %2 cycles · %3 s\nOffset mm: %4\nOffset deg: %5\nExported %6")
+  // One line for the footer status bar. One multi-argument substitution keeps a
+  // '%' in the user-editable path name literal.
+  return tr("RSI: %1 · %2 cycles · %3 s · offset up to %4 mm, %5°")
       .arg(m_prepared->pathName, QString::number(stream.increments.size()),
-           QString::number(stream.duration, 'f', 3), offsetRange(stream, 0),
-           offsetRange(stream, 3), SharedDataPath);
+           QString::number(stream.duration, 'f', 3), largestOffset(stream, 0),
+           largestOffset(stream, 3));
 }
 
 void SceneMachiningPreparation::onAvailabilityChanged()
@@ -139,8 +137,8 @@ void SceneMachiningPreparation::prepare()
   Q_ASSERT(QThread::currentThread() == thread());
   const QString reason = unavailableReason();
   if (!reason.isEmpty()) { setError(reason); return; }
-  const auto* object = m_scene->findObject(m_machining->inputId());
-  m_pending = {object->objectId(), object->name(), selectedPath()->data().motion, {}};
+  const quint32 pathId = m_machining->inputId();
+  m_pending = {pathId, m_scene->findObject(pathId)->name(), pathById(pathId)->data().motion, {}};
   // A new request replaces the previous stream and file, even if it fails.
   clearPrepared();
   setError({});

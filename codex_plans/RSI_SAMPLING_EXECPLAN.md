@@ -65,6 +65,13 @@ How to see it working without the robot: generate a path from `resources/json/ed
 
 ## Decision Log
 
+- Decision: Final review on the rebased base (2026-10-17).
+  - The summary became one footer line, showing only the largest cumulative |X/Y/Z| and |A/B/C| offset instead of six ranges and the file path, because upstream's status bar elides a single line.
+  - The coordinator's two scene lookups became one `pathById(id)`; the `MachiningPath` kind check was dropped, because upstream `SceneObject::geometry()` is non-null only for machining paths.
+  - The sampler checks joint speed against `timing.jointSpeed` alone, because `ChamferMotion::create` sets it to the model's rated speeds.
+  Rationale: remove redundant checks and lookups, and fit the reduced UI.
+  Date/Author: 2026-10-17, Claude.
+
 - Decision: The RSI work, first written on base `9a40e08`, was rebased onto `origin/main` `3e99496`. That base contains the user's code-reduction plan (`codex_plans/CODE_REDUCTION_EXECPLAN.md`), which removed Generate diagnostics, the `--profile-chamfer` profiler, `kr10.json` (now `RobotDefinition::kr10()`) and the scene geometry views. The adaptation:
   - `ChamferProfiledKinematics` (call counting and timing, kept upstream only for the old RSI sampler) is replaced by `ChamferTcpSolver` in `src/trajectories/chamfer/chamfertcpsolver.h`. It holds the borrowed robot setup, a plain `Kr10Kinematics` and ${}^{T}A_{F}$, and offers `kinematics()` and `solveTcp(tcp, seed)`. `chamferpreparationdiagnostics.h` is deleted.
   - `CentralValidator` and the RSI sampler use `ChamferTcpSolver`. `MotionCompiler` is exactly upstream's version (plain solver, own `m_tcpToFlange`).
@@ -498,7 +505,7 @@ Delete `src/scene/chamfershareddata.*` and the old `src/scene/scenemachiningprep
 In `src/application/qml/Main.qml`, rewrite the RSI status label text. Inspect the label and its layout first, per the QML contract:
 - While sampling: "Sampling RSI…".
 - On error: the error.
-- When prepared: the C++ `summary` (`RSI: <path name> · <cycles> cycles · <duration> s`, the X/Y/Z mm and A/B/C deg cumulative ranges, and the exported file). Milestone 4 appends `Controller: <App.Hub.device("rsi").data.rsiState ?? "idle">`.
+- When prepared: the C++ `summary`, one footer line: `RSI: <path name> · <cycles> cycles · <duration> s · offset up to <mm> mm, <deg>°`. The two offsets are the largest cumulative |X/Y/Z| and |A/B/C| correction, the values POSCORR1 must cover. Milestone 4 appends `Controller: <App.Hub.device("rsi").data.rsiState ?? "idle">`.
 - Otherwise: the unavailable reason, or "Ready for RSI Sampling."
 
 Update `src/application/chamferprofile.cpp` so `previewOnly=false` calls `sampleChamferRsiStream(*motion)` and reports its diagnostics, error and `motionCycles` instead of `PreparedChamferJob`.
@@ -668,7 +675,7 @@ Source acceptance (always): the diff review in AGENTS.md "Mandatory change proce
 
 Behavioral acceptance in a disconnected application (when the user runs a build):
 1. Import XP.json as a plane and XC.json as a cylinder, intersect, select the edge, apply Machining EE, and Generate.
-2. Select the new path and press RSI Sampling. The status shows `RSI: <name> · N cycles · T s`, with N = `motionCycles` + 50, plus the offset ranges and "Exported C:/RoboCrapJobs/shared_data.txt".
+2. Select the new path and press RSI Sampling. The footer shows `RSI: <name> · N cycles · T s · offset up to … mm, …°`, with N = `motionCycles` + 50.
 3. `C:\RoboCrapJobs\shared_data.txt` has five CRLF rows. Rows 1 and 2 have identical ABC; row 1 XYZ equals $P_s$ and row 2 equals the lead-in start. Row 4 is 0.010000 and row 5 is 0.020000 for the default 10 mm/s and 20 mm/s².
 4. Select another object: the status still shows the stream.
 5. Delete the path, or change the TCP calibration: the status returns to the unavailable reason, and the file is gone.
