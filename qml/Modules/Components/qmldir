@@ -1,4 +1,5 @@
 module Components
+QxBusyIndicator 1.0 QxBusyIndicator.qml
 QxButton      1.0 QxButton.qml
 QxCheckBox    1.0 QxCheckBox.qml
 QxComboBox    1.0 QxComboBox.qml

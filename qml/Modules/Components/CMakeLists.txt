@@ -9,6 +9,7 @@ qt_add_qml_module(Components
     Styles
   NO_PLUGIN
   QML_FILES
+    QxBusyIndicator.qml
     QxButton.qml
     QxCheckBox.qml
     QxComboBox.qml

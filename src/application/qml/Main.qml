@@ -147,43 +147,6 @@ ApplicationWindow {
   }
 
   Window {
-    id: calculationWindow
-
-    title: qsTr("Calculating trajectory")
-    transientParent: root
-    modality: Qt.ApplicationModal
-    flags: Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint
-    visible: App.Machining.calculating
-    color: Colors.background.dp01
-    width: 360
-    height: 110
-    minimumWidth: 360
-    maximumWidth: 360
-    minimumHeight: 110
-    maximumHeight: 110
-    x: root.x + (root.width - width) / 2
-    y: root.y + (root.height - height) / 2
-    onClosing: close => close.accepted = !App.Machining.calculating
-
-    ColumnLayout {
-      anchors.fill: parent
-      anchors.margins: Metrics.sp16
-      spacing: Metrics.sp12
-
-      Label {
-        Layout.fillWidth: true
-        text: qsTr("Calculating trajectory…")
-        color: Colors.foreground.high
-        font: Fonts.body
-      }
-      ProgressBar {
-        Layout.fillWidth: true
-        indeterminate: App.Machining.calculating
-        palette.highlight: Colors.primary.base
-      }
-    }
-  }
-  Window {
     id: plcPanelWindow
 
     title: qsTr("PLC Panel")
@@ -395,6 +358,7 @@ ApplicationWindow {
       RobotViewport {
         id: viewport
 
+        busy: App.Machining.calculating
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.minimumWidth: 0

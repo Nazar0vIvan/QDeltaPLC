@@ -33,8 +33,10 @@ ViewportOperationResult OccViewport::setRobot(const RobotVisualModel& visuals,
 {
   if (!isValid()) return {false, QStringLiteral("Robot installation: viewport is unavailable.")};
   const auto result = m_robot.load(visuals, shapes, pose);
-  requestRender();
   if (result.accepted) fitInitialCamera();
+  // Draw now rather than on the next event-loop turn, so the robot is on screen
+  // when readiness (which hides the loading overlay) is reported after this call.
+  flushRender();
   return result;
 }
 
