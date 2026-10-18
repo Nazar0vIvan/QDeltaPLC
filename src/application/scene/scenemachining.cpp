@@ -20,11 +20,7 @@ SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& m
   result.leadOutClearance = path.leadOut.clearance;
   result.leadInSpan = path.leadIn.spanDegrees;
   result.leadOutSpan = path.leadOut.spanDegrees;
-  result.leadInIntervals = path.leadIn.intervals;
-  result.leadOutIntervals = path.leadOut.intervals;
-  result.leadInFeed = timing.leadInFeed;
   result.machiningFeed = timing.machiningFeed;
-  result.leadOutFeed = timing.leadOutFeed;
   result.accelerationDistanceFraction = timing.accelerationDistanceFraction;
   result.transferFeed = timing.transferFeed;
   result.transferAcceleration = timing.transferAcceleration;
@@ -47,8 +43,6 @@ ChamferPathParameters SceneMachiningSettings::applyTo(ChamferPathParameters para
   parameters.leadOut.clearance = leadOutClearance;
   parameters.leadIn.spanDegrees = leadInSpan;
   parameters.leadOut.spanDegrees = leadOutSpan;
-  parameters.leadIn.intervals = leadInIntervals;
-  parameters.leadOut.intervals = leadOutIntervals;
   return parameters;
 }
 
@@ -56,9 +50,7 @@ std::optional<ChamferTimingParameters> SceneMachiningSettings::timing() const
 {
   if (jointSpeed.size() != 6 || jointAcceleration.size() != 6) return std::nullopt;
   ChamferTimingParameters result;
-  result.leadInFeed = leadInFeed;
   result.machiningFeed = machiningFeed;
-  result.leadOutFeed = leadOutFeed;
   result.accelerationDistanceFraction = accelerationDistanceFraction;
   result.transferFeed = transferFeed;
   result.transferAcceleration = transferAcceleration;

@@ -166,7 +166,7 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
 - Angle-only calculateIK returns angles/Status/Turn, using accepted Status and preceding angles.
   It computes only the three-joint transform needed for the wrist. Callers run full FK and
   flange/TCP checks, deriving accepted configuration from those same frames. IkSolution has no
-  FK frames. Keep checked solveIK(target, previousAngles) compatible with separate RSI consumers.
+  FK frames. There is no angles-only checked IK; callers carry the accepted IkSolution as seed.
 - SceneEndEffectors owns accepted tool XYZABC and its optional reconstructed transform on the
   GUI thread. Consumers reuse spindleTcpFrame; workers copy its value. Reconstruct from accepted
   coordinates, not the raw Apply product or rounded display values. Compose FLANGE_ER * ER_TCP
@@ -198,7 +198,6 @@ RSI_Hole run; force correction is out of scope. Apply Geometry and scene to nume
   the relevant producer/consumer: chamferpath, chamferarclength, chamfercentralmotion,
   chamfercentralvalidation and chamfermotion.
   ChamferPath provides analytical evaluation/differentials; arc maps expose progressAtDistance.
-  Keep saved lead intervals for QML compatibility.
 - Keep geometric parameter, traveled distance and physical time distinct. Recover TCP position/
   orientation by evaluating the analytical curve at the inverse arc-length parameter; do not
   substitute stored XYZ/ABC interpolation without explicit redesign. Inverse-map knots,
@@ -223,8 +222,7 @@ RSI_Hole run; force correction is out of scope. Apply Geometry and scene to nume
   FK, checks all link matrices and the saved-tool TCP even when its axes are hidden, and reuses that
   checked TCP in drawing. Commit the robot pose only after drawing acceptance; advance elapsed/phase
   only after returned success while playback remains active. Numerical errors use the robot console
-  path; drawing errors retain the renderer console path. Legacy evaluate(seconds) keeps its TCP
-  result and saved endpoint matrices for existing consumers, sharing the same interpolation code.
+  path; drawing errors retain the renderer console path.
 - Saved animation points are nodal points with joint angles and timestamps. Retain FK-derived
   TCP for accepted LIN/central nodes and reuse it when storing them; keep analytical targets
   separate for central XYZ acceleration. FK for interpolated playback angles is separate.

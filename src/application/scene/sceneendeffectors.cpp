@@ -1,10 +1,18 @@
 #include "sceneendeffectors.h"
-#include "geometry/pose.h"
 #include "geometry/utils.h"
 
 #include <cmath>
 
 namespace {
+
+// Normalizes the axis columns; rejects a nonorthogonal basis or a nonfinite origin.
+std::optional<M4d> frameTransform(const M3d& axes, const V3d& origin)
+{
+  if (!origin.allFinite()) return std::nullopt;
+  const auto basis = vecs2basis(axes.col(0), axes.col(1), axes.col(2));
+  if (!basis) return std::nullopt;
+  return makeTransform(basis2rot(*basis), origin);
+}
 
 std::optional<M4d> spindleColletTransform()
 {
@@ -13,9 +21,9 @@ std::optional<M4d> spindleColletTransform()
   // Provisional roll: ER Z is the flange's positive Z projected perpendicular to ER Y.
   const auto z = prjUnitOnPlane(V3d::UnitZ(), *y);
   if (!z) return std::nullopt;
-  const auto frame = Pose::fromAxes(y->cross(*z), *y, *z,
-                                   V3d{142.187099, -0.182323, 122.895995});
-  return frame ? std::optional<M4d>{frame->transform()} : std::nullopt;
+  M3d axes;
+  axes << y->cross(*z), *y, *z;
+  return frameTransform(axes, V3d{142.187099, -0.182323, 122.895995});
 }
 
 std::optional<M4d> poseTransform(const QList<double>& pose)
@@ -71,9 +79,8 @@ QList<double> SceneEndEffectors::spindleTcpInCollet() const
   if (!m_spindleColletFrame || !m_spindleTcpFrame) return {};
   const M4d colletToTcp = inverseRigidTransform(*m_spindleColletFrame) * *m_spindleTcpFrame;
   // Normalize the composed basis before Euler extraction, including at pitch +/-90 degrees.
-  const auto frame = Pose::fromAxes(colletToTcp.block<3, 1>(0, 0), colletToTcp.block<3, 1>(0, 1),
-                                   colletToTcp.block<3, 1>(0, 2), colletToTcp.block<3, 1>(0, 3));
-  return frame ? transformPose(frame->transform()) : QList<double>{};
+  const auto frame = frameTransform(colletToTcp.block<3, 3>(0, 0), colletToTcp.block<3, 1>(0, 3));
+  return frame ? transformPose(*frame) : QList<double>{};
 }
 
 bool SceneEndEffectors::applySpindlePoses(const QList<double>& colletPose, const QList<double>& tcpInCollet)

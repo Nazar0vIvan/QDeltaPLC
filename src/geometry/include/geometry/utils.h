@@ -20,7 +20,6 @@ std::optional<ProbeSamples> decodeProbeSamples(const QJsonDocument& document);
 
 bool nearlyEqual(double lhs, double rhs, double eps = GeomConst::Eps);
 std::optional<V3d> normalize(const V3d& v, double eps = GeomConst::Eps);
-V3d axisVec(const Axis axis, double value);
 
 M4d makeTranslation(const V3d& delta);
 M4d makeRotation(const double angleDeg, const Axis axis);

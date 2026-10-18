@@ -14,8 +14,7 @@ constexpr double FrameTolerance = 16.0 * GeomConst::Eps;
 bool validLead(const ChamferLeadParameters& lead)
 {
   return std::isfinite(lead.clearance) && lead.clearance > 0.0
-      && std::isfinite(lead.spanDegrees) && lead.spanDegrees > 0.0 && lead.spanDegrees <= 360.0
-      && lead.intervals > 0 && lead.intervals <= 100000;
+      && std::isfinite(lead.spanDegrees) && lead.spanDegrees > 0.0 && lead.spanDegrees <= 360.0;
 }
 
 struct LeadProgress
@@ -114,7 +113,7 @@ ChamferPath::ChamferPath(ChamferPathParameters parameters)
 ChamferPathResult ChamferPath::create(ChamferPathParameters parameters)
 {
   if (!validLead(parameters.leadIn) || !validLead(parameters.leadOut))
-    return {{}, QStringLiteral("Leads require positive axial clearance, span in (0, 360] degrees and 1-100000 sampling intervals.")};
+    return {{}, QStringLiteral("Leads require positive axial clearance and span in (0, 360] degrees.")};
   if (!EdgeGeometry::fromEllipse(parameters.edge))
     return {{}, QStringLiteral("Invalid chamfer edge ellipse.")};
   if (!parameters.cylinderOrigin.allFinite() || !parameters.cylinderAxis.allFinite())

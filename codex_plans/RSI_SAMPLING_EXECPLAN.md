@@ -72,7 +72,7 @@ How to see it working without the robot: generate a path from `resources/json/ed
   Rationale: remove redundant checks and lookups, and fit the reduced UI.
   Date/Author: 2026-10-17, Claude.
 
-- Decision: The RSI work, first written on base `9a40e08`, was rebased onto `origin/main` `3e99496`. That base contains the user's code-reduction plan (`codex_plans/CODE_REDUCTION_EXECPLAN.md`), which removed Generate diagnostics, the `--profile-chamfer` profiler, `kr10.json` (now `RobotDefinition::kr10()`) and the scene geometry views. The adaptation:
+- Decision: The RSI work, first written on base `9a40e08`, was rebased onto `origin/main` `3e99496`. That base contains the user's code-reduction plan (`codex_plans/CODE_REDUCTION_EXECPLAN.md`, deleted as completed on 2026-10-18), which removed Generate diagnostics, the `--profile-chamfer` profiler, `kr10.json` (now `RobotDefinition::kr10()`) and the scene geometry views. The adaptation:
   - `ChamferProfiledKinematics` (call counting and timing, kept upstream only for the old RSI sampler) is replaced by `ChamferTcpSolver` in `src/trajectories/chamfer/chamfertcpsolver.h`. It holds the borrowed robot setup, a plain `Kr10Kinematics` and ${}^{T}A_{F}$, and offers `kinematics()` and `solveTcp(tcp, seed)`. `chamferpreparationdiagnostics.h` is deleted.
   - `CentralValidator` and the RSI sampler use `ChamferTcpSolver`. `MotionCompiler` is exactly upstream's version (plain solver, own `m_tcpToFlange`).
   - `ChamferRsiStreamResult` has no `diagnostics` field. RSI Sampling logs one line, "RSI Sampling: N cycles, T s movement" or the error, matching upstream's Generate log line.
@@ -134,7 +134,7 @@ How to see it working without the robot: generate a path from `resources/json/ed
   Rationale: each existed only for the deleted RSI sampler/job ("compatibility: prescribed timing is never stretched"), and a repository search found no QML or C++ consumer.
   Date/Author: 2026-10-17, Claude, during Milestone 5.
 
-- Decision: Historical plans (`codex_plans/ARCHITECTURE_EXECPLAN.md`, `ARCHITECTURE_REVIEW.md`) still mention `src/pathgeneration`. They are not edited.
+- Decision: Historical plans (`codex_plans/ARCHITECTURE_EXECPLAN.md`, `ARCHITECTURE_REVIEW.md`) still mention `src/pathgeneration`. They are not edited. (Both were deleted as completed on 2026-10-18; their deferred items are listed in `codex_plans/POST_MERGE_CLEANUP.md`.)
   Rationale: they record past work, not current constraints. `docs/AGENT_CONTRACTS.md` and `docs/ARCHITECTURE.md` are the current descriptions.
   Date/Author: 2026-10-17, Claude, during Milestone 5.
 
@@ -656,17 +656,13 @@ Search for leftovers after Milestone 5:
 
     git grep -n -E "pathgeneration|network/rsi|PreparedChamferJob|rsicorrectionlimits|RsiHoleProtocol|KukaPanel|setPreparedJob|generateTrajectory"
 
-Builds, lint and the profiler run only when the user explicitly requests them (AGENTS.md). In that case, find the existing build directory and check its cache first:
+Builds and lint run only when the user explicitly requests them (AGENTS.md). In that case, find the existing build directory and check its cache first:
 
     grep -E "CMAKE_HOME_DIRECTORY|CMAKE_CXX_COMPILER|Qt6_DIR|USE_HOT_RELOAD|FAST_QML_BUILD" <buildDir>/CMakeCache.txt
     cmake --build <buildDir> --target robocrap --parallel
     cmake --build <buildDir> --target robocrap_qmllint
 
-For an optional measurement, write a profiler input such as `codex_plans/rsi_sampling_profile_input.json`. It contains `"plane": "../resources/json/edge_cyl_plane/XP.json"`, `"cylinder": "../resources/json/edge_cyl_plane/XC.json"`, `"robot": "../resources/json/kr10.json"`, `"previewOnly": false`, `"tcpInCollet"` with the six applied Machining EE values, and `"settings"` with the editor defaults (`flipAxis` false, `chamferSize` 0.5, `chamferAngle` 45, `stagingDistance` 10, both clearances 5, both spans 30, `machiningFeed` 5, `accelerationDistanceFraction` 0.3, `transferFeed` 10, `transferAcceleration` 20, `auxiliaryScale` 1.0; the profiler passes it straight into `ChamferTimingParameters::auxiliaryScale`, whose range is (0, 1], not the editor's percent). Run:
-
-    <buildDir>/robocrap.exe --profile-chamfer codex_plans/rsi_sampling_profile_input.json <scratch>/rsi_profile.json
-
-Expect a report containing `"motionCycles"` near $T/0.004$ and `"rsiSamplingMs"`. Record both numbers here.
+There is no offline measurement step: the code reduction removed the `--profile-chamfer` profiler and `resources/json/kr10.json`, and no replacement is planned.
 
 
 ## Validation and Acceptance

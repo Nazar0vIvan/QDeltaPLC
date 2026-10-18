@@ -124,7 +124,7 @@ ToolBar {
       spacing: Metrics.sp10
 
       Tool {
-        text: root.measuring ? qsTr("Measuring EE") : qsTr("Machining EE")
+        text: root.measuring ? qsTr("Measuring EE") : qsTr("Spindle EE")
         iconSource: "qrc:/pics/settings.svg"
         available: true
         onTriggered: root.toolSetupRequested()

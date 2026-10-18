@@ -110,7 +110,7 @@ void OccViewCube::configureText()
 
   m_cube->SetTextColor(Quantity_NOC_BLACK);
   m_cube->SetFont("Arial");
-  m_cube->SetFontHeight(14.0);
+  m_cube->SetFontHeight(12.0);
 }
 
 void OccViewCube::configureEdgesAndCorners()

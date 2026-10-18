@@ -703,15 +703,3 @@ std::optional<std::pair<V6d, ChamferMotionPhase>> ChamferMotion::evaluateJoints(
   if (!withinLimits(joints, m_robot.model)) return std::nullopt;
   return std::pair{joints, static_cast<ChamferMotionPhase>(phase)};
 }
-
-std::optional<ChamferPlaybackPose> ChamferMotion::evaluate(double seconds) const
-{
-  const auto pose = evaluateJoints(seconds);
-  if (!pose) return std::nullopt;
-  const auto& [joints, phase] = *pose;
-  if (seconds <= 0.0) return ChamferPlaybackPose{joints, m_points.front().tcp, phase};
-  if (seconds >= duration()) return ChamferPlaybackPose{joints, m_points.back().tcp, phase};
-  const M4d tcp = Kr10Kinematics(m_robot.model).solveFK(joints).back() * m_robot.flangeToTcp;
-  if (!tcp.allFinite()) return std::nullopt;
-  return ChamferPlaybackPose{joints, tcp, phase};
-}

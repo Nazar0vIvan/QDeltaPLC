@@ -28,8 +28,6 @@ public:
   // Classify finite joint coordinates using their already computed FK frames.
   [[nodiscard]] IkSolution configuration(const V6d& q, const std::array<M4d, LinkCount>& transforms) const;
   [[nodiscard]] static bool matchesFlange(const M4d& targetT06, const M4d& actualT06);
-  // Checked compatibility operation for callers supplying only previous angles.
-  [[nodiscard]] std::optional<IkSolution> solveIK(const M4d& T06,const V6d& currentQ) const;
   [[nodiscard]] bool isValid() const;
 
 private:

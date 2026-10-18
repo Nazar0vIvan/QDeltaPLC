@@ -89,15 +89,6 @@ std::optional<V3d> normalize(const V3d& v, double eps)
   return v / std::sqrt(len2);
 }
 
-V3d axisVec(const Axis axis, double value)
-{
-  switch (axis) {
-    case Axis::X: return {value, 0.0, 0.0};
-    case Axis::Y: return {0.0, value, 0.0};
-    case Axis::Z: return {0.0, 0.0, value};
-  }
-}
-
 M4d makeTranslation(const V3d& delta)
 {
   M4d result = M4d::Identity();

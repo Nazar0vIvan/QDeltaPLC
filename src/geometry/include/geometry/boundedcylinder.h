@@ -18,19 +18,17 @@ public:
   const Point& axis() const { return m_axis; }
   double radius() const { return m_radius; }
   double length() const { return m_length; }
-  double rmsResidual() const { return m_rmsResidual; }
 
   static std::optional<BoundedCylinder> fromPoints(QVector<V3d> points);
   static std::optional<BoundedCylinder> fromSamples(ProbeSamples samples);
 
 private:
-  // Samples, axis frame, radius/length and fit residual define a fitted cylinder.
-	BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions, double residual);
+  // Samples, axis frame and radius/length define a fitted cylinder.
+	BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions);
   bool applyProbe(double radius, int dir);
   QVector<V3d> m_points{};
   Point m_origin{};
   Point m_axis{};
   double m_radius{};
   double m_length{};
-  double m_rmsResidual{};
 };

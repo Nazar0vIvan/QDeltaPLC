@@ -60,7 +60,7 @@ std::optional<BoundedPlane> BoundedPlane::fromPoints(QVector<V3d> points)
 
   const std::array<double, 4> coefficients{plane->coeffs[0], plane->coeffs[1], plane->coeffs[2], plane->coeffs[3]};
   return BoundedPlane(std::move(points), coefficients,
-                       {coordinates(origin), coordinates(u), coordinates(v)}, {width, height});
+                       {coordinates(origin), coordinates(u)}, {width, height});
 }
 
 std::optional<BoundedPlane> BoundedPlane::fromSamples(ProbeSamples samples)
@@ -74,9 +74,9 @@ std::optional<BoundedPlane> BoundedPlane::fromSamples(ProbeSamples samples)
 }
 
 BoundedPlane::BoundedPlane(QVector<V3d> points, const std::array<double, 4>& coefficients,
-                           const std::array<Point, 3>& frame, const std::array<double, 2>& bounds)
+                           const std::array<Point, 2>& frame, const std::array<double, 2>& bounds)
   : m_coefficients(coefficients), m_points(std::move(points)), m_origin(frame[0]), m_axisU(frame[1]),
-    m_axisV(frame[2]), m_width(bounds[0]), m_height(bounds[1])
+    m_width(bounds[0]), m_height(bounds[1])
 {}
 
 bool BoundedPlane::applyProbe(double radius, int dir)

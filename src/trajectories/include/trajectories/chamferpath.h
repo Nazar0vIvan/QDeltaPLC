@@ -9,7 +9,6 @@ struct ChamferLeadParameters
 {
   double clearance = 5.0; // Axial clearance at the free endpoint, mm.
   double spanDegrees = 30.0; // Ellipse-parameter span, (0, 360] degrees.
-  int intervals = 16; // Legacy saved/QML setting; validated for compatibility.
 };
 
 enum class ChamferPhase { LeadIn, Machining, LeadOut };

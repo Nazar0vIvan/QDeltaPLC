@@ -7,9 +7,7 @@
 
 struct ChamferTimingParameters
 {
-  double leadInFeed = 10.0; // Legacy saved/QML API; no longer used for generation.
   double machiningFeed = 5.0;
-  double leadOutFeed = 10.0; // Legacy saved/QML API; no longer used for generation.
   // Prescribed Cartesian timing for generated paths.
   double accelerationDistanceFraction = 0.30; // Fraction of each lead length, (0, 1].
   double transferFeed = 10.0; // mm/s, shared by both staging transfers.
@@ -42,13 +40,6 @@ struct ChamferJointPoint
   double time = 0.0; // Seconds from HOME departure.
 };
 
-struct ChamferPlaybackPose
-{
-  V6d joints = V6d::Zero();
-  M4d tcp = M4d::Identity();
-  ChamferMotionPhase phase = ChamferMotionPhase::Approach;
-};
-
 struct ChamferMotionResult;
 
 // Timed simulation motion; does not emulate controller-specific KRL interpolation.
@@ -65,7 +56,6 @@ public:
   const std::optional<ChamferCentralMotion>& centralMotion() const { return m_centralMotion; }
   // Absolute elapsed seconds. Finite times outside the motion clamp to its ends.
   std::optional<std::pair<V6d, ChamferMotionPhase>> evaluateJoints(double seconds) const;
-  std::optional<ChamferPlaybackPose> evaluate(double seconds) const;
 
 private:
   // Source curve, robot calibration and complete point/range data define a motion.

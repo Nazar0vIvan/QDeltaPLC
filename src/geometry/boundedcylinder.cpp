@@ -234,7 +234,7 @@ std::optional<BoundedCylinder> BoundedCylinder::fromPoints(QVector<V3d> points)
 
   const V3d origin = centroid + best->center + (minimum + length / 2.0) * axis;
   if (!origin.allFinite()) return std::nullopt;
-  return BoundedCylinder(std::move(points), {coordinates(origin), coordinates(axis)}, {best->radius, length}, rms);
+  return BoundedCylinder(std::move(points), {coordinates(origin), coordinates(axis)}, {best->radius, length});
 }
 
 std::optional<BoundedCylinder> BoundedCylinder::fromSamples(ProbeSamples samples)
@@ -246,9 +246,9 @@ std::optional<BoundedCylinder> BoundedCylinder::fromSamples(ProbeSamples samples
   return cylinder;
 }
 
-BoundedCylinder::BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions, double residual)
+BoundedCylinder::BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions)
   : m_points(std::move(points)), m_origin(frame[0]), m_axis(frame[1]), m_radius(dimensions[0]),
-    m_length(dimensions[1]), m_rmsResidual(residual)
+    m_length(dimensions[1])
 {}
 
 bool BoundedCylinder::applyProbe(double radius, int dir)

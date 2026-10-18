@@ -39,8 +39,7 @@ public:
 
   // Seeded angle-only IK for a TCP target, then joint limits, one FK and
   // flange/TCP residual checks against the existing KR10 tolerances.
-  ChamferTcpIkResult solveTcp(const M4d& tcp,
-                              const RoboCrap3D::Kr10Kinematics::IkSolution& seed) const
+	ChamferTcpIkResult solveTcp(const M4d& tcp, const RoboCrap3D::Kr10Kinematics::IkSolution& seed) const
   {
     const M4d flange = tcp * m_tcpToFlange;
     const auto solution = m_kinematics.calculateIK(flange, seed);

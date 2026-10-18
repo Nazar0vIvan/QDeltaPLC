@@ -40,20 +40,6 @@ std::array<M4d, LinkCount> Kr10Kinematics::solveFK(const V6d& q) const
 }
 
 std::optional<Kr10Kinematics::IkSolution>
-Kr10Kinematics::solveIK(const M4d& targetT06, const V6d& currentQ) const
-{
-  if (!isValid()) {
-    qWarning() << "Cannot solve KR10 IK: invalid kinematic parameters";
-    return std::nullopt;
-  }
-  const auto previous = configuration(currentQ, solveFK(currentQ));
-  const auto solution = calculateIK(targetT06, previous);
-  if (!solution || !matchesFlange(targetT06, solveFK(solution->q).back()))
-    return std::nullopt;
-  return solution;
-}
-
-std::optional<Kr10Kinematics::IkSolution>
 Kr10Kinematics::calculateIK(const M4d& targetT06, const IkSolution& previous) const
 {
   if (!isValid()) {

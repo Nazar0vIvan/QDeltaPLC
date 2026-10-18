@@ -160,7 +160,7 @@ history, tutorials or repeated implementation descriptions.
 | Work area | Required contract sections |
 | --- | --- |
 | CMake, target ownership, dependencies, QML registration, modules or resources | [Build and modules](docs/AGENT_CONTRACTS.md#build-and-modules) |
-| OCCT viewport, CAD/cache loading, robot assets or presentation | [Viewport and CAD](docs/AGENT_CONTRACTS.md#viewport-and-cad) |
+| OCCT viewport, CAD loading, robot assets or presentation | [Viewport and CAD](docs/AGENT_CONTRACTS.md#viewport-and-cad) |
 | Devices, protocols, device UI or thread/shutdown changes | [Devices and protocols](docs/AGENT_CONTRACTS.md#devices-and-protocols) |
 | Numerical geometry, kinematics, scene objects/imports/intersections or tool transforms | [Geometry and scene](docs/AGENT_CONTRACTS.md#geometry-and-scene) |
 | Machining generation, trajectory preparation, playback, diagnostics or authorized RSI work | [Machining and playback](docs/AGENT_CONTRACTS.md#machining-and-playback) and [Geometry and scene](docs/AGENT_CONTRACTS.md#geometry-and-scene) |

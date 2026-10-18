@@ -3,9 +3,6 @@
 #include <optional>
 
 #include <QVector>
-#include <QFile>
-#include <QJsonDocument>
-#include <QJsonParseError>
 
 #include "mathtypes.h"
 
@@ -17,5 +14,4 @@ struct Plane {
   static std::optional<Plane> fromPoints(const QVector<V3d>& points, double eps = GeomConst::Eps);
 
   V3d normal() const noexcept;
-  std::optional<V3d> explicitCoeffs(double eps = GeomConst::Eps) const noexcept;
 };

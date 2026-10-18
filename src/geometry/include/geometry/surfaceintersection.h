@@ -15,7 +15,6 @@ public:
     V3d minorAxis = V3d::UnitY();
     double majorRadius = 0.0;
     double minorRadius = 0.0;
-    bool isCircle() const { return majorRadius == minorRadius; }
   };
 
   static std::optional<EdgeGeometry> fromEllipse(Ellipse ellipse);

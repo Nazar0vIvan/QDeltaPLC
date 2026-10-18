@@ -12,7 +12,6 @@
 #include <QMetaType>
 #include <QQmlApplicationEngine>
 #include <QQmlEngine>
-#include <QStandardPaths>
 
 #include "viewport/viewportqmltypes.h"
 #include "assetpaths.h"
@@ -27,7 +26,6 @@
 #include "devices/plc/plcdevice.h"
 #include "devices/rsi/rsidevice.h"
 
-#include <QWindow>
 #include <QDebug>
 
 namespace {
@@ -149,18 +147,6 @@ int main(int argc, char* argv[])
 
   if (engine.rootObjects().isEmpty())
     return 77;
-
-  qDebug() << "Root objects:" << engine.rootObjects().size();
-  qDebug() << "Windows:" << QGuiApplication::allWindows().size();
-
-  for (QWindow* window : QGuiApplication::allWindows()) {
-    qDebug() << "Window:"
-             << window
-             << "visible:" << window->isVisible()
-             << "geometry:" << window->geometry();
-  }
-
-  if (engine.rootObjects().isEmpty()) return -1;
 
 #endif
 

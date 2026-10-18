@@ -10,10 +10,6 @@ qt_add_library(RoboCrapGeometry STATIC
   include/geometry/mathtypes.h
   include/geometry/utils.h
   utils.cpp
-  include/geometry/cylinder.h
-  cylinder.cpp
-  include/geometry/pose.h
-  pose.cpp
 )
 target_include_directories(RoboCrapGeometry PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include

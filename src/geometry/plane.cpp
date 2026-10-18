@@ -56,16 +56,3 @@ V3d Plane::normal() const noexcept
   return coeffs.head<3>();
 }
 
-std::optional<V3d> Plane::explicitCoeffs(double eps) const noexcept
-{
-  if (!coeffs.allFinite() || std::abs(coeffs.z()) <= eps) {
-    return std::nullopt;
-  }
-
-  return V3d{
-    -coeffs.x() / coeffs.z(),
-    -coeffs.y() / coeffs.z(),
-    -coeffs.w() / coeffs.z()
-  };
-}
-
