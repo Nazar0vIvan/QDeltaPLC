@@ -132,6 +132,8 @@
   explain the verified conflict and a concrete alternative.
 - Git staging, commits, branch switches, stashing, history rewrites or discarding changes require
   an explicit user request, including when following PLANS.md.
+- Do not propose, offer or ask about commits after completing a request; the user commits when
+  they decide to.
 - Complex features/significant refactors require reading PLANS.md and maintaining an ExecPlan;
   simple edits, documentation-only work and read-only analysis do not. Store every task plan/
   strategy in repository-root codex_plans/, never elsewhere.

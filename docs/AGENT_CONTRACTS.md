@@ -75,14 +75,9 @@ to verify implementation claims. User instructions and the root mandatory rules 
   and retain unchanged outlines. Same application IDs can resolve to hidden/replaced parts.
   Keep unfinished outline handles/completion state through external failures; remove selection
   before hiding/deleting parts. Preserve selection styling and decorative picking/fit exclusion.
-- RobotViewport.qml hosts a native QWindow; Qt Quick items cannot draw over it. Anything shown over
-  the scene needs another native window. Child windows (a sibling WindowContainer) are opaque on
-  Windows and flash white when shown. Qt.WindowStaysOnTopHint floats a window over every
-  application, even while the GUI thread is busy and QML cannot hide it. The loading
-  QxBusyIndicator therefore uses a transparent, input-transparent Tool window centred on the
-  viewport, shown only after the main window is active so activation does not cover it, and only
-  until the robot is first shown.
-  CadLoadWorker parses CAD; robot state, QML properties
+- RobotViewport.qml hosts a native QWindow; Qt Quick items cannot draw over it. Busy state is
+  shown in the status bar; docs/OCCT_SCENE_OVERLAY.md records the verified way to draw over
+  the scene if that is required again. CadLoadWorker parses CAD; robot state, QML properties
   and OCCT presentation stay on the GUI thread. viewportReady means viewer initialization,
   independently of robot assets; ready means robot-preview readiness for kinematics.
 - main.cpp requests the single robot load once after console wiring; QML recreation does not

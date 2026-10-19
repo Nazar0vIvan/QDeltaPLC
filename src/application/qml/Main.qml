@@ -216,8 +216,14 @@ ApplicationWindow {
     id: statusBar
 
     readonly property App.DeviceRunner rsi: App.Hub.device("rsi")
+    // Until the robot is shown; OccController.loading covers only CAD parsing.
+    readonly property bool sceneLoading: !Viewport3D.OccController.ready
+                                         && Viewport3D.OccController.errorString.length === 0
+    readonly property bool busy: App.Machining.calculating || statusBar.sceneLoading
     readonly property string message: {
       if (surfaceImporter.busy) return qsTr("Importing surface…")
+      if (App.Machining.calculating) return qsTr("Calculating trajectory…")
+      if (statusBar.sceneLoading) return qsTr("Loading…")
       if (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen) return ""
       const preparation = App.MachiningPreparation
       // While sampling, unavailableReason reports progress.
@@ -246,16 +252,28 @@ ApplicationWindow {
                      root.measurementSubmode === WorkflowPanel.Rough ? qsTr("Rough") : qsTr("Precise"))
 
       Label {
+        id: statusMessage
+
         Layout.fillWidth: true
         Layout.minimumWidth: 0
         text: statusBar.message.replace(/[\r\n]+/g, " · ")
         textFormat: Text.PlainText
         horizontalAlignment: Text.AlignRight
         elide: Text.ElideRight
-        color: statusBar.message.length > 0 && !surfaceImporter.busy
+        color: statusBar.message.length > 0 && !surfaceImporter.busy && !statusBar.busy
                && App.MachiningPreparation.error.length > 0 ? Colors.maxColor : Colors.foreground.medium
         font: Fonts.body
         Accessible.name: statusBar.message
+
+        // Inline before the right-aligned text; not part of the layout, so nothing moves.
+        QxBusyIndicator {
+          id: busyIndicator
+
+          x: statusMessage.width - statusMessage.contentWidth - busyIndicator.width - Metrics.sp6
+          anchors.verticalCenter: statusMessage.verticalCenter
+          diameter: Metrics.sz20
+          running: statusBar.busy
+        }
       }
     }
   }
@@ -358,7 +376,6 @@ ApplicationWindow {
       RobotViewport {
         id: viewport
 
-        busy: App.Machining.calculating
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.minimumWidth: 0
