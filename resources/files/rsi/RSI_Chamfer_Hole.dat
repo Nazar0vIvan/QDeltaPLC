@@ -1,0 +1,13 @@
+&ACCESS RVP
+&REL 1
+DEFDAT RSI_Chamfer_Hole
+   ; Version 2: PsIn, LeadStart, LeadEnd (XYZABC+S/T), PsOut S/T, ToolFrame, CP rates.
+   DECL POS PsIn
+   DECL POS LeadStart
+   DECL POS LeadEnd
+   DECL POS PsOut
+   DECL FRAME ToolFrame ; flange to TCP, assigned to $TOOL
+   DECL REAL TransferVelocity=0.0 ; m/s
+   DECL REAL TransferAcceleration=0.0 ; m/s^2
+   DECL INT RsiContext=0
+ENDDAT

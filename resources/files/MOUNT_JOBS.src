@@ -1,0 +1,20 @@
+GLOBAL DEFFCT STATE_T MOUNT_JOBS()
+   DECL STATE_T State
+   DECL MODUS_T Mode
+
+   Mode=#SYNC
+   ; Release files left open by either interpreter after an interrupted run.
+   CWRITE($FCT_CALL,State,Mode,"krl_fclose_all",-99)
+   IF State.RET1 <> #DATA_OK THEN
+      RETURN State
+   ENDIF
+
+   ; Error -2 may mean the old mount is unavailable; try a fresh mount.
+   CWRITE($FCT_CALL,State,Mode,"krl_unmount","/RoboCrapJobs")
+   IF (State.RET1 <> #DATA_OK) AND (State.MSG_NO <> -2) THEN
+      RETURN State
+   ENDIF
+
+   CWRITE($FCT_CALL,State,Mode,"krl_mount","/RoboCrapJobs","//172.31.1.47/RoboCrapJobs","KrcReader","04295B098DFC11F0CCF6838B721AD0EA99")
+   RETURN State
+ENDFCT

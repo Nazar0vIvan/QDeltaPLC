@@ -38,7 +38,7 @@ class ChamferCentralPreparation
 public:
   ChamferCentralPreparation(const ChamferPath& path, const ChamferTimingParameters& timing);
 
-  // Each call solves/checks a fresh joint sequence; only Cartesian work is shared.
+  // Model/tool/timing were accepted by ChamferMotion::create; each call checks a fresh joint sequence.
   ChamferCentralValidationResult validate(const ChamferRobotSetup& robot,
                                         const RoboCrap3D::Kr10Kinematics::IkSolution& initialSeed);
   // Available after successful validate(); retained through later candidate failures.

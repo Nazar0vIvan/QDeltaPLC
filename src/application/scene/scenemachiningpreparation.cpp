@@ -1,12 +1,15 @@
 #include "scenemachiningpreparation.h"
 
+#include "geometry/utils.h"
+#include "kinematics/kr10kinematics.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QSaveFile>
 #include <QStringList>
 #include <QThread>
-#include <algorithm>
+#include <array>
 #include <chrono>
 #include <utility>
 
@@ -26,27 +29,44 @@ QString number(double value)
   return QString::number(value, 'f', 6);
 }
 
-QString frameRow(const V3d& position, const V3d& angles)
+QString frameRow(const V6d& coordinates)
 {
-  return QStringList{number(position[0]), number(position[1]), number(position[2]),
-                     number(angles[0]), number(angles[1]), number(angles[2])}
-      .join(QLatin1Char(';')) + QStringLiteral("\r\n");
+  QStringList fields;
+  for (double value : coordinates) fields.append(number(value));
+  return fields.join(QLatin1Char(';'));
 }
 
-// Rows read by RSI_Hole.src: Ps, LeadStart, LeadEnd (X;Y;Z;A;B;C), $VEL.CP m/s, $ACC.CP m/s^2.
-// Ps carries the lead-in start attitude; KRL derives its return attitude from LeadEnd.
-QByteArray sharedDataPayload(const ChamferRsiStream& stream, const ChamferTimingParameters& timing)
+// Version 2: PsIn/LeadStart/LeadEnd XYZABC+S/T, PsOut S/T, ToolFrame, CP rates.
+// KRL constructs PsOut from PsIn XYZ and LeadEnd ABC; each point has its own S/T.
+QString writeSharedData(const ChamferRsiStream& stream, const ChamferMotion& motion)
 {
-  const V3d startAngles = stream.initialCoordinates.tail<3>();
-  return (frameRow(stream.stagingPoint, startAngles)
-          + frameRow(stream.initialCoordinates.head<3>(), startAngles)
-          + frameRow(stream.finalCoordinates.head<3>(), stream.finalCoordinates.tail<3>())
-          + number(timing.transferFeed / 1000.0) + QStringLiteral("\r\n")
-          + number(timing.transferAcceleration / 1000.0) + QStringLiteral("\r\n")).toLatin1();
-}
-
-QString writeSharedData(const QByteArray& contents)
-{
+  const RoboCrap3D::Kr10Kinematics kinematics(motion.robot().model);
+  const V3d staging = ((stream.stagingPoint * 1e6).array().round() / 1e6).matrix();
+  constexpr std::array<std::pair<std::size_t, const char*>, 4> targets{{
+      {1, "PsIn"}, {2, "LeadStart"}, {5, "LeadEnd"}, {6, "PsOut"}}};
+  QByteArray contents("2\r\n");
+  for (const auto& [boundary, name] : targets) {
+    const auto& point = motion.points()[motion.boundaries()[boundary]];
+    V6d coordinates = boundary <= 2 ? stream.initialCoordinates : stream.finalCoordinates;
+    if (boundary == 1 || boundary == 6) coordinates.head<3>() = staging;
+    const auto angles = coordinates.tail<3>();
+    const M3d rotation = euler2rot(angles[0], angles[1], angles[2]);
+    if (!coordinates.allFinite()
+        || (coordinates.head<3>() - point.tcp.block<3, 1>(0, 3)).norm() > RoboCrap3D::Kr10PosEps
+        || (rotation - point.tcp.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > RoboCrap3D::Kr10RotEps)
+      return QStringLiteral("Exported %1 does not match its saved animation TCP pose.")
+          .arg(QString::fromLatin1(name));
+    const auto frames = kinematics.solveFK(point.joints);
+    const auto configuration = kinematics.configuration(point.joints, frames);
+    const QString statusTurn = QStringLiteral("%1;%2\r\n")
+        .arg(configuration.status).arg(configuration.turn);
+    contents += (boundary == 6 ? statusTurn
+                              : frameRow(coordinates) + QLatin1Char(';') + statusTurn).toLatin1();
+  }
+  const auto& timing = motion.robot().timing;
+  contents += (frameRow(stream.toolCoordinates) + QStringLiteral("\r\n")
+               + number(timing.transferFeed / 1000.0) + QStringLiteral("\r\n")
+               + number(timing.transferAcceleration / 1000.0) + QStringLiteral("\r\n")).toLatin1();
   if (!QDir().mkpath(SharedDataDirectory))
     return QStringLiteral("Cannot create %1.").arg(SharedDataDirectory);
   QSaveFile file(SharedDataPath);
@@ -59,15 +79,6 @@ QString writeSharedData(const QByteArray& contents)
   if (!file.commit())
     return QStringLiteral("Cannot replace shared_data.txt: %1").arg(file.errorString());
   return {};
-}
-
-// Largest cumulative |correction| of three consecutive components (X/Y/Z from 0, A/B/C from 3),
-// the value POSCORR1 LowerLim/UpperLim and MaxRotAngle must cover.
-QString largestOffset(const ChamferRsiStream& stream, int first)
-{
-  return QString::number(std::max(stream.minimumOffset.segment<3>(first).cwiseAbs().maxCoeff(),
-                                  stream.maximumOffset.segment<3>(first).cwiseAbs().maxCoeff()),
-                         'f', 3);
 }
 
 } // namespace
@@ -123,8 +134,9 @@ QString SceneMachiningPreparation::summary() const
   // '%' in the user-editable path name literal.
   return tr("RSI: %1 · %2 cycles · %3 s · offset up to %4 mm, %5°")
       .arg(m_prepared->pathName, QString::number(stream.increments.size()),
-           QString::number(stream.duration, 'f', 3), largestOffset(stream, 0),
-           largestOffset(stream, 3));
+           QString::number(stream.duration, 'f', 3),
+           QString::number(stream.maximumTranslationOffset, 'f', 3),
+           QString::number(stream.maximumRotationOffset, 'f', 3));
 }
 
 void SceneMachiningPreparation::onAvailabilityChanged()
@@ -166,12 +178,11 @@ void SceneMachiningPreparation::finishPreparation()
   } else if (!result.stream) {
     setError(result.error);
   } else {
-    const QString writeError = writeSharedData(
-        sharedDataPayload(*result.stream, m_pending.motion->robot().timing));
+    const QString writeError = writeSharedData(*result.stream, *m_pending.motion);
     if (writeError.isEmpty()) {
       m_pending.stream = std::move(*result.stream);
       m_prepared = std::move(m_pending);
-      emit correctionsReady(m_prepared->stream.increments);
+      emit correctionsReady(m_prepared->stream.increments, m_prepared->stream.diagnosticId);
       emit preparedChanged();
     }
     setError(writeError);
@@ -187,10 +198,10 @@ void SceneMachiningPreparation::clearPrepared()
   // Without a stream KRL must not find frames from another or older path.
   if (QFile::exists(SharedDataPath) && !QFile::remove(SharedDataPath))
     qInfo().noquote() << "[ERROR] RSI Sampling: cannot remove" << SharedDataPath;
-  if (!m_prepared) return;
+  const bool wasPrepared = m_prepared.has_value();
   m_prepared.reset();
-  emit correctionsReady({});
-  emit preparedChanged();
+  emit correctionsReady({}, {});
+  if (wasPrepared) emit preparedChanged();
 }
 
 void SceneMachiningPreparation::setError(const QString& error)

@@ -341,6 +341,7 @@ ApplicationWindow {
         playing: App.Machining.playing
         playbackActive: App.Machining.playbackActive
         preparationAvailable: !root.chamferEditorOpen && App.MachiningPreparation.canPrepare
+                              && statusBar.rsi && statusBar.rsi.isConnected
         preparing: App.MachiningPreparation.preparing
         onPreparationRequested: App.MachiningPreparation.prepare()
         onPauseRequested: App.Machining.pause()

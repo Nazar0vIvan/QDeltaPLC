@@ -1,17 +1,26 @@
 #include "devices/rsi/rsidevice.h"
 #include "../common/socketconfigutils.h"
 
+#include <QCoreApplication>
+#include <QDateTime>
 #include <QDebug>
+#include <QDir>
 #include <QNetworkDatagram>
+#include <QSaveFile>
+#include <QTimer>
 #include <QUdpSocket>
 #include <QXmlStreamReader>
 #include <QXmlStreamWriter>
 
+#include <chrono>
+#include <optional>
 #include <utility>
 
 namespace {
 
-// Fields of a controller <Rob> packet used by RSI_Hole; other elements are ignored.
+constexpr qsizetype TraceCapacity = 64 * 1024 * 1024;
+
+// Fields of a controller <Rob> packet used by RSI_Chamfer_Hole; other elements are ignored.
 struct Request
 {
   quint64 ipoc = 0;
@@ -88,6 +97,11 @@ RsiDevice::RsiDevice(const QString& name, QObject* parent) : AbstractDevice(name
 void RsiDevice::startDevice()
 {
   Q_ASSERT(!m_sock);
+  m_traceClock.start();
+  m_traceTimer = new QTimer(this);
+  m_traceTimer->setSingleShot(true);
+  m_traceTimer->setInterval(250);
+  QObject::connect(m_traceTimer, &QTimer::timeout, this, &RsiDevice::saveTrace);
   m_sock = new QUdpSocket(this);
   attachSocket(m_sock);
   QObject::connect(m_sock, &QUdpSocket::readyRead, this, &RsiDevice::onReadyRead);
@@ -98,6 +112,9 @@ void RsiDevice::stopDevice()
 {
   if (!m_sock) return;
   disconnect();
+  for (auto& save : m_traceSaves) save.wait();
+  saveTrace();
+  delete std::exchange(m_traceTimer, nullptr);
   delete std::exchange(m_sock, nullptr);
 }
 
@@ -128,6 +145,7 @@ void RsiDevice::connect(const QVariantMap& config)
     {"localAddress", m_la.toString()}, {"localPort", m_lp},
     {"peerAddress", m_pa.toString()}
   }}});
+  m_trace.reserve(TraceCapacity); // Allocate before peer traffic can start.
   if (!m_sock->bind(m_la, m_lp)) {
     qInfo().noquote() << "[ERROR]" << objectName() + ":" << QString("Bind failed: %1").arg(m_sock->errorString());
     return;
@@ -144,16 +162,26 @@ void RsiDevice::disconnect()
   m_pp = 0;
   m_decodeFailureLogged = false;
   resetRun();
+  saveTrace();
   qInfo().noquote() << "[OK]" << objectName() + ":" << "Socket disconnected";
 }
 
-void RsiDevice::setCorrections(const QVector<V6d>& increments)
+void RsiDevice::setCorrections(const QVector<V6d>& increments, const QString& diagnosticId)
 {
-  if (m_state != RunState::Idle) {
-    m_pending = increments;
-    return;
+  // Buffered requests belong to the outgoing stream, not the new array.
+  while (m_sock && m_sock->hasPendingDatagrams()) {
+    const QNetworkDatagram datagram = m_sock->receiveDatagram();
+    if (!acceptsSender(datagram)) continue;
+    appendTrace(QByteArray::number(m_traceClock.nsecsElapsed()) + ",rx,-1,-1,-1,"
+                + datagram.data().toBase64() + '\n');
   }
-  m_corrections = increments;
+  saveTrace();
+  if (m_corrections.diagnosticId != diagnosticId) m_tracePart = 0;
+  m_corrections = {increments, diagnosticId};
+  m_index = 0;
+  m_state = RunState::Idle;
+  m_pp = 0;
+  m_decodeFailureLogged = false;
   publishState();
 }
 
@@ -168,10 +196,14 @@ void RsiDevice::onReadyRead()
   // Replies to older queued packets would arrive late and be rejected, losing
   // their corrections; answer only the newest so the path is delayed, not cut.
   std::optional<Request> newest;
+  QVector<QByteArray> receivedRows;
   int accepted = 0;
   while (m_sock && m_sock->hasPendingDatagrams()) {
     const QNetworkDatagram datagram = m_sock->receiveDatagram();
     if (!acceptsSender(datagram)) continue;
+    const qint64 receivedNs = m_traceClock.nsecsElapsed();
+    receivedRows.append(QByteArray::number(receivedNs) + ",rx,-1,-1,-1,"
+                        + datagram.data().toBase64() + '\n');
     const auto request = decodeRequest(datagram.data());
     if (!request) {
       if (!std::exchange(m_decodeFailureLogged, true))
@@ -183,13 +215,79 @@ void RsiDevice::onReadyRead()
     newest = request;
     ++accepted;
   }
-  if (!newest) return;
+  if (!newest) {
+    for (const auto& row : std::as_const(receivedRows)) appendTrace(row);
+    return;
+  }
   if (accepted > 1)
     qInfo().noquote() << "[INFO]" << objectName() + ":"
         << QStringLiteral("answered newest of %1 queued RSI requests").arg(accepted);
+  const qsizetype index = m_index;
   Reply reply = advance(newest->start, newest->result);
   reply.ipoc = newest->ipoc;
-  m_sock->writeDatagram(encodeReply(reply), m_pa, m_pp);
+  const QByteArray encoded = encodeReply(reply);
+  const qint64 sentNs = m_traceClock.nsecsElapsed();
+  const qint64 written = m_sock->writeDatagram(encoded, m_pa, m_pp);
+  const qint64 writeNs = m_traceClock.nsecsElapsed() - sentNs;
+  // Capture the whole exchange after replying, outside the reply's measured latency.
+  for (const auto& row : std::as_const(receivedRows)) appendTrace(row);
+  appendTrace(QByteArray::number(sentNs) + ",tx," + QByteArray::number(index)
+              + ',' + QByteArray::number(written) + ',' + QByteArray::number(writeNs)
+              + ',' + encoded.toBase64() + '\n');
+}
+
+void RsiDevice::appendTrace(const QByteArray& row)
+{
+  if (row.size() <= TraceCapacity - m_trace.size()) m_trace.append(row);
+  else ++m_traceDropped;
+  m_traceTimer->start();
+}
+
+void RsiDevice::saveTrace()
+{
+  if (!m_traceTimer) return; // Correction updates may arrive before start or after stop.
+  for (auto save = m_traceSaves.begin(); save != m_traceSaves.end();) {
+    if (save->wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+      ++save;
+      continue;
+    }
+    qInfo().noquote() << objectName() + ":" << save->get();
+    save = m_traceSaves.erase(save);
+  }
+  m_traceTimer->stop();
+  if (!m_trace.isEmpty()) {
+    QString id = m_corrections.diagnosticId;
+    if (id.isEmpty()) id = QStringLiteral("unassigned_%1").arg(
+        QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
+    ++m_tracePart;
+    const QString part = m_tracePart == 1 ? QString{} : QStringLiteral("_part%1").arg(m_tracePart);
+    const QString fileName = QStringLiteral("rsi_packets_%1%2.csv").arg(id, part);
+    m_trace.append("# plan_id," + m_corrections.diagnosticId.toUtf8()
+                   + "\n# dropped_rows," + QByteArray::number(m_traceDropped) + '\n');
+    m_traceSaves.push_back(std::async(std::launch::async, &RsiDevice::writeTrace,
+                                     std::exchange(m_trace, {}), fileName));
+    m_traceDropped = 0;
+    if (m_sock->state() == QAbstractSocket::BoundState) m_trace.reserve(TraceCapacity);
+  }
+  if (!m_traceSaves.empty()) m_traceTimer->start();
+}
+
+QString RsiDevice::writeTrace(QByteArray rows, QString fileName)
+{
+  const QDir records(QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("records")));
+  QSaveFile file(records.filePath(fileName));
+  if (!QDir().mkpath(records.absolutePath()) || !file.open(QIODevice::WriteOnly)) {
+    return QStringLiteral("[ERROR] cannot open RSI diagnostic %1 (%2)")
+        .arg(file.fileName(), file.errorString());
+  }
+  const QByteArray header = "# pc_ns: monotonic nanoseconds since device start; XML: exact bytes in Base64\n"
+                            "# stream_index: next increment before reply; -1 for received packets\n"
+                            "pc_ns,direction,stream_index,write_bytes,write_ns,xml_base64\n";
+  if (file.write(header) != header.size() || file.write(rows) != rows.size() || !file.commit()) {
+    return QStringLiteral("[ERROR] cannot save RSI diagnostic %1 (%2)")
+        .arg(file.fileName(), file.errorString());
+  }
+  return QStringLiteral("[OK] saved RSI diagnostic %1").arg(file.fileName());
 }
 
 RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
@@ -199,7 +297,7 @@ RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
     return {};
   }
   if (m_state == RunState::Idle) {
-    if (m_corrections.isEmpty()) {
+    if (m_corrections.increments.isEmpty()) {
       qInfo().noquote() << "[ERROR]" << objectName() + ": Start without a sampled RSI stream";
       setState(RunState::Stopping);
     } else {
@@ -208,8 +306,8 @@ RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
   }
   if (m_state == RunState::Streaming) {
     Reply reply;
-    reply.correction = m_corrections[m_index++];
-    if (m_index == m_corrections.size()) setState(RunState::Finished);
+    reply.correction = m_corrections.increments[m_index++];
+    if (m_index == m_corrections.increments.size()) setState(RunState::Finished);
     return reply;
   }
   // Stop only after the controller echoes Result = 1, so KRL sees completion.
@@ -217,7 +315,7 @@ RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
   Reply reply;
   reply.stop = m_state == RunState::Stopping;
   // Stopping is reached only from Finished or from Start without a stream.
-  reply.result = m_corrections.isEmpty() ? 0 : 1;
+  reply.result = m_corrections.increments.isEmpty() ? 0 : 1;
   return reply;
 }
 
@@ -225,10 +323,7 @@ RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
 void RsiDevice::resetRun()
 {
   m_index = 0;
-  const bool replaced = m_pending.has_value();
-  if (replaced) m_corrections = *std::exchange(m_pending, std::nullopt);
-  if (m_state != RunState::Idle) setState(RunState::Idle);
-  else if (replaced) publishState();
+  setState(RunState::Idle);
 }
 
 void RsiDevice::setState(RunState state)
@@ -243,7 +338,7 @@ void RsiDevice::publishState()
   static const char* const names[4] = {"idle", "streaming", "finished", "stopping"};
   const char* name = names[static_cast<int>(m_state)];
   qInfo().noquote() << "[INFO]" << objectName() + ": RSI" << name << "·"
-                    << m_corrections.size() << "corrections";
+                    << m_corrections.increments.size() << "corrections";
   emit stateReady({{"rsiState", QString::fromLatin1(name)},
-                   {"rsiCorrections", m_corrections.size()}});
+                   {"rsiCorrections", m_corrections.increments.size()}});
 }

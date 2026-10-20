@@ -1,0 +1,46 @@
+DEFFCT FRAME READ_FRAME(FileHandle:IN,Ok:OUT)
+   DECL INT FileHandle
+   DECL BOOL Ok
+
+   DECL STATE_T State
+   DECL MODUS_T Mode
+
+   DECL REAL XVal
+   DECL REAL YVal
+   DECL REAL ZVal
+   DECL REAL AVal
+   DECL REAL BVal
+   DECL REAL CVal
+
+   DECL FRAME frm
+
+   Mode=#SYNC
+
+   XVal=0.0
+   YVal=0.0
+   ZVal=0.0
+   AVal=0.0
+   BVal=0.0
+   CVal=0.0
+
+   frm={X 0.0,Y 0.0,Z 0.0,A 0.0,B 0.0,C 0.0}
+   Ok=FALSE
+
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",FileHandle,"%f;%f;%f;%f;%f;%f",XVal,YVal,ZVal,AVal,BVal,CVal)
+
+   IF State.RET1==#DATA_OK THEN
+
+      frm.X=XVal
+      frm.Y=YVal
+      frm.Z=ZVal
+      frm.A=AVal
+      frm.B=BVal
+      frm.C=CVal
+
+      Ok=TRUE
+
+   ENDIF
+
+   RETURN frm
+
+ENDFCT

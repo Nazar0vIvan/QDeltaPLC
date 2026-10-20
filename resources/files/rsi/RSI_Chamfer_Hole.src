@@ -1,19 +1,23 @@
 &ACCESS RVP
 &REL 1
-DEF RSI_Hole()
+DEF RSI_Chamfer_Hole()
+   DECL STATE_T MountState
    DECL STATE_T OpenState
    DECL STATE_T CloseState
+   DECL STATE_T ReadState
    DECL STATE_T VelocityState
    DECL STATE_T AccelerationState
    DECL MODUS_T Mode
    DECL INT FileHandle
+   DECL INT FormatVersion
    DECL INT Ret
-   DECL BOOL ReadPsOk
+   DECL BOOL ReadPsInOk
    DECL BOOL ReadStartOk
    DECL BOOL ReadEndOk
+   DECL BOOL ReadToolOk
+   DECL BOOL ReadPsOutOk
    DECL BOOL CloseOk
    DECL BOOL Completed
-   DECL FRAME PsOut
 
    INI
    $ADVANCE=0
@@ -22,33 +26,47 @@ DEF RSI_Hole()
 
    PTP HOME  Vel= 100 % DEFAULT
 
-   $TOOL=TOOL_DATA[6]
-   $LOAD=LOAD_DATA[6]
    $BASE=$NULLFRAME
    $IPO_MODE=#BASE
    $ORI_TYPE=#VAR
    Mode=#SYNC
    FileHandle=0
-   ReadPsOk=FALSE
+   FormatVersion=0
+   ReadPsInOk=FALSE
    ReadStartOk=FALSE
    ReadEndOk=FALSE
+   ReadToolOk=FALSE
+   ReadPsOutOk=FALSE
 
-   ; Existing mount and READ_FRAME/CLOSE_FILES helpers.
+   ; Close stale files and reconnect the PC share before opening its data.
+   MountState=MOUNT_JOBS()
+   IF MountState.RET1 <> #DATA_OK THEN
+      RETURN
+   ENDIF
+
    CWRITE($FCT_CALL,OpenState,Mode,"krl_fopen","/RoboCrapJobs/shared_data.txt","r",FileHandle)
    IF OpenState.RET1 <> #DATA_OK THEN
       CloseOk=CLOSE_FILES()
       RETURN
    ENDIF
-   Ps=READ_FRAME(FileHandle,ReadPsOk)
-   LeadStart=READ_FRAME(FileHandle,ReadStartOk)
-   LeadEnd=READ_FRAME(FileHandle,ReadEndOk)
-   TransferVelocity=0.0
-   TransferAcceleration=0.0
-   CWRITE($FCT_CALL,VelocityState,Mode,"krl_fscanf",FileHandle,"%f",TransferVelocity)
-   CWRITE($FCT_CALL,AccelerationState,Mode,"krl_fscanf",FileHandle,"%f",TransferAcceleration)
+   CWRITE($FCT_CALL,ReadState,Mode,"krl_fscanf",FileHandle,"%d",FormatVersion)
+   IF (ReadState.RET1==#DATA_OK) AND (FormatVersion==2) THEN
+      PsIn=READ_POS(FileHandle,ReadPsInOk)
+      LeadStart=READ_POS(FileHandle,ReadStartOk)
+      LeadEnd=READ_POS(FileHandle,ReadEndOk)
+      PsOut.S=-1
+      PsOut.T=-1
+      CWRITE($FCT_CALL,ReadState,Mode,"krl_fscanf",FileHandle,"%d;%d",PsOut.S,PsOut.T)
+      ReadPsOutOk=(ReadState.RET1==#DATA_OK) AND (PsOut.S>=0) AND (PsOut.S<=7) AND (PsOut.T>=0) AND (PsOut.T<=63)
+      ToolFrame=READ_FRAME(FileHandle,ReadToolOk)
+      TransferVelocity=0.0
+      TransferAcceleration=0.0
+      CWRITE($FCT_CALL,VelocityState,Mode,"krl_fscanf",FileHandle,"%f",TransferVelocity)
+      CWRITE($FCT_CALL,AccelerationState,Mode,"krl_fscanf",FileHandle,"%f",TransferAcceleration)
+   ENDIF
    CWRITE($FCT_CALL,CloseState,Mode,"krl_fclose",FileHandle)
    CloseOk=CLOSE_FILES()
-   IF (NOT (ReadPsOk AND ReadStartOk AND ReadEndOk AND CloseOk)) OR (CloseState.RET1 <> #DATA_OK) THEN
+   IF (NOT (ReadPsInOk AND ReadStartOk AND ReadEndOk AND ReadPsOutOk AND ReadToolOk AND CloseOk)) OR (CloseState.RET1 <> #DATA_OK) THEN
       RETURN
    ENDIF
 
@@ -62,12 +80,16 @@ DEF RSI_Hole()
       RETURN
    ENDIF
 
-   Ret=RSI_CREATE("RSI_Hole.rsi",RsiContext,TRUE)
+   ; Flange-to-TCP frame the corrections were sampled for. $LOAD is not set
+   ; here: the load data that is already active stays in effect.
+   $TOOL=ToolFrame
+
+   Ret=RSI_CREATE("RSI_Chamfer_Hole.rsi",RsiContext,TRUE)
    IF Ret <> RSIOK THEN
       RETURN
    ENDIF
 
-   PTP Ps
+   PTP PsIn
    $VEL.CP=TransferVelocity
    $ACC.CP=TransferAcceleration
    LIN LeadStart
@@ -93,9 +115,11 @@ DEF RSI_Hole()
       RETURN
    ENDIF
 
-   ; Same Ps origin, with the clear lead-out attitude for the LIN transfer.
+   ; Keep PsOut's exported S/T; only XYZ comes from PsIn and ABC from LeadEnd.
 
-   PsOut=Ps
+   PsOut.X=PsIn.X
+   PsOut.Y=PsIn.Y
+   PsOut.Z=PsIn.Z
    PsOut.A=LeadEnd.A
    PsOut.B=LeadEnd.B
    PsOut.C=LeadEnd.C

@@ -190,7 +190,7 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
 ## Machining and playback
 
 Current work covers animation preparation/playback and nominal RSI Sampling/streaming for the T1
-RSI_Hole run; force correction is out of scope. Apply Geometry and scene to numerical changes.
+RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene to numerical changes.
 
 - SceneMachining exposes SceneMachiningSettings as settings. Main calls App.Machining.generate(),
   implemented by SceneMachining::generate. Keep it separate from dryRun, which only plays a prepared
@@ -243,7 +243,11 @@ RSI_Hole run; force correction is out of scope. Apply Geometry and scene to nume
   points is approximate; spline smoothness gives no exact Cartesian error guarantee.
   Curvature derivation: codex_plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
 - Rated joint-speed bounds come from the robot model (equal to the KR C4 machine data), without fixed
-  simulation caps. The Cartesian XYZ bound defaults to $ACC_MA.CP = 10000 mm/s², the KSS ceiling for
+  simulation caps. ChamferMotion::create accepts model/tool/timing once and resolves jointSpeed
+  before central validation or spline preparation; inner candidates reuse that immutable setup.
+  Central, LIN and RSI vector speeds share chamferJointSpeedError. Central rate inspection skips
+  adjacent speed comparisons already accepted while appending; retain checks of grouped intervals.
+  The Cartesian XYZ bound defaults to $ACC_MA.CP = 10000 mm/s², the KSS ceiling for
   programmed CP path acceleration; the controller does not monitor it for RSI. The controller has no
   fixed joint-acceleration value (dynamic model), so joint-acceleration magnitude rejection stays
   disabled in central preview, LIN (including terminal stops), spline checks and RSI Sampling. Retain
@@ -262,20 +266,58 @@ RSI_Hole run; force correction is out of scope. Apply Geometry and scene to nume
   Generate worker finishes, SceneMachining logs one console line: point count and movement seconds, or
   the error. The candidate's last error string remains the UI error. Keep inverse-map knots,
   animation points and RSI samples distinct.
-- Before RSI edits, read resources/files/rsi/RSI_Hole_CONTRACT.md, then chamferrsistream,
+- Before RSI edits, read resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md, then chamferrsistream,
   scenemachiningpreparation and devices/rsi/rsidevice. Sampling success, a bound socket and a
   delivered reply are not controller readiness and never grant permission to move the robot.
+  The RSI Sampling button also requires the existing RSI DeviceRunner.isConnected state.
 - sampleChamferRsiStream targets come only from ChamferCentralMotion::evaluate (inverse quintic arc
-  map); never interpolate stored poses. One seeded checked IK/FK per 4 ms cycle; the chord bound
-  relies on every saved central Generate interval being at least 4 ms. Increments reconcile against
-  the sum already sent at six decimals; the stream ends with 50 zero settle cycles.
+  map); never interpolate stored poses. One seeded checked IK/FK per rounded reconstructed TCP
+  sample; position/speed and XYZ acceleration checks use that reconstructed movement. The chord bound
+  relies on every saved central Generate interval being at least 4 ms. Start from the six-decimal
+  exported LeadStart pose. XYZ offsets reconcile against the preceding rounded reconstructed position;
+  the stream ends with 50 zero settle cycles.
+  ABC offsets use POSCORR1 RefCorrSys = World; derive them from desired and preceding TCP rotations
+  expressed in WORLD, reconstructing after offset rounding. Do not subtract absolute TCP Euler coordinates.
+  Check reconstructed poses against the analytical targets with the existing TCP residual tolerances.
+  Export LeadEnd from the composed final pose. CSV targets/exported poses use principal Z-Y-X ABC;
+  absolute Euler wrapping does not reject matrix offsets. The summary reports maximum translation
+  component and shortest rotation-angle excursions from LeadStart, not a POSCORR MaxRotAngle bound.
+  Keep composed TCP feedback separate from FK residual checking. The endpoint retains the saved
+  Status and nearest 360-degree joint representatives (differences strictly below 180 degrees);
+  pose accuracy retains the TCP residual tolerances. Turn sign bits are not a winding comparison.
+- shared_data.txt version 2 has eight CRLF rows: version, PsIn/LeadStart/LeadEnd XYZABC+S/T,
+  PsOut S/T, ToolFrame XYZABC, transfer velocity (m/s), transfer acceleration (m/s²).
+  Floats use six decimals; S/T are decimal integers from each saved boundary's own joints
+  (boundaries 1, 2, 5, 6), classified by existing configuration with one local FK per boundary.
+  Check exported poses, including PsOut constructed from PsIn XYZ and LeadEnd ABC, against
+  their saved TCP poses with existing position/rotation-entry tolerances before file replacement.
+  Keep QSaveFile atomic replacement and install corrections only after export succeeds.
+  KRL requires version 2, reads motion targets with global READ_POS and validates S/T ranges
+  (S 0-7, T 0-63). It closes the file before rejecting version/read/close/rate failures and
+  before PTP PsIn. PsOut is POS with its own S/T; assign XYZ individually from PsIn and
+  ABC individually from LeadEnd. S/T selects PTP configuration; LIN ignores it.
+  ToolFrame remains a flange-to-TCP FRAME, read by unchanged READ_FRAME without S/T.
 - The stream belongs to its sampled path, not the selection. Drop it and delete shared_data.txt when
   the path is removed, regenerated or incompatible, at a new request, at startup and at shutdown.
-  Deliver it to ControlIO only as an implicitly shared QVector<V6d> through the queued main.cpp link.
+  Deliver it to ControlIO as an implicitly shared QVector<V6d> plus its sampling diagnosticId through
+  the queued main.cpp link; keep that identifier paired with the active corrections. Every accepted
+  sampling request queues an empty stream before its worker starts, even without a held GUI result.
 - RsiDevice answers each accepted packet once (newest of a queued burst), advances one increment per
-  packet only while Start = 1, holds a replacement stream until Start = 0, and sends Stop only after
-  the controller echoes Result = 1 (Stop with Result 0 when Start arrives without a stream). Keep
-  numerical work and file I/O out of the receive callback and publish state only on change.
+  packet only while Start = 1, and replaces/clears its array immediately on correction updates in
+  every state, resetting to Idle and index 0. The first accepted Start = 1 after installation sends
+  the new array's first increment; no preceding Start = 0 is required. Normal completion sends Stop
+  after the controller echoes Result = 1; Start without a stream sends Stop with Result 0. Keep
+  numerical work and file I/O out of receive callbacks; publish on state transitions/correction updates.
+  Correction updates discard buffered datagrams without replying or advancing the new array, and
+  reset the learned peer port and decode-warning flag. Preserve configured endpoints and socket binding.
+- RSI diagnostics automatically save analytical targets, joints checked for reconstructed TCP poses
+  and increments as CSV on the sampling worker, and
+  bounded exact-XML packet captures through owned copied-input save futures after receive silence
+  or disconnect. Preserve actual RIst/AIPos fields, monotonic packet/send timing, stream indices,
+  write results and capture truncation. Keep disk I/O and unfinished-worker waits off ControlIO
+  callbacks; device shutdown joins outstanding saves. Follow the RSI contract for formats/locations.
+  Plan and packet filenames share the sampled stream's identifier; repeated packet captures add a
+  part suffix. Flush old-ID rows before replacing the active stream, preserving whole exchanges.
 
 ## QML
 

@@ -3,6 +3,13 @@
 #include "chamfertcpsolver.h"
 #include "geometry/utils.h"
 
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QDebug>
+#include <QDir>
+#include <QSaveFile>
+#include <QStringList>
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -16,19 +23,6 @@ constexpr int SettleCycles = 50; // Zero corrections before Result = 1.
 constexpr double MaximumCycles = 200000.0;
 constexpr double WireScale = 1e6; // Six fixed decimal places on the wire.
 constexpr double RateTolerance = 1e-6;
-
-double unwrapDegrees(double angle, double previous)
-{
-  return angle + 360.0 * std::round((previous - angle) / 360.0);
-}
-
-V3d unwrapEulerDegrees(const V3d& angles, const V3d& previous)
-{
-  V3d result = V3d::Zero();
-  for (int axis = 0; axis < 3; ++axis)
-    result[axis] = unwrapDegrees(angles[axis], previous[axis]);
-  return result;
-}
 
 V3d principalEulerDegrees(const M3d& rotation)
 {
@@ -47,31 +41,6 @@ double rotationEntryError(const M3d& target, const V3d& angles)
   return (euler2rot(angles[0], angles[1], angles[2]) - target).cwiseAbs().maxCoeff();
 }
 
-std::optional<V3d> continuousEulerDegrees(const M3d& rotation, const V3d& previous)
-{
-  const V3d principal = principalEulerDegrees(rotation);
-  V3d result = V3d::Zero();
-  if (std::hypot(rotation(0, 0), rotation(1, 0)) <= GeomConst::Eps) {
-    // At B=+90, A-C is fixed; at B=-90, A+C is fixed. Share its change
-    // between A/C to remain closest to the preceding attitude.
-    const double sign = std::copysign(1.0, -rotation(2, 0));
-    const double previousCoupled = previous[0] - sign * previous[2];
-    const double change = unwrapDegrees(principal[0], previousCoupled) - previousCoupled;
-    result << previous[0] + 0.5 * change, unwrapDegrees(principal[1], previous[1]),
-              previous[2] - sign * 0.5 * change;
-  } else {
-    const V3d first = unwrapEulerDegrees(principal, previous);
-    const V3d second = unwrapEulerDegrees(
-        V3d(principal[0] + 180.0, 180.0 - principal[1], principal[2] + 180.0), previous);
-    result = (first - previous).squaredNorm() <= (second - previous).squaredNorm()
-        ? first : second;
-  }
-  // Reject an unresolved Euler branch rather than emit a large coordinate jump.
-  if (!result.allFinite() || (result - previous).cwiseAbs().maxCoeff() >= 90.0
-      || rotationEntryError(rotation, result) > Kr10RotEps) return std::nullopt;
-  return result;
-}
-
 // The value the controller parses from six fixed decimal places.
 V6d wireValues(const V6d& values)
 {
@@ -81,6 +50,13 @@ V6d wireValues(const V6d& values)
 QString atTime(const QString& error, double seconds)
 {
   return QStringLiteral("%1 (central t=%2 s)").arg(error).arg(seconds, 0, 'f', 6);
+}
+
+QString csvValues(const V6d& values)
+{
+  QStringList fields;
+  for (double value : values) fields.append(QString::number(value, 'f', 9));
+  return fields.join(QLatin1Char(','));
 }
 
 class RsiStreamSampler
@@ -117,6 +93,21 @@ public:
     m_seed = kinematics.configuration(startJoints, kinematics.solveFK(startJoints));
     m_stream.duration = duration;
     m_stream.increments.reserve(count + SettleCycles);
+    m_stream.diagnosticId = QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    const QDir records(QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("records")));
+    m_trace.setFileName(records.filePath(QStringLiteral("rsi_plan_%1.csv")
+        .arg(m_stream.diagnosticId)));
+    if (!QDir().mkpath(records.absolutePath()) || !m_trace.open(QIODevice::WriteOnly)) {
+      qInfo().noquote() << "[ERROR] RSI Sampling: cannot open diagnostic" << m_trace.fileName()
+                        << m_trace.errorString();
+    }
+    writeTrace(QStringLiteral("# plan_id,") + m_stream.diagnosticId
+        + QStringLiteral("\n# XYZ mm; ABC/joints deg; joints from rounded offsets; time s; cycle 0.004 s\n# staging_joints_deg,")
+        + csvValues(points[boundaries[1]].joints)
+        + QStringLiteral("\n# joint_speed_limits_deg_s,") + csvValues(m_motion.robot().timing.jointSpeed)
+        + QStringLiteral("\ntime_s,target_X,target_Y,target_Z,target_A,target_B,target_C,")
+        + QStringLiteral("joint_A1,joint_A2,joint_A3,joint_A4,joint_A5,joint_A6,")
+        + QStringLiteral("increment_X,increment_Y,increment_Z,increment_A,increment_B,increment_C\n"));
     for (qsizetype index = 0; index <= count; ++index) {
       const double time = index == count ? duration : index * CyclePeriod;
       const QString error = index == 0 ? startCycle() : appendCycle(time);
@@ -125,13 +116,43 @@ public:
     // The cycle after the last correction carries zero motion.
     const QString stopError = accelerationError(V3d::Zero());
     if (!stopError.isEmpty()) return {{}, atTime(stopError, duration)};
-    if ((m_seed.q - points[boundaries[5]].joints).cwiseAbs().maxCoeff() > 1e-6)
-      return {{}, QStringLiteral("RSI endpoint does not retain the saved joint winding.")};
+    const V6d& endJoints = points[boundaries[5]].joints;
+    const auto expected = kinematics.configuration(endJoints, kinematics.solveFK(endJoints));
+    // TCP accuracy was checked above; compare branch and the nearest 360-degree representatives.
+    if (m_seed.status != expected.status || (m_seed.q - endJoints).cwiseAbs().maxCoeff() >= 180.0)
+      return {{}, QStringLiteral("RSI endpoint does not retain the saved joint configuration/winding.")};
+
+    // The controller must use the TCP the corrections were computed for.
+    const M4d& flangeToTcp = m_motion.robot().flangeToTcp;
+    const M3d toolRotation = flangeToTcp.block<3, 3>(0, 0);
+    const V3d toolAngles = principalEulerDegrees(toolRotation);
+    // ChamferMotion::create already accepted flangeToTcp as a finite rigid transform.
+    if (!toolAngles.allFinite() || rotationEntryError(toolRotation, toolAngles) > Kr10RotEps)
+      return {{}, QStringLiteral("Cannot represent the saved flange-to-TCP orientation as A/B/C.")};
+    m_stream.toolCoordinates << flangeToTcp.block<3, 1>(0, 3), toolAngles;
 
     m_stream.motionCycles = static_cast<int>(m_stream.increments.size());
     m_stream.increments.insert(m_stream.increments.size(), SettleCycles, V6d::Zero());
-    m_stream.finalCoordinates = m_stream.initialCoordinates + m_sent;
+    const M3d finalRotation = m_reconstructedTcp.block<3, 3>(0, 0);
+    m_stream.finalCoordinates << m_reconstructedTcp.block<3, 1>(0, 3),
+                                 principalEulerDegrees(finalRotation);
+    m_stream.finalCoordinates = wireValues(m_stream.finalCoordinates);
+    if (!m_stream.finalCoordinates.allFinite()
+        || rotationEntryError(finalRotation, m_stream.finalCoordinates.tail<3>()) > Kr10RotEps)
+      return {{}, QStringLiteral("Cannot represent the reconstructed final TCP orientation as A/B/C.")};
     m_stream.stagingPoint = central->path().stagingPoint();
+    writeTrace(QStringLiteral("# tool_xyzabc,") + csvValues(m_stream.toolCoordinates)
+        + QStringLiteral("\n# phase_end_times_s,") + QString::number(central->phaseTimes()[1], 'f', 9)
+        + QLatin1Char(',') + QString::number(central->phaseTimes()[2], 'f', 9)
+        + QLatin1Char(',') + QString::number(duration, 'f', 9)
+        + QStringLiteral("\n# settle_zero_cycles,") + QString::number(SettleCycles) + QLatin1Char('\n'));
+    if (m_trace.isOpen()) {
+      if (m_trace.commit())
+        qInfo().noquote() << "[OK] RSI Sampling: saved diagnostic" << m_trace.fileName();
+      else
+        qInfo().noquote() << "[ERROR] RSI Sampling: cannot save diagnostic" << m_trace.fileName()
+                          << m_trace.errorString();
+    }
     return {std::move(m_stream), {}};
   }
 
@@ -140,16 +161,20 @@ private:
   {
     const auto target = m_motion.centralMotion()->evaluate(0.0);
     if (!target) return QStringLiteral("Cannot evaluate the prescribed TCP target.");
-    const auto inverse = m_solver.solveTcp(target->tcp, m_seed);
-    if (!inverse.solution) return inverse.error;
     const M3d rotation = target->tcp.block<3, 3>(0, 0);
-    const V3d angles = principalEulerDegrees(rotation);
-    if (!angles.allFinite() || rotationEntryError(rotation, angles) > Kr10RotEps)
-      return QStringLiteral("Cannot represent the initial TCP orientation as A/B/C.");
-    m_stream.initialCoordinates << target->tcp.block<3, 1>(0, 3), angles;
+    m_stream.initialCoordinates << target->tcp.block<3, 1>(0, 3), principalEulerDegrees(rotation);
+    m_stream.initialCoordinates = wireValues(m_stream.initialCoordinates);
+    if (!m_stream.initialCoordinates.allFinite()) return QStringLiteral("Nonfinite initial RSI pose.");
+    const auto angles = m_stream.initialCoordinates.tail<3>();
+    m_initialRotation = euler2rot(angles[0], angles[1], angles[2]);
+    if ((m_stream.initialCoordinates.head<3>() - target->tcp.block<3, 1>(0, 3)).norm() > Kr10PosEps
+        || (m_initialRotation - rotation).cwiseAbs().maxCoeff() > Kr10RotEps)
+      return QStringLiteral("Cannot represent the initial TCP pose at six decimal places.");
+    m_reconstructedTcp = makeTransform(m_initialRotation, m_stream.initialCoordinates.head<3>());
+    const auto inverse = m_solver.solveTcp(m_reconstructedTcp, m_seed);
+    if (!inverse.solution) return inverse.error;
     m_seed = *inverse.solution;
-    m_previousPosition = target->tcp.block<3, 1>(0, 3);
-    m_previousAngles = angles;
+    recordSample(0.0, target->tcp);
     return {};
   }
 
@@ -157,45 +182,63 @@ private:
   {
     const auto target = m_motion.centralMotion()->evaluate(time);
     if (!target) return QStringLiteral("Cannot evaluate the prescribed TCP target.");
-    const auto inverse = m_solver.solveTcp(target->tcp, m_seed);
-    if (!inverse.solution) return inverse.error;
-    const QString speedError = jointSpeedError(inverse.solution->q);
-    if (!speedError.isEmpty()) return speedError;
     const V3d position = target->tcp.block<3, 1>(0, 3);
-    const V3d velocity = (position - m_previousPosition) / CyclePeriod;
+    const M3d relativeRotation = target->tcp.block<3, 3>(0, 0)
+        * m_reconstructedTcp.block<3, 3>(0, 0).transpose();
+    V6d increment = V6d::Zero();
+    increment << position - m_reconstructedTcp.block<3, 1>(0, 3),
+                 principalEulerDegrees(relativeRotation);
+    increment = wireValues(increment);
+    if (!increment.allFinite()) return QStringLiteral("Nonfinite RSI correction.");
+    // WORLD offsets rotate at the TCP; XYZ translation is added independently.
+    const M3d rotation = euler2rot(increment[3], increment[4], increment[5])
+        * m_reconstructedTcp.block<3, 3>(0, 0);
+    const V3d reconstructedPosition = m_reconstructedTcp.block<3, 1>(0, 3) + increment.head<3>();
+    const M4d reconstructed = makeTransform(rotation, reconstructedPosition);
+    if (!reconstructed.allFinite() || (reconstructedPosition - position).norm() > Kr10PosEps
+        || (rotation - target->tcp.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > Kr10RotEps)
+      return QStringLiteral("Rounded RSI offsets exceed the TCP reconstruction tolerance.");
+    const auto inverse = m_solver.solveTcp(reconstructed, m_seed);
+    if (!inverse.solution) return inverse.error;
+    const QString speedError = chamferJointSpeedError(
+        (inverse.solution->q - m_seed.q) / CyclePeriod, m_motion.robot().timing.jointSpeed);
+    if (!speedError.isEmpty()) return speedError;
+    const V3d velocity = (reconstructedPosition - m_reconstructedTcp.block<3, 1>(0, 3)) / CyclePeriod;
     const QString accelerationFailure = accelerationError(velocity);
     if (!accelerationFailure.isEmpty()) return accelerationFailure;
-    const auto angles = continuousEulerDegrees(target->tcp.block<3, 3>(0, 0), m_previousAngles);
-    if (!angles) return QStringLiteral("Cannot unwrap TCP A/B/C continuously for RSI.");
-
-    V6d coordinates = V6d::Zero();
-    coordinates << position, *angles;
-    // Reconcile against what was actually sent so rounding never accumulates.
-    const V6d increment = wireValues(coordinates - m_stream.initialCoordinates - m_sent);
-    if (!increment.allFinite()) return QStringLiteral("Nonfinite RSI correction.");
-    m_sent += increment;
+    m_reconstructedTcp = reconstructed;
     m_stream.increments.append(increment);
-    m_stream.minimumOffset = m_stream.minimumOffset.cwiseMin(m_sent);
-    m_stream.maximumOffset = m_stream.maximumOffset.cwiseMax(m_sent);
+    m_stream.maximumTranslationOffset = std::max(m_stream.maximumTranslationOffset,
+        (reconstructedPosition - m_stream.initialCoordinates.head<3>()).cwiseAbs().maxCoeff());
+    m_stream.maximumRotationOffset = std::max(m_stream.maximumRotationOffset,
+        Eigen::AngleAxisd(rotation * m_initialRotation.transpose()).angle() * GeomConst::RadToDeg);
     m_seed = *inverse.solution;
-    m_previousPosition = position;
     m_previousVelocity = velocity;
-    m_previousAngles = *angles;
+    recordSample(time, target->tcp);
     return {};
   }
 
-  QString jointSpeedError(const V6d& joints) const
+  void recordSample(double time, const M4d& target)
   {
-    const V6d speed = (joints - m_seed.q).cwiseAbs() / CyclePeriod;
-    // ChamferMotion::create stores the model's rated speeds here.
-    const V6d& limits = m_motion.robot().timing.jointSpeed;
-    for (std::size_t axis = 0; axis < DofCount; ++axis) {
-      const double limit = limits[axis];
-      if (!std::isfinite(speed[axis]) || speed[axis] > limit * (1.0 + RateTolerance))
-        return QStringLiteral("A%1 speed %2 deg/s exceeds bound %3.")
-            .arg(axis + 1).arg(speed[axis], 0, 'g', 12).arg(limit);
-    }
-    return {};
+    if (!m_trace.isOpen()) return;
+    V6d coordinates = V6d::Zero();
+    coordinates << target.block<3, 1>(0, 3), principalEulerDegrees(target.block<3, 3>(0, 0));
+    V6d increment = V6d::Zero();
+    if (!m_stream.increments.isEmpty()) increment = m_stream.increments.back();
+    writeTrace(QString::number(time, 'f', 9) + QLatin1Char(',') + csvValues(coordinates)
+        + QLatin1Char(',') + csvValues(m_seed.q) + QLatin1Char(',') + csvValues(increment)
+        + QLatin1Char('\n'));
+  }
+
+  void writeTrace(const QString& text)
+  {
+    if (!m_trace.isOpen()) return;
+    const QByteArray bytes = text.toUtf8();
+    if (m_trace.write(bytes) == bytes.size()) return;
+    qInfo().noquote() << "[ERROR] RSI Sampling: cannot write diagnostic" << m_trace.fileName()
+                      << m_trace.errorString();
+    m_trace.cancelWriting();
+    m_trace.commit(); // Close and discard the cancelled temporary file.
   }
 
   // Change from the previous cycle's TCP velocity; the first cycle starts at rest.
@@ -212,11 +255,11 @@ private:
   const ChamferMotion& m_motion;
   ChamferTcpSolver m_solver;
   ChamferRsiStream m_stream;
+  QSaveFile m_trace; // Worker-local planned values; never written by ControlIO.
   Kr10Kinematics::IkSolution m_seed;
-  V6d m_sent = V6d::Zero(); // Sum of increments already appended.
-  V3d m_previousPosition = V3d::Zero();
+  M4d m_reconstructedTcp = M4d::Identity(); // Pose after the rounded offsets already appended.
+  M3d m_initialRotation = M3d::Identity(); // Fixed reference for the summary's angular excursion.
   V3d m_previousVelocity = V3d::Zero();
-  V3d m_previousAngles = V3d::Zero();
 };
 
 } // namespace

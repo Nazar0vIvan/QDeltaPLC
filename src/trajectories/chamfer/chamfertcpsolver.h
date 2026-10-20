@@ -5,6 +5,7 @@
 #include "trajectories/chamfermotion.h"
 
 #include <QString>
+#include <cmath>
 #include <optional>
 
 inline QString chamferJointPositionError(const V6d& joints, const RoboCrap3D::Kr10KinematicModel& model)
@@ -15,6 +16,18 @@ inline QString chamferJointPositionError(const V6d& joints, const RoboCrap3D::Kr
     if (joints[axis] < joint.qMin || joints[axis] > joint.qMax)
       return QStringLiteral("A%1 position %2 deg is outside [%3, %4].")
           .arg(axis + 1).arg(joints[axis], 0, 'g', 12).arg(joint.qMin).arg(joint.qMax);
+  }
+  return {};
+}
+
+// Bounds come from the model speeds accepted by ChamferMotion::create.
+inline QString chamferJointSpeedError(const V6d& velocity, const V6d& limits)
+{
+  if (!velocity.allFinite()) return QStringLiteral("Nonfinite sampled joint velocity.");
+  for (std::size_t axis = 0; axis < RoboCrap3D::DofCount; ++axis) {
+    if (std::abs(velocity[axis]) > limits[axis] * (1.0 + 1e-6))
+      return QStringLiteral("A%1 speed %2 deg/s exceeds bound %3.")
+          .arg(axis + 1).arg(std::abs(velocity[axis]), 0, 'g', 12).arg(limits[axis]);
   }
   return {};
 }
@@ -39,7 +52,7 @@ public:
 
   // Seeded angle-only IK for a TCP target, then joint limits, one FK and
   // flange/TCP residual checks against the existing KR10 tolerances.
-	ChamferTcpIkResult solveTcp(const M4d& tcp, const RoboCrap3D::Kr10Kinematics::IkSolution& seed) const
+  ChamferTcpIkResult solveTcp(const M4d& tcp, const RoboCrap3D::Kr10Kinematics::IkSolution& seed) const
   {
     const M4d flange = tcp * m_tcpToFlange;
     const auto solution = m_kinematics.calculateIK(flange, seed);

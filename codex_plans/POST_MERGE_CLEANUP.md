@@ -55,7 +55,7 @@ are estimates from reading the code, not measured diffs.
 |---|---|---|
 | D1 | **Done with A3.** `docs/AGENT_CONTRACTS.md:169` | Drop "Keep checked solveIK(target, previousAngles) compatible with separate RSI consumers" (with A3). |
 | D2 | **Done** (for the deferred state). `docs/AGENT_CONTRACTS.md:35`, `docs/ARCHITECTURE.md:85,451,506` | `ARCHITECTURE.md:506` now lists all three unconnected FTS signals and says they and the `RDTResponse` metatypes are kept for future force-controlled motion. The `rdtResponse` statements stay correct while B3 is deferred. |
-| D3 | **Done.** `codex_plans/RSI_SAMPLING_EXECPLAN.md` Concrete Steps | The profiler measurement step is replaced by a note that there is no offline measurement step. |
+| D3 | **Done.** RSI planning, now consolidated in `codex_plans/RSI_EXECPLAN.md` | Removed the obsolete profiler measurement step. |
 | D4 | **Done.** `AGENTS.md` routing table | "CAD/cache loading" is now "CAD loading". |
 
 ## E. Filesystem leftovers
@@ -414,8 +414,8 @@ reads it. `ChamferCentralMotion::phaseTimes()` is a different function and stays
 
 - `AGENTS.md`: routing table says "CAD loading" (D4).
 - `docs/ARCHITECTURE.md:506`: FTS signal/metatype statement (D2).
-- `codex_plans/RSI_SAMPLING_EXECPLAN.md`: removed the profiler measurement step (D3); the two
-  Decision Log references to deleted plans now say they were deleted.
+- RSI planning (now `codex_plans/RSI_EXECPLAN.md`): removed the profiler measurement step
+  (D3); completed and superseded RSI plans were consolidated on 2026-10-20.
 - `codex_plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md`: corrected the claim that
   `spatial_leads_curvature_step1.json` sits next to it; that file was never committed.
 - Deleted as completed and superseded by `docs/ARCHITECTURE.md`, `docs/AGENT_CONTRACTS.md` and
@@ -424,7 +424,8 @@ reads it. `ChamferCentralMotion::phaseTimes()` is a different function and stays
   pre-restructure tree: two JSON inventories, `SOURCE_CONTRACTS.md` and copies of `XP.json`,
   `XC.json` and the removed `kr10.json`; the XP/XC copies are byte-identical to
   `resources/json/edge_cyl_plane/`). Their open items are under "Deferred work".
-- Kept: `RSI_SAMPLING_EXECPLAN.md` (Milestones 5 remainder, 6 and 7 are open), the research
+- Kept: `RSI_EXECPLAN.md` (offset/configuration repair and verification remain;
+  pause/resume is deferred), the research
   documents (`CHAMFER_ARCLENGTH_STUDY.md` is cited by `docs/ARCHITECTURE.md`,
   `SPATIAL_LEADS_CURVATURE_STEP1_RU.md` by `docs/AGENT_CONTRACTS.md`, and the lead-geometry and
   animation literature reviews remain background for future edge types) and this file.

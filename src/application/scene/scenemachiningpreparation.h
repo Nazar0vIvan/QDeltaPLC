@@ -36,8 +36,8 @@ signals:
   void preparingChanged();
   void preparedChanged();
   void errorChanged();
-  // Empty when the stream is cleared; implicitly shared, never mutated.
-  void correctionsReady(const QVector<V6d>& increments);
+  // Empty values clear the stream; increments and their log ID travel together.
+  void correctionsReady(const QVector<V6d>& increments, const QString& diagnosticId);
 
 private:
   struct PreparedRsiStream

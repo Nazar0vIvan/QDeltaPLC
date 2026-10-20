@@ -1,0 +1,12 @@
+DEFFCT BOOL CLOSE_FILES()
+
+   DECL STATE_T State
+   DECL MODUS_T Mode
+
+   Mode=#SYNC
+
+   CWRITE($FCT_CALL,State,Mode,"krl_fclose_all",-1)
+
+   RETURN State.RET1==#DATA_OK
+
+ENDFCT

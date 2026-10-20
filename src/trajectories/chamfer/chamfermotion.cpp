@@ -1,5 +1,6 @@
 #include "trajectories/chamfermotion.h"
 #include "chamfercentralvalidation.h"
+#include "chamfertcpsolver.h"
 
 #include "geometry/utils.h"
 
@@ -72,8 +73,7 @@ QString jointSplineIntervalError(const std::array<V6d, 4>& coefficients, double 
     const double speedExtremum = d == 0.0 ? -1.0 : -(c / d) / 3.0;
     const std::array<double, 5> candidates{0.0, 1.0, roots[0], roots[1], speedExtremum};
     const auto& joint = robot.model.joints[axis];
-    const double speedBound = std::min(robot.timing.jointSpeed[axis],
-                                      joint.ratedPayloadSpeedDegreesPerSecond);
+    const double speedBound = robot.timing.jointSpeed[axis];
     for (double u : candidates) {
       if (!(u >= 0.0 && u <= 1.0)) continue;
       const double angle = ((d * u + c) * u + b) * u + a;
@@ -423,12 +423,10 @@ private:
     for (qsizetype i = first + 1; i < points.size(); ++i) {
       const double dt = points[i].time - points[i - 1].time;
       const V6d velocity = (points[i].joints - points[i - 1].joints) / dt;
-      if (!velocity.allFinite()) return QStringLiteral("Nonfinite transfer velocity.");
-      for (int axis = 0; axis < 6; ++axis)
-        if (std::abs(velocity[axis]) > m_robot.timing.jointSpeed[axis] * (1.0 + 1e-6))
-          return QStringLiteral("%1: A%2 speed exceeds %3 deg/s at %4 s.")
-              .arg(centralPhaseName(m_phase)).arg(axis + 1)
-              .arg(m_robot.timing.jointSpeed[axis]).arg(points[i].time);
+      const QString speedError = chamferJointSpeedError(velocity, m_robot.timing.jointSpeed);
+      if (!speedError.isEmpty())
+        return QStringLiteral("%1: %2 (motion t=%3 s).")
+            .arg(centralPhaseName(m_phase), speedError).arg(points[i].time, 0, 'g', 12);
       const double step = points[i].time - points[anchor].time;
       if (i + 1 < points.size() && (step < 1e-4 || points.back().time - points[i].time < 1e-4)) continue;
       if (step < 1e-4) return QStringLiteral("Transfer is too short for resolved rate validation.");

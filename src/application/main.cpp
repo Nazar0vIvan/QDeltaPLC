@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
 
   SceneMachiningPreparation preparation(&scene, &machining);
   SceneMachiningPreparationQml::s_inst = &preparation;
-  // Implicitly shared, immutable corrections cross to the ControlIO thread.
+  // Implicitly shared corrections and their log identifier cross to ControlIO together.
   QObject::connect(&preparation, &SceneMachiningPreparation::correctionsReady,
                    rsiDev, &RsiDevice::setCorrections, Qt::QueuedConnection);
   // Disable result dispatch and finish the worker before shutting down ControlIO.

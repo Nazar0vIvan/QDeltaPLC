@@ -1,0 +1,52 @@
+DEF cwrite_test()
+
+DECL STATE_T MountState
+DECL STATE_T OpenState
+DECL STATE_T CloseState
+DECL MODUS_T Mode
+
+DECL INT FileHandle
+
+DECL FRAME CamP1
+DECL FRAME CamP2
+DECL FRAME CamP3
+
+DECL BOOL Read1Ok
+DECL BOOL Read2Ok
+DECL BOOL Read3Ok
+DECL BOOL CloseOk
+   
+PTP HOME Vel=100 % DEFAULT
+
+Mode=#SYNC
+
+Read1Ok=FALSE
+Read2Ok=FALSE
+Read3Ok=FALSE
+CloseOk=FALSE
+
+ CWRITE($FCT_CALL,MountState,Mode,"krl_mount","/RoboCrapJobs","//172.31.1.47/RoboCrapJobs","KrcReader","04295B098DFC11F0CCF6838B721AD0EA99")
+
+FileHandle=0
+CWRITE($FCT_CALL,OpenState,Mode,"krl_fopen","/RoboCrapJobs/test.txt","r",FileHandle)
+
+CamP1=READ_FRAME(FileHandle,Read1Ok)
+CamP2=READ_FRAME(FileHandle,Read2Ok)
+CamP3=READ_FRAME(FileHandle,Read3Ok)
+
+CWRITE($FCT_CALL,CloseState,Mode,"krl_fclose",FileHandle)
+
+CloseOk=CLOSE_FILES()
+
+IF Read1Ok AND Read2Ok AND Read3Ok THEN
+
+	PTP CamP1
+	PTP CamP2
+	PTP CamP3
+	PTP CamP1
+
+ENDIF
+   
+PTP HOME Vel=100 % DEFAULT
+
+END

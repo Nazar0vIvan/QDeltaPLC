@@ -1,7 +1,6 @@
 #include "chamfercentralvalidation.h"
 
 #include "chamfertcpsolver.h"
-#include "geometry/utils.h"
 
 #include <algorithm>
 #include <array>
@@ -174,39 +173,6 @@ PreviewSchedule makePreviewSchedule(const ChamferPath& path, const ChamferCentra
   return schedule;
 }
 
-bool rigid(const M4d& pose)
-{
-  return pose.allFinite()
-      && isBasis(pose.block<3, 1>(0, 0), pose.block<3, 1>(0, 1),
-                 pose.block<3, 1>(0, 2), Kr10RotEps)
-      && (pose.row(3) - Eigen::RowVector4d(0, 0, 0, 1)).cwiseAbs().maxCoeff() <= GeomConst::Eps;
-}
-
-bool validRobot(const ChamferRobotSetup& robot)
-{
-  const auto& model = robot.model;
-  const auto& ik = model.ik;
-  const auto& timing = robot.timing;
-  if (!rigid(robot.flangeToTcp) || !model.qHome.allFinite()
-      || !std::isfinite(ik.sx) || !std::isfinite(ik.sz) || !std::isfinite(ik.a)
-      || !std::isfinite(ik.bx) || !std::isfinite(ik.by) || !std::isfinite(ik.dF)
-      || !Kr10Kinematics(model).isValid() || !timing.jointSpeed.allFinite()
-      || timing.jointSpeed.minCoeff() <= 0.0 || !timing.jointAcceleration.allFinite()
-      || timing.jointAcceleration.minCoeff() <= 0.0
-      || !std::isfinite(timing.cartesianAcceleration) || timing.cartesianAcceleration <= 0.0)
-    return false;
-  for (const auto& joint : model.joints)
-    if (!rigid(joint.localTransform) || !joint.axis.allFinite()
-        || std::abs(joint.axis.x()) > GeomConst::Eps || std::abs(joint.axis.y()) > GeomConst::Eps
-        || std::abs(std::abs(joint.axis.z()) - 1.0) > GeomConst::Eps
-        || !std::isfinite(joint.qMin) || !std::isfinite(joint.qMax) || joint.qMin > joint.qMax
-        || std::abs(joint.qMin) > 1e6 || std::abs(joint.qMax) > 1e6
-        || !std::isfinite(joint.ratedPayloadSpeedDegreesPerSecond)
-        || joint.ratedPayloadSpeedDegreesPerSecond <= 0.0)
-      return false;
-  return true;
-}
-
 struct SampleResult
 {
   std::optional<ChamferCentralJointSample> sample;
@@ -272,7 +238,8 @@ private:
     if (!(step > 1e-9)) return QStringLiteral("Preview timestamps lost numerical resolution.");
     const auto current = sample(time, previous.solution);
     if (!current.sample) return current.error;
-    const QString error = inspectSpeed((current.sample->solution.q - previous.solution.q) / step);
+    const QString error = chamferJointSpeedError(
+        (current.sample->solution.q - previous.solution.q) / step, m_robot.timing.jointSpeed);
     if (!error.isEmpty()) return error;
     m_samples.append(*current.sample);
     return {};
@@ -297,25 +264,13 @@ private:
     return {};
   }
 
-  QString inspectSpeed(const V6d& velocity) const
-  {
-    if (!velocity.allFinite()) return QStringLiteral("Nonfinite sampled joint velocity.");
-    for (int axis = 0; axis < 6; ++axis) {
-      const double limit = std::min(m_robot.timing.jointSpeed[axis],
-          m_robot.model.joints[axis].ratedPayloadSpeedDegreesPerSecond);
-      if (std::abs(velocity[axis]) > limit * (1.0 + RateTolerance))
-        return QStringLiteral("A%1 speed %2 deg/s exceeds effective bound %3.")
-            .arg(axis + 1).arg(std::abs(velocity[axis]), 0, 'g', 12).arg(limit);
-    }
-    return {};
-  }
-
   QString inspectRates() const
   {
-    auto first = m_samples.front();
+    qsizetype anchor = 0;
     Rates previous; // Rest at t=0; interval velocities are located at their midpoints.
     for (qsizetype index = 1; index < m_samples.size(); ++index) {
       const auto& last = m_samples[index];
+      const auto& first = m_samples[anchor];
       const bool terminal = index == m_samples.size() - 1;
       const double step = last.time - first.time;
       if (!terminal && (step < RateStep || m_preparation.motion().duration() - last.time < RateStep)) continue;
@@ -324,14 +279,17 @@ private:
       current.seconds = step;
       current.joints = (last.solution.q - first.solution.q) / step;
       current.xyz = (last.target.tcp.block<3, 1>(0, 3) - first.target.tcp.block<3, 1>(0, 3)) / step;
-      if (!current.joints.allFinite() || !current.xyz.allFinite())
+      if (!current.xyz.allFinite())
         return atTime(QStringLiteral("Nonfinite sampled velocity."), last.time);
-      const QString speedError = inspectSpeed(current.joints);
-      if (!speedError.isEmpty()) return atTime(speedError, last.time);
+      // Adjacent secants were checked in appendPoint; grouped secants are new results.
+      if (index > anchor + 1) {
+        const QString speedError = chamferJointSpeedError(current.joints, m_robot.timing.jointSpeed);
+        if (!speedError.isEmpty()) return atTime(speedError, last.time);
+      }
       const QString error = accelerationError(previous, current);
       if (!error.isEmpty()) return atTime(error, last.time);
       previous = current;
-      first = last;
+      anchor = index;
     }
     const QString stop = accelerationError(previous, Rates{});
     return stop.isEmpty() ? QString{} : atTime(stop, m_preparation.motion().duration());
@@ -370,7 +328,6 @@ QString ChamferCentralPreparation::prepare()
 ChamferCentralValidationResult ChamferCentralPreparation::validate(const ChamferRobotSetup& robot,
                                                                   const Kr10Kinematics::IkSolution& initialSeed)
 {
-  if (!validRobot(robot)) return {{}, QStringLiteral("Invalid robot model, TCP calibration or simulation rate bounds.")};
   const QString error = chamferJointPositionError(initialSeed.q, robot.model);
   if (!error.isEmpty()) return {{}, QStringLiteral("Invalid initial IK seed: %1").arg(error)};
   const QString preparationError = prepare();
