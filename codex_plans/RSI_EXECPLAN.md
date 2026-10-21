@@ -35,9 +35,11 @@ are outside this repair. Pause/resume remains deferred rather than implemented.
 - [x] (2026-10-20) Step 2: use existing IK/FK/rate checks on rounded reconstructed poses; share vector speed comparisons across Generate/LIN/RSI, remove repeated invariant/adjacent-rate work and replace rounding-sensitive endpoint equality with configuration/winding checks.
 - [x] (2026-10-20) Step 3: reuse KUKA-compatible configuration classification on the four saved boundaries, check their exported poses and write the versioned eight-row layout with each point's own S/T.
 - [x] (2026-10-20) Step 4: read version 2 and checked POS targets with global READ_POS, rename Ps to PsIn, retain PsOut's own S/T and construct its XYZ/ABC by explicit assignments; preserve cleanup and RSI completion without a live configuration comparison.
-- [ ] Step 5: independently replay the full offset array and inspect the complete file/KRL exchange offline, including malformed inputs and resampling.
+- [x] (2026-10-21) User relocation: the four KRL helpers now live unchanged in `resources/files/rsi/FILE_UTILS/`; `cwrite_test.src` was deleted. Plan and RSI contract paths updated.
+- [ ] Step 5: independently replay the full offset array and inspect the complete file/KRL exchange offline, including malformed inputs and resampling. Requires new plan/packet records from a build containing Steps 1-4; the 2026-10-20 11:09 capture holds pre-Step-1 offsets.
 - [ ] Step 6: update affected contracts/comments, complete separate declaration/body/caller reviews, record final counts and run source/diff checks.
 - [ ] Conditional verification: when explicitly requested, build/restart the app and inspect newly generated records; controller execution requires explicit hardware authorization or user-supplied results.
+- [x] (2026-10-21) Step 7 option A (user-selected): simplify the KRL consumer, keep file version 2 and move the transfer-rate ceiling check into Generate. KRL compilation and controller behaviour remain unverified.
 
 ## Surprises & Discoveries
 
@@ -76,7 +78,26 @@ them, and LIN ignores them. S selects a Cartesian pose's joint configuration; it
 bits describe shoulder, elbow and wrist alternatives. T records the six joint-angle
 signs, not a revolution count. The CREAD/CWRITE manual section 6.16.10, pages 43-44,
 permits at most eight `krl_fscanf` values, so XYZABC plus two integer S/T fields fit
-one call. Both manuals are in `E:/Qt/QtProjects/manuals/KUKA/`.
+one call. Both manuals are in `D:/Qt/QtProjects/manuals/KUKA/`.
+
+KRL review (2026-10-21) against KSS 8.3 SI, System Variables, CREAD/CWRITE and RSI 3.3:
+- SI 11.3.4: the first routine of an SRC file is always global, so `GLOBAL` on
+  READ_POS/REMOUNT_SHARE has no effect. DAT variables are valid in every routine of
+  the SRC file that owns the DAT, including local DEFFCTs after `END`.
+- SI 11.13.6: comparison operators have the lowest priority (below AND/OR), so
+  every comparison combined with AND/OR must stay bracketed.
+- System Variables 3.4/3.226: assigning `$VEL`/`$ACC` outside 0...`$VEL_MA`/`$ACC_MA`
+  displays "Value assignment inadmissible" and stops the program. The KRL ceiling
+  check therefore duplicates a controller check; the positive-value check duplicates
+  ChamferMotion::create's validTiming. The app currently has no upper bound.
+- CREAD/CWRITE 6.16: krl_fclose_all(-99) in REMOUNT_SHARE already closes every file
+  at job start, so CLOSE_FILES after a failed open or after krl_fclose closes nothing
+  new. STATE_T.HITS counts converted formats; whether krl_fscanf reports a partial
+  row as #DATA_OK is not documented. The S/T=-1 sentinels reject truncated POS rows.
+- RSI 3.3 7.1: RSI_CREATE's Status defaults to TRUE, RSI_ON's sensor mode to
+  #IPO_FAST, RSI_MOVECORR's stop mode to #RSIBRAKE, and the container ID is optional.
+  RSI_RESET deletes all containers; RSI_ON/RSI_OFF act on all created containers
+  jointly, so any other RSI program on this controller must also start with RSI_RESET.
 
 Step 1 cleanup confirmed that the absolute Euler branch selection, A/C singular
 coupling, 90-degree jump gate and six-component cumulative sums were specific to
@@ -268,12 +289,12 @@ angles for a requested TCP pose. Its `points()[boundaries()[1]]` is PsIn,
 times. `src/kinematics/kr10kinematics.cpp` supplies configuration classification.
 
 `resources/files/rsi/RSI_Chamfer_Hole.src` requires version 2 and reads three POS
-targets with global `resources/files/READ_POS.src`, PsOut's S/T pair, ToolFrame
-with `resources/files/READ_FRAME.src`, and the two CP settings. It closes the file
+targets with `resources/files/rsi/FILE_UTILS/READ_POS.src`, PsOut's S/T pair, ToolFrame
+with `FILE_UTILS/READ_FRAME.src`, and the two CP settings. It closes the file
 before rejecting input/close/rate errors, assigns ToolFrame, executes `PTP PsIn`
 and `LIN LeadStart`, then enables RSI. On successful completion it assigns PsOut
 XYZ from PsIn and ABC from LeadEnd, preserving PsOut's own S/T. Its DAT declares
-the four POS values and FRAME ToolFrame. MOUNT_JOBS/CLOSE_FILES already work;
+the four POS values and FRAME ToolFrame. FILE_UTILS REMOUNT_SHARE/CLOSE_FILES already work;
 preserve their behavior and never copy share credentials into plans or diagnostics.
 
 ## Plan of Work
@@ -394,7 +415,7 @@ change; do not deploy their intermediate states separately.
 ### Step 4: read POS targets and preserve PsOut construction in KRL
 
 
-Implemented `resources/files/READ_POS.src`, following the existing small READ_FRAME helper:
+Implemented `READ_POS.src` (now in `resources/files/rsi/FILE_UTILS/`), following the existing small READ_FRAME helper:
 read `%f;%f;%f;%f;%f;%f;%d;%d` directly into a local POS's six REAL and two INT components and return that POS
 plus the existing KRL success flag convention. The C++ prohibition on output
 references does not change KRL's established function convention. Keep READ_FRAME
@@ -464,20 +485,54 @@ Count helpers, headers, callers and configuration together. Prefer replacing obs
 state and reusing existing operations; explain required growth against a smaller
 implementation. Record fresh before/after physical and nonblank counts per step.
 
+### Step 7: simplify the KRL consumer (option A implemented 2026-10-21)
+
+Baseline: SRC 132 physical lines with four STATE_T, six BOOL flags and a version
+variable; DAT 13; FILE_UTILS CLOSE_FILES 11, REMOUNT_SHARE 20, READ_FRAME 46,
+READ_POS 16 (238 physical lines in six files). A draft of the changes below has
+136 lines in five files (SRC 83 with READ_JOB, DAT 11, REMOUNT_SHARE 16, READ_FRAME 13,
+READ_POS 13); the app-side check adds about four C++ lines. Proposed changes:
+
+1. Generate (validTiming in chamfermotion.cpp) rejects transferFeed above
+   3000 mm/s ($VEL_MA.CP = 3 m/s in the archived machine.dat) and transferAcceleration
+   above timing.cartesianAcceleration (default $ACC_MA.CP = 10000 mm/s²), with its
+   own error text. KRL drops the read-state, positive and ceiling checks. It assigns
+   $VEL.CP/$ACC.CP before PTP PsIn, so the live controller limit still stops the
+   program before PsIn. PTP uses $VEL_AXIS, not $VEL.CP.
+2. The main routine contains only the motion sequence. A local `DEFFCT BOOL READ_JOB()`
+   after `END` mounts, opens, checks the version, reads, constructs PsOut and closes,
+   writing the DAT targets directly.
+3. READ_POS/READ_FRAME treat Ok as an accumulated flag (`Ok=Ok AND (...)`), which
+   replaces the five read flags. READ_FRAME reads directly into FRAME components.
+4. REMOUNT_SHARE returns BOOL; CLOSE_FILES and the redundant `GLOBAL` keywords are removed.
+5. RSI calls use documented defaults. RsiContext and RSI_DELETE are removed because
+   RSI_RESET at program start deletes all containers; RSI_RESET's result is checked.
+6. Comments are removed.
+
+Option B (not selected) changes the file to version 3 and reverses the 2026-10-20
+decision to send only PsOut's S/T, so it requires a separate user decision. The app writes PsOut as a
+complete POS row (the writer already builds and checks that pose) and both CP values
+on one row. KRL then reads four POS rows the same way and drops the six PsOut assignments.
+
+Acceptance: same motion sequence; every input failure still returns before PTP PsIn;
+the app writer, SRC/DAT, FILE_UTILS and the three owning documents change together.
+Partial-row behaviour of krl_fscanf and $VEL.CP persistence through RSI_MOVECORR need
+a T1 check. No controller deployment or motion is authorized by this proposal.
+
 ## Concrete Steps
 
 
-Work in `E:/Qt/QtProjects/RoboCrap`. Read AGENTS.md, PLANS.md and the Geometry and
+Work in `D:/Qt/QtProjects/RoboCrap`. Read AGENTS.md, PLANS.md and the Geometry and
 scene, Machining and playback, and Devices and protocols contracts before the
 affected implementation work. Inspect the named files and current callers. Execute
 Steps 1-6 in order, updating Progress and recording checks at each stopping point.
 
 Run these read-only commands from the repository root; expect diff --check to exit
-zero without whitespace diagnostics. The per-command safe.directory exception is
-needed on this executor; do not change global Git configuration:
+zero without whitespace diagnostics. If an executor reports dubious ownership, add
+`-c safe.directory=<repository root>` per command; do not change global Git configuration:
 
-    git -c safe.directory=E:/Qt/QtProjects/RoboCrap status --short
-    git -c safe.directory=E:/Qt/QtProjects/RoboCrap diff --check
+    git status --short
+    git diff --check
 
 Inspect task diffs and new/untracked contents separately. No staging, commits,
 branch switches, stashing or discarding unrelated edits. Do not configure/build/lint
@@ -504,7 +559,7 @@ offline numerical checks without opening an RSI socket. Actual Sampling remains
 gated by the connected/bound socket, whose use requires hardware authorization.
 
 For an explicitly authorized controller deployment/user-run verification, deploy
-the app, matching SRC/DAT and READ_POS alongside existing helpers. Check the supplied
+the app, matching SRC/DAT and every `FILE_UTILS` helper. Check the supplied
 RSI Visual context and Ethernet XML match the deployed versions; preserve WORLD
 and limits, and do not hand-edit exports. The repository lacks the three context
 export files, so retain their deployment/provenance check from the old plan.
@@ -970,3 +1025,51 @@ git diff --check passed. Unrelated existing edits were preserved.
 Revision (2026-10-20): implement the user-authorized Step 4, align the KRL consumer
 with version 2, use complete POS targets and preserve independent PsOut S/T and
 the existing nominal RSI completion/cleanup sequence.
+
+Step 7 outcome (2026-10-21): option A implemented. ChamferMotion::create now rejects
+transferFeed above 3000 mm/s and transferAcceleration above cartesianAcceleration with
+its own message, after validTiming; the shared-file writer reads only accepted saved
+motions, so no second check is needed there. Requirement for the new constant: the
+archived $VEL_MA.CP has no existing app value (cartesianAcceleration already carries
+$ACC_MA.CP); one file-local constexpr is smaller than a new timing field and its QML plumbing.
+
+KRL: the main routine holds only the motion sequence; local READ_JOB owns mount/open/
+version/reads/PsOut construction/close and writes DAT targets. One accumulated Ok replaces
+five read flags; one State replaces four STATE_T. READ_POS/READ_FRAME combine their result
+with the incoming Ok; READ_FRAME reads FRAME components directly. REMOUNT_SHARE returns BOOL;
+its credential line is byte-identical. CLOSE_FILES, GLOBAL, RsiContext, RSI_DELETE,
+default RSI arguments, the rate checks, the repeated CP assignment and comments are gone.
+RSI_RESET's result is now checked. PsOut = PsIn, then ABC from LeadEnd, then its own S/T.
+
+Separate declaration review: chamfermotion.cpp:15-16 adds one constexpr; no signature,
+result channel, ownership, lambda, template or exception changed; chamfermotion.h:13-14
+changes comments only. KRL declarations: READ_JOB is local and parameterless; helpers keep
+their two-argument (File:IN, Ok:OUT) form, Ok now read and combined. Body review:
+chamfermotion.cpp:652-656 runs after validTiming has accepted finite positive values, uses
+the bounded setup and returns the existing optional/error result. KRL bodies bracket every
+comparison combined with AND/OR (comparisons have the lowest priority); every variable is
+initialized before it is read (Version, File, S/T sentinels, Target aggregates/$NULLFRAME);
+RSI_OFF is the left operand so it always executes. Caller review: SceneMachining::generate
+shows the returned error unchanged; REMOUNT_SHARE/READ_POS/READ_FRAME have no other caller
+after cwrite_test.src was deleted. No violation remained.
+
+Counts. C++: chamfermotion.cpp 703/662 to 710/669; chamfermotion.h 80/70 unchanged.
+The growth implements the required ceiling check; the alternative (KRL check) is the code
+being removed. KRL: six files, 238 physical / 203 nonblank, become five files, 136/125
+(SRC 132/118 to 83/75; DAT 13/13 to 11/11; REMOUNT_SHARE 20/17 to 16/15; READ_FRAME 46/33
+to 13/12; READ_POS 16/15 to 13/12; CLOSE_FILES 11/7 deleted). Documentation: RSI contract
+188/158 to 209/177, AGENT_CONTRACTS 356/339 to 359/342, ARCHITECTURE 519/443 unchanged
+line count. No QML, build input or tooling changed. git diff --check passed. No build,
+KRL compilation, runtime launch or hardware action was performed.
+
+Revision (2026-10-21): implement user-selected Step 7 option A and record its review.
+
+Revision (2026-10-21, user): rename the mount helper to REMOUNT_SHARE (file
+`FILE_UTILS/REMOUNT_SHARE.src`), because it closes all files, unmounts and mounts the
+share again. References in this plan, the SRC and the RSI contract use the new name.
+
+Revision (2026-10-21): relevance review. Steps 1-4 match the current source and KRL.
+Updated paths for the relocated FILE_UTILS helpers and the D: checkout, noted that
+Step 5 needs records from a Steps 1-4 build, recorded the KRL manual findings and
+added proposed Step 7 (KRL simplification, app-side transfer ceilings) pending the
+user's decision. No source, build, runtime or hardware action was performed.

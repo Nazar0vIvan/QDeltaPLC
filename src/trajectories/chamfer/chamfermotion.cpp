@@ -12,6 +12,8 @@ namespace {
 
 using namespace RoboCrap3D;
 constexpr double TransferPositionTolerance = 0.01; // mm; prescribed TCP chord criterion only.
+// mm/s, $VEL_MA.CP of the installed KR C4 (resources/files/KR C4/R1/Mada/$machine.dat).
+constexpr double MaximumTransferFeed = 3000.0;
 
 bool rigid(const M4d& transform)
 {
@@ -647,6 +649,11 @@ ChamferMotionResult ChamferMotion::create(const ChamferPath& path, const Chamfer
   for (std::size_t joint = 0; joint < DofCount; ++joint)
     boundedRobot.timing.jointSpeed[joint] = robot.model.joints[joint].ratedPayloadSpeedDegreesPerSecond;
   if (!validTiming(boundedRobot.timing)) return {{}, QStringLiteral("Feeds, transfer acceleration and simulation limits must be finite and positive; acceleration distance and auxiliary scale must be in (0, 1].")};
+  // KRL assigns both transfer values to $VEL.CP/$ACC.CP, which the controller rejects above these ceilings.
+  if (boundedRobot.timing.transferFeed > MaximumTransferFeed
+      || boundedRobot.timing.transferAcceleration > boundedRobot.timing.cartesianAcceleration)
+    return {{}, QStringLiteral("LIN transfer exceeds $VEL_MA.CP = %1 mm/s or $ACC_MA.CP = %2 mm/s^2.")
+                    .arg(MaximumTransferFeed).arg(boundedRobot.timing.cartesianAcceleration)};
   MotionCompiler compiler(path, boundedRobot);
   QString error = QStringLiteral("No IK solution for the approach P_s pose in the searched configurations.");
   for (const auto& start : compiler.starts()) {

@@ -292,11 +292,14 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Check exported poses, including PsOut constructed from PsIn XYZ and LeadEnd ABC, against
   their saved TCP poses with existing position/rotation-entry tolerances before file replacement.
   Keep QSaveFile atomic replacement and install corrections only after export succeeds.
-  KRL requires version 2, reads motion targets with global READ_POS and validates S/T ranges
-  (S 0-7, T 0-63). It closes the file before rejecting version/read/close/rate failures and
-  before PTP PsIn. PsOut is POS with its own S/T; assign XYZ individually from PsIn and
-  ABC individually from LeadEnd. S/T selects PTP configuration; LIN ignores it.
-  ToolFrame remains a flange-to-TCP FRAME, read by unchanged READ_FRAME without S/T.
+  ChamferMotion::create rejects transfer speed above $VEL_MA.CP = 3000 mm/s and transfer
+  acceleration above cartesianAcceleration ($ACC_MA.CP); KRL does not repeat these checks and
+  assigns $VEL.CP/$ACC.CP before PTP PsIn, where the controller enforces its live limits.
+  The SRC's local READ_JOB requires version 2, reads motion targets with FILE_UTILS READ_POS
+  (S 0-7, T 0-63) and ToolFrame (flange-to-TCP FRAME, no S/T) with READ_FRAME, accumulating
+  one success flag, and closes the file before returning; failures return before PTP PsIn.
+  PsOut is POS: copied from PsIn, ABC from LeadEnd, then its own S/T read. S/T selects PTP
+  configuration; LIN ignores it. RSI_RESET at program start replaces RSI_DELETE.
 - The stream belongs to its sampled path, not the selection. Drop it and delete shared_data.txt when
   the path is removed, regenerated or incompatible, at a new request, at startup and at shutdown.
   Deliver it to ControlIO as an implicitly shared QVector<V6d> plus its sampling diagnosticId through

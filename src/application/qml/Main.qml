@@ -219,14 +219,15 @@ ApplicationWindow {
     // Until the robot is shown; OccController.loading covers only CAD parsing.
     readonly property bool sceneLoading: !Viewport3D.OccController.ready
                                          && Viewport3D.OccController.errorString.length === 0
-    readonly property bool busy: App.Machining.calculating || statusBar.sceneLoading
+    readonly property bool busy: App.Machining.calculating || App.MachiningPreparation.preparing
+                                 || statusBar.sceneLoading
     readonly property string message: {
       if (surfaceImporter.busy) return qsTr("Importing surface…")
       if (App.Machining.calculating) return qsTr("Calculating trajectory…")
+      if (App.MachiningPreparation.preparing) return qsTr("RSI Sampling…")
       if (statusBar.sceneLoading) return qsTr("Loading…")
       if (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen) return ""
       const preparation = App.MachiningPreparation
-      // While sampling, unavailableReason reports progress.
       const status = preparation.error || preparation.summary
                      || preparation.unavailableReason || qsTr("Ready for RSI Sampling.")
       return statusBar.rsi && statusBar.rsi.isConnected

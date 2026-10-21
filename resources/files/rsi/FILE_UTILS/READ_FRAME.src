@@ -1,0 +1,13 @@
+DEFFCT FRAME READ_FRAME(File:IN,Ok:OUT)
+   DECL INT File
+   DECL BOOL Ok
+   DECL STATE_T State
+   DECL MODUS_T Mode
+   DECL FRAME Target
+
+   Mode=#SYNC
+   Target=$NULLFRAME
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%f;%f;%f;%f;%f;%f",Target.X,Target.Y,Target.Z,Target.A,Target.B,Target.C)
+   Ok=Ok AND (State.RET1==#DATA_OK)
+   RETURN Target
+ENDFCT

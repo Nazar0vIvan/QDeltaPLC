@@ -1,0 +1,13 @@
+DEFFCT POS READ_POS(File:IN,Ok:OUT)
+   DECL INT File
+   DECL BOOL Ok
+   DECL STATE_T State
+   DECL MODUS_T Mode
+   DECL POS Target
+
+   Mode=#SYNC
+   Target={X 0.0,Y 0.0,Z 0.0,A 0.0,B 0.0,C 0.0,S -1,T -1}
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%f;%f;%f;%f;%f;%f;%d;%d",Target.X,Target.Y,Target.Z,Target.A,Target.B,Target.C,Target.S,Target.T)
+   Ok=Ok AND (State.RET1==#DATA_OK) AND (Target.S>=0) AND (Target.S<=7) AND (Target.T>=0) AND (Target.T<=63)
+   RETURN Target
+ENDFCT

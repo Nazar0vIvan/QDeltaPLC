@@ -4,11 +4,14 @@ The sequence is HOME, PTP PsIn, LIN LeadStart, lead-in / machining / lead-out
 under RSI, LIN PsOut and HOME. Only completed RSI permits return. Force correction is disabled.
 
 Controller files:
-- `RSI_Chamfer_Hole.src` and `RSI_Chamfer_Hole.dat`: the KRL program (module `RSI_Chamfer_Hole`).
+- `RSI_Chamfer_Hole.src` and `RSI_Chamfer_Hole.dat`: the KRL program (module `RSI_Chamfer_Hole`)
+  with its local `READ_JOB()` file reader.
 - `RSI_Chamfer_Hole.rsi`, `RSI_Chamfer_Hole.rsi.xml` and `RSI_Chamfer_Hole.rsi.diagram`: the RSI Visual context, loaded by `RSI_CREATE("RSI_Chamfer_Hole.rsi")`. Copy these from the RSI Visual export; do not hand-edit them.
 - `RSI_EthernetConfig.xml`: the Ethernet configuration.
-- `../MOUNT_JOBS.src`, `../CLOSE_FILES.src`, `../READ_POS.src` and `../READ_FRAME.src`:
-  shared KRL helpers, installed as separate SRC files on the controller.
+- `FILE_UTILS/REMOUNT_SHARE.src`, `FILE_UTILS/READ_POS.src` and `FILE_UTILS/READ_FRAME.src`:
+  shared KRL helpers, installed as separate SRC files on the controller. The first routine of
+  an SRC file is global without the `GLOBAL` keyword. Remove a previously installed
+  `CLOSE_FILES.src`; nothing calls it.
 
 PC side:
 - `src/trajectories/chamfer/chamferrsistream.cpp`: computes the corrections.
@@ -48,7 +51,14 @@ KRL owns `$SEN_PINT[1]`:
 - It is cleared after `Completed` has been read.
 
 `$SEN_PINT[2]` is written every cycle by the PC's Result through
-MAP2SEN_PINT1. Only `Completed=($SEN_PINT[2]==1)` allows LIN PsOut and the return HOME.
+MAP2SEN_PINT1. Only `Completed=$SEN_PINT[2]==1` and a successful `RSI_OFF()` allow LIN PsOut
+and the return HOME.
+
+RSI calls use the documented defaults: `RSI_CREATE` activates the container, `RSI_ON(#RELATIVE)`
+runs in `#IPO_FAST` and `RSI_MOVECORR()` stops with `#RSIBRAKE`. There is no container ID or
+`RSI_DELETE`: `RSI_RESET()` at program start deletes every container left by an earlier run.
+`RSI_ON`/`RSI_OFF` act on all created containers, so any other RSI program on this controller
+must also start with `RSI_RESET()`.
 
 ## PC behavior
 
@@ -138,13 +148,12 @@ Example request and reply (values illustrative):
 
 ## shared_data.txt
 
-RSI Sampling writes `C:\RoboCrapJobs\shared_data.txt`. Before file access, `MOUNT_JOBS()`
+RSI Sampling writes `C:\RoboCrapJobs\shared_data.txt`. Before file access, `REMOUNT_SHARE()`
 closes all KRL files from both the robot and submit interpreters (`krl_fclose_all`, `-99`),
 removes `/RoboCrapJobs` and reconnects it to `//172.31.1.47/RoboCrapJobs` using the
 configured share credentials. Unmount error `-2` permits a fresh mount attempt; other
-cleanup errors abort. The helper returns the blocking cleanup or final mount `STATE_T`
-to `MountState`. Only `#DATA_OK` allows opening `/RoboCrapJobs/shared_data.txt`;
-`MountState.MSG_NO` retains a reported error.
+cleanup errors abort. The helper returns TRUE only when the final mount reports
+`#DATA_OK`; only then does `READ_JOB()` open `/RoboCrapJobs/shared_data.txt`.
 The application writes version 2: eight CRLF rows, `;` separators, six-decimal
 floats and decimal integer S/T. XYZ is mm; ABC is principal Z-Y-X in degrees.
 
@@ -157,22 +166,30 @@ floats and decimal integer S/T. XYZ is mm; ABC is principal Z-Y-X in degrees.
 7. `$VEL.CP` in m/s: Generate transfer speed (mm/s) / 1000.
 8. `$ACC.CP` in m/s²: Generate transfer acceleration (mm/s²) / 1000.
 
+Generate accepts only transfer speeds in (0, 3000] mm/s and accelerations in
+(0, `cartesianAcceleration`] mm/s², that is at most `$VEL_MA.CP` = 3 m/s and `$ACC_MA.CP`
+= 10 m/s² from the archived `$machine.dat`. The controller additionally rejects an
+assignment above its live `$VEL_MA`/`$ACC_MA` ("Value assignment inadmissible") and stops.
+
 S/T comes from saved animation joints at boundaries 1, 2, 5 and 6 respectively,
 using the existing configuration classifier and one local FK per boundary. Turn
 sets bits 0-5 for negative A1-A6. The writer checks all four exported/constructed
 TCP poses against their saved boundary TCPs with 0.0001 mm / 0.000001 rotation-entry
 tolerances before opening QSaveFile. A failure leaves corrections uninstalled.
 
-The SRC requires version 2 before reading targets. READ_POS reads six REAL and
-two INT components into a POS; #DATA_OK and S in 0-7 / T in 0-63 are required.
-PsOut reads and checks its own integer pair with the same ranges. ToolFrame uses
-READ_FRAME. All four motion targets are POS in DAT. For PsOut, assign X/Y/Z
-individually from PsIn and A/B/C individually from LeadEnd without overwriting S/T.
-The file is closed and CLOSE_FILES runs before read/close/rate failures return,
-including a wrong version. Existing positive transfer values and controller
-maximum CP settings are checked before PTP PsIn. A matching app export, SRC/DAT
-and READ_POS helper are required together. S/T selects the configuration for PTP;
-LIN ignores these fields. No live configuration comparison before RSI_ON is required.
+`READ_JOB()` (local to the SRC) requires version 2 and accumulates one success flag:
+READ_POS and READ_FRAME combine it with their own result (`Ok=Ok AND ...`).
+READ_POS reads six REAL and two INT components into a POS initialized with S/T = -1;
+#DATA_OK and S in 0-7 / T in 0-63 are required, so a truncated row fails. READ_FRAME
+reads ToolFrame's six components. PsOut starts as a copy of PsIn, takes A/B/C from
+LeadEnd and then reads and checks its own S/T pair. Both CP rows require #DATA_OK.
+All four motion targets are POS in DAT. The file is closed before READ_JOB returns,
+including after a wrong version; a failed `krl_fclose` also fails the job, and the next
+run's REMOUNT_SHARE closes any file left open. Every input failure returns after HOME and
+before `RSI_CREATE`. `$VEL.CP`/`$ACC.CP` are assigned before PTP PsIn, so a controller
+limit violation also stops before PsIn. A matching app export, SRC/DAT and FILE_UTILS
+helpers are required together. S/T selects the configuration for PTP; LIN ignores these
+fields. No live configuration comparison before RSI_ON is required.
 
 The PC holds the stream only while the sampled path exists and is compatible.
 Whenever it holds no stream, it deletes the file: at application start, at a new
@@ -186,3 +203,7 @@ instead of moving to an old hole.
 - The BOOL spelling the controller sends for Start. The PC accepts `0`/`1` and logs the first packet it cannot decode.
 - Whether a direct `$TOOL` assignment updates the smartPAD active-tool display (`$ACT_TOOL`); it does not affect motion.
 - Releasing the T1 Start key during RSI_MOVECORR is not supported. Cancel the program and restart from HOME.
+- Whether `krl_fscanf` reports a partially converted FRAME or REAL row as `#DATA_OK`
+  (`STATE_T.HITS` would show the converted count), and that `$VEL.CP`/`$ACC.CP` keep their
+  assigned values through the RSI calls up to LIN PsOut. Compilation of the restructured SRC
+  and helpers is also unverified.

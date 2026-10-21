@@ -10,8 +10,8 @@ struct ChamferTimingParameters
   double machiningFeed = 5.0;
   // Prescribed Cartesian timing for generated paths.
   double accelerationDistanceFraction = 0.30; // Fraction of each lead length, (0, 1].
-  double transferFeed = 10.0; // mm/s, shared by both staging transfers.
-  double transferAcceleration = 20.0; // mm/s^2, same acceleration and deceleration.
+  double transferFeed = 10.0; // mm/s, shared by both staging transfers; at most $VEL_MA.CP.
+  double transferAcceleration = 20.0; // mm/s^2, same acceleration and deceleration; at most cartesianAcceleration.
   // mm/s^2, $ACC_MA.CP of the installed KR C4 (resources/files/KR C4/R1/Mada/$machine.dat):
   // the maximum programmable CP path acceleration. The controller does not monitor it for RSI.
   double cartesianAcceleration = 10000.0;

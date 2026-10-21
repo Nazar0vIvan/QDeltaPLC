@@ -119,7 +119,7 @@ bool SceneMachiningPreparation::isCurrent(const PreparedRsiStream& prepared) con
 QString SceneMachiningPreparation::unavailableReason() const
 {
   if (m_shuttingDown) return tr("Application is shutting down.");
-  if (m_preparing) return tr("Sampling RSI…");
+  if (m_preparing) return tr("RSI Sampling…");
   if (m_machining->calculating()) return tr("Calculating trajectory…");
   const auto* path = pathById(m_machining->inputId());
   if (!path) return tr("Select a generated machining path.");
