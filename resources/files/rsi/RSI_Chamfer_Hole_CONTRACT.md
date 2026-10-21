@@ -51,7 +51,9 @@ KRL owns `$SEN_PINT[1]`:
 - It is cleared after `Completed` has been read.
 
 `$SEN_PINT[2]` is written every cycle by the PC's Result through
-MAP2SEN_PINT1. Only `Completed=$SEN_PINT[2]==1` and a successful `RSI_OFF()` allow LIN PsOut
+MAP2SEN_PINT1. It keeps its value after the program ends, so KRL clears it at the start
+of the program; a previous run's Result 1 cannot then count as completion.
+Only `Completed=$SEN_PINT[2]==1` and a successful `RSI_OFF()` allow LIN PsOut
 and the return HOME.
 
 RSI calls use the documented defaults: `RSI_CREATE` activates the container, `RSI_ON(#RELATIVE)`
@@ -64,7 +66,9 @@ must also start with `RSI_RESET()`.
 
 The controller sends one `<Rob>` packet per 4 ms cycle. The PC answers it within
 the same cycle, echoing its IPOC. If several packets are queued, it answers only
-the newest one.
+the newest one. The receive/reply path writes no console output: the 2026-10-21 captures
+showed log lines delaying replies past the controller's acceptance time, so the controller
+used zero while the PC had already advanced to the next correction.
 
 - **Start = 0:** zero corrections, Stop 0, Result 0, and the stream index returns to the first correction.
 - **Start = 1 with a stream:** one correction per packet, Result 0, Stop 0. The stream ends with 50 zero corrections so the robot settles.
@@ -81,7 +85,7 @@ request after installation sends increments[0], then subsequent requests send th
 no preceding Start = 0 packet is required. While empty, Start = 1 sends Stop 1 and Result 0.
 Before clearing/installing, the device discards requests already buffered in its socket without
 replying or advancing either stream; outgoing accepted-peer rows remain in the outgoing capture.
-It resets the learned UDP source port and decode-warning flag, learning the port again from a
+It resets the learned UDP source port, learning it again from a
 subsequent valid request. Configured addresses and the bound socket remain available.
 These queued updates reset PC state; sampling does not clear corrections accumulated in the
 controller's current RSI context or start a new KRL program. Start the new KRL run after Sampling succeeds.
@@ -200,7 +204,8 @@ instead of moving to an old hole.
 
 - ETHERNET1 `Timeout` = 10 and `Precision` = 1 are not documented in the local RSI 3.3 manual. A Precision that rounded received values would make the robot stand still.
 - Whether configured POSCORR1 limits cover the intended movement; the summary's shortest-angle excursion is not a MaxRotAngle bound.
-- The BOOL spelling the controller sends for Start. The PC accepts `0`/`1` and logs the first packet it cannot decode.
+- The BOOL spelling the controller sends for Start. The PC accepts `0`/`1` (the 2026-10-21 captures
+  contain only these); a packet it cannot decode is kept in the packet capture and not answered.
 - Whether a direct `$TOOL` assignment updates the smartPAD active-tool display (`$ACT_TOOL`); it does not affect motion.
 - Releasing the T1 Start key during RSI_MOVECORR is not supported. Cancel the program and restart from HOME.
 - Whether `krl_fscanf` reports a partially converted FRAME or REAL row as `#DATA_OK`

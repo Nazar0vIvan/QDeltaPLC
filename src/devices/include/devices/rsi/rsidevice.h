@@ -73,7 +73,6 @@ private:
   CorrectionStream m_corrections;
   qsizetype m_index = 0;
   RunState m_state = RunState::Idle;
-  bool m_decodeFailureLogged = false; // Once per connection/sample; packets arrive every 4 ms.
   QElapsedTimer m_traceClock;
   QTimer* m_traceTimer = nullptr;
   QByteArray m_trace;

@@ -21,9 +21,49 @@ Hardware (supplied by the user; not derivable from code):
 | PLC | Delta AS332T with AS16AP11P-A / AS16AP11T-A (8 DI + 8 DO each) | `PlcDevice` key `plc` | Custom binary over TCP to 192.168.1.2:5051, fixed source port 1234 |
 | Force/torque sensor | Schunk Delta IP68 SI-660-60 (ATI Net F/T electronics) | `FtsDevice` key `fts` | ATI RDT over UDP, peer port 49152 |
 | Touch probe | WP-500 V6 | none | No device code. Probe data enters only as JSON point files (§5.1) |
+| Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive reference sphere for touch-probe calibration |
 
-`db.json` also lists a VFD (`driver: "vfd"`) that has no device class. The Beckhoff manuals in
-`D:\Qt\QtProjects\manuals` have no counterpart in `src/`, `qml/` or `resources/json/`.
+### Additional hardware and Delta I/O wiring
+
+The user also identifies Beckhoff EK1100 (EtherCAT coupler), EL1809 (16 digital inputs)
+and EL2809 (16 digital outputs) modules in the hardware setup. These are physical equipment;
+the Beckhoff manuals in `D:\Qt\QtProjects\manuals` have no counterpart in `src/`, `qml/`
+or `resources/json/`.
+
+The Delta expansion modules are wired as follows (scheme names and terminal connections
+supplied by the user):
+
+| Module | Inputs (8 DI) | Outputs (8 DO) |
+|---|---|---|
+| AS16AP11P-A | X1.0–X1.7; sourcing scheme; S/S connected to 0 V | Y1.0–Y1.7; sourcing scheme; C0 connected to +24 V |
+| AS16AP11T-A | X2.0–X2.7; sinking scheme; S/S connected to +24 V | Y2.0–Y2.7; sinking scheme; C0 connected to 0 V |
+
+The EK1100 connects to the KR C4 via EtherCAT. The EL1809 and EL2809 terminals connect
+to the EK1100. WorkVisual maps all 16 channels of each terminal to the controller signals:
+
+| Beckhoff channel | KR C4 signal |
+|---|---|
+| EL1809 input n, for n = 1–16 | `$IN[n]` |
+| EL2809 output n, for n = 1–16 | `$OUT[n]` |
+
+Only the first six channels in each direction are used for the PLC connection. KR C4
+outputs drive EL2809 outputs wired to AS16AP11P-A inputs; AS16AP11P-A outputs drive
+EL1809 inputs read by KR C4:
+
+| KR C4 output | EL2809 output | AS16AP11P-A input | AS16AP11P-A output | EL1809 input | KR C4 input |
+|---|---|---|---|---|---|
+| `$OUT[1]` | 1 | X1.0 | Y1.0 | 1 | `$IN[1]` |
+| `$OUT[2]` | 2 | X1.1 | Y1.1 | 2 | `$IN[2]` |
+| `$OUT[3]` | 3 | X1.2 | Y1.2 | 3 | `$IN[3]` |
+| `$OUT[4]` | 4 | X1.3 | Y1.3 | 4 | `$IN[4]` |
+| `$OUT[5]` | 5 | X1.4 | Y1.4 | 5 | `$IN[5]` |
+| `$OUT[6]` | 6 | X1.5 | Y1.5 | 6 | `$IN[6]` |
+
+The left and right halves of this table describe separate signal directions; they do not
+imply a PLC logic connection between the X and Y signals on the same row. Channels 7–16
+remain mapped in WorkVisual but are not used for this PLC connection.
+
+`db.json` also lists a VFD (`driver: "vfd"`) that has no device class.
 
 Two parts of the code base are outside the active build: `old_imp/` is not built, and `python/`
 holds analysis scripts.
@@ -251,7 +291,7 @@ transform acceptance. There is no profiling command line.
 | `AbstractDevice` | Public slots `start`, `stop`, `invoke` with an `m_started` guard. `buildApi()` indexes public `Q_INVOKABLE` methods that return `void` and take no arguments or one `QVariantMap`; slots are excluded. Signals: `stateReady`, `socketStateReady`. `attachSocket()` forwards socket state and logs socket errors directly through Qt. |
 | `PlcDevice` (GeneralIO) | `QTcpSocket` bound to a local port, then `connectToHost`. Invokables: `connect`, `disconnect`, `setOutput`, `writeMessage`. `PlcMessageManager` builds frames: a 6-byte big-endian header (0xAA55, version, type, transaction id (tid), length) plus a command, and the whole frame is swapped in 16-bit words. Responses are fixed 32-byte frames. Sends SNAPSHOT on connect. State keys: `x1`, `y1`, `x2`, `y2` (8 bools each) and `cellState`. `writeMessage` accepts raw WRITE_RAW/WRITE_REG/SET_VAR frames and is reachable from QML through `invoke()`, although no QML calls it. Pending requests have no deadline and can exhaust all 256 IDs (§7). The framing is defined by the PLC program (not in the repository); the user confirmed on 2026-10-13 that the protocol works. That historical statement does not establish behavior under response loss. |
 | `FtsDevice` (ControlIO) | `QUdpSocket`. Invokables: `connect`, `disconnect`, `startStreaming`, `stopStreaming`, `bias`, `startLogRecording`, `stopLogRecording`, `saveLogToDefaultFile`. RDT request: 0x1234, then command, then count = 0. Parses one 36-byte record per datagram; timestamps use the sequence difference divided by the assumed 7000 Hz, and force/torque scaling uses 1e6 counts per unit. Each accepted packet emits `dataSampleHFReady`. While processing packets, elapsed time ≥16 ms triggers `processBatch`, which uses the last sample for recording and GUI publication; this is not a fixed publication timer. First publication includes all six axes; later publications include changes of at least the 0.05 deadband (`FtsDevice::onReadyRead`, `publishState`, `processBatch`, and the local `acceptAxis` helper in `ftsdevice.cpp`). Stream/log control flags are published separately. Recording is saved by `std::async` + `QSaveFile` to `<appDir>/records/`. The 7000 Hz value is not a measured arrival rate or verified sensor setting. |
-| `RsiDevice` (ControlIO, `src/devices/rsi`) | `QUdpSocket`. Drains queued datagrams from the configured peer, answers only the newest valid `<Rob>` (IPOC, Start, Result) and echoes its IPOC. State machine Idle → Streaming (one stored increment per packet) → Finished (zeros, Result 1) → Stopping (Stop 1 once Result 1 is echoed); Start = 0 resets to Idle and index 0. Start without a stream replies Stop 1, Result 0. Invokables: `connect`, `disconnect`. Slot outside the invoke API: `setCorrections(QVector<V6d>, QString diagnosticId)`, which discards buffered requests, resets the learned peer port/decode-warning flag, replaces/clears the array and resets to Idle/index 0 in every state. The first accepted Start = 1 after installation sends the first new increment without requiring Start = 0. Publishes `rsiState` and `rsiCorrections` on state transitions and correction updates. The wire codec is private to `rsidevice.cpp`. |
+| `RsiDevice` (ControlIO, `src/devices/rsi`) | `QUdpSocket`. Drains queued datagrams from the configured peer, answers only the newest valid `<Rob>` (IPOC, Start, Result) and echoes its IPOC. State machine Idle → Streaming (one stored increment per packet) → Finished (zeros, Result 1) → Stopping (Stop 1 once Result 1 is echoed); Start = 0 resets to Idle and index 0. Start without a stream replies Stop 1, Result 0. Invokables: `connect`, `disconnect`. Slot outside the invoke API: `setCorrections(QVector<V6d>, QString diagnosticId)`, which discards buffered requests, resets the learned peer port, replaces/clears the array and resets to Idle/index 0 in every state. The first accepted Start = 1 after installation sends the first new increment without requiring Start = 0. Publishes `rsiState` and `rsiCorrections` on state transitions and correction updates; the receive/reply path writes no console output (only correction installation logs). The wire codec is private to `rsidevice.cpp`. |
 | `DeviceProfileModel` | Read-only table loaded from `:/json/db.json`. Provides the default endpoints shown in the Network view. |
 | Console diagnostics | Device call sites use `qInfo().noquote()` on their owning threads; viewport messages are formatted by `logViewportMessage` in main. Output retains the used `[ERROR]`/`[OK]`/`[INFO]`/`[WRITE]` labels, source names and message text. Qt's message pattern supplies timestamps. Diagnostics have no QML context property, custom message type, or queued GUI logging relay. |
 | `QmlChartBridge` | Retained under `src/application` and compiled into `robocrap` with QtCharts; construction/connections at `main.cpp:91-93` are commented out. |

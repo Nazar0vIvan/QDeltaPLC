@@ -1,9 +1,3 @@
-Prompt:
-I need help with the next strategy. Perhaps some of it is described in ROBOT_LOCAL_MEASUREMENT_ACCURACY.md. Basically, only hole edge machining is currently implemented, but edges come in different shapes: line segments, splines, radii, etc. They need to be somehow represented in the scene, selected, and a machining path built for them.
-1) First of all, I want to know how such problems are solved in CAM systems.
-2) I need a solution for a future strategy on how to implement processing of different edge shapes. But most likely, first I need a list of clarifying questions in order to clearly define the strategy.
-As far as I understand, the lead-in -> processing -> lead-out pattern should be maintained, but still, a universal template of src and dates for all edges will not work. Check manuals, the internet, and forums to see if it's possible for the app to generate src and dat files and upload them to KRC without WorkVisual.
-
 # Strategy draft: machining edges of different shapes
 
 Status (2026-10-21): research and open questions only. No ExecPlan yet; it is written after

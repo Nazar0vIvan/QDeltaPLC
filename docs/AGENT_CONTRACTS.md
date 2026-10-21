@@ -310,9 +310,10 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   every state, resetting to Idle and index 0. The first accepted Start = 1 after installation sends
   the new array's first increment; no preceding Start = 0 is required. Normal completion sends Stop
   after the controller echoes Result = 1; Start without a stream sends Stop with Result 0. Keep
-  numerical work and file I/O out of receive callbacks; publish on state transitions/correction updates.
-  Correction updates discard buffered datagrams without replying or advancing the new array, and
-  reset the learned peer port and decode-warning flag. Preserve configured endpoints and socket binding.
+  numerical work, file I/O and console output out of receive callbacks: a reply sent later than the
+  controller cycle is rejected while the index has already advanced; publish on state transitions/
+  correction updates. Correction updates discard buffered datagrams without replying or advancing
+  the new array, and reset the learned peer port. Preserve configured endpoints and socket binding.
 - RSI diagnostics automatically save analytical targets, joints checked for reconstructed TCP poses
   and increments as CSV on the sampling worker, and
   bounded exact-XML packet captures through owned copied-input save futures after receive silence

@@ -6,6 +6,7 @@ DEF RSI_Chamfer_Hole()
    INI
    $ADVANCE=0
    $SEN_PINT[1]=0
+   $SEN_PINT[2]=0
    IF RSI_RESET()<>RSIOK THEN
       RETURN
    ENDIF

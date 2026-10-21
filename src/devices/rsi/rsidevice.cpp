@@ -160,7 +160,6 @@ void RsiDevice::disconnect()
   m_sock->close();
   // The controller peer port is learned again from the next connection.
   m_pp = 0;
-  m_decodeFailureLogged = false;
   resetRun();
   saveTrace();
   qInfo().noquote() << "[OK]" << objectName() + ":" << "Socket disconnected";
@@ -181,7 +180,8 @@ void RsiDevice::setCorrections(const QVector<V6d>& increments, const QString& di
   m_index = 0;
   m_state = RunState::Idle;
   m_pp = 0;
-  m_decodeFailureLogged = false;
+  qInfo().noquote() << "[INFO]" << objectName() + ": RSI corrections installed:"
+                    << increments.size();
   publishState();
 }
 
@@ -195,9 +195,10 @@ void RsiDevice::onReadyRead()
 {
   // Replies to older queued packets would arrive late and be rejected, losing
   // their corrections; answer only the newest so the path is delayed, not cut.
+  // No console output before the reply: it can delay it past the controller cycle.
+  // Malformed and unanswered requests remain in the packet capture.
   std::optional<Request> newest;
   QVector<QByteArray> receivedRows;
-  int accepted = 0;
   while (m_sock && m_sock->hasPendingDatagrams()) {
     const QNetworkDatagram datagram = m_sock->receiveDatagram();
     if (!acceptsSender(datagram)) continue;
@@ -205,23 +206,14 @@ void RsiDevice::onReadyRead()
     receivedRows.append(QByteArray::number(receivedNs) + ",rx,-1,-1,-1,"
                         + datagram.data().toBase64() + '\n');
     const auto request = decodeRequest(datagram.data());
-    if (!request) {
-      if (!std::exchange(m_decodeFailureLogged, true))
-        qInfo().noquote() << "[ERROR]" << objectName() + ": cannot decode RSI packet:"
-                          << QString::fromUtf8(datagram.data().left(200));
-      continue;
-    }
+    if (!request) continue;
     m_pp = datagram.senderPort();
     newest = request;
-    ++accepted;
   }
   if (!newest) {
     for (const auto& row : std::as_const(receivedRows)) appendTrace(row);
     return;
   }
-  if (accepted > 1)
-    qInfo().noquote() << "[INFO]" << objectName() + ":"
-        << QStringLiteral("answered newest of %1 queued RSI requests").arg(accepted);
   const qsizetype index = m_index;
   Reply reply = advance(newest->start, newest->result);
   reply.ipoc = newest->ipoc;
@@ -296,14 +288,8 @@ RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
     resetRun();
     return {};
   }
-  if (m_state == RunState::Idle) {
-    if (m_corrections.increments.isEmpty()) {
-      qInfo().noquote() << "[ERROR]" << objectName() + ": Start without a sampled RSI stream";
-      setState(RunState::Stopping);
-    } else {
-      setState(RunState::Streaming);
-    }
-  }
+  if (m_state == RunState::Idle)
+    setState(m_corrections.increments.isEmpty() ? RunState::Stopping : RunState::Streaming);
   if (m_state == RunState::Streaming) {
     Reply reply;
     reply.correction = m_corrections.increments[m_index++];
@@ -337,8 +323,6 @@ void RsiDevice::publishState()
 {
   static const char* const names[4] = {"idle", "streaming", "finished", "stopping"};
   const char* name = names[static_cast<int>(m_state)];
-  qInfo().noquote() << "[INFO]" << objectName() + ": RSI" << name << "·"
-                    << m_corrections.increments.size() << "corrections";
   emit stateReady({{"rsiState", QString::fromLatin1(name)},
                    {"rsiCorrections", m_corrections.increments.size()}});
 }
