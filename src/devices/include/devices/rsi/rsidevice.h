@@ -54,6 +54,8 @@ private:
   };
 
   void onReadyRead();
+  void onDispatcherAboutToBlock();
+  void onDispatcherAwake();
   bool acceptsSender(const QNetworkDatagram& datagram) const;
   // State-machine step for the newest accepted request.
   Reply advance(bool start, qint64 echoedResult);
@@ -74,6 +76,10 @@ private:
   qsizetype m_index = 0;
   RunState m_state = RunState::Idle;
   QElapsedTimer m_traceClock;
+  // Capture timing, m_traceClock ns; -1 until first recorded.
+  qint64 m_sleepNs = -1; // ControlIO event loop last went to sleep.
+  qint64 m_wakeNs = -1; // ControlIO event loop last woke up.
+  qint64 m_handlerDoneNs = -1; // Previous replying onReadyRead finished.
   QTimer* m_traceTimer = nullptr;
   QByteArray m_trace;
   qsizetype m_traceDropped = 0;

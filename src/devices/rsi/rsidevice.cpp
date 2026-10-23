@@ -1,6 +1,7 @@
 #include "devices/rsi/rsidevice.h"
 #include "../common/socketconfigutils.h"
 
+#include <QAbstractEventDispatcher>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
@@ -105,6 +106,14 @@ void RsiDevice::startDevice()
   m_sock = new QUdpSocket(this);
   attachSocket(m_sock);
   QObject::connect(m_sock, &QUdpSocket::readyRead, this, &RsiDevice::onReadyRead);
+  // Sleep/wake times of this thread's event loop show why a request was read late.
+  // Unique: a restarted device must not record twice per event.
+  if (auto* dispatcher = QAbstractEventDispatcher::instance()) {
+    QObject::connect(dispatcher, &QAbstractEventDispatcher::aboutToBlock,
+                     this, &RsiDevice::onDispatcherAboutToBlock, Qt::UniqueConnection);
+    QObject::connect(dispatcher, &QAbstractEventDispatcher::awake,
+                     this, &RsiDevice::onDispatcherAwake, Qt::UniqueConnection);
+  }
   publishState();
 }
 
@@ -197,6 +206,7 @@ void RsiDevice::onReadyRead()
   // their corrections; answer only the newest so the path is delayed, not cut.
   // No console output before the reply: it can delay it past the controller cycle.
   // Malformed and unanswered requests remain in the packet capture.
+  const qint64 entryNs = m_traceClock.nsecsElapsed();
   std::optional<Request> newest;
   QVector<QByteArray> receivedRows;
   while (m_sock && m_sock->hasPendingDatagrams()) {
@@ -225,7 +235,20 @@ void RsiDevice::onReadyRead()
   for (const auto& row : std::as_const(receivedRows)) appendTrace(row);
   appendTrace(QByteArray::number(sentNs) + ",tx," + QByteArray::number(index)
               + ',' + QByteArray::number(written) + ',' + QByteArray::number(writeNs)
-              + ',' + encoded.toBase64() + '\n');
+              + ',' + encoded.toBase64() + ',' + QByteArray::number(entryNs)
+              + ',' + QByteArray::number(m_sleepNs) + ',' + QByteArray::number(m_wakeNs)
+              + ',' + QByteArray::number(m_handlerDoneNs) + '\n');
+  m_handlerDoneNs = m_traceClock.nsecsElapsed();
+}
+
+void RsiDevice::onDispatcherAboutToBlock()
+{
+  m_sleepNs = m_traceClock.nsecsElapsed();
+}
+
+void RsiDevice::onDispatcherAwake()
+{
+  m_wakeNs = m_traceClock.nsecsElapsed();
 }
 
 void RsiDevice::appendTrace(const QByteArray& row)
@@ -274,7 +297,9 @@ QString RsiDevice::writeTrace(QByteArray rows, QString fileName)
   }
   const QByteArray header = "# pc_ns: monotonic nanoseconds since device start; XML: exact bytes in Base64\n"
                             "# stream_index: next increment before reply; -1 for received packets\n"
-                            "pc_ns,direction,stream_index,write_bytes,write_ns,xml_base64\n";
+                            "# tx only: handler entry, last event-loop sleep and wake, previous replying handler end (pc_ns)\n"
+                            "pc_ns,direction,stream_index,write_bytes,write_ns,xml_base64,"
+                            "entry_ns,sleep_ns,wake_ns,prev_done_ns\n";
   if (file.write(header) != header.size() || file.write(rows) != rows.size() || !file.commit()) {
     return QStringLiteral("[ERROR] cannot save RSI diagnostic %1 (%2)")
         .arg(file.fileName(), file.errorString());

@@ -11,6 +11,6 @@ DEFFCT BOOL REMOUNT_SHARE()
    IF (State.RET1<>#DATA_OK) AND (State.MSG_NO<>-2) THEN
       RETURN FALSE
    ENDIF
-   CWRITE($FCT_CALL,State,Mode,"krl_mount","/RoboCrapJobs","//172.31.1.47/RoboCrapJobs","KrcReader","04295B098DFC11F0CCF6838B721AD0EA99")
+   CWRITE($FCT_CALL,State,Mode,"krl_mount","/RoboCrapJobs","//192.168.2.100/RoboCrapJobs","KrcReader","04295B098DFC11F0CCF6838B721AD0EA99")
    RETURN State.RET1==#DATA_OK
 ENDFCT

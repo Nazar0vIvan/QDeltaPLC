@@ -15,9 +15,9 @@
 			"driver": "rsi",
 			"protocol": "XML/UDP",
 			"openMode": "R/W",
-			"localAddress": "192.168.1.100",
+			"localAddress": "172.31.1.47",
 			"localPort": 5555,
-			"peerAddress": "192.168.1.200",
+			"peerAddress": "172.31.1.147",
 			"peerPort": "-"
 		},
 		{	

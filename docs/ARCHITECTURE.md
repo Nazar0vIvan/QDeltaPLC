@@ -22,6 +22,25 @@ Hardware (supplied by the user; not derivable from code):
 | Force/torque sensor | Schunk Delta IP68 SI-660-60 (ATI Net F/T electronics) | `FtsDevice` key `fts` | ATI RDT over UDP, peer port 49152 |
 | Touch probe | WP-500 V6 | none | No device code. Probe data enters only as JSON point files (§5.1) |
 | Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive reference sphere for touch-probe calibration |
+| Network switch | D-Link DGS-1005P (5-port Gigabit, 4 PoE ports, unmanaged) | none | Connects the PC to the KR C4, PLC and force/torque sensor |
+
+### Network
+
+Since 2026-10-23 (`codex_plans/RSI_NETWORK_SPLIT_EXECPLAN.md`) the PC uses two network
+adapters with separate subnets. The USB network adapter (ASIX AX88179, Windows connection
+"KRC4-Direct") is cabled directly to the KR C4 KLI socket and carries 172.31.1.47/24 for RSI
+(KR C4 RSI interface 172.31.1.147/24, `db.json` RSI endpoint) and 192.168.2.100/24 for the KR C4
+Windows interface 192.168.2.200/24, through which the KRL program mounts the `RoboCrapJobs`
+share. The motherboard network adapter (Intel I219-V, "Devices-Switch") carries 192.168.1.100/24 and
+connects through the DGS-1005P to the PLC 192.168.1.2, force/torque sensor 192.168.1.3 and VFD
+192.168.1.4. Before that date the KR C4 (RSI 192.168.1.200, Windows interface 172.31.1.147/16)
+was also on the switch. D-Link's datasheet
+(hardware version B1) lists store-and-forward switching, IEEE 802.3az Energy-Efficient Ethernet,
+802.3x flow control and 802.1p QoS, and describes the switch as plug-and-play without
+configuration. Measured 2026-10-22 with `python/rsi_packet_timing.py` and Wireshark (summary in
+`codex_plans/RSI_NETWORK_SPLIT_EXECPLAN.md`): through this switch, RSI requests from the KR C4 sometimes reached the PC up to 19 ms late and several at once,
+and the controller rejected the late replies; with a direct cable between PC and KR C4 no
+request was late. The cause inside the switch was not examined.
 
 ### Additional hardware and Delta I/O wiring
 

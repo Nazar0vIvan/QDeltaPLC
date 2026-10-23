@@ -48,11 +48,11 @@
 - Use a concrete calculation or example when explaining an algorithm. Prefer actual project
   values; label hypothetical values. Distinguish computation time from movement duration,
   stored animation points from temporary checks and RSI samples, and measurements from estimates.
-- Before every answer, check for undefined terms, ambiguous references and missing calculation
-  steps. Correct them before replying. These requirements take precedence over default brevity;
-  do not make the user repeatedly request specifics or repeat an explanation they already accepted.
-  Re-read this section after it changes or context is lost. Explicitly distinguish existing code from
-  proposals; explain how example intervals are selected and how many values each operation returns.
+- Check each sentence before answering: nouns are code identifiers or physical things, nouns replace
+  pronouns, verbs have named subjects and literal meanings, terms are defined, no calculation step
+  is missing. This overrides brevity; never make the user ask twice or repeat an accepted
+  explanation. Re-read this section after it changes or context is lost. Distinguish existing code
+  from proposals; state how example intervals are chosen and how many values each operation returns.
 
 ## Mandatory C++ style
 

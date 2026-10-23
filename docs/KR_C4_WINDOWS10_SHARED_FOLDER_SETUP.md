@@ -2,10 +2,13 @@
 
 ## Network
 
-- PC IP: `172.31.1.47`
-  Subnet mask: 255.255.0.0
-- KR C4 KLI IP: `172.31.1.147`
-  Subnet mask: 255.255.0.0
+- PC IP: `192.168.2.100` on the USB network adapter ("KRC4-Direct") cabled to the KR C4 KLI
+  Subnet mask: 255.255.255.0
+- KR C4 KLI Windows interface IP: `192.168.2.200`
+  Subnet mask: 255.255.255.0
+
+(Until 2026-10-23 these were 172.31.1.47 and 172.31.1.147 with mask 255.255.0.0; 172.31.1.x is
+now the RSI subnet. See `codex_plans/RSI_NETWORK_SPLIT_EXECPLAN.md`.)
 
 The goal is to let the KR C4 read files written by the PC application through a Windows shared folder.
 
@@ -97,7 +100,7 @@ If KR C4 only reads files, `Change` and `Full Control` are not required.
 The resulting Windows network path is:
 
 ```text
-\\192.168.1.100\RoboCrapJobs
+\\192.168.2.100\RoboCrapJobs
 ```
 
 ---
@@ -141,7 +144,8 @@ NTFS Security permissions
 
 ## 5. Set the Windows Ethernet network to `Private`
 
-For the Ethernet adapter connected to the KR C4 network, set the network profile to:
+For the network connection cabled to the KR C4 (`KRC4-Direct`, the USB network adapter), set the
+network profile to:
 
 ```text
 Private
@@ -190,6 +194,31 @@ SMB normally uses:
 TCP 445
 ```
 
+`krl_mount` on this KR C4 connects over SMB on TCP 139 (NetBIOS session), not 445. On this PC
+the built-in "File and Printer Sharing (NB-Session-In)" rules cover only the `Public` and
+`Domain` profiles, so a dedicated rule allows TCP 139 from the KR C4 Windows interface. In an
+Administrator PowerShell (one line):
+
+```powershell
+New-NetFirewallRule -DisplayName "KR C4 share access (TCP 139)" -Direction Inbound -Protocol TCP -LocalPort 139 -RemoteAddress 192.168.2.200 -InterfaceAlias "KRC4-Direct" -Profile Private -Action Allow
+```
+
+## 6a. Answer NetBIOS on 192.168.2.100
+
+Before mounting, the KR C4 asks the PC for its NetBIOS name (UDP 137) at 192.168.2.100. Windows
+answers NetBIOS on only one address per network adapter, and on `KRC4-Direct` it chose
+172.31.1.47 (the RSI address). Marking the RSI address "skip as source" moves NetBIOS to
+192.168.2.100. In an Administrator PowerShell:
+
+```powershell
+Set-NetIPAddress -InterfaceAlias "KRC4-Direct" -IPAddress 172.31.1.47 -SkipAsSource $true
+```
+
+Then disable and enable `KRC4-Direct` (`ncpa.cpl`, right-click). Check with `nbtstat -n`: under
+`KRC4-Direct` it must show `Node IpAddress: [192.168.2.100]`. RSI is unaffected because the
+application binds its socket to 172.31.1.47; test that address with
+`ping -S 172.31.1.47 172.31.1.147`.
+
 ---
 
 ## 7. Verify basic network connectivity
@@ -197,7 +226,7 @@ TCP 445
 From the PC:
 
 ```cmd
-ping 192.168.1.200
+ping 192.168.2.200
 ```
 
 You should receive replies from the KR C4.
@@ -240,7 +269,7 @@ CWRITE(
     Mode,
     "krl_mount",
     "/RoboCrap",
-    "//192.168.1.100/RoboCrapJobs",
+    "//192.168.2.100/RoboCrapJobs",
     "KrcReader",
     "YOUR_HASH_FROM_KHASH"
 )
@@ -251,13 +280,13 @@ Path notation is different on Windows and in KUKA.
 Windows:
 
 ```text
-\\192.168.1.100\RoboCrapJobs
+\\192.168.2.100\RoboCrapJobs
 ```
 
 KUKA `krl_mount()`:
 
 ```text
-//192.168.1.100/RoboCrapJobs
+//192.168.2.100/RoboCrapJobs
 ```
 
 If mounting succeeds:
@@ -329,7 +358,7 @@ The complete data path is then:
 ```text
 KR C4
 -> KLI
--> 192.168.1.100
+-> 192.168.2.100
 -> SMB
 -> RoboCrapJobs
 -> test.txt
@@ -360,3 +389,20 @@ State.MSG_NO
 ```
 
 before changing SMB settings.
+
+---
+
+## Open the share from the KR C4 Windows desktop (optional)
+
+Windows Explorer on the KR C4 logs on as its own user (`KukaUser`), which the PC rejects. Save the
+KrcReader credentials once on the KR C4 (Expert, T1, Start-up > Service > Minimize HMI, Start
+menu, `cmd`):
+
+```cmd
+cmdkey /add:192.168.2.100 /user:192.168.2.100\KrcReader /pass
+```
+
+Enter the KrcReader Windows password when asked (not the `khash` string). Then
+`\\192.168.2.100\RoboCrapJobs` opens in Explorer, for example to copy an updated
+`RSI_EthernetConfig.xml` to `C:\KRC\ROBOTER\Config\User\Common\SensorInterface`. KrcReader has
+read access only, so files can be copied from the PC to the KR C4 but not back.

@@ -33,9 +33,12 @@ before the preceding TCP rotation matrix; do not add the offset to absolute TCP 
 
 ## Signals
 
-ETHERNET1 exchanges these signals with the PC at 192.168.1.100:5555 (sensor type
-ImFree). The controller also sends RIst, AIPos and MACur internally; the PC
-ignores them.
+ETHERNET1 exchanges these signals with the PC at 172.31.1.47:5555 (sensor type
+ImFree). The KR C4 RSI interface is 172.31.1.147/24 on the KLI, cabled directly to the PC's
+USB network adapter ("KRC4-Direct"); no switch may be in this path: the D-Link DGS-1005P held
+requests for up to 19 ms (`codex_plans/RSI_NETWORK_SPLIT_EXECPLAN.md`). The controller also
+sends RIst, AIPos, MACur and Delay (late-packet count, `DEF_Delay`); the PC ignores them, and
+`python/rsi_packet_timing.py` reads RIst and Delay from the packet capture.
 
 | Direction | Port | XML | Connection |
 | --- | --- | --- | --- |
@@ -129,7 +132,10 @@ the sender-address check, including malformed XML and queued requests not answer
 each attempted reply. Rows contain monotonic PC nanoseconds since device start, `rx`/`tx`,
 the stream index before processing the request (`-1` for received rows), writeDatagram's
 byte result (`-1` on failure), the send-call duration in nanoseconds and exact XML bytes
-encoded as Base64. Decode the XML column to obtain RIst, AIPos, MACur, Start, Result,
+encoded as Base64. Reply (`tx`) rows add four PC times on the same clock: handler entry,
+the ControlIO event loop's last sleep and last wake before it, and the end of the previous
+replying handler; `rx` rows keep six columns. `python/rsi_packet_timing.py` uses them to
+classify late reads. Decode the XML column to obtain RIst, AIPos, MACur, Start, Result,
 IPOC and RKorr without imposing additional receive-field requirements. A successful local
 write is not proof the controller received or applied the correction.
 Receive timestamps measure application dequeue time, not network-interface arrival time;
@@ -154,7 +160,8 @@ Example request and reply (values illustrative):
 
 RSI Sampling writes `C:\RoboCrapJobs\shared_data.txt`. Before file access, `REMOUNT_SHARE()`
 closes all KRL files from both the robot and submit interpreters (`krl_fclose_all`, `-99`),
-removes `/RoboCrapJobs` and reconnects it to `//172.31.1.47/RoboCrapJobs` using the
+removes `/RoboCrapJobs` and reconnects it to `//192.168.2.100/RoboCrapJobs` (KR C4 Windows
+interface 192.168.2.200) using the
 configured share credentials. Unmount error `-2` permits a fresh mount attempt; other
 cleanup errors abort. The helper returns TRUE only when the final mount reports
 `#DATA_OK`; only then does `READ_JOB()` open `/RoboCrapJobs/shared_data.txt`.

@@ -317,9 +317,9 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
 - RSI diagnostics automatically save analytical targets, joints checked for reconstructed TCP poses
   and increments as CSV on the sampling worker, and
   bounded exact-XML packet captures through owned copied-input save futures after receive silence
-  or disconnect. Preserve actual RIst/AIPos fields, monotonic packet/send timing, stream indices,
-  write results and capture truncation. Keep disk I/O and unfinished-worker waits off ControlIO
-  callbacks; device shutdown joins outstanding saves. Follow the RSI contract for formats/locations.
+  or disconnect. Preserve actual RIst/AIPos fields, monotonic packet/send timing, the reply rows'
+  handler/event-loop sleep/wake times, stream indices, write results and capture truncation.
+  Keep disk I/O and unfinished-worker waits off ControlIO callbacks; device shutdown joins outstanding saves. Follow the RSI contract for formats/locations.
   Plan and packet filenames share the sampled stream's identifier; repeated packet captures add a
   part suffix. Flush old-ID rows before replacing the active stream, preserving whole exchanges.
 
