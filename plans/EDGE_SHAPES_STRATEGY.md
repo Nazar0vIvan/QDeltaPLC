@@ -148,4 +148,5 @@ H. Scope
 - KRC4 program size report: https://industrialmonitordirect.com/blogs/knowledgebase/resolving-kuka-krl-program-file-size-errors-on-krc4
 - DirectoryLoader report: https://industrialmonitordirect.com/blogs/knowledgebase/configuring-kuka-directoryloader-on-krc4-without-plc
 - KRC4 program transfer without WorkVisual: https://industrialmonitordirect.com/blogs/knowledgebase/kuka-krc4-program-edit-without-workvisual-methods
-- KUKA manuals in D:/Qt/QtProjects/manuals/KUKA: KSS 8.3 SI 7.4/7.10, CREAD/CWRITE 6.16/7.2.
+- KUKA manuals in <manuals folder>/KUKA (E:/Qt/QtProjects/manuals on the first PC,
+  D:/Qt/QtProjects/manuals on the second PC): KSS 8.3 SI 7.4/7.10, CREAD/CWRITE 6.16/7.2.

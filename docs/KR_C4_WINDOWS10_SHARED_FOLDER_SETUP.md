@@ -8,7 +8,7 @@
   Subnet mask: 255.255.255.0
 
 (Until 2026-10-23 these were 172.31.1.47 and 172.31.1.147 with mask 255.255.0.0; 172.31.1.x is
-now the RSI subnet. See `codex_plans/RSI_NETWORK_SPLIT_EXECPLAN.md`.)
+now the RSI subnet. See `plans/RSI_NETWORK_SPLIT_EXECPLAN.md`.)
 
 The goal is to let the KR C4 read files written by the PC application through a Windows shared folder.
 

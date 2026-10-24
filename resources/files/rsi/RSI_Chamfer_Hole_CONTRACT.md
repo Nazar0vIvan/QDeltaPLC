@@ -36,7 +36,7 @@ before the preceding TCP rotation matrix; do not add the offset to absolute TCP 
 ETHERNET1 exchanges these signals with the PC at 172.31.1.47:5555 (sensor type
 ImFree). The KR C4 RSI interface is 172.31.1.147/24 on the KLI, cabled directly to the PC's
 USB network adapter ("KRC4-Direct"); no switch may be in this path: the D-Link DGS-1005P held
-requests for up to 19 ms (`codex_plans/RSI_NETWORK_SPLIT_EXECPLAN.md`). The controller also
+requests for up to 19 ms (`plans/RSI_NETWORK_SPLIT_EXECPLAN.md`). The controller also
 sends RIst, AIPos, MACur and Delay (late-packet count, `DEF_Delay`); the PC ignores them, and
 `python/rsi_packet_timing.py` reads RIst and Delay from the packet capture.
 

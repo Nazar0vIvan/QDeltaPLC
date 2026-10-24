@@ -32,8 +32,12 @@
   for vectors.
 - Always denote axis unit vectors with lowercase e, an overbar, and the axis subscript x, y,
   or z: `\bar{e}_x`, `\bar{e}_y`, `\bar{e}_z`.
-- Denote transform matrices in inline LaTeX as `{}^{j}A_i`, from coordinate system i to
+- Denote transform matrices in LaTeX as `{}^{j}A_i`, from coordinate system i to
   coordinate system j. Call the matrix a transform matrix, never calibration.
+- LaTeX in chat renders only as follows; otherwise it appears as plain text. Inline math uses
+  `$...$`, never `\(...\)`. Any symbol with a pre-superscript (`{}^{j}A_i`, `{}^{B}R_F`) goes only
+  in a `$$...$$` display block on its own lines. Markdown table cells contain no LaTeX: use plain
+  text with Unicode subscripts (X₀, Z₁) and define those symbols before the table.
 - In formulas, always show all arguments on which each function depends; never omit them
   for brevity (for example, write `\bar{p}_M(\theta)`, not `\bar{p}_M`). Show dependent
   arguments explicitly: if `\theta=\theta(u)`, write `\bar{p}_L(u,\theta(u))` when using
@@ -136,7 +140,7 @@
   they decide to.
 - Complex features/significant refactors require reading PLANS.md and maintaining an ExecPlan;
   simple edits, documentation-only work and read-only analysis do not. Store every task plan/
-  strategy in repository-root codex_plans/, never elsewhere.
+  strategy in repository-root plans/, never elsewhere.
 - Edit source inputs, not generated outputs. Change vendored libs/eigen-5.0.0 or local IDE settings
   CMakeLists.txt.user* only when specifically required.
 - Live PLC/FTS/RSI connections, outputs, sensor bias or motion require explicit authorization

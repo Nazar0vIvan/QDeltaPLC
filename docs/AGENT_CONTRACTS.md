@@ -241,7 +241,7 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Reject failures without adding points or retiming. Dry Run performs no IK, geometry integration,
   inverse-map/spline construction or pauses to prepare more points. Displayed TCP between saved
   points is approximate; spline smoothness gives no exact Cartesian error guarantee.
-  Curvature derivation: codex_plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
+  Curvature derivation: plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
 - Rated joint-speed bounds come from the robot model (equal to the KR C4 machine data), without fixed
   simulation caps. ChamferMotion::create accepts model/tool/timing once and resolves jointSpeed
   before central validation or spline preparation; inner candidates reuse that immutable setup.
