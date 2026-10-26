@@ -23,11 +23,13 @@ public:
   void setTransform(const gp_Trsf& transform);
   [[nodiscard]] OccSelectionMode selectionMode() const;
   [[nodiscard]] bool topmost() const { return m_topmost; }
+  [[nodiscard]] bool faceBoundary() const { return m_faceBoundary; }
 
 private:
   Handle(AIS_Shape) m_handle;
   OccSelectionMode m_selectionMode;
   bool m_topmost = false;
+  bool m_faceBoundary = true;
 };
 
 } // namespace RoboCrap3D

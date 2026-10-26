@@ -13,6 +13,8 @@ qt_add_executable(robocrap
   robot/robotcontroller.h
   robot/robotdefinition.cpp
   robot/robotdefinition.h
+  scene/scenecalibration.cpp
+  scene/scenecalibration.h
   scene/sceneendeffectors.cpp
   scene/sceneendeffectors.h
   scene/scenegeometry.h
@@ -24,6 +26,8 @@ qt_add_executable(robocrap
   scene/scenemodel.h
   scene/sceneobject.cpp
   scene/sceneobject.h
+  scene/sceneplayback.cpp
+  scene/sceneplayback.h
   scene/scenesurfaceimporter.cpp
   scene/scenesurfaceimporter.h
   workspacecontroller.cpp

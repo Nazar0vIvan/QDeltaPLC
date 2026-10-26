@@ -126,7 +126,6 @@ struct ArcTableResult
 class ArcTableBuilder
 {
 public:
-  // Path and phase identify the subcurve; parameters specify numerical accuracy.
   ArcTableBuilder(const ChamferPath& path, ChamferPhase phase,
                   const ChamferArcLengthParameters& parameters)
     : m_path(path), m_phase(phase), m_parameters(parameters) {}
@@ -259,7 +258,6 @@ private:
     return true;
   }
 
-  // Endpoints specify the subcurve; depth bounds both integration and inverse refinement.
   bool appendInterval(const ArcPoint& first, const ArcPoint& last, int depth)
   {
     if (m_result.knots.size() >= MaximumKnots) {

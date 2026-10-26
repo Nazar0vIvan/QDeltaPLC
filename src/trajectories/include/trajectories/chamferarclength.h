@@ -28,7 +28,6 @@ struct ChamferArcLengthResult;
 class ChamferArcLength
 {
 public:
-  // Path and phase identify the curve; parameters specify numerical accuracy.
   static ChamferArcLengthResult create(const ChamferPath& path, ChamferPhase phase,
                                       const ChamferArcLengthParameters& parameters = {});
 

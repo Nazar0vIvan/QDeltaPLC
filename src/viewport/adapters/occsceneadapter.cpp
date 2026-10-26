@@ -12,6 +12,7 @@
 #include <gp_Cylinder.hxx>
 #include <gp_Elips.hxx>
 #include <gp_Pln.hxx>
+#include <gp_Sphere.hxx>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Edge.hxx>
@@ -62,6 +63,10 @@ std::optional<TopoDS_Shape> makeShape(const DrawingPart& part)
       BRepBuilderAPI_MakeEdge builder(gp_Elips(frame, curve->majorRadius, curve->minorRadius));
       if (builder.IsDone() && !builder.Edge().IsNull()) return builder.Edge();
     }
+  } else if (const auto* sphere = std::get_if<DrawingSphere>(&part.geometry)) {
+    BRepBuilderAPI_MakeFace builder(gp_Sphere(gp_Ax3(toOccPoint(sphere->center), gp_Dir(0.0, 0.0, 1.0)),
+                                              sphere->radius));
+    if (builder.IsDone() && !builder.Face().IsNull()) return builder.Face();
   } else if (const auto* positions = std::get_if<QList<V3d>>(&part.geometry)) {
     BRepBuilderAPI_MakePolygon polygon;
     for (const auto& position : *positions) polygon.Add(toOccPoint(position));
@@ -118,12 +123,16 @@ std::pair<OccSceneAdapter::Presentation, QString> OccSceneAdapter::createPresent
   try {
     QList<std::pair<TopoDS_Shape, OccPartProps>> shapes;
     for (const auto& part : object.parts) {
+      if (!part.visible) continue;
       const auto shape = makeShape(part);
       if (!shape) return {{}, QStringLiteral("Cannot construct drawing geometry.")};
       OccPartProps props;
       props.color = rgb(part.style.color[0], part.style.color[1], part.style.color[2]);
       props.lineWidth = part.style.lineWidth;
+      props.transparency = part.style.transparency;
       props.wireframe = props.lineWidth > 0.0;
+      // A sphere face has only its seam meridian and degenerate pole edges.
+      props.faceBoundary = !std::holds_alternative<DrawingSphere>(part.geometry);
       props.selectionMode = part.style.decoration ? OccSelectionMode::None
           : std::holds_alternative<QList<V3d>>(part.geometry) ? OccSelectionMode::PartOnly : OccSelectionMode::All;
       shapes.append({*shape, props});

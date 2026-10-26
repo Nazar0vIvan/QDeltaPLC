@@ -11,6 +11,8 @@
 #include "scene/sceneendeffectors.h"
 #include "scene/scenemachining.h"
 #include "scene/scenemachiningpreparation.h"
+#include "scene/sceneplayback.h"
+#include "scene/scenecalibration.h"
 
 #include <QJSEngine>
 #include <QPointer>
@@ -40,6 +42,30 @@ public:
   inline static SceneMachining* s_inst = nullptr;
   static SceneMachining* create(QQmlEngine*, QJSEngine* engine)
   { return static_cast<SceneMachining*>(claimQmlSingleton(s_inst, engine)); }
+};
+
+struct ScenePlaybackQml
+{
+  Q_GADGET
+  QML_FOREIGN(ScenePlayback)
+  QML_NAMED_ELEMENT(Playback)
+  QML_SINGLETON
+public:
+  inline static ScenePlayback* s_inst = nullptr;
+  static ScenePlayback* create(QQmlEngine*, QJSEngine* engine)
+  { return static_cast<ScenePlayback*>(claimQmlSingleton(s_inst, engine)); }
+};
+
+struct SceneCalibrationQml
+{
+  Q_GADGET
+  QML_FOREIGN(SceneCalibration)
+  QML_NAMED_ELEMENT(Calibration)
+  QML_SINGLETON
+public:
+  inline static SceneCalibration* s_inst = nullptr;
+  static SceneCalibration* create(QQmlEngine*, QJSEngine* engine)
+  { return static_cast<SceneCalibration*>(claimQmlSingleton(s_inst, engine)); }
 };
 
 struct SceneMachiningPreparationQml

@@ -4,6 +4,7 @@
         <file>pics/arrow_dropdown.svg</file>
         <file>pics/settings.svg</file>
         <file>pics/logo.svg</file>
+        <file>pics/calibration.svg</file>
         <file>pics/cylinder.svg</file>
         <file>pics/plane.svg</file>
         <file>pics/cone.svg</file>
@@ -23,5 +24,6 @@
         <file>pics/dry.svg</file>
         <file>pics/pause.svg</file>
         <file>pics/rsi_sampling.svg</file>
+        <file>pics/sphere.svg</file>
     </qresource>
 </RCC>

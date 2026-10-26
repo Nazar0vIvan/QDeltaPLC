@@ -11,7 +11,6 @@ class OccRobotAdapter final
 public:
   explicit OccRobotAdapter(OccScene& scene) : m_scene(scene) {}
 
-  // Visual properties, loaded link/tool shapes and pose transforms define a robot presentation.
 	ViewportOperationResult load(const RobotVisualModel& visuals, const CadLoadResult& shapes, const DrawingPose& pose);
   bool isLoaded() const { return m_loaded; }
   ViewportOperationResult applyTransforms(const DrawingPose& pose);

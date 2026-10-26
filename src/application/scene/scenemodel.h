@@ -24,13 +24,15 @@ public:
   Q_INVOKABLE bool canIntersect(const QList<quint32>& selectedIds) const;
   Q_INVOKABLE QList<quint32> intersect(const QList<quint32>& selectedIds);
   SceneObject* addMachiningPath(SceneMachiningData data, const QString& name);
-  // Source metadata, display name and geometry define a surface insertion.
 	SceneObject* addBoundedPlane(const QUrl& sourceUrl, const QString& name, BoundedPlane plane);
 	SceneObject* addBoundedCylinder(const QUrl& sourceUrl, const QString& name, BoundedCylinder cylinder);
+  // A calibration sphere or calibration path; the shape decides the kind.
+  SceneObject* addCalibrationObject(SceneObject::Shape shape, const QString& name);
   Q_INVOKABLE bool renameObject(SceneObject* object, const QString& name);
   Q_INVOKABLE bool setObjectVisible(SceneObject* object, bool visible);
-  // The target object and its two diagnostic preferences form one display operation.
   Q_INVOKABLE bool setObjectDiagnosticOverlays(SceneObject* object, bool showPoints, bool showNormals);
+  // Reinstalls the sphere drawing with the requested spheres; keeps the old state on failure.
+  Q_INVOKABLE bool setSphereDisplay(SceneObject* object, bool ballCenter, bool compensated);
 
 signals:
   void intersectionFailed(const QString& message);

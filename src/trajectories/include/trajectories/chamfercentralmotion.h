@@ -50,7 +50,6 @@ public:
   std::optional<ChamferCentralPose> evaluatePhase(ChamferPhase phase, double seconds) const;
 
 private:
-  // Geometry, measured phase curves and saved speed settings define this motion.
   ChamferCentralMotion(const ChamferPath& path, std::array<ChamferArcLength, 3> lengths,
                        const ChamferTimingParameters& timing);
   QString initializeTiming(double fraction);

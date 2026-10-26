@@ -27,9 +27,37 @@ QVariant propertyRow(const QString& label, const QString& value)
   return QVariantMap{{QStringLiteral("label"), label}, {QStringLiteral("value"), value}};
 }
 
+// A 1 px line between groups of rows.
+QVariant separatorRow()
+{
+  return QVariantMap{{QStringLiteral("separator"), true}};
+}
+
+// A group heading with a check box bound to the named SceneObject visibility property.
+QVariant toggleRow(const QString& label, const QString& property)
+{
+  return QVariantMap{{QStringLiteral("label"), label}, {QStringLiteral("toggle"), property}};
+}
+
+QString radiusDiameter(double radius)
+{
+  return QStringLiteral("%1 / %2").arg(formatReal(radius), formatReal(2 * radius));
+}
+
+// TCP positions of the points, without repeated positions.
+QList<V3d> tcpPolyline(const QVector<ChamferJointPoint>& points)
+{
+  QList<V3d> positions;
+  for (const auto& point : points) {
+    const V3d position = point.tcp.block<3, 1>(0, 3);
+    if (positions.isEmpty() || (position - positions.back()).squaredNorm() > 1e-14)
+      positions.append(position);
+  }
+  return positions;
+}
+
 } // namespace
 
-// Identity, description and QObject ownership are the three constructor responsibilities.
 SceneObject::SceneObject(quint32 objectId, const Description& description, QObject* parent)
   : QObject(parent), m_objectId(objectId), m_name(description.name), m_kind(description.kind),
     m_classification(description.classification), m_sourceUrl(description.sourceUrl)
@@ -53,6 +81,21 @@ QVariantList SceneObject::properties() const
             propertyRow(tr("Diameter"), formatReal(2 * value->radius())),
             propertyRow(tr("Length"), formatReal(value->length())),
             propertyRow(tr("Points"), QString::number(value->points().size()))};
+  }
+  if (const auto* value = sphere()) {
+    const V3d& center = value->center;
+    return {propertyRow(tr("Nominal radius"), formatReal(value->radius)),
+            propertyRow(tr("Nominal diameter"), formatReal(2 * value->radius)),
+            separatorRow(),
+            toggleRow(tr("Ball-center sphere"), QStringLiteral("showBallCenterSphere")),
+            propertyRow(tr("Radius/Diameter"), radiusDiameter(value->ballCenterRadius)),
+            separatorRow(),
+            toggleRow(tr("Compensated sphere"), QStringLiteral("showCompensatedSphere")),
+            propertyRow(tr("Radius/Diameter"), radiusDiameter(value->compensatedRadius)),
+            separatorRow(),
+            propertyRow(tr("Fitted center"), formatVector({center.x(), center.y(), center.z()})),
+            propertyRow(tr("Fit RMS"), formatReal(value->rms)),
+            propertyRow(tr("Points"), QString::number(value->roughPoints.size()))};
   }
   return {};
 }
@@ -84,6 +127,14 @@ void SceneObject::setDiagnosticOverlays(bool showPoints, bool showNormals)
   emit diagnosticOverlaysChanged();
 }
 
+void SceneObject::setSphereDisplay(bool ballCenter, bool compensated)
+{
+  if (m_showBallCenterSphere == ballCenter && m_showCompensatedSphere == compensated) return;
+  m_showBallCenterSphere = ballCenter;
+  m_showCompensatedSphere = compensated;
+  emit sphereDisplayChanged();
+}
+
 std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
 {
   using namespace RoboCrap3D;
@@ -104,18 +155,31 @@ std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
     const auto& ellipse = value->edge.ellipse();
     result.parts.append({DrawingCurve{ellipse.center, ellipse.majorAxis.cross(ellipse.minorAxis),
         ellipse.majorAxis, ellipse.majorRadius, ellipse.minorRadius}, {{0, 197, 197}, 2.0}});
+  } else if (const auto* value = sphere()) {
+    result.parts.append({DrawingSphere{value->center, value->compensatedRadius}, {}, showCompensatedSphere()});
+    // Translucent, so the compensated sphere inside it stays visible.
+    result.parts.append({DrawingSphere{value->center, value->ballCenterRadius},
+                         {{200, 200, 200}, 0.0, false, 0.8}, showBallCenterSphere()});
   } else if (const auto* motion = machiningPath()) {
     for (std::size_t phase = 0; phase + 1 < motion->boundaries().size(); ++phase) {
-      QList<V3d> positions;
-      for (qsizetype i = motion->boundaries()[phase]; i <= motion->boundaries()[phase + 1]; ++i) {
-        const V3d position = motion->points()[i].tcp.block<3, 1>(0, 3);
-        if (positions.isEmpty() || (position - positions.back()).squaredNorm() > 1e-14)
-          positions.append(position);
-      }
+      const auto first = motion->boundaries()[phase];
+      auto positions = tcpPolyline(motion->points().mid(first, motion->boundaries()[phase + 1] - first + 1));
       if (positions.size() < 2) continue; // A stationary HOME phase has no line.
       const std::array<int, 3> color = phase == 3 ? std::array<int, 3>{30, 130, 45}
           : phase == 0 || phase == 6 ? std::array<int, 3>{90, 65, 130} : std::array<int, 3>{0, 100, 210};
       result.parts.append({std::move(positions), {color, phase == 3 ? 3.0 : 2.0}});
+    }
+  } else if (const auto* value = touchPath()) {
+    // Approach/Retract green, PTP purple, the other LIN transfers blue, as for machining paths.
+    for (const auto& segment : value->motion->segments()) {
+      auto positions = tcpPolyline(value->motion->points().mid(segment.first, segment.last - segment.first + 1));
+      if (positions.size() < 2) continue;
+      const ProbeSegment kind = segment.phase.segment;
+      const bool touching = kind == ProbeSegment::Approach || kind == ProbeSegment::Retract;
+      const bool ptp = kind == ProbeSegment::ToEntry || kind == ProbeSegment::Unwind || kind == ProbeSegment::ReturnHome;
+      const std::array<int, 3> color = touching ? std::array<int, 3>{30, 130, 45}
+          : ptp ? std::array<int, 3>{90, 65, 130} : std::array<int, 3>{0, 100, 210};
+      result.parts.append({std::move(positions), {color, touching ? 3.0 : 2.0}});
     }
   } else return std::nullopt; // Metadata-only objects have no drawing.
   return result;
@@ -148,7 +212,8 @@ RoboCrap3D::DrawingDiagnostics SceneObject::drawingDiagnostics() const
         }
       }
       samples = &edgeSamples;
-    } else continue;
+    } else if (const auto* sphere = this->sphere(); sphere && !normals) samples = &sphere->roughPoints;
+    else continue; // Sphere readings have no normal lines.
     if (samples->isEmpty()) continue;
     const qsizetype limit = normals ? 128 : 256;
     const qsizetype count = samples->size();

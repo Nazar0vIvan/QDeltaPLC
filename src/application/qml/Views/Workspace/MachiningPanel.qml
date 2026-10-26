@@ -10,6 +10,7 @@ import Styles 1.0
 QxPanel {
   id: root
   required property Backend.Machining coordinator
+  required property Backend.Playback playback
   required property string inputName
   property Backend.MachiningPath savedPath: null
   signal generateRequested()
@@ -103,11 +104,11 @@ QxPanel {
       spacing: Metrics.sp8
       Label {
         Layout.fillWidth: true
-        visible: root.coordinator.duration > 0
+        visible: root.playback.duration > 0
         text: qsTr("%1 · %2\n%3 / %4 s")
-              .arg(root.coordinator.playing ? qsTr("Playing") : root.coordinator.playbackActive ? qsTr("Paused") : qsTr("Stopped"))
-              .arg(root.coordinator.phase)
-              .arg(root.coordinator.elapsed.toFixed(2)).arg(root.coordinator.duration.toFixed(2))
+              .arg(root.playback.playing ? qsTr("Playing") : root.playback.active ? qsTr("Paused") : qsTr("Stopped"))
+              .arg(root.playback.phase)
+              .arg(root.playback.elapsed.toFixed(2)).arg(root.playback.duration.toFixed(2))
         wrapMode: Text.Wrap
         color: Colors.foreground.high
         font: Fonts.caption

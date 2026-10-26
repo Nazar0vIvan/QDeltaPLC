@@ -25,10 +25,9 @@ class WorkspaceController final : public QObject
 public:
   enum Mode { Measuring, Machining };
   Q_ENUM(Mode)
-  enum Submode { Rough, Precise };
+  enum Submode { Rough, Precise, Calibration };
   Q_ENUM(Submode)
 
-  // Document operations, machining lifecycle and the active tool are distinct collaborators.
   WorkspaceController(SceneModel* scene, SceneMachining* machining, SceneEndEffectors* effectors);
   static WorkspaceController* create(QQmlEngine*, QJSEngine* engine);
 
@@ -49,11 +48,14 @@ signals:
   void submodeChanged();
   void selectionChanged(const QList<quint32>& ids);
   void selectionDetailsChanged();
+  // Measuring with the Calibration submode starts or stops; false precedes the tool change.
+  void calibrationActiveChanged(bool active);
 
 private:
   void setSelection(QList<quint32> ids);
   void pruneSelection();
   void synchronizeMode();
+  void synchronizeCalibration();
   void synchronizeMachiningInput();
 
   SceneModel* m_scene;
@@ -61,6 +63,7 @@ private:
   SceneEndEffectors* m_effectors;
   Mode m_mode = Measuring;
   Submode m_submode = Rough;
+  bool m_calibrationActive = false;
   QList<quint32> m_selectedIds;
   inline static QPointer<WorkspaceController> s_instance;
 };

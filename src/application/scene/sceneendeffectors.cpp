@@ -55,8 +55,20 @@ bool matchesTransform(const std::optional<M4d>& current, const M4d& candidate)
 } // namespace
 
 SceneEndEffectors::SceneEndEffectors(QObject* parent)
-    : QObject(parent), m_spindleColletFrame(spindleColletTransform())
+    : QObject(parent), m_spindleColletFrame(spindleColletTransform()),
+      m_measuringTcpFrame(poseTransform(m_measuringTcp))
 {}
+
+bool SceneEndEffectors::applyMeasuringTcp(const QList<double>& pose)
+{
+  if (m_measuringTcpFrame && m_measuringTcp == pose) return true;
+  const auto frame = poseTransform(pose);
+  if (!frame) return false;
+  m_measuringTcp = pose;
+  m_measuringTcpFrame = frame;
+  emit measuringTcpChanged();
+  return true;
+}
 
 bool SceneEndEffectors::setSpindleTcp(const QList<double>& pose)
 {

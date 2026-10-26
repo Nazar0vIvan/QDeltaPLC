@@ -7,7 +7,7 @@
 #include <QObject>
 #include <memory>
 
-class SceneMachining;
+class ScenePlayback;
 
 namespace RoboCrap3D {
 
@@ -25,8 +25,7 @@ class RobotController final : public QObject
 {
   Q_OBJECT
 public:
-  // Drawing acceptance, accepted tool settings and machining are distinct collaborators.
-  RobotController(OccController* viewport, SceneEndEffectors* effectors, SceneMachining* machining);
+  RobotController(OccController* viewport, SceneEndEffectors* effectors, ScenePlayback* playback);
   ~RobotController() override;
   Q_DISABLE_COPY_MOVE(RobotController)
 
@@ -49,7 +48,7 @@ private:
 
   OccController* m_viewport;
   SceneEndEffectors* m_endEffectors;
-  SceneMachining* m_machining;
+  ScenePlayback* m_playback;
   const RobotDefinition m_model = RobotDefinition::kr10();
   std::unique_ptr<Kr10Kinematics> m_kinematics;
   std::optional<QList<M4d>> m_pose;

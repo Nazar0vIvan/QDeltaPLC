@@ -24,6 +24,8 @@ ApplicationWindow {
   property bool dryScanRunning: false
   onMeasurementSubmodeChanged: { root.dryScanActive = false; root.dryScanRunning = false }
   readonly property int measurementSubmode: App.WorkspaceController.submode
+  readonly property bool calibrationActive: root.workflowMode === WorkflowPanel.Measuring
+                                            && root.measurementSubmode === WorkflowPanel.Calibration
 
   onWorkflowModeChanged: {
     root.dryScanActive = false
@@ -219,13 +221,17 @@ ApplicationWindow {
     // Until the robot is shown; OccController.loading covers only CAD parsing.
     readonly property bool sceneLoading: !Viewport3D.OccController.ready
                                          && Viewport3D.OccController.errorString.length === 0
-    readonly property bool busy: App.Machining.calculating || App.MachiningPreparation.preparing
-                                 || statusBar.sceneLoading
+    readonly property bool busy: App.Machining.calculating || App.Calibration.calculating
+                                 || App.MachiningPreparation.preparing || statusBar.sceneLoading
     readonly property string message: {
       if (surfaceImporter.busy) return qsTr("Importing surface…")
-      if (App.Machining.calculating) return qsTr("Calculating trajectory…")
+      if (App.Machining.calculating || App.Calibration.calculating) return qsTr("Calculating trajectory…")
       if (App.MachiningPreparation.preparing) return qsTr("RSI Sampling…")
       if (statusBar.sceneLoading) return qsTr("Loading…")
+      if (root.calibrationActive && App.Playback.active && !App.Calibration.error)
+        return qsTr("%1 · %2 · %3 / %4 s").arg(App.Playback.playing ? qsTr("Playing") : qsTr("Paused"))
+               .arg(App.Playback.phase).arg(App.Playback.elapsed.toFixed(2)).arg(App.Playback.duration.toFixed(2))
+      if (root.calibrationActive) return App.Calibration.error || App.Calibration.unavailableReason
       if (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen) return ""
       const preparation = App.MachiningPreparation
       const status = preparation.error || preparation.summary
@@ -250,7 +256,8 @@ ApplicationWindow {
       color: Colors.foreground.medium
       labelText: root.workflowMode === WorkflowPanel.Machining
                  ? qsTr("Mode: Machining") : qsTr("Mode: Measuring / %1").arg(
-                     root.measurementSubmode === WorkflowPanel.Rough ? qsTr("Rough") : qsTr("Precise"))
+                     root.measurementSubmode === WorkflowPanel.Rough ? qsTr("Rough")
+                     : root.measurementSubmode === WorkflowPanel.Precise ? qsTr("Precise") : qsTr("Calibration"))
 
       Label {
         id: statusMessage
@@ -262,7 +269,9 @@ ApplicationWindow {
         horizontalAlignment: Text.AlignRight
         elide: Text.ElideRight
         color: statusBar.message.length > 0 && !surfaceImporter.busy && !statusBar.busy
-               && App.MachiningPreparation.error.length > 0 ? Colors.maxColor : Colors.foreground.medium
+               && (root.calibrationActive ? App.Calibration.error.length > 0
+                                          : App.MachiningPreparation.error.length > 0)
+               ? Colors.maxColor : Colors.foreground.medium
         font: Fonts.body
         Accessible.name: statusBar.message
 
@@ -317,6 +326,7 @@ ApplicationWindow {
 
         sceneModel: root.sceneModel
         selectedObjectIds: root.selectedObjectIds
+        calibration: root.calibrationActive
         onSelectionRequested: (objectId, additive) => App.WorkspaceController.selectObject(objectId, additive)
         onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
@@ -338,14 +348,14 @@ ApplicationWindow {
         submode: root.measurementSubmode
         planeImportAvailable: root.geometryImportAvailable
         cylinderImportAvailable: root.geometryImportAvailable
-        playbackAvailable: App.Machining.canPlay
-        playing: App.Machining.playing
-        playbackActive: App.Machining.playbackActive
+        playbackAvailable: root.calibrationActive ? App.Calibration.canPlay : App.Machining.canPlay
+        playing: App.Playback.playing
+        playbackActive: App.Playback.active
         preparationAvailable: !root.chamferEditorOpen && App.MachiningPreparation.canPrepare
                               && statusBar.rsi && statusBar.rsi.isConnected
         preparing: App.MachiningPreparation.preparing
         onPreparationRequested: App.MachiningPreparation.prepare()
-        onPauseRequested: App.Machining.pause()
+        onPauseRequested: App.Playback.pause()
         scanActive: root.dryScanActive
         scanRunning: root.dryScanRunning
         scanAvailable: root.selectedSceneObject !== null
@@ -357,13 +367,21 @@ ApplicationWindow {
           root.dryScanRunning = !root.dryScanRunning
         }
         onScanStopRequested: { root.dryScanActive = false; root.dryScanRunning = false }
-        onDryRunRequested: App.Machining.dryRun()
-        onStopRequested: App.Machining.stop()
-        generationAvailable: !App.Machining.playbackActive && root.selectedSceneObject !== null
-                             && (root.selectedSceneObject.kind === App.SceneObject.Edge
-                                 || root.selectedSceneObject.kind === App.SceneObject.MachiningPath)
+        onDryRunRequested: {
+          if (root.calibrationActive) App.Calibration.dryRun()
+          else App.Machining.dryRun()
+        }
+        onStopRequested: App.Playback.stop()
+        generationAvailable: root.calibrationActive ? App.Calibration.canGenerate
+                             : !App.Playback.active && root.selectedSceneObject !== null
+                               && (root.selectedSceneObject.kind === App.SceneObject.Edge
+                                   || root.selectedSceneObject.kind === App.SceneObject.MachiningPath)
         onToolSetupRequested: root.openToolSetup()
         onGenerationRequested: {
+          if (root.calibrationActive) {
+            App.Calibration.generate()
+            return
+          }
           root.toolSetupOpen = false
           if (!root.chamferEditorOpen) machiningPanel.beginEditing()
           root.chamferEditorOpen = true
@@ -386,9 +404,10 @@ ApplicationWindow {
     }
 
     Item {
-      SplitView.preferredWidth: 330
+      // 350 px keeps a fitted sphere center such as [1054.1403; -331.9692; 454.2727] on one line.
+      SplitView.preferredWidth: 350
       SplitView.minimumWidth: 280
-      SplitView.maximumWidth: 330
+      SplitView.maximumWidth: 350
       PropertiesPanel {
         anchors.fill: parent
         visible: !root.chamferEditorOpen && !root.toolSetupOpen
@@ -406,6 +425,8 @@ ApplicationWindow {
         }
         onRenameRequested: (object, name) => root.sceneModel.renameObject(object, name)
         onVisibilityRequested: (object, visible) => root.sceneModel.setObjectVisible(object, visible)
+        onSphereDisplayRequested: (object, ballCenter, compensated) =>
+            root.sceneModel.setSphereDisplay(object, ballCenter, compensated)
       }
       EndEffectorPanel {
         anchors.fill: parent
@@ -416,9 +437,10 @@ ApplicationWindow {
         ballDiameter: App.EndEffectors.rubyBallDiameter
         stylusLength: App.EndEffectors.stylusLength
         colletPose: App.EndEffectors.spindleColletPose
-        tcp: App.EndEffectors.spindleTcp
+        tcp: App.EndEffectors.measuringTcp
         tcpVisible: false
         colletVisible: false
+        onMeasuringTcpRequested: values => App.EndEffectors.applyMeasuringTcp(values)
       }
       EndEffectorPanel {
         anchors.fill: parent
@@ -444,6 +466,7 @@ ApplicationWindow {
         anchors.fill: parent
         visible: root.chamferEditorOpen
         coordinator: App.Machining
+        playback: App.Playback
         inputName: root.selectedSceneObject ? root.selectedSceneObject.name : ""
         savedPath: root.selectedSceneObject && root.selectedSceneObject.kind === App.SceneObject.MachiningPath
                    ? root.selectedSceneObject.geometry as App.MachiningPath : null

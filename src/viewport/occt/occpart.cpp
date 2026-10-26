@@ -12,7 +12,7 @@
 namespace RoboCrap3D {
 
 OccPart::OccPart(const TopoDS_Shape& shape, const OccPartProps& props)
-    : m_selectionMode(props.selectionMode), m_topmost(props.topmost)
+    : m_selectionMode(props.selectionMode), m_topmost(props.topmost), m_faceBoundary(props.faceBoundary)
 {
   if (shape.IsNull()) return;
   m_handle = new AIS_Shape(shape);
@@ -30,12 +30,13 @@ OccPart::OccPart(const TopoDS_Shape& shape, const OccPartProps& props)
       drawer->SetLineAspect(new Prs3d_LineAspect(props.color, Aspect_TOL_SOLID, props.lineWidth));
   }
   m_handle->SetColor(props.color);
+  if (props.transparency > 0.0) m_handle->SetTransparency(props.transparency);
   Handle(Prs3d_Drawer) drawer = m_handle->Attributes();
   if (drawer.IsNull()) {
     drawer = new Prs3d_Drawer();
     m_handle->SetAttributes(drawer);
   }
-  drawer->SetFaceBoundaryDraw(true);
+  drawer->SetFaceBoundaryDraw(props.faceBoundary);
   drawer->SetFaceBoundaryAspect(new Prs3d_LineAspect(Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.5));
   m_handle->SetLocalTransformation(props.transform);
 }

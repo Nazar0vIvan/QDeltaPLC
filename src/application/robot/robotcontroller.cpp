@@ -2,7 +2,7 @@
 
 #include "viewport/occcontroller.h"
 #include "assetpaths.h"
-#include "scene/scenemachining.h"
+#include "scene/sceneplayback.h"
 #include "geometry/utils.h"
 
 #include <QDir>
@@ -12,11 +12,11 @@
 
 namespace RoboCrap3D {
 
-RobotController::RobotController(OccController* viewport, SceneEndEffectors* effectors, SceneMachining* machining)
-  : m_viewport(viewport), m_endEffectors(effectors), m_machining(machining)
+RobotController::RobotController(OccController* viewport, SceneEndEffectors* effectors, ScenePlayback* playback)
+  : m_viewport(viewport), m_endEffectors(effectors), m_playback(playback)
 {
-  Q_ASSERT(viewport && effectors && machining);
-  Q_ASSERT(viewport->thread() == thread() && effectors->thread() == thread() && machining->thread() == thread());
+  Q_ASSERT(viewport && effectors && playback);
+  Q_ASSERT(viewport->thread() == thread() && effectors->thread() == thread() && playback->thread() == thread());
   connect(viewport, &OccController::readyChanged, this, &RobotController::synchronizeReadiness);
   connect(viewport, &OccController::showSpindleTcpChanged, this, &RobotController::synchronizeTools);
   connect(viewport, &OccController::showSpindleColletChanged, this, &RobotController::synchronizeTools);
@@ -29,7 +29,7 @@ RobotController::RobotController(OccController* viewport, SceneEndEffectors* eff
 
 RobotController::~RobotController()
 {
-  m_machining->setRobotAvailable(false);
+  m_playback->setRobotAvailable(false);
 }
 
 bool RobotController::isReady() const
@@ -55,11 +55,11 @@ void RobotController::synchronizeReadiness()
   if (m_initialPose && m_viewport->isReady()) {
     m_pose = std::move(m_initialPose);
     m_initialPose.reset();
-    m_machining->setRobotModel(m_model.kinematics);
+    m_playback->setRobotModel(m_model.kinematics);
     if (IgnorePreviewJointPositionLimits)
       emit message(QStringLiteral("Offline diagnostic: A1-A6 joint-position limits are disabled in the robot preview."), false);
   }
-  m_machining->setRobotAvailable(isReady());
+  m_playback->setRobotAvailable(isReady());
 }
 
 DrawingPose RobotController::drawingPose(const QList<M4d>& links, const std::optional<M4d>& checkedTcp) const

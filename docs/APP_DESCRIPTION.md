@@ -76,7 +76,7 @@ LIN is a straight Cartesian motion. P_s is the staging point on the hole axis, o
   `RSI_Chamfer_Hole` T1 run. Force correction is out of scope.
 - A successful Generate, Dry Run or Sampling, a bound socket or a delivered reply does not
   establish controller readiness or permission to move the robot.
-- User-supplied captures from an earlier version ended in a controller fault; a complete
-  successful T1 run with the current offset calculation and file version 2 is not yet verified.
+- User-supplied captures from an earlier version ended in a controller fault. The user reported
+  on 2026-10-24 that RSI Sampling works and the real robot motion matches it.
 - Device panels (PLC, force/torque sensor, network settings) show and control the connected
   devices; *Start Machining* is disabled.

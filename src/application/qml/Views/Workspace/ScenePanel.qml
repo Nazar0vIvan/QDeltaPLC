@@ -14,6 +14,8 @@ QxPanel {
 
   required property Backend.SceneModel sceneModel
   required property list<real> selectedObjectIds
+  // Measuring/Calibration lists only the Calibration group; every other submode omits it.
+  required property bool calibration
 
   signal selectionRequested(double objectId, bool additive)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
@@ -27,6 +29,7 @@ QxPanel {
     ListElement { name: qsTr("Edges"); kind: "edges"; badge: ""; expanded: true }
     ListElement { name: qsTr("Scan Paths"); kind: "scanPaths"; badge: ""; expanded: true }
     ListElement { name: qsTr("Machining Paths"); kind: "machiningPaths"; badge: ""; expanded: true }
+    ListElement { name: qsTr("Calibration"); kind: "calibration"; badge: ""; expanded: true }
   }
 
   function objectsForGroup(kind: string): var {
@@ -37,6 +40,8 @@ QxPanel {
       case "edges": return object.kind === Backend.SceneObject.Edge
       case "scanPaths": return object.kind === Backend.SceneObject.ScanPath
       case "machiningPaths": return object.kind === Backend.SceneObject.MachiningPath
+      case "calibration": return object.kind === Backend.SceneObject.Sphere
+                                 || object.kind === Backend.SceneObject.CalibrationPath
       default: return false
       }
     })
@@ -48,8 +53,10 @@ QxPanel {
     case Backend.SceneObject.Cylinder: return "qrc:/pics/cylinder.svg"
     case Backend.SceneObject.Cone: return "qrc:/pics/cone.svg"
     case Backend.SceneObject.Edge: return "qrc:/pics/edge.svg"
+    case Backend.SceneObject.Sphere: return "qrc:/pics/sphere.svg"
     case Backend.SceneObject.ScanPath:
-    case Backend.SceneObject.MachiningPath: return "qrc:/pics/path.svg"
+    case Backend.SceneObject.MachiningPath:
+    case Backend.SceneObject.CalibrationPath: return "qrc:/pics/path.svg"
     default: return ""
     }
   }
@@ -92,6 +99,7 @@ QxPanel {
                                               : Colors.minColor
 
           width: scroll.availableWidth
+          visible: (group.kind === "calibration") === root.calibration
 
           ItemDelegate {
             id: groupButton
@@ -204,7 +212,8 @@ QxPanel {
                     icon.source: root.objectIcon(objectRow.modelData.kind)
                     icon.width: Metrics.sz16
                     icon.height: Metrics.sz16
-                    icon.color: objectRow.iconColor
+                    // The sphere icon keeps its own colors.
+                    icon.color: objectRow.modelData.kind === Backend.SceneObject.Sphere ? "transparent" : objectRow.iconColor
                     palette.text: objectRow.modelData.visible ? Colors.foreground.high : Colors.foreground.disabled
 
                     QxTextInput {

@@ -37,15 +37,22 @@ struct DrawingCurve {
   double minorRadius = 0.0;
 };
 
+struct DrawingSphere {
+  V3d center = V3d::Zero();
+  double radius = 0.0;
+};
+
 struct DrawingStyle {
   std::array<int, 3> color{80, 157, 253};
   double lineWidth = 0.0;
   bool decoration = false;
+  double transparency = 0.0; // 0 opaque, 1 invisible.
 };
 
 struct DrawingPart {
-  std::variant<DrawingPlane, DrawingCylinder, DrawingCurve, QList<V3d>, QList<std::array<V3d, 2>>> geometry;
+  std::variant<DrawingPlane, DrawingCylinder, DrawingCurve, DrawingSphere, QList<V3d>, QList<std::array<V3d, 2>>> geometry;
   DrawingStyle style;
+  bool visible = true; // A hidden part is not installed; the object's visibility applies to the rest.
 };
 
 struct DrawingDiagnostics {

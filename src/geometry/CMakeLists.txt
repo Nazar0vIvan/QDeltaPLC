@@ -7,6 +7,8 @@ qt_add_library(RoboCrapGeometry STATIC
   surfaceintersection.cpp
   include/geometry/plane.h
   plane.cpp
+  include/geometry/spherefit.h
+  spherefit.cpp
   include/geometry/mathtypes.h
   include/geometry/utils.h
   utils.cpp

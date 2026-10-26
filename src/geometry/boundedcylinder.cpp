@@ -62,7 +62,6 @@ std::optional<Fit> evaluate(const std::vector<V3d>& points, Fit fit)
   return fit;
 }
 
-// A fit, its tangent frame and an increment define one numerical displacement.
 std::optional<Fit> displaced(const Fit& fit, const std::array<V3d, 2>& basis, const Eigen::Matrix<double, 5, 1>& delta)
 {
   const auto axis = normalize(fit.axis + delta[0] * basis[0] + delta[1] * basis[1]);
@@ -77,8 +76,6 @@ std::optional<Fit> displaced(const Fit& fit, const std::array<V3d, 2>& basis, co
   return next;
 }
 
-// Samples and an evaluated fit define the derivatives; scale sets the finite
-// difference steps, and the owned matrix is returned for reuse across iterations.
 std::optional<Eigen::MatrixXd> linearize(const std::vector<V3d>& points, const Fit& fit, double scale, Eigen::MatrixXd jacobian)
 {
   const auto basis = tangentBasis(fit.axis);
@@ -100,7 +97,6 @@ std::optional<Eigen::MatrixXd> linearize(const std::vector<V3d>& points, const F
   return jacobian;
 }
 
-// Samples, initial axis and sample scale define one fit initialization.
 std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initialAxis, double scale)
 {
   const auto axis = normalize(initialAxis);
@@ -161,7 +157,6 @@ std::optional<Fit> fitFromAxis(const std::vector<V3d>& points, const V3d& initia
   return std::nullopt;
 }
 
-// The observability check uses the samples, fitted parameters and their scale.
 bool wellConstrained(const std::vector<V3d>& points, const Fit& fit, double scale)
 {
   // The five fitted parameters must each affect the radial residuals. This

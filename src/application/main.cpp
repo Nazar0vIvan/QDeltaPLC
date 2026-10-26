@@ -82,8 +82,13 @@ int main(int argc, char* argv[])
   SceneEndEffectors endEffectors;
   SceneEndEffectorsQml::s_inst = &endEffectors;
 
-  SceneMachining machining(&scene, &endEffectors);
+  ScenePlayback playback(&scene);
+  ScenePlaybackQml::s_inst = &playback;
+  SceneMachining machining(&scene, &endEffectors, &playback);
   SceneMachiningQml::s_inst = &machining;
+
+  SceneCalibration calibration(&scene, &endEffectors, &playback);
+  SceneCalibrationQml::s_inst = &calibration;
 
   SceneMachiningPreparation preparation(&scene, &machining);
   SceneMachiningPreparationQml::s_inst = &preparation;
@@ -100,9 +105,11 @@ int main(int argc, char* argv[])
   QObject::connect(&machining, &SceneMachining::draftAxisChanged,
                    &viewportController, &RoboCrap3D::OccController::setDraftAxis);
   OccControllerQml::s_inst = &viewportController;
-  RoboCrap3D::RobotController robotController(&viewportController, &endEffectors, &machining);
-  machining.setRobotController(&robotController);
+  RoboCrap3D::RobotController robotController(&viewportController, &endEffectors, &playback);
+  playback.setRobotController(&robotController);
   WorkspaceController workspaceController(&scene, &machining, &endEffectors);
+  QObject::connect(&workspaceController, &WorkspaceController::calibrationActiveChanged,
+                   &calibration, &SceneCalibration::setActive);
   QObject::connect(&workspaceController, &WorkspaceController::selectionChanged,
                    &viewportController, &RoboCrap3D::OccController::setSelectedObjects);
   QObject::connect(&viewportController, &RoboCrap3D::OccController::applicationSelectionRequested,

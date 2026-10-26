@@ -72,10 +72,12 @@
   references, raw/smart pointers or worker-populated shared objects as output/in-out channels.
   Input references/pointers and explicit operations on existing objects (setters, scene insertion)
   are allowed; do not disguise output as mutation.
-- Functions/constructors have at most four parameters. Use zero to two where possible; record
-  the operation requiring three/four distinct inputs. Caller convenience is insufficient. Group
-  only values forming one concept, never a parameter bag to evade the limit. Reject unexplained
-  three/four-parameter signatures during the compliance pass.
+- Functions/constructors have at most four parameters; use zero to two where possible. Choose
+  four only after trying to reduce the count to three or fewer: make the operation a member of
+  the object that owns an input, split it into separate operations, or group values forming one
+  concept, never a parameter bag to evade the limit. Caller convenience is insufficient. Record
+  the attempts and why they fail briefly in the ExecPlan or simple-task handoff, not as code
+  comments. Reject four-parameter signatures without that justification during the compliance pass.
 - Read or change another object's private state only through its methods, even when friendship
   permits direct access. A class initializes/updates its own private members in its implementation.
 
@@ -150,6 +152,10 @@
 
 - Windows Qt Quick application: C++17, Qt >= 6.8, CMake >= 3.16 and bundled Eigen.
   Root/module CMakeLists.txt files are authoritative; local SDK versions do not raise these minimums.
+- The repository root is `E:\Qt\QtProjects\RoboCrap` or `D:\Qt\QtProjects\RoboCrap`, depending on
+  the computer the user works at; the manuals folder follows the same drive. Use
+  repository-relative paths in documents and plans; check the session's working directory for
+  absolute paths.
 - Preserve USE_HOT_RELOAD and FAST_QML_BUILD behavior. old_imp/ is outside the active build;
   python/ contains analysis scripts/data, not the current application or an automated test suite.
 

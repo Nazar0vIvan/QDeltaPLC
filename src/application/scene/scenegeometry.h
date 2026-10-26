@@ -4,13 +4,14 @@
 #include "geometry/boundedcylinder.h"
 #include "geometry/surfaceintersection.h"
 #include "trajectories/chamfermotion.h"
+#include "trajectories/probetouchmotion.h"
 #include <memory>
 #include <QList>
 #include <QObject>
 #include <optional>
 #include <utility>
 
-// Value-type draft settings; geometry and robot calibration are supplied by C++.
+// Value-type draft settings; geometry, robot model and tool transform are supplied by C++.
 struct SceneMachiningSettings
 {
   Q_GADGET
@@ -57,7 +58,7 @@ struct SceneMachiningData
 {
   std::shared_ptr<const ChamferMotion> motion;
   quint32 sourceEdgeId = 0;
-  quint64 calibrationRevision = 0;
+  quint64 robotSetupRevision = 0;
 };
 
 class SceneMachiningPath final : public QObject
@@ -99,4 +100,30 @@ struct SceneEdge
 {
   EdgeGeometry edge;
   std::array<quint32, 2> sources{};
+};
+
+// Calibration sphere fitted to the ruby ball centers of the jogged touches.
+struct SceneSphere
+{
+  V3d center = V3d::Zero(); // Fitted center, shared by both fitted spheres.
+  double radius = 0.0; // mm, nominal: half the sphere file's diameter.
+  double ballCenterRadius = 0.0; // mm, sphere through the ball centers.
+  double compensatedRadius = 0.0; // mm, ballCenterRadius minus the ruby ball radius.
+  double rms = 0.0; // mm, fit residual.
+  QList<V3d> roughPoints; // Ball centers reported by the controller at the jogged touches.
+  double strutRadius = 0.0; // mm, vertical strut under the sphere.
+  double strutRecess = 0.0; // mm, strut top above the lowest sphere point.
+
+  bool operator==(const SceneSphere& other) const
+  {
+    return center == other.center && radius == other.radius && ballCenterRadius == other.ballCenterRadius
+        && compensatedRadius == other.compensatedRadius && rms == other.rms && roughPoints == other.roughPoints
+        && strutRadius == other.strutRadius && strutRecess == other.strutRecess;
+  }
+};
+
+// Generated probe calibration motion, shared with playback.
+struct SceneTouchPath
+{
+  std::shared_ptr<const ProbeTouchMotion> motion;
 };

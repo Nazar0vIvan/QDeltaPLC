@@ -9,6 +9,7 @@
 #include <AIS_Shape.hxx>
 
 #include <Graphic3d_ZLayerId.hxx>
+#include <Prs3d_Drawer.hxx>
 
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopoDS_Shape.hxx>
@@ -165,9 +166,21 @@ bool OccScene::displayPart(OccPart& part)
 
   const int selectionMode = part.selectionMode() == OccSelectionMode::None ? -1 : 0;
 
-  m_context->Display(part.handle(), part.handle()->DisplayMode(), selectionMode, false);
+  // Transparent parts keep their transparency when selected or hovered, so parts behind them
+  // stay visible; opaque parts use the viewport styles of OccViewer::configureHighlightStyles.
+  const Handle(AIS_Shape)& handle = part.handle();
+  if (handle->IsTransparent()) {
+    const Handle(Prs3d_Drawer) selected = new Prs3d_Drawer(*m_context->HighlightStyle(Prs3d_TypeOfHighlight_Selected));
+    const Handle(Prs3d_Drawer) hover = new Prs3d_Drawer(*m_context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic));
+    selected->SetTransparency(static_cast<float>(handle->Transparency()));
+    hover->SetTransparency(static_cast<float>(handle->Transparency()));
+    handle->SetHilightAttributes(selected);
+    handle->SetDynamicHilightAttributes(hover);
+  }
 
-  if (part.topmost()) m_context->SetZLayer(part.handle(), Graphic3d_ZLayerId_Topmost);
+  m_context->Display(handle, handle->DisplayMode(), selectionMode, false);
+
+  if (part.topmost()) m_context->SetZLayer(handle, Graphic3d_ZLayerId_Topmost);
 
   if (part.selectionMode() == OccSelectionMode::All) {
     activateAllSelectionModes(part);
@@ -335,7 +348,9 @@ void OccScene::selectParts(const std::vector<PartId>& ids)
     if (ready) continue;
     // Highlight color overrides face-boundary aspects. Keep the boundary in
     // its own unhighlighted presentation; standalone curves remain amber.
-    if (outline.IsNull() && TopExp_Explorer(handle->Shape(), TopAbs_FACE).More()) {
+    // The non-null handle above was found in m_parts.
+    if (outline.IsNull() && m_parts.find(id)->second.faceBoundary()
+        && TopExp_Explorer(handle->Shape(), TopAbs_FACE).More()) {
       BRep_Builder builder;
       TopoDS_Compound boundaries;
       builder.MakeCompound(boundaries);

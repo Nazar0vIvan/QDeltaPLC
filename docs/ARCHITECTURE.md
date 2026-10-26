@@ -18,7 +18,7 @@ Hardware (supplied by the user; not derivable from code):
 | PLC | Delta AS332T with AS16AP11P-A / AS16AP11T-A (8 DI + 8 DO each) | `PlcDevice` key `plc` | Custom binary over TCP to 192.168.1.2:5051, fixed source port 1234 |
 | Force/torque sensor | Schunk Delta IP68 SI-660-60 (ATI Net F/T electronics) | `FtsDevice` key `fts` | ATI RDT over UDP, peer port 49152 |
 | Touch probe | WP-500 V6 | none | No device code. Probe data enters only as JSON point files (§5.1) |
-| Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive reference sphere for touch-probe calibration, on a vertical rigid pole on a table in front of the robot |
+| Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive reference sphere for touch-probe calibration, on a vertical rigid pole on a table in front of the robot. The ball sits 2 mm deep in the top of a ⌀17.8 mm strut cylinder (supplied by the user, 2026-10-26), so only the surface above the strut's top face (12.5 − 2 = 10.5 mm below the sphere center) is accessible |
 | Network switch | D-Link DGS-1005P (5-port Gigabit, 4 PoE ports, unmanaged) | none | Connects the PC's "Devices-Switch" network adapter to the PLC, force/torque sensor and VFD; the KR C4 is cabled directly to the PC |
 
 ### Network
@@ -52,7 +52,7 @@ component, not measurements of this installation.
 | Beckhoff EL1809 | 16 DI, 24 VDC (−15 %/+20 %), EN 61131-2 type 1/3; "0" −3…+5 V, "1" 11…30 V; typ. 3 mA; **input filter typ. 3.0 ms**; reference ground = 0 V power contact. | Datasheet EL1809 |
 | Beckhoff EL2809 | 16 DO, 24 VDC, 0.5 A per channel (short-circuit-proof); **switching times typ. TON 60 µs, TOFF 300 µs**. | Datasheet EL2809 |
 | Schunk FTS Delta SI-660-60 (ATI Net F/T) | Sensing ranges Fx, Fy ±660 N; Fz ±1980 N; Tx, Ty, Tz ±60 Nm. Applied loads must be within range on all six axes. RDT streaming over UDP port 49152. | FT Transducer manual §5.10 |
-| WP-500 touch probe | Wired optical touch probe; body Ø42 mm, stylus thread M3, standard stylus 30 mm with Ø3 mm ruby ball; repeatability 0.001 mm; XY travel 20°, Z travel 3 mm; IP67; CR2032 battery (approx. 6 months standby); 3 m two-core signal cable with Type-C connector. Output (supplied by the user): normally open NPN, conducting on trigger; it cannot drive the EL1809 inputs and is wired to AS16AP11T-A input X2.5 (working, user-verified 2026-10-24). **The user states the probe can operate from 24 V power; the WP-500 manual (ENG and CHN) does not mention a 24 V supply.** | WP-500 manual, Technical Specifications, Wiring (table values matched by row order from garbled PDF text) |
+| WP-500 touch probe | Wired optical touch probe; body Ø42 mm, stylus thread M3, standard stylus 30 mm with Ø3 mm ruby ball; repeatability 0.001 mm; XY travel 20°, Z travel 3 mm; IP67; CR2032 battery (approx. 6 months standby); 3 m two-core signal cable with Type-C connector. Output (supplied by the user): normally open NPN, conducting on trigger; it cannot drive the EL1809 inputs and is wired to AS16AP11T-A input X2.5 (working, user-verified 2026-10-24); the signal path to the KR C4 is described under "Additional hardware and Delta I/O wiring". An external LED on the probe lights on contact (supplied by the user), so touches made in jog mode need no signal connection. **The user states the probe can operate from 24 V power; the WP-500 manual (ENG and CHN) does not mention a 24 V supply.** | WP-500 manual, Technical Specifications, Wiring (table values matched by row order from garbled PDF text) |
 
 Discrete signal path between KR C4 and PLC (component datasheet values, not measured). A KR C4
 output `$OUT[n]` switches an EL2809 output (typ. 60 µs on, 300 µs off), which drives an
@@ -102,7 +102,15 @@ EL1809 inputs read by KR C4:
 
 The left and right halves of this table describe separate signal directions; they do not
 imply a PLC logic connection between the X and Y signals on the same row. Channels 7–16
-remain mapped in WorkVisual but are not used for this PLC connection.
+remain mapped in WorkVisual; apart from EL1809 input 8 (planned probe signal, below) they are
+not used.
+
+Probe trigger path (supplied by the user, 2026-10-24). The PLC connects input X2.5 (WP-500
+output) to output Y1.7 of the AS16AP11P-A. Y1.7 currently drives a test LED; it is planned to be
+wired to EL1809 input 8, so that the WP-500 trigger reaches the KR C4 as `$IN[8]`. Delays on
+this path are datasheet values, not measured: AS16AP11T-A input (< 20 µs in hardware, then the
+software filter, default 10 ms), the PLC scan, the AS16AP11P-A output (at most 0.5 ms) and the
+EL1809 input filter (typ. 3.0 ms).
 
 `db.json` also lists a VFD (`driver: "vfd"`) that has no device class.
 
@@ -192,10 +200,10 @@ Classes live under src/application/scene on the GUI thread. They reach QML throu
 |---|---|
 | `SceneModel` | Owns `SceneObject`s (QObject parent). IDs come from `m_nextId`, which starts at 1 and is never reused; 0 means no object. `objects` is a read-only `QQmlListProperty`; the class is not an item model. Signals: `objectAdded`, `objectRemoved(id)`, `objectVisibilityChanged`, `objectDiagnosticOverlaysChanged`, `objectsChanged`, `intersectionFailed`. `intersect()` creates an Edge from one plane and one cylinder; `addMachiningPath()` stores a `SceneMachiningData`. |
 | `SceneObject` | Holds id, kind (Plane, Cylinder, Cone, Edge, ScanPath, MachiningPath), classification, name, visibility and overlays. A fitted `BoundedPlane`, `BoundedCylinder` or `SceneEdge` (ellipse plus its two source IDs) is stored by value in `std::variant` `Shape`. Only a machining path has a child QObject (`SceneMachiningPath`), exposed as the QML `geometry` property. Setters are private; `SceneModel` is a friend. `drawing()` supplies analytic dimensions/styles or saved TCP phase polylines; `drawingDiagnostics()` supplies bounded markers and normal-line endpoints; `properties` supplies the Properties panel rows (4 decimals, `[x; y; z]` vectors). |
-| `scenegeometry.h` | `SceneMachiningSettings` (Q_GADGET value type), `SceneMachiningData{shared_ptr<const ChamferMotion>, sourceEdgeId, calibrationRevision}`, the `SceneMachiningPath` QObject that wraps it, and the `SceneEdge` value. |
+| `scenegeometry.h` | `SceneMachiningSettings` (Q_GADGET value type), `SceneMachiningData{shared_ptr<const ChamferMotion>, sourceEdgeId, robotSetupRevision}`, the `SceneMachiningPath` QObject that wraps it, and the `SceneEdge` value. |
 | `SceneSurfaceImporter` | Synchronous, GUI-thread JSON point import of planes and cylinders, both compensated for the probe. It sets `busy` true and emits `busyChanged` before reading/fitting, then clears it before returning; event-loop painting waits for the call to return. |
 | `SceneEndEffectors` | Stores the active tool, measuring stylus data, the collet frame `FLANGE_ER` and accepted spindle XYZABC with its reconstructed transform (`spindleTcpFrame`). A collet change emits `spindleColletChanged` then `spindleTcpChanged`; a TCP-only change emits the latter; unchanged values emit neither. The tool CAD models are fixed and are not stored here. |
-| `SceneMachining` | Coordinates Generate and Dry Run (§5.2). It holds the `Kr10KinematicModel` copy received once from `RobotController` after initial graphics acceptance, a calibration revision counter, and the playback state. It derives the signed unit draft-axis direction and 5–40 mm display length from the selected source/settings and emits the drawing value. |
+| `SceneMachining` | Coordinates Generate and Dry Run (§5.2). It holds the `Kr10KinematicModel` copy received once from `RobotController` after initial graphics acceptance, a robot-setup revision counter (incremented when the robot model or the spindle TCP transform changes), and the playback state. It derives the signed unit draft-axis direction and 5–40 mm display length from the selected source/settings and emits the drawing value. |
 | `SceneMachiningPreparation` | RSI Sampling (`App.MachiningPreparation`). For the selected compatible saved path, an `std::async` worker runs `sampleChamferRsiStream` on a copied motion handle, polled by a 30 ms timer; the GUI thread accepts only a result whose path still exists, is compatible and holds the same motion. It then writes `C:/RoboCrapJobs/shared_data.txt` and emits `correctionsReady(QVector<V6d>, QString diagnosticId)` (file format, S/T export, KRL reader and stream lifetime: "Machining and playback" in AGENT_CONTRACTS.md). QML reads `canPrepare`, `unavailableReason`, `preparing`, `error` and `summary`. |
 
 QML singletons (`application/backendqmltypes.h`):
@@ -288,7 +296,7 @@ Ownership and lifetime rules:
 - **Devices.** Each device is created parentless, then moved to its I/O thread. It is deleted on that thread by `deleteLater` when the thread finishes. Runners are children of the hub.
 - **Scene objects.** Each `SceneObject` is a child of `SceneModel`; fitted geometry is held by value, and a machining path's `SceneMachiningPath` is a child of its object. Removal emits `objectRemoved`, then calls `deleteLater`.
 - **Immutable shared data.** `ChamferMotion` (scene path, playback, RSI sampling worker) and `CadLoadResult` (controller, window and adapter) are shared as `shared_ptr<const ...>`; the RSI correction stream is an implicitly shared `QVector<V6d>` (GUI thread to ControlIO).
-- **Worker result acceptance.** Results are accepted only on the GUI thread. Generate compares the input id, the calibration revision, robot availability and the source; RSI sampling requires the sampled path to still exist, be compatible and hold the same motion pointer; CAD loading compares a generation counter.
+- **Worker result acceptance.** Results are accepted only on the GUI thread. Generate compares the input id, the robot-setup revision, robot availability and the source; RSI sampling requires the sampled path to still exist, be compatible and hold the same motion pointer; CAD loading compares a generation counter.
 - **Thread affinity checks.** `Q_ASSERT` checks thread affinity in `AbstractDevice::start/stop/invoke`, `DeviceRunner::invoke`, `OccController::loadRobot`, `RobotController::loadRobot/applyPlayback` and `SceneMachiningPreparation`; `claimQmlSingleton` `qFatal`s on a wrong-thread QML engine.
 
 ## 5. Traced workflows
@@ -325,7 +333,7 @@ only toggles which tool part is visible.
 1. `ModeToolBar` "Dry Run" calls `App.Machining.dryRun()`, which requires `canPlay()` (compatible path, robot available) and the RobotController attached by main, presents time zero, then starts a QElapsedTimer and a 16 ms PreciseTimer.
 2. Each tick calls `SceneMachining::advancePlayback` and `presentPlayback(seconds)`: `ChamferMotion::evaluateJoints(seconds)` gives six joint angles and the phase, then `RobotController::applyPlayback(joints, savedFlangeToTcp)` runs one FK and updates the viewport; failure goes to `SceneMachining::failPlayback`.
 3. `pause()` stops the timer; calling `dryRun()` again resumes from `m_elapsed`. `stop()` presents time zero (`qHome`) while the robot preview is available, then ends playback, so the robot jumps to HOME without an animated return.
-4. Playback also ends at the duration (the last point is `qHome`), on `aboutToQuit`, when the robot becomes unavailable, on a calibration change (`spindleTcpChanged` or `setRobotModel` increments the revision), on removal of the active path, and when WorkspaceController leaves Machining mode.
+4. Playback also ends at the duration (the last point is `qHome`), on `aboutToQuit`, when the robot becomes unavailable, on a robot model or spindle TCP change (`spindleTcpChanged` or `setRobotModel` increments the revision), on removal of the active path, and when WorkspaceController leaves Machining mode.
 
 ### 5.3 Device request from QML and state back
 

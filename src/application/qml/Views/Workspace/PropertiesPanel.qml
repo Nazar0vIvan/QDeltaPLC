@@ -18,7 +18,9 @@ QxPanel {
           qsTr("Show Points"), qsTr("Show Normals"), qsTr("Normal"), qsTr("Origin"),
           qsTr("Width"), qsTr("Height"), qsTr("Points"), qsTr("Offset (d)"),
           qsTr("Radius"), qsTr("Axis"),
-          qsTr("Diameter"), qsTr("Length")].map(label => labelMetrics.advanceWidth(label))))
+          qsTr("Diameter"), qsTr("Length"), qsTr("Nominal radius"), qsTr("Nominal diameter"),
+          qsTr("Radius/Diameter"), qsTr("Fitted center"),
+          qsTr("Fit RMS")].map(label => labelMetrics.advanceWidth(label))))
 
   FontMetrics {
     id: labelMetrics
@@ -28,12 +30,17 @@ QxPanel {
       && (root.selectedObject.kind === Backend.SceneObject.Plane
           || root.selectedObject.kind === Backend.SceneObject.Cylinder
           || root.selectedObject.kind === Backend.SceneObject.Cone
-          || root.selectedObject.kind === Backend.SceneObject.Edge)
-  // Formatted {label, value} rows built by the selected object.
+          || root.selectedObject.kind === Backend.SceneObject.Edge
+          || root.selectedObject.kind === Backend.SceneObject.Sphere)
+  readonly property bool sphereSelected: root.selectedObject !== null
+      && root.selectedObject.kind === Backend.SceneObject.Sphere
+  // Rows built by the selected object: {label, value}, {separator} or {label, toggle}, where
+  // toggle names the object's showBallCenterSphere or showCompensatedSphere property.
   readonly property var geometryRows: root.selectedObject ? root.selectedObject.properties : []
 
   signal renameRequested(Backend.SceneObject object, string name)
   signal visibilityRequested(Backend.SceneObject object, bool visible)
+  signal sphereDisplayRequested(Backend.SceneObject object, bool ballCenter, bool compensated)
   signal pointsToggled(bool checked)
   signal normalsToggled(bool checked)
 
@@ -45,6 +52,8 @@ QxPanel {
       case Backend.SceneObject.Edge: return qsTr("Edge")
       case Backend.SceneObject.ScanPath: return qsTr("Scan path")
       case Backend.SceneObject.MachiningPath: return qsTr("Machining path")
+      case Backend.SceneObject.Sphere: return qsTr("Calibration sphere")
+      case Backend.SceneObject.CalibrationPath: return qsTr("Calibration path")
       default: return ""
     }
   }
@@ -275,7 +284,8 @@ QxPanel {
 
       QxHField {
         Layout.fillWidth: true
-        visible: root.diagnosticControlsVisible
+        // Sphere readings have points but no normal lines.
+        visible: root.diagnosticControlsVisible && !root.sphereSelected
         labelWidth: root.labelColumnWidth
         fixedLabelWidth: true
         labelText: qsTr("Show Normals")
@@ -301,11 +311,48 @@ QxPanel {
 
       Repeater {
         model: root.geometryRows
-        delegate: PropertyValue {
+        delegate: ColumnLayout {
           id: geometryRow
           required property var modelData
-          labelText: geometryRow.modelData.label
-          valueText: geometryRow.modelData.value
+          readonly property bool separator: geometryRow.modelData.separator === true
+          readonly property string toggle: geometryRow.modelData.toggle ?? ""
+
+          Layout.fillWidth: true
+          spacing: Metrics.sp0
+
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Metrics.w1
+            visible: geometryRow.separator
+            color: Colors.background.dp12
+          }
+
+          // Group headings may be wider than the label column; their check box follows the text.
+          QxHField {
+            Layout.fillWidth: true
+            visible: geometryRow.toggle.length > 0
+            labelWidth: root.labelColumnWidth
+            labelText: geometryRow.modelData.label ?? ""
+
+            QxCheckBox {
+              checked: root.selectedObject !== null
+                       && (geometryRow.toggle === "showBallCenterSphere" ? root.selectedObject.showBallCenterSphere
+                                                                         : root.selectedObject.showCompensatedSphere)
+              padding: Metrics.sp0
+              Accessible.name: qsTr("%1 visible").arg(geometryRow.modelData.label ?? "")
+              onClicked: root.sphereDisplayRequested(root.selectedObject,
+                  geometryRow.toggle === "showBallCenterSphere" ? checked : root.selectedObject.showBallCenterSphere,
+                  geometryRow.toggle === "showCompensatedSphere" ? checked : root.selectedObject.showCompensatedSphere)
+            }
+
+            Item { Layout.fillWidth: true }
+          }
+
+          PropertyValue {
+            visible: !geometryRow.separator && geometryRow.toggle.length === 0
+            labelText: geometryRow.modelData.label ?? ""
+            valueText: geometryRow.modelData.value ?? ""
+          }
         }
       }
     }

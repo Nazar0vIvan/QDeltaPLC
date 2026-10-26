@@ -159,7 +159,6 @@ SceneObject* SceneModel::appendObject(SceneObject* object)
   return object;
 }
 
-// Each insertion takes source metadata, display name and validated geometry.
 SceneObject* SceneModel::addBoundedPlane(const QUrl& sourceUrl, const QString& name,
                                         BoundedPlane plane)
 {
@@ -177,6 +176,15 @@ SceneObject* SceneModel::addBoundedCylinder(const QUrl& sourceUrl, const QString
                                SceneObject::Cylinder, SceneObject::Rough, sourceUrl});
   if (!object) return nullptr;
   object->setShape(std::move(cylinder));
+  return appendObject(object);
+}
+
+SceneObject* SceneModel::addCalibrationObject(SceneObject::Shape shape, const QString& name)
+{
+  const auto kind = std::holds_alternative<SceneSphere>(shape) ? SceneObject::Sphere : SceneObject::CalibrationPath;
+  auto* object = createObject({name, kind, SceneObject::Unclassified, {}});
+  if (!object) return nullptr;
+  object->setShape(std::move(shape));
   return appendObject(object);
 }
 
@@ -200,6 +208,20 @@ bool SceneModel::setObjectDiagnosticOverlays(SceneObject* object, bool showPoint
   if (!object || m_objectsById.value(object->objectId()) != object) return false;
   object->setDiagnosticOverlays(showPoints, showNormals);
   return true;
+}
+
+bool SceneModel::setSphereDisplay(SceneObject* object, bool ballCenter, bool compensated)
+{
+  if (!object || m_objectsById.value(object->objectId()) != object || !object->sphere()) return false;
+  const bool ballCenterBefore = object->showBallCenterSphere();
+  const bool compensatedBefore = object->showCompensatedSphere();
+  object->setSphereDisplay(ballCenter, compensated);
+  if (!m_viewport) return true;
+  // Inserting an installed id replaces its drawing only after the new one is accepted.
+  const auto drawing = object->drawing();
+  if (drawing && m_viewport->insertObject(*drawing).accepted) return true;
+  object->setSphereDisplay(ballCenterBefore, compensatedBefore);
+  return false;
 }
 
 bool SceneModel::renameObject(SceneObject* object, const QString& name)

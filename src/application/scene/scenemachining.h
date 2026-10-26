@@ -2,13 +2,10 @@
 
 #include "scenemodel.h"
 #include "sceneendeffectors.h"
+#include "sceneplayback.h"
 #include "viewport/occcontroller.h"
-#include <QElapsedTimer>
 #include <QTimer>
-#include <QPointer>
 #include <future>
-
-namespace RoboCrap3D { class RobotController; }
 
 class SceneMachining : public QObject
 {
@@ -19,15 +16,9 @@ class SceneMachining : public QObject
   Q_PROPERTY(QString unavailableReason READ unavailableReason NOTIFY availabilityChanged)
   Q_PROPERTY(QString error READ error NOTIFY errorChanged)
   Q_PROPERTY(bool calculating READ calculating NOTIFY calculatingChanged)
-  Q_PROPERTY(bool playbackActive READ playbackActive NOTIFY playbackChanged)
-  Q_PROPERTY(bool playing READ playing NOTIFY playbackChanged)
   Q_PROPERTY(bool canPlay READ canPlay NOTIFY availabilityChanged)
-  Q_PROPERTY(double elapsed READ elapsed NOTIFY playbackChanged)
-  Q_PROPERTY(double duration READ duration NOTIFY playbackChanged)
-  Q_PROPERTY(QString phase READ phase NOTIFY playbackChanged)
 public:
-  // Scene ownership, tool calibration and QObject lifetime define the coordinator.
-  SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, QObject* parent = nullptr);
+  SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, ScenePlayback* playback);
   SceneMachiningSettings settings() const { return m_settings; }
   void setSettings(const SceneMachiningSettings& settings);
   quint32 inputId() const { return m_inputId; }
@@ -38,18 +29,9 @@ public:
   Q_INVOKABLE void generate();
   bool calculating() const { return m_calculating; }
   Q_INVOKABLE void dryRun();
-  Q_INVOKABLE void stop();
-  Q_INVOKABLE void pause();
-  bool playbackActive() const { return bool(m_activeMotion); }
-  bool playing() const { return m_playing; }
+  // Stops the playback only while a machining path owns it.
+  void stop();
   bool canPlay() const;
-  double elapsed() const { return m_elapsed; }
-  double duration() const { return m_duration; }
-  QString phase() const { return m_phase; }
-  void failPlayback(const QString& error);
-  void setRobotModel(const RoboCrap3D::Kr10KinematicModel& model);
-  void setRobotAvailable(bool available);
-  void setRobotController(RoboCrap3D::RobotController* controller);
 
 signals:
   void draftAxisChanged(const std::optional<RoboCrap3D::DrawingAxis>& axis);
@@ -59,41 +41,30 @@ signals:
   void errorChanged();
   void generated(quint32 objectId);
   void calculatingChanged();
-  void playbackChanged();
 
 private:
   std::optional<ChamferPathParameters> sourceParameters() const;
   void synchronizeDraftAxis();
-  void calibrationChanged();
+  const SceneMachiningPath* machiningPath(quint32 id) const;
+  bool ownsPlayback() const;
+  void applyRobotModel();
+  void robotSetupChanged();
   void refreshCompatibility();
   void onObjectAdded(SceneObject* object);
   void updateCompatibility(SceneObject* object);
   void onObjectRemoved(quint32 id);
   void setError(const QString& error);
-  void advancePlayback();
-  void endPlayback();
-  bool presentPlayback(double seconds);
+  void onPlaybackFailed(quint32 ownerId, const QString& error);
   void finishCalculation();
   void setCalculating(bool calculating);
 
   SceneModel* m_scene;
   SceneEndEffectors* m_effectors;
-  QPointer<RoboCrap3D::RobotController> m_robotController;
+  ScenePlayback* m_playback;
   SceneMachiningSettings m_settings;
-  std::optional<RoboCrap3D::Kr10KinematicModel> m_model;
   quint64 m_revision = 0;
   quint32 m_inputId = 0;
-  bool m_robotAvailable = false;
   QString m_error;
-  QTimer m_timer;
-  QElapsedTimer m_clock;
-  std::shared_ptr<const ChamferMotion> m_activeMotion;
-  quint32 m_activePathId = 0;
-  bool m_playing = false;
-  double m_elapsed = 0.0;
-  double m_resumeTime = 0.0;
-  double m_duration = 0.0;
-  QString m_phase;
   QTimer m_calculationTimer;
   std::future<ChamferMotionResult> m_calculation;
   quint32 m_calculationInputId = 0;

@@ -27,7 +27,6 @@ struct LeadProgress
   double axialSecond = 0.0;
 };
 
-// Lead dimensions, traversal side and progress define position and its derivatives.
 LeadProgress leadProgress(const ChamferLeadParameters& lead, bool entering, double progress)
 {
   const double rate = 0.5 * GeomConst::Pi;

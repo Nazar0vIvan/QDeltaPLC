@@ -9,7 +9,7 @@ QxPanel {
   id: root
 
   enum Mode { Measuring, Machining }
-  enum Submode { Rough, Precise }
+  enum Submode { Rough, Precise, Calibration }
 
   required property int mode
   required property int submode
@@ -106,6 +106,13 @@ QxPanel {
       spacing: Metrics.sp8
 
       ModeButton {
+        text: qsTr("Calibration")
+        icon.source: "qrc:/pics/calibration.svg"
+        checked: root.submode === WorkflowPanel.Calibration
+        onClicked: root.submodeRequested(WorkflowPanel.Calibration)
+      }
+
+      ModeButton {
         text: qsTr("Rough")
         icon.source: "qrc:/pics/rough.svg"
         checked: root.submode === WorkflowPanel.Rough
@@ -115,8 +122,6 @@ QxPanel {
       ModeButton {
         text: qsTr("Precise")
         icon.source: "qrc:/pics/precise.svg"
-        selectedColor: Colors.primary.base
-        selectedBorderColor: Colors.primary.dark
         checked: root.submode === WorkflowPanel.Precise
         onClicked: root.submodeRequested(WorkflowPanel.Precise)
       }

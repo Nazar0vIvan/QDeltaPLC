@@ -36,6 +36,7 @@ ToolBar {
   readonly property bool measuring: root.mode === WorkflowPanel.Measuring
   readonly property bool rough: root.measuring && root.submode === WorkflowPanel.Rough
   readonly property bool precise: root.measuring && root.submode === WorkflowPanel.Precise
+  readonly property bool calibration: root.measuring && root.submode === WorkflowPanel.Calibration
 
   implicitHeight: 83
   padding: Metrics.sp8
@@ -162,7 +163,7 @@ ToolBar {
       }
 
       Tool {
-        visible: root.measuring
+        visible: root.measuring && !root.calibration
         text: qsTr("Intersect Selected")
         iconSource: "qrc:/pics/intersec.svg"
         available: root.intersectionAvailable
@@ -170,7 +171,7 @@ ToolBar {
       }
 
       Tool {
-        visible: !root.measuring
+        visible: !root.measuring || root.calibration
         text: qsTr("Generate Path")
         iconSource: "qrc:/pics/generate_path.svg"
         available: root.generationAvailable
@@ -212,7 +213,7 @@ ToolBar {
       }
 
       Rectangle {
-        visible: !root.rough
+        visible: !root.rough && !root.calibration
         width: Metrics.w1
         height: Metrics.sz36
         y: Metrics.sp12
@@ -228,7 +229,7 @@ ToolBar {
       }
 
       Tool {
-        visible: !root.rough
+        visible: !root.rough && !root.calibration
         text: root.precise ? qsTr("Scan") : qsTr("Start Machining")
         iconSource: root.precise ? "qrc:/pics/scan.svg" : "qrc:/pics/run.svg"
         preserveIconColors: true

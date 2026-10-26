@@ -33,15 +33,26 @@ void WorkspaceController::synchronizeMode()
   if (m_mode != Machining) m_machining->stop();
   // QML cancels the old editor before tool/input settings change.
   emit modeChanged();
+  synchronizeCalibration();
   m_effectors->setActiveTool(m_mode == Machining ? SceneEndEffectors::Spindle : SceneEndEffectors::Measuring);
   synchronizeMachiningInput();
 }
 
 void WorkspaceController::setSubmode(Submode submode)
 {
-  if ((submode != Rough && submode != Precise) || submode == m_submode) return;
+  if ((submode != Rough && submode != Precise && submode != Calibration) || submode == m_submode) return;
   m_submode = submode;
   emit submodeChanged();
+  synchronizeCalibration();
+}
+
+void WorkspaceController::synchronizeCalibration()
+{
+  const bool active = m_mode == Measuring && m_submode == Calibration;
+  if (active == m_calibrationActive) return;
+  m_calibrationActive = active;
+  setSelection({});
+  emit calibrationActiveChanged(active);
 }
 
 SceneObject* WorkspaceController::selectedObject() const
@@ -91,6 +102,8 @@ void WorkspaceController::synchronizeMachiningInput()
 
 void WorkspaceController::deleteSelected()
 {
+  // The calibration sphere and path cannot be deleted; other objects are hidden there.
+  if (m_calibrationActive) return;
   const auto ids = m_selectedIds;
   setSelection({});
   m_scene->removeObjects(ids);

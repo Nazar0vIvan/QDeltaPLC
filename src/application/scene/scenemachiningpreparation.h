@@ -20,7 +20,6 @@ class SceneMachiningPreparation final : public QObject
   Q_PROPERTY(QString summary READ summary NOTIFY preparedChanged)
 
 public:
-  // Scene lookup, selected machining input and QObject lifetime are distinct responsibilities.
   SceneMachiningPreparation(SceneModel* scene, SceneMachining* machining, QObject* parent = nullptr);
   ~SceneMachiningPreparation() override;
   bool canPrepare() const { return unavailableReason().isEmpty(); }

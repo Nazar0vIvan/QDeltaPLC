@@ -25,7 +25,6 @@ signals:
 
 private:
   enum class Surface { Plane, Cylinder };
-  // Source, destination and requested surface define one import operation.
   void importSurface(const QUrl& sourceUrl, SceneModel* scene, Surface surface);
   bool m_busy = false;
 };

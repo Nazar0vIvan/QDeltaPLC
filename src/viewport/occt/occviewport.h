@@ -24,7 +24,6 @@ public:
 
   bool isValid() const;
   bool isRobotReady() const { return isValid() && m_robot.isLoaded(); }
-  // Ordered graphics, loaded shapes and transforms define the installation.
   ViewportOperationResult setRobot(const RobotVisualModel& visuals, const CadLoadResult& shapes,
                 const DrawingPose& pose);
   ViewportOperationResult applyTransforms(const DrawingPose& pose);

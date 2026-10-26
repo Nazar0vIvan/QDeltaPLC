@@ -58,12 +58,10 @@ public:
   std::optional<std::pair<V6d, ChamferMotionPhase>> evaluateJoints(double seconds) const;
 
 private:
-  // Source curve, robot calibration and complete point/range data define a motion.
   ChamferMotion(const ChamferPath& path, const ChamferRobotSetup& robot,
                 QVector<ChamferJointPoint> points, const std::array<qsizetype, 8>& boundaries);
   void setCentralMotion(ChamferCentralMotion motion);
   QString preparePlaybackSplines();
-  QString prepareJointSpline(qsizetype first, qsizetype last);
   ChamferPathParameters m_parameters;
   ChamferRobotSetup m_robot;
   QVector<ChamferJointPoint> m_points;

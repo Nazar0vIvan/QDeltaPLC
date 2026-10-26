@@ -258,12 +258,13 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Publish only complete motions. Insert a successful replacement before removing its old object,
   preserving name/visibility. Wait for remaining workers at shutdown.
 - Saved paths own immutable geometry/model/TCP/settings snapshots and survive source deletion.
-  Model or TCP calibration changes invalidate playback until regeneration. Preserve pause/resume,
+  Robot model or TCP transform changes invalidate playback until regeneration. Preserve pause/resume,
   Stop-to-HOME, completion-at-HOME and cleanup on readiness loss, mode change or path deletion.
   Selection cannot replace running motion; block generation during playback.
 - Generate has no profiling command or timing/statistics output. Central validation and RSI sampling share
-  ChamferTcpSolver (chamfertcpsolver.h) for checked TCP IK; LIN transfers use the plain Kr10Kinematics. After a
-  Generate worker finishes, SceneMachining logs one console line: point count and movement seconds, or
+  ChamferTcpSolver (chamfertcpsolver.h) for checked TCP IK; LIN transfers use its solveLinear (plain seeded
+  Kr10Kinematics IK, flange and TCP residual checks), not solveTcp. Shared PTP/LIN/joint-spline numerics live
+  in src/trajectories/motion/jointsegments. After a Generate worker finishes, SceneMachining logs one console line: point count and movement seconds, or
   the error. The candidate's last error string remains the UI error. Keep inverse-map knots,
   animation points and RSI samples distinct.
 - Before RSI edits, read resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md, then chamferrsistream,
@@ -334,7 +335,7 @@ modules when changing registration, module names or resources.
   errors. Keep explanations in documentation/chat.
 - Measuring EE/Machining EE settings open in the right Properties area; Close restores object
   properties. End-effector numeric fields display four decimals and accept at most four fractional
-  digits. Read-only ER rounding does not change stored calibration.
+  digits. Read-only ER rounding does not change the stored ER transform.
 - Use implicitWidth/implicitHeight for natural preferred size; preserve useful inherited sizing.
   Before overriding styled Controls, inspect contentItem/background sizes, padding and insets.
   Item wrappers may need their own implicit size.

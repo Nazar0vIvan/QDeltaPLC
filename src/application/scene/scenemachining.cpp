@@ -1,11 +1,9 @@
 #include "scenemachining.h"
-#include "robot/robotcontroller.h"
 
 #include <utility>
 #include <QDebug>
 #include <algorithm>
 #include <chrono>
-#include <QCoreApplication>
 
 SceneMachiningSettings SceneMachiningSettings::fromMotion(const ChamferMotion& motion)
 {
@@ -63,10 +61,10 @@ std::optional<ChamferTimingParameters> SceneMachiningSettings::timing() const
   return result;
 }
 
-SceneMachining::SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, QObject* parent)
-  : QObject(parent), m_scene(scene), m_effectors(effectors)
+SceneMachining::SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, ScenePlayback* playback)
+  : m_scene(scene), m_effectors(effectors), m_playback(playback)
 {
-  connect(effectors, &SceneEndEffectors::spindleTcpChanged, this, &SceneMachining::calibrationChanged);
+  connect(effectors, &SceneEndEffectors::spindleTcpChanged, this, &SceneMachining::robotSetupChanged);
   connect(scene, &SceneModel::objectRemoved, this, &SceneMachining::onObjectRemoved);
   connect(scene, &SceneModel::objectAdded, this, &SceneMachining::onObjectAdded);
   connect(scene, &SceneModel::objectVisibilityChanged, this, &SceneMachining::synchronizeDraftAxis);
@@ -75,10 +73,10 @@ SceneMachining::SceneMachining(SceneModel* scene, SceneEndEffectors* effectors, 
   connect(this, &SceneMachining::availabilityChanged, this, &SceneMachining::synchronizeDraftAxis);
   m_calculationTimer.setInterval(30);
   connect(&m_calculationTimer, &QTimer::timeout, this, &SceneMachining::finishCalculation);
-  m_timer.setInterval(16);
-  m_timer.setTimerType(Qt::PreciseTimer);
-  connect(&m_timer, &QTimer::timeout, this, &SceneMachining::advancePlayback);
-  connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, this, &SceneMachining::endPlayback);
+  connect(playback, &ScenePlayback::stateChanged, this, &SceneMachining::availabilityChanged);
+  connect(playback, &ScenePlayback::failed, this, &SceneMachining::onPlaybackFailed);
+  connect(playback, &ScenePlayback::robotModelChanged, this, &SceneMachining::applyRobotModel);
+  connect(playback, &ScenePlayback::robotAvailabilityChanged, this, &SceneMachining::refreshCompatibility);
 }
 
 void SceneMachining::setSettings(const SceneMachiningSettings& settings)
@@ -134,9 +132,9 @@ std::optional<ChamferPathParameters> SceneMachining::sourceParameters() const
 QString SceneMachining::unavailableReason() const
 {
   if (m_calculating) return tr("Calculating trajectory…");
-  if (playbackActive()) return tr("Stop Dry Run before generating a trajectory.");
-  if (!m_model || !m_robotAvailable) return tr("Robot preview is not ready.");
-  if (!m_effectors->spindleTcpFrame()) return tr("Apply the spindle TCP calibration first.");
+  if (m_playback->active()) return tr("Stop Dry Run before generating a trajectory.");
+  if (!m_playback->robotModel() || !m_playback->robotAvailable()) return tr("Robot preview is not ready.");
+  if (!m_effectors->spindleTcpFrame()) return tr("Apply the spindle TCP first.");
   if (!sourceParameters()) return tr("Select an intersection edge with its source plane and cylinder, or a generated machining path.");
   return {};
 }
@@ -170,7 +168,7 @@ void SceneMachining::generate()
   const auto path = ChamferPath::create(m_settings.applyTo(*source));
   if (!path.path) { setError(path.error); return; }
   ChamferRobotSetup robot;
-  robot.model = *m_model;
+  robot.model = *m_playback->robotModel();
   robot.flangeToTcp = *m_effectors->spindleTcpFrame();
   robot.timing = *timing;
   m_calculationInputId = m_inputId;
@@ -203,7 +201,7 @@ void SceneMachining::finishCalculation()
     qInfo().noquote() << "Chamfer preparation failed:" << result.error;
   const auto* previous = m_scene->findObject(m_calculationInputId);
   if (!previous || m_inputId != m_calculationInputId || m_revision != m_calculationRevision
-      || !m_robotAvailable || !sourceParameters()) {
+      || !m_playback->robotAvailable() || !sourceParameters()) {
     setError(tr("Scene or robot configuration changed. Generate again."));
     setCalculating(false);
     return;
@@ -236,34 +234,19 @@ void SceneMachining::finishCalculation()
   setCalculating(false);
 }
 
-void SceneMachining::setRobotModel(const RoboCrap3D::Kr10KinematicModel& model)
+void SceneMachining::applyRobotModel()
 {
-  m_model = model;
   auto settings = m_settings;
   settings.jointSpeed.clear();
-  for (const auto& joint : model.joints)
+  for (const auto& joint : m_playback->robotModel()->joints)
     settings.jointSpeed.append(joint.ratedPayloadSpeedDegreesPerSecond);
   setSettings(settings);
-  calibrationChanged();
+  robotSetupChanged();
 }
 
-void SceneMachining::setRobotController(RoboCrap3D::RobotController* controller)
+void SceneMachining::robotSetupChanged()
 {
-  Q_ASSERT(!controller || controller->thread() == thread());
-  m_robotController = controller;
-}
-
-void SceneMachining::setRobotAvailable(bool available)
-{
-  if (m_robotAvailable == available) return;
-  if (!available) endPlayback();
-  m_robotAvailable = available;
-  refreshCompatibility();
-}
-
-void SceneMachining::calibrationChanged()
-{
-  endPlayback();
+  if (ownsPlayback()) m_playback->end();
   ++m_revision;
   refreshCompatibility();
 }
@@ -279,9 +262,9 @@ void SceneMachining::updateCompatibility(SceneObject* object)
   auto* path = qobject_cast<SceneMachiningPath*>(object->geometry());
   if (!path) return;
   QString reason;
-  if (path->data().calibrationRevision != m_revision)
-    reason = tr("Robot or TCP calibration changed. Regenerate this trajectory.");
-  else if (!m_robotAvailable) reason = tr("Robot preview is not ready.");
+  if (path->data().robotSetupRevision != m_revision)
+    reason = tr("Robot model or TCP changed. Regenerate this trajectory.");
+  else if (!m_playback->robotAvailable()) reason = tr("Robot preview is not ready.");
   path->setIncompatibility(reason);
 }
 
@@ -293,7 +276,6 @@ void SceneMachining::onObjectAdded(SceneObject* object)
 
 void SceneMachining::onObjectRemoved(quint32 id)
 {
-  if (m_activePathId == id) endPlayback();
   if (m_inputId == id) setInputId(0);
   else emit availabilityChanged();
 }
@@ -305,109 +287,39 @@ void SceneMachining::setError(const QString& error)
   emit errorChanged();
 }
 
+const SceneMachiningPath* SceneMachining::machiningPath(quint32 id) const
+{
+  const auto* object = m_scene->findObject(id);
+  return object ? qobject_cast<const SceneMachiningPath*>(object->geometry()) : nullptr;
+}
+
+bool SceneMachining::ownsPlayback() const
+{
+  return m_playback->active() && machiningPath(m_playback->ownerId());
+}
+
+void SceneMachining::onPlaybackFailed(quint32 ownerId, const QString& error)
+{
+  if (machiningPath(ownerId)) setError(error);
+}
+
 bool SceneMachining::canPlay() const
 {
-  if (m_calculating || m_playing || !m_robotAvailable) return false;
-  if (playbackActive()) return true;
-  const auto* object = m_scene->findObject(m_inputId);
-  const auto* path = object ? qobject_cast<const SceneMachiningPath*>(object->geometry()) : nullptr;
+  if (m_calculating || m_playback->playing() || !m_playback->robotAvailable()) return false;
+  if (m_playback->active()) return ownsPlayback();
+  const auto* path = machiningPath(m_inputId);
   return path && path->compatible();
 }
 
 void SceneMachining::dryRun()
 {
   if (!canPlay()) { setError(tr("Select a compatible machining path before Dry Run.")); return; }
-  if (!m_robotController) {
-    setError(tr("Robot presentation is not connected."));
-    return;
-  }
-  if (playbackActive()) {
-    m_resumeTime = m_elapsed;
-    m_playing = true;
-    m_clock.start();
-    m_timer.start();
-    emit playbackChanged();
-    emit availabilityChanged();
-    return;
-  }
-  const auto* path = qobject_cast<const SceneMachiningPath*>(m_scene->findObject(m_inputId)->geometry());
-  m_activeMotion = path->data().motion;
-  m_activePathId = m_inputId;
-  m_duration = m_activeMotion->duration();
-  m_elapsed = 0.0;
-  m_resumeTime = 0.0;
-  m_playing = true;
+  if (m_playback->active()) { m_playback->resume(); return; }
   setError({});
-  emit availabilityChanged();
-  if (!presentPlayback(0.0)) return;
-  m_clock.start();
-  m_timer.start();
-}
-
-void SceneMachining::endPlayback()
-{
-  if (!playbackActive()) return;
-  m_timer.stop();
-  m_playing = false;
-  m_activeMotion.reset();
-  m_activePathId = 0;
-  emit playbackChanged();
-  emit availabilityChanged();
-}
-
-void SceneMachining::failPlayback(const QString& error)
-{
-  endPlayback();
-  setError(error);
-}
-
-bool SceneMachining::presentPlayback(double seconds)
-{
-  if (!m_robotController) { failPlayback(tr("Robot presentation is not connected.")); return false; }
-  // Readiness/pose notifications may release the active motion during the returned operation.
-  const auto motion = m_activeMotion;
-  const auto pose = motion->evaluateJoints(seconds);
-  if (!pose) { failPlayback(tr("Cannot evaluate the saved trajectory.")); return false; }
-  const auto& [joints, phase] = *pose;
-  const auto result = m_robotController->applyPlayback(joints, motion->robot().flangeToTcp);
-  if (!result.accepted) { failPlayback(result.error); return false; }
-  if (!playbackActive()) return false;
-  m_elapsed = seconds;
-  switch (phase) {
-  case ChamferMotionPhase::Approach: m_phase = tr("HOME to P_s"); break;
-  case ChamferMotionPhase::TransferIn: m_phase = tr("P_s to lead-in"); break;
-  case ChamferMotionPhase::LeadIn: m_phase = tr("Lead-in"); break;
-  case ChamferMotionPhase::Machining: m_phase = tr("Machining"); break;
-  case ChamferMotionPhase::LeadOut: m_phase = tr("Lead-out"); break;
-  case ChamferMotionPhase::TransferOut: m_phase = tr("Lead-out to P_s"); break;
-  case ChamferMotionPhase::ReturnHome: m_phase = tr("Return HOME"); break;
-  }
-  emit playbackChanged();
-  return true;
-}
-
-void SceneMachining::advancePlayback()
-{
-  if (!m_playing) return;
-  const double seconds = std::min(m_duration, m_resumeTime + m_clock.nsecsElapsed() / 1.0e9);
-  if (presentPlayback(seconds) && seconds >= m_duration) endPlayback();
-}
-
-void SceneMachining::pause()
-{
-  if (!m_playing) return;
-  advancePlayback();
-  if (!playbackActive()) return;
-  m_timer.stop();
-  m_playing = false;
-  emit playbackChanged();
-  emit availabilityChanged();
+  m_playback->start(machiningPath(m_inputId)->data().motion, m_inputId);
 }
 
 void SceneMachining::stop()
 {
-  if (!playbackActive()) return;
-  m_timer.stop();
-  if (m_robotAvailable) (void)presentPlayback(0.0);
-  endPlayback();
+  if (ownsPlayback()) m_playback->stop();
 }

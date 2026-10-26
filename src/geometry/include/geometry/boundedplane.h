@@ -24,7 +24,6 @@ public:
   static std::optional<BoundedPlane> fromSamples(ProbeSamples samples);
 
 private:
-  // A fitted plane consists of samples, coefficients, its origin/width axis and bounds.
   BoundedPlane(QVector<V3d> points, const std::array<double, 4>& coefficients,
                const std::array<Point, 2>& frame, const std::array<double, 2>& bounds);
   bool applyProbe(double radius, int dir);

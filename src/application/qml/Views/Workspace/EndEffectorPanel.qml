@@ -16,12 +16,13 @@ QxPanel {
   required property bool colletVisible
   signal closeRequested()
   signal posesRequested(var colletValues, var tcpValues)
+  signal measuringTcpRequested(var tcpValues)
   signal tcpVisibilityRequested(bool visible)
   signal colletVisibilityRequested(bool visible)
 
   property list<string> colletDrafts: []
   property list<string> drafts: []
-  readonly property bool validDraft: root.validPoseDraft(root.colletDrafts)
+  readonly property bool validDraft: (root.measuring || root.validPoseDraft(root.colletDrafts))
                                     && root.validPoseDraft(root.drafts)
 
   function validPoseDraft(values) {
@@ -157,8 +158,7 @@ QxPanel {
       }
       Label {
         Layout.fillWidth: true
-        visible: !root.measuring
-        text: qsTr("TCP pose relative to ER")
+        text: root.measuring ? qsTr("Ruby ball centre relative to flange") : qsTr("TCP pose relative to ER")
         wrapMode: Text.Wrap
         font: Fonts.caption
         color: Colors.foreground.medium
@@ -169,7 +169,6 @@ QxPanel {
           id: coordinate
           required property int index
           Layout.fillWidth: true
-          visible: !root.measuring
           labelWidth: Metrics.sp24
           labelText: ["X", "Y", "Z", "A", "B", "C"][coordinate.index]
           QxTextInput {
@@ -214,12 +213,14 @@ QxPanel {
       RowLayout {
         Layout.fillWidth: true
         QxButton {
-          visible: !root.measuring
           text: qsTr("Apply")
           enabled: root.validDraft
-          // ER fields are read-only: display rounding must not alter calibration.
-          onClicked: root.posesRequested(root.colletPose,
-                                         root.drafts.map(value => Number(value)))
+          onClicked: {
+            const values = root.drafts.map(value => Number(value))
+            if (root.measuring) root.measuringTcpRequested(values)
+            // ER fields are read-only: display rounding must not alter the stored ER transform.
+            else root.posesRequested(root.colletPose, values)
+          }
         }
         QxButton {
           text: qsTr("Close")

@@ -23,7 +23,6 @@ public:
   static std::optional<BoundedCylinder> fromSamples(ProbeSamples samples);
 
 private:
-  // Samples, axis frame and radius/length define a fitted cylinder.
 	BoundedCylinder(QVector<V3d> points, const std::array<Point, 2>& frame, const std::array<double, 2>& dimensions);
   bool applyProbe(double radius, int dir);
   QVector<V3d> m_points{};

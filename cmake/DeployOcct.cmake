@@ -9,6 +9,7 @@ if(NOT DEFINED ROBOCRAP_DEPLOY_CONFIG)
     file(GENERATE OUTPUT "${deploy_config}" CONTENT
 "set(occt_prefix [==[${occt_prefix}]==])
 set(cad_source [==[${PROJECT_SOURCE_DIR}/resources/cad/kr10]==])
+set(calibration_source [==[${PROJECT_SOURCE_DIR}/resources/json/calibration_sphere.json]==])
 set(runtime_search [==[${OCCT_RUNTIME_SEARCH_DIRS}]==])
 set(objdump [==[${CMAKE_OBJDUMP}]==])
 set(runtime_roots
@@ -72,3 +73,10 @@ file(COPY "${occt_prefix}/share/opencascade/resources/"
   DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/occt")
 file(COPY "${occt_prefix}/share/doc/opencascade/LICENSE_LGPL_21.txt"
   DESTINATION "${ROBOCRAP_DEPLOY_DEST}/licenses/occt")
+
+# The deployed sphere file is edited in place and later refined; never overwrite it.
+set(calibration_target "${ROBOCRAP_DEPLOY_DEST}/resources/json/calibration_sphere.json")
+if(EXISTS "${calibration_source}" AND NOT EXISTS "${calibration_target}")
+  file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/json")
+  file(COPY "${calibration_source}" DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/json")
+endif()

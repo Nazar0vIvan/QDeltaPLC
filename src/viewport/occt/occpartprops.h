@@ -7,7 +7,6 @@
 
 namespace RoboCrap3D {
 
-// Three byte-valued color channels form one RGB color.
 inline Quantity_Color rgb(int r, int g, int b)
 {
   return Quantity_Color(
@@ -28,8 +27,11 @@ struct OccPartProps
   OccSelectionMode selectionMode = OccSelectionMode::None;
   bool wireframe = false;
   bool topmost = false;
+  // Face edges drawn in black, and as the selection outline; off for faces bounded only by seams.
+  bool faceBoundary = true;
   double markerSize = 0.0;
   double lineWidth = 0.0;
+  double transparency = 0.0;
 };
 
 } // namespace RoboCrap3D
