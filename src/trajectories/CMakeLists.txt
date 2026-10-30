@@ -1,6 +1,11 @@
 qt_add_library(RoboCrapTrajectories STATIC
   motion/jointsegments.h
   motion/jointsegments.cpp
+  include/trajectories/timedmotion.h
+  motion/timedmotion.cpp
+  motion/tcpsolver.h
+  motion/motionbuilder.h
+  motion/motionbuilder.cpp
   include/trajectories/chamferpath.h
   chamfer/chamferpath.cpp
   include/trajectories/chamferarclength.h
@@ -9,7 +14,6 @@ qt_add_library(RoboCrapTrajectories STATIC
   chamfer/chamfercentralmotion.cpp
   chamfer/chamfercentralvalidation.h
   chamfer/chamfercentralvalidation.cpp
-  chamfer/chamfertcpsolver.h
   include/trajectories/chamfermotion.h
   chamfer/chamfermotion.cpp
   include/trajectories/chamferrsistream.h

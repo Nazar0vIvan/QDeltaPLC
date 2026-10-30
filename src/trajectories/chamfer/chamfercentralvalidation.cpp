@@ -1,7 +1,5 @@
 #include "chamfercentralvalidation.h"
 
-#include "chamfertcpsolver.h"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -9,11 +7,8 @@
 
 namespace {
 
-using namespace RoboCrap3D;
 constexpr qsizetype MaximumSamples = 200000;
 constexpr double PreviewPositionTolerance = 0.01; // mm; Cartesian chord criterion only.
-constexpr double RateStep = 1e-4;
-constexpr double RateTolerance = 1e-6;
 
 bool positiveFinite(double value)
 {
@@ -165,141 +160,13 @@ PreviewSchedule makePreviewSchedule(const ChamferPath& path, const ChamferCentra
       if (!(duration / intervals > 1e-9))
         return {{}, 0, QStringLiteral("Preview geometric interval is below time resolution.")};
       schedule.spans.append({stops[part - 1], stops[part], intervals,
-          index == 0 ? QStringLiteral("leadIn") : index == 1 ? QStringLiteral("machining")
-                                                           : QStringLiteral("leadOut")});
+          index == 0 ? QStringLiteral("Lead-in") : index == 1 ? QStringLiteral("Machining")
+                                                            : QStringLiteral("Lead-out")});
       schedule.points += intervals;
     }
   }
   return schedule;
 }
-
-struct SampleResult
-{
-  std::optional<ChamferCentralJointSample> sample;
-  QString error;
-};
-
-struct Rates
-{
-  V6d joints = V6d::Zero();
-  V3d xyz = V3d::Zero();
-  double seconds = 0.0;
-};
-
-class CentralValidator
-{
-public:
-  // Borrow the Generate worker's immutable inputs; this solver never outlives them.
-  CentralValidator(const ChamferCentralPreparation& preparation, const ChamferRobotSetup& robot)
-    : m_preparation(preparation), m_robot(robot), m_solver(robot) {}
-
-  ChamferCentralValidationResult run(const Kr10Kinematics::IkSolution& seed)
-  {
-    m_samples.reserve(m_preparation.plannedSamples());
-    const auto first = sample(0.0, seed);
-    if (!first.sample) return {{}, atTime(first.error, 0.0)};
-    m_samples.append(*first.sample);
-    for (const auto& span : m_preparation.spans()) {
-      QString error;
-      double time = span.start;
-      for (int index = 1; index <= span.intervals; ++index) {
-        time = index == span.intervals ? span.end
-            : span.start + (span.end - span.start) * (double(index) / span.intervals);
-        error = appendPoint(time);
-        if (!error.isEmpty()) break;
-      }
-      if (!error.isEmpty())
-        return {{}, span.phase + QStringLiteral(": ") + atTime(error, time)};
-    }
-    const QString error = inspectRates();
-    if (!error.isEmpty()) return {{}, error};
-    return {ChamferCentralValidationData{std::move(m_samples)}, {}};
-  }
-
-private:
-  QString atTime(const QString& error, double time) const
-  {
-    return QStringLiteral("%1 (central t=%2 s)").arg(error).arg(time, 0, 'g', 12);
-  }
-
-  SampleResult sample(double time, const Kr10Kinematics::IkSolution& seed)
-  {
-    const auto target = m_preparation.evaluateTarget(m_samples.size(), time);
-    if (!target) return {{}, QStringLiteral("Cannot evaluate prescribed TCP target.")};
-    const auto inverse = m_solver.solveTcp(target->tcp, seed);
-    if (!inverse.solution) return {{}, inverse.error};
-    return {ChamferCentralJointSample{time, *target, *inverse.solution, inverse.actualTcp}, {}};
-  }
-
-  QString appendPoint(double time)
-  {
-    const auto& previous = m_samples.back();
-    const double step = time - previous.time;
-    if (!(step > 1e-9)) return QStringLiteral("Preview timestamps lost numerical resolution.");
-    const auto current = sample(time, previous.solution);
-    if (!current.sample) return current.error;
-    const QString error = chamferJointSpeedError(
-        (current.sample->solution.q - previous.solution.q) / step, m_robot.timing.jointSpeed);
-    if (!error.isEmpty()) return error;
-    m_samples.append(*current.sample);
-    return {};
-  }
-
-  QString accelerationError(const Rates& before, const Rates& after) const
-  {
-    const double elapsed = 0.5 * (before.seconds + after.seconds);
-    if (!(elapsed > 0.0)) return QStringLiteral("Unresolved acceleration interval.");
-    const V6d acceleration = (after.joints - before.joints) / elapsed;
-    const V3d xyz = (after.xyz - before.xyz) / elapsed;
-    if (!acceleration.allFinite() || !xyz.allFinite()) return QStringLiteral("Nonfinite sampled acceleration.");
-    // Temporary Dry Run diagnostic: per-joint acceleration rejection disabled.
-    // for (int axis = 0; axis < 6; ++axis)
-    //   if (std::abs(acceleration[axis]) > m_robot.timing.jointAcceleration[axis] * (1.0 + RateTolerance))
-    //     return QStringLiteral("A%1 acceleration %2 deg/s^2 exceeds configured simulation bound %3.")
-    //         .arg(axis + 1).arg(std::abs(acceleration[axis]), 0, 'g', 12)
-    //         .arg(m_robot.timing.jointAcceleration[axis]);
-    if (xyz.norm() > m_robot.timing.cartesianAcceleration * (1.0 + RateTolerance))
-      return QStringLiteral("XYZ acceleration %1 mm/s^2 exceeds configured simulation bound %2.")
-          .arg(xyz.norm(), 0, 'g', 12).arg(m_robot.timing.cartesianAcceleration);
-    return {};
-  }
-
-  QString inspectRates() const
-  {
-    qsizetype anchor = 0;
-    Rates previous; // Rest at t=0; interval velocities are located at their midpoints.
-    for (qsizetype index = 1; index < m_samples.size(); ++index) {
-      const auto& last = m_samples[index];
-      const auto& first = m_samples[anchor];
-      const bool terminal = index == m_samples.size() - 1;
-      const double step = last.time - first.time;
-      if (!terminal && (step < RateStep || m_preparation.motion().duration() - last.time < RateStep)) continue;
-      if (!(step >= RateStep)) return QStringLiteral("Central motion is too short for resolved rate validation.");
-      Rates current;
-      current.seconds = step;
-      current.joints = (last.solution.q - first.solution.q) / step;
-      current.xyz = (last.target.tcp.block<3, 1>(0, 3) - first.target.tcp.block<3, 1>(0, 3)) / step;
-      if (!current.xyz.allFinite())
-        return atTime(QStringLiteral("Nonfinite sampled velocity."), last.time);
-      // Adjacent secants were checked in appendPoint; grouped secants are new results.
-      if (index > anchor + 1) {
-        const QString speedError = chamferJointSpeedError(current.joints, m_robot.timing.jointSpeed);
-        if (!speedError.isEmpty()) return atTime(speedError, last.time);
-      }
-      const QString error = accelerationError(previous, current);
-      if (!error.isEmpty()) return atTime(error, last.time);
-      previous = current;
-      anchor = index;
-    }
-    const QString stop = accelerationError(previous, Rates{});
-    return stop.isEmpty() ? QString{} : atTime(stop, m_preparation.motion().duration());
-  }
-
-  const ChamferCentralPreparation& m_preparation;
-  const ChamferRobotSetup& m_robot;
-  ChamferTcpSolver m_solver;
-  QVector<ChamferCentralJointSample> m_samples;
-};
 
 } // namespace
 
@@ -325,16 +192,6 @@ QString ChamferCentralPreparation::prepare()
   return m_error;
 }
 
-ChamferCentralValidationResult ChamferCentralPreparation::validate(const ChamferRobotSetup& robot,
-                                                                  const Kr10Kinematics::IkSolution& initialSeed)
-{
-  const QString error = chamferJointPositionError(initialSeed.q, robot.model);
-  if (!error.isEmpty()) return {{}, QStringLiteral("Invalid initial IK seed: %1").arg(error)};
-  const QString preparationError = prepare();
-  if (!preparationError.isEmpty()) return {{}, preparationError};
-  return CentralValidator(*this, robot).run(initialSeed);
-}
-
 std::optional<ChamferCentralPose> ChamferCentralPreparation::evaluateTarget(qsizetype index,
                                                                          double seconds) const
 {
@@ -344,4 +201,30 @@ std::optional<ChamferCentralPose> ChamferCentralPreparation::evaluateTarget(qsiz
   const auto target = m_motion->evaluate(seconds);
   m_targets.append(target); // A failed target remains at this exact scheduled index.
   return target;
+}
+
+PathSchedule CentralPath::schedule() const
+{
+  PathSchedule result;
+  const auto& spans = m_preparation.spans();
+  result.times.reserve(m_preparation.plannedSamples() - 1);
+  for (qsizetype index = 0; index < spans.size(); ++index) {
+    const auto& span = spans[index];
+    for (int point = 1; point <= span.intervals; ++point)
+      result.times.append(point == span.intervals ? span.end
+          : span.start + (span.end - span.start) * (double(point) / span.intervals));
+    if (index + 1 == spans.size() || spans[index + 1].phase != span.phase)
+      result.phases.append(std::pair<qsizetype, QString>{result.times.size(), span.phase});
+  }
+  return result;
+}
+
+std::optional<PathTarget> CentralPath::target(qsizetype index, double seconds) const
+{
+  const auto pose = m_preparation.evaluateTarget(index, seconds);
+  if (!pose) return std::nullopt;
+  // The shared point at a phase end belongs to the ending phase.
+  const auto& times = m_preparation.motion().phaseTimes();
+  const bool phaseEnd = seconds == times[1] || seconds == times[2] || seconds == times[3];
+  return PathTarget{pose->tcp, phaseEnd ? 1.0 : pose->progress};
 }

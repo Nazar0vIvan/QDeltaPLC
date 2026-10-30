@@ -165,6 +165,18 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   only: on a λ = −10° chord between longitudes 30° apart (29.53°, 8.666 mm long) the stored
   points nearest the middle are the ends of the 2.5 mm ramps, 2.5404 mm outside the contact shell,
   while the unstored chord middle is 2.4385 mm outside it.
+- [x] (2026-10-26) CIRC transfers (user request after the first Dry Run): every transfer between
+  consecutive start points is one arc on the start shell instead of 1–3 chords. Recorded in "The
+  touch geometry", Milestone 5 and the Decision Log before the code edit. The user built it and
+  reported all checks as passed (2026-10-26).
+  Line counts, physical/nonblank. C++ before: jointsegments.h 109/92, jointsegments.cpp 308/287,
+  probetouchplan.h 53/44, probetouchplan.cpp 112/99, probetouchmotion.cpp 241/219, total 823/741;
+  after: 118/101, 336/313, 52/43, 92/80, 242/220, total 840/757 (+17/+16). The arc fields, the
+  arc branch of `target`, `circularProfile`, the extracted `timedProfile` and the normal term of
+  `linearSchedule` replace `transferPoses`, `ProbeTouch::transfer`, `ProbeMaximumChordDegrees` and
+  the chord clearance bound. Compliance: `circularProfile(chord, centre)` and `timedProfile(profile)`
+  have two and one parameters; no lambdas, templates or exceptions; chamfer LIN arithmetic is
+  unchanged because its arc angle is 0 and the normal term is exactly 0.
 - [x] (2026-10-26) Milestone 6 implemented (completed): `ScenePlayback` plays a
   `PlaybackMotion` variant of the chamfer and the probe motion, and `SceneCalibration` has
   `canPlay`, `dryRun`, playback ownership, failure reporting and Stop when leaving the submode;
@@ -180,9 +192,29 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   Compliance pass: no lambdas, templates, exceptions or output parameters; `std::variant` and the
   `PlaybackMotion` alias use the standard template without a project template; `start` keeps two
   parameters, `onPlaybackFailed` has two, the other new members none.
-- [ ] Milestone 6 acceptance: the user builds `robocrap` and `robocrap_qmllint` and runs the
-  Dry Run scenario of Milestone 6.
-- [ ] Milestone 7: documentation and contract updates, compliance pass, line counts.
+- [x] (2026-10-26) Milestone 6 acceptance: the user built `robocrap` and `robocrap_qmllint`, ran
+  the Dry Run scenario of Milestone 6 with the CIRC transfers and reported all checks as passed.
+- [x] (2026-10-26) Milestone 7 (completed, before the user's Milestone 6 checks at the user's
+  request "let's finish calibration plan"): `docs/AGENT_CONTRACTS.md` (Build and modules:
+  singletons, construction order, copy-if-absent sphere file; Viewport and CAD: sphere parts,
+  transparent highlight, model published to `ScenePlayback`; Geometry and scene: measuring TCP,
+  sphere and calibration path objects, `fitSphere`, sphere file, Calibration visibility;
+  Machining and playback: `ScenePlayback`, constant-speed LIN, CIRC, splines, `ratedRobotSetup`,
+  calibration path invalidation, console line, calibration Generate; QML: Calibration toolbar,
+  status and Scene panel), `docs/ARCHITECTURE.md` (3.1 `spherefit`, 3.2 `ScenePlayback` and
+  `SceneCalibration`, 3.3 shared numerics and probe plan/motion, 3.5 sphere parts, 3.6 status bar,
+  submodes, Calibration tools and panels, resources, 4 threads and ownership, 5.1, 5.2 Dry Run
+  through `ScenePlayback`, 5.4 shutdown order, new 5.5 calibration trace, 6 workers, 7 open
+  calibration clearance question) and `docs/APP_DESCRIPTION.md` (CIRC term, measuring TCP, the
+  Calibration workflow step). Documentation lines: AGENT_CONTRACTS.md 361 to 401,
+  ARCHITECTURE.md 410 to 426, APP_DESCRIPTION.md 82 to 97.
+  Compliance pass over every C++ file changed by Milestones 1–7 (jointsegments, chamfertcpsolver,
+  chamfermotion, probetouchplan, probetouchmotion, spherefit, sceneplayback, scenecalibration,
+  sceneobject, scenemodel, scenegeometry, sceneendeffectors, workspacecontroller, robotcontroller,
+  main): no lambdas, project templates, throw/catch or output parameters (text search plus the
+  per-milestone reviews recorded above); no signature with four parameters; the three-parameter
+  signatures are recorded with their reasons (Milestone 1 reductions, `SceneCalibration`,
+  `setSphereDisplay`, `linearProfile`, `solveLinear`). No findings required a fix.
 
 
 ## Surprises & Discoveries
@@ -544,6 +576,20 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   Rationale: (1)–(2) add no type or text table; (3) gives the playback status a place in the
   Calibration layout without a new panel or layout change; (4) keeps the existing rule.
   Date/Author: 2026-10-26, agent.
+- Decision: every transfer between consecutive start points is one CIRC on the start shell;
+  `LinearProfile` gains the arc (`circularProfile`) instead of a separate profile type, and the
+  transfer waypoints (`ProbeTouch::transfer`, `transferPoses`, `ProbeMaximumChordDegrees`) are
+  removed. The transfer clearance rule becomes g − 0.0001 mm.
+  Rationale: the user saw the 2- and 3-chord transfers stop at their waypoints and asked for a
+  smoother, planar transfer (2026-10-26). A chord between two start points always comes closer
+  to the sphere than g (2.44 mm in the middle of a 29.53° chord); the arc keeps 3 mm, has no
+  intermediate stop and lies in one plane. A general SPLINE was considered and rejected for now:
+  the robot stops at every start point for the touches anyway, and a spline needs construction,
+  arc-length reparametrization and orientation interpolation without a current requirement. The
+  rerun of the scratch sequence with arcs (2026-10-26) keeps the IK, |A5| ≥ 48.3°, the joint
+  speeds and the probe clearances of the chord version. A unified PTP/LIN/CIRC/curve motion
+  module is a separate later plan (user, 2026-10-26).
+  Date/Author: 2026-10-26, user (request) and agent (mechanism).
 - Decision: `ScenePlayback` has two notification signals: `stateChanged` for start, resume, pause
   and end (properties `active`, `playing`, `duration`) and `playbackChanged` for every presented
   time (`elapsed`, `phase`). `SceneMachining::availabilityChanged` follows `stateChanged` only.
@@ -561,6 +607,15 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
 
 
 ## Outcomes & Retrospective
+
+Plan outcome (2026-10-26): Calibration submode, sphere fit and drawing, measuring TCP, the 31-touch
+ring-scan touch plan and motion (CIRC transfers, constant-speed touches, one wrist unwind) and its
+Dry Run are implemented; chamfer behavior is unchanged (Milestone 1 baseline). C++ grew by about
+1340 physical lines over the plan (Milestones 1–6 and CIRC as recorded in Progress), QML by about
+50. All milestone checks passed (user, 2026-10-26). Open: the table and
+strut-base height for the wrist unwind swing (about 211 mm below the sphere centre); the real
+touch, RSI streaming and ball-centre least-squares solution belong to later plans, and a unified
+PTP/LIN/CIRC/curve motion module to its own plan (user, 2026-10-26).
 
 Milestone 1 (2026-10-25): the PTP, LIN and joint-spline operations are shared through
 `src/trajectories/motion/jointsegments` and `ChamferTcpSolver`, and chamfer Generate reproduces
@@ -676,7 +731,7 @@ Fixed inputs (constants in code unless noted): the fitted sphere centre c (mm, {
 sphere file); sphere radius r_s = 12.5 mm and ruby ball radius r_b = 1.5 mm, so the contact
 distance is d = r_s + r_b = 14 mm; approach gap g = 3 mm, so every start position lies on the
 start shell of radius d + g = 17 mm around c; approach feed v = 1 mm/s; entry height h_e = 60 mm;
-exit distance h_x = 42 mm; largest transfer chord angle γ_max = 30°; roll ψ = 30°; and the strut
+exit distance h_x = 42 mm; roll ψ = 30°; and the strut
 that holds the sphere (sphere file keys `strutDiameter` 17.8 mm and `strutRecess` 2 mm): a
 vertical cylinder of radius R_s = 8.9 mm on the axis through c, whose top face lies e = 2 mm above
 the sphere's lowest point, at z_top = c.z − r_s + e = c.z − 10.5 mm, assumed to extend downward
@@ -741,13 +796,15 @@ The motion, in order:
 - Entry: PTP from HOME to the entry pose E with position c + h_e · e_z and the rotation of T1,
   then a LIN of 43 mm straight down from E to p_start of T1.
 - Every touch: Approach, then Retract.
-- Transfer from touch i to touch i + 1: γ_i is the angle between n_i and n_(i+1), and the transfer
-  has K_i = ceil(γ_i / γ_max) chords. Waypoint k = 1 … K_i has the position
-  c + (d + g) · u_k / ‖u_k‖ with u_k = (1 − k / K_i) · n_i + (k / K_i) · n_(i+1), and the rotation
-  slerp(R_i, R_(i+1), k / K_i), where R_i is the rotation of touch i; waypoint K_i is the start
-  pose of touch i + 1. Each chord is one LIN from the preceding waypoint (the first from p_start of
-  touch i). A chord of at most γ_max keeps the ball centre at least (d + g) · cos(γ_max / 2) =
-  16.4207 mm from c, that is 2.4207 mm outside the contact shell. The 30 transfers have 35 chords.
+- Transfer from touch i to touch i + 1: one CIRC, the great-circle arc of the start shell from
+  p_start of touch i to p_start of touch i + 1. γ_i = arccos(n_i · n_(i+1)) is the arc angle and
+  a_i = (n_i × n_(i+1)) / ‖n_i × n_(i+1)‖ the arc axis. At the travelled fraction u ∈ [0, 1] the
+  TCP position is c + (d + g) · (cos(u · γ_i) · n_i + sin(u · γ_i) · (a_i × n_i)) and the rotation
+  slerp(R_i, R_(i+1), u), where R_i is the rotation of touch i. Every transfer point lies exactly
+  d + g = 17 mm from c, g = 3 mm outside the contact shell, in the plane through c, p_start of
+  touch i and p_start of touch i + 1. The KRL analogue is `CIRC` with the auxiliary point
+  c + (d + g) · (n_i + n_(i+1)) / ‖n_i + n_(i+1)‖; the controller's own CIRC orientation control
+  (`$ORI_TYPE`, `$CIRC_TYPE`) differs from the slerp. The largest arc is 66.2° (T17 to T18).
 - Wrist unwind after the Retract of T21 (λ = −10°, μ = 150°): a PTP at p_start of T21 from the
   current joints q to the other wrist configuration of the same TCP pose: A4 − 180° if A4 > 0,
   else A4 + 180°; A5 replaced by −A5; A6 + 180° if A6 < 0, else A6 − 180°. Continuing to T22 with
@@ -757,8 +814,8 @@ The motion, in order:
   position c + h_x · n_31 with the rotation of T31, then a PTP to HOME.
 
 Motion law: Approach and Retract run at the constant speed v = 1 mm/s without acceleration or
-deceleration ramps, 3 s each. Every other LIN uses the trapezoidal profile with `transferFeed`
-10 mm/s and `transferAcceleration` 20 mm/s². PTP segments use the chamfer HOME PTP timing
+deceleration ramps, 3 s each. Every other LIN and every CIRC uses the trapezoidal profile with
+`transferFeed` 10 mm/s and `transferAcceleration` 20 mm/s² along its path length. PTP segments use the chamfer HOME PTP timing
 (`ptpDuration` and the quintic smoothstep).
 
 Scratch results (computed once on 2026-10-26 in the agent's scratch directory with the KR10 model
@@ -766,10 +823,11 @@ of `robotdefinition.cpp`, TOOL_DATA[5] and damped least-squares IK seeded from t
 estimates, not repository code; the entry IK starts on the positive wrist branch, A5 > 0, as the
 project IK does from HOME): every touch pose and every LIN pose sampled 0.25 mm apart lies within
 the joint limits; |A5| ≥ 48.3° throughout; joint speeds stay below 14 % of the rated speeds at
-10 mm/s; on transfers the ball centre stays at least 2.44 mm outside the contact shell; the stylus
+10 mm/s; on the CIRC transfers the ball centre stays 3.0 mm outside the contact shell; the stylus
 stem and probe body stay at least 2.28 mm from the sphere, and the whole probe at least 3.26 mm
 from the strut; during the wrist unwind the probe stays at least 5.5 mm from sphere and strut; the
-movement takes 248.4 s with about 890 stored points. Open: during the wrist unwind the probe
+movement takes 246.2 s with about 947 stored points (2026-10-26 rerun with CIRC transfers; the
+chord transfers gave 248.4 s and 887 points). Open: during the wrist unwind the probe
 swings down to 211 mm below c.z (elsewhere at most 84.5 mm below c.z); the height of the table and
 of the strut base is unknown, and robot links other than the probe are not checked. Retreating
 radially before the unwind does not help: at 42, 80 and 120 mm from c the swing reaches 220, 231
@@ -1084,6 +1142,21 @@ this milestone, remind the user of the movement-time estimate in `Artifacts and 
 open table clearance at the end of "The touch geometry" (the user asked on 2026-10-25 to be
 reminded of the movement-time estimate here).
 
+CIRC. `LinearProfile` gains `V3d centre`, `V3d axis` and `double angle` (rad, 0 for a straight
+LIN). `target(t)` keeps the slerped rotation and, for a nonzero angle, places the TCP at
+centre + AngleAxis(u · angle, axis) · (first position − centre), u = progress(t).
+`std::optional<LinearProfile> circularProfile(const LinearProfile& chord, const V3d& centre)`
+takes the validated straight profile of the same end poses and limits, rejects a nonfinite centre,
+end radii that differ by more than 0.01 mm and nearly coincident or opposite end directions
+(‖from × to‖ ≤ 1e-6 · radius²), sets the axis, angle = atan2(‖from × to‖, from · to) and
+length = radius · angle, and recomputes peak, ramp and cruise with the timing code that
+`linearProfile` uses, extracted into one internal function. `linearSchedule` adds the normal
+acceleration bound peak² · angle / length (= peak² / radius) to the acceleration of every stage;
+it is 0 for a straight LIN, so chamfer counts are unchanged. Example, a 29.53° arc of the λ = −10°
+ring: length 8.762 mm, ramps 2 × 0.5 s with ceil(0.5 · √(25.88 / 0.08)) = 9 intervals each,
+cruise 0.376 s with ceil(0.376 · √(5.88 / 0.08)) = 4 intervals; the sagitta between stored points
+is 0.94² / (8 · 17) = 0.0065 mm.
+
 Constant-speed LIN. `linearProfile` (`src/trajectories/motion/jointsegments.cpp`) now rejects
 `limits.acceleration` = 0: the requested ramp distance feed / 0 is infinite, so the profile is
 treated as triangular and its peak speed √length · √0 = 0 fails the check. It gains one branch:
@@ -1102,14 +1175,13 @@ Add to `RoboCrapTrajectories` the published headers `include/trajectories/probet
 double sphereRadius = 12.5; double ballRadius = 1.5; double strutRadius = 8.9; double
 strutRecess = 2.0; }` (the values that come from the sphere file and `SceneEndEffectors`; the
 other values of "The touch geometry" and the touch table, λ, μ, τ and the unwind flag per touch,
-are constants in `probetouchplan.cpp`), `struct ProbeTouch { QVector<M4d> transfer; M4d start;
-M4d contact; V3d normal; bool unwindAfter = false; }` (`transfer` holds the waypoint poses from the
-preceding touch, the last one equal to `start`, and is empty for T1), `struct ProbeTouchPlan {
+are constants in `probetouchplan.cpp`), `struct ProbeTouch { M4d start; M4d contact; V3d
+normal; bool unwindAfter = false; }`, `struct ProbeTouchPlan {
 ProbeTouchPlanParameters parameters; M4d entry; QVector<ProbeTouch> touches; M4d exit; }` and
 `struct ProbeTouchPlanResult { std::optional<ProbeTouchPlan> plan; QString error; }` returned by
 `ProbeTouchPlanResult createProbeTouchPlan(const ProbeTouchPlanParameters& parameters)`, which
 rejects nonfinite values, nonpositive radii or recess and a recess of at least the sphere
-diameter, builds the entry pose, the 31 touches with their transfers and the exit pose of "The
+diameter, builds the entry pose, the 31 touches and the exit pose of "The
 touch geometry", and rejects a touch whose start or contact has a strut clearance below g with
 "Touch <n>/31: strut clearance <mm> mm is below 3 mm".
 
@@ -1132,8 +1204,9 @@ builds the segments in order with one `ChamferTcpSolver`: the HOME point; ToEntr
 `plan.entry` (target joints from `ChamferTcpSolver::solveTcp` seeded with the HOME configuration,
 which `kinematics().configuration(qHome, kinematics().solveFK(qHome))` provides; HOME has A5 = 0,
 which the IK classifies as the positive wrist branch, so the motion starts with A5 > 0); Descend,
-a LIN from the entry to the start of T1; for each touch, one Transfer LIN per waypoint of
-`transfer`, Approach (LIN start→contact) and Retract (LIN contact→start), both with
+a LIN from the entry to the start of T1; for each touch after T1, Transfer, a CIRC from the
+start of the preceding touch to its start (`circularProfile` of the LIN profile with the sphere
+centre); Approach (LIN start→contact) and Retract (LIN contact→start), both with
 `LinearLimits{1.0, 0.0}`, and, after a touch with `unwindAfter`, Unwind, a PTP to the target from
 `solveTcp(start, seed)` whose seed is the current solution with A4, A5 and A6 changed as in "The
 touch geometry" and the wrist bit of its status (bit 2) toggled; finally Retreat, a LIN from the
@@ -1143,8 +1216,8 @@ Retreat use `{transferFeed, transferAcceleration}`. Every LIN is built with `lin
 with `ChamferTcpSolver::samplePtp` and timed with `ptpDuration` and `inverseProgress` as
 `HomeTimer::timePtp` does. Each Descend, Transfer and Retreat segment gets its own
 `clampedJointSpline`; Approach and Retract get none. Every stored point of ToEntry, Descend,
-Transfer, Unwind, Retreat and ReturnHome must satisfy ‖p_tcp − c‖ − d ≥ (d + g) · cos(γ_max / 2)
-− d − 0.0001 mm = 2.4206 mm; the smallest ‖p_tcp − c‖ − d is stored as
+Transfer, Unwind, Retreat and ReturnHome must satisfy ‖p_tcp − c‖ − d ≥ g − 0.0001 mm =
+2.9999 mm; the smallest ‖p_tcp − c‖ − d is stored as
 `minimumTransferClearance`. Every stored point of every segment must have a strut clearance of at
 least g − 0.0001 mm; the smallest one is stored as `minimumStrutClearance`. Every error starts with
 "Touch <n>/31, <segment>: " (segment texts as in Milestone 6) for the segments of a touch (Transfer into it, Approach, Retract,
@@ -1185,8 +1258,8 @@ with the busy indicator while `App.Calibration.calculating` is true.
 
 Acceptance: ask the user to build `robocrap` and `robocrap_qmllint` and report; then, in
 Calibration, Generate Path either prints the success line with a minimum transfer clearance of at
-least 2.4206 mm and a minimum strut clearance of at least 3.0000 mm (scratch estimates: about
-890 points, about 248 s movement, strut clearance 3.2588 mm at the λ = −30° contacts) and draws
+least 2.9999 mm and a minimum strut clearance of at least 3.0000 mm (scratch estimates: about
+947 points, about 246.2 s movement, strut clearance 3.2588 mm at the λ = −30° contacts) and draws
 the path around the sphere, with approach segments ending on the 14 mm contact shell at the
 latitudes and longitudes listed in "The touch geometry", or prints a failure naming touch and
 segment. Record a failure, the sphere position and the user's decision in this plan before
@@ -1255,7 +1328,7 @@ connection): the chamfer console line and Dry Run behavior unchanged (Milestones
 measuring TCP editable (Milestone 3); the sphere shown with the fit values listed in Milestone 4,
 with only the robot, the sphere and the calibration path visible in the Calibration submode and
 the other objects' visibility restored after leaving it;
-a successful Generate with a minimum transfer clearance of at least 2.4206 mm and a minimum
+a successful Generate with a minimum transfer clearance of at least 2.9999 mm and a minimum
 strut clearance of at least 3 mm (Milestone 5); a Dry Run of all 31 touches that ends at HOME
 (Milestone 6); and no layout movement of the toolbar,
 panels or viewport when switching submodes, showing errors or calculating. Build and lint success
@@ -1395,3 +1468,10 @@ written (Milestone 1, "Four-parameter signatures").
   `addCalibrationObject`, availability signal, hidden late results, status text).
 - 2026-10-26: Milestone 5 accepted (console line recorded in Progress); Milestone 6 implemented,
   with its details in the Decision Log and its line counts in Progress.
+- 2026-10-26: CIRC transfers replace the chord transfers (user). "The touch geometry" (inputs,
+  transfer, motion law, scratch results), Milestone 5 (CIRC profile, plan structs, motion
+  construction, clearance rule, acceptance), Validation, Progress and the Decision Log changed.
+- 2026-10-26: Milestone 7 documentation and compliance pass completed; Progress records the CIRC
+  line counts and the documentation changes, and Outcomes & Retrospective the plan outcome.
+- 2026-10-26: the user reported the CIRC build and all Milestone 6 checks as passed; the plan is
+  complete.

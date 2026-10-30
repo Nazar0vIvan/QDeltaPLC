@@ -1,6 +1,6 @@
 #include "trajectories/chamferrsistream.h"
 
-#include "chamfertcpsolver.h"
+#include "../motion/tcpsolver.h"
 #include "geometry/utils.h"
 
 #include <QCoreApplication>

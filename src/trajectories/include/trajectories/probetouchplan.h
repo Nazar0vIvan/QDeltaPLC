@@ -10,7 +10,6 @@
 constexpr int ProbeTouchCount = 31;
 constexpr double ProbeApproachGap = 3.0; // mm from the start shell to the contact shell.
 constexpr double ProbeApproachFeed = 1.0; // mm/s, constant during Approach and Retract.
-constexpr double ProbeMaximumChordDegrees = 30.0; // Largest transfer chord on the start shell.
 
 // Sphere and strut of the calibration fixture, mm in BASE.
 struct ProbeTouchPlanParameters
@@ -27,9 +26,9 @@ struct ProbeTouchPlanParameters
   double strutClearance(const V3d& ball) const;
 };
 
+// The transfer into a touch is the CIRC on the start shell from the preceding start.
 struct ProbeTouch
 {
-  QVector<M4d> transfer; // TCP waypoints from the preceding start; the last equals start; empty for T1.
   M4d start = M4d::Identity();
   M4d contact = M4d::Identity();
   V3d normal = V3d::Zero(); // Outward sphere normal at the contact.

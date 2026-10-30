@@ -45,25 +45,6 @@ M3d touchRotation(const TouchRow& row)
   return rotation.block<3, 3>(0, 0);
 }
 
-// Waypoints on the start shell at most ProbeMaximumChordDegrees apart, rotations slerped
-// between the two touches.
-QVector<M4d> transferPoses(const ProbeTouch& from, const ProbeTouch& to, const V3d& centre)
-{
-  const double degrees = std::acos(std::clamp(from.normal.dot(to.normal), -1.0, 1.0)) * GeomConst::RadToDeg;
-  const int chords = std::max(1, static_cast<int>(std::ceil(degrees / ProbeMaximumChordDegrees - 1e-9)));
-  const double shell = (from.start.block<3, 1>(0, 3) - centre).norm();
-  const Eigen::Quaterniond first(M3d(from.start.block<3, 3>(0, 0)));
-  const Eigen::Quaterniond last(M3d(to.start.block<3, 3>(0, 0)));
-  QVector<M4d> poses;
-  for (int chord = 1; chord < chords; ++chord) {
-    const double u = static_cast<double>(chord) / chords;
-    const V3d direction = ((1.0 - u) * from.normal + u * to.normal).normalized();
-    poses.append(makeTransform(first.slerp(u, last).toRotationMatrix(), centre + shell * direction));
-  }
-  poses.append(to.start);
-  return poses;
-}
-
 bool positive(double value)
 {
   return std::isfinite(value) && value > 0.0;
@@ -102,7 +83,6 @@ ProbeTouchPlanResult createProbeTouchPlan(const ProbeTouchPlanParameters& parame
     if (clearance < ProbeApproachGap)
       return {{}, QStringLiteral("Touch %1/%2: strut clearance %3 mm is below %4 mm.")
                       .arg(index + 1).arg(ProbeTouchCount).arg(clearance, 0, 'f', 4).arg(ProbeApproachGap)};
-    if (!plan.touches.isEmpty()) touch.transfer = transferPoses(plan.touches.back(), touch, centre);
     plan.touches.append(touch);
   }
   const ProbeTouch& last = plan.touches.back();

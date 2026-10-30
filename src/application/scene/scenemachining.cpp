@@ -316,7 +316,9 @@ void SceneMachining::dryRun()
   if (!canPlay()) { setError(tr("Select a compatible machining path before Dry Run.")); return; }
   if (m_playback->active()) { m_playback->resume(); return; }
   setError({});
-  m_playback->start(machiningPath(m_inputId)->data().motion, m_inputId);
+  const auto& motion = machiningPath(m_inputId)->data().motion;
+  // Aliasing handle: points at the stored timed motion and keeps the saved path's motion alive.
+  m_playback->start(std::shared_ptr<const TimedMotion>(motion, &motion->timed()), m_inputId);
 }
 
 void SceneMachining::stop()
