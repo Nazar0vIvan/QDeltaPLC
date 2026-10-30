@@ -1,5 +1,7 @@
 #include "occsceneadapter.h"
 
+#include "occt/cadloadresult.h"
+
 #include <AIS_Shape.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
@@ -13,6 +15,8 @@
 #include <gp_Elips.hxx>
 #include <gp_Pln.hxx>
 #include <gp_Sphere.hxx>
+#include <gp_Vec.hxx>
+#include <TopLoc_Location.hxx>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Edge.hxx>
@@ -85,6 +89,17 @@ std::optional<TopoDS_Shape> makeShape(const DrawingPart& part)
   return std::nullopt;
 }
 
+// The loaded model moved to its origin; empty while its load is unfinished or after it failed.
+std::optional<TopoDS_Shape> modelShape(const QHash<QString, std::shared_ptr<const CadLoadResult>>& models,
+                                       const DrawingModel& model)
+{
+  const auto loaded = models.value(model.path);
+  if (!loaded || loaded->shapes.isEmpty()) return std::nullopt;
+  gp_Trsf placement;
+  placement.SetTranslation(gp_Vec(model.origin.x(), model.origin.y(), model.origin.z()));
+  return loaded->shapes.first().Moved(TopLoc_Location(placement));
+}
+
 std::optional<TopoDS_Shape> markerShape(const QList<V3d>& markers)
 {
   if (markers.isEmpty()) return std::nullopt;
@@ -98,17 +113,22 @@ std::optional<TopoDS_Shape> markerShape(const QList<V3d>& markers)
 
 } // namespace
 
-QString OccSceneAdapter::removeParts(const std::vector<OccScene::PartId>& surfaces,
-                                    const std::vector<OccScene::PartId>& diagnostics)
+std::vector<OccScene::PartId> OccSceneAdapter::Presentation::parts() const
+{
+  std::vector<OccScene::PartId> result = surfaces;
+  result.insert(result.end(), decorations.cbegin(), decorations.cend());
+  result.insert(result.end(), diagnostics.cbegin(), diagnostics.cend());
+  return result;
+}
+
+QString OccSceneAdapter::removeParts(const std::vector<OccScene::PartId>& ids)
 {
   QStringList errors;
-  for (const auto* ids : {&surfaces, &diagnostics}) {
-    for (const auto id : *ids) {
-      try {
-        if (!m_scene.removePart(id)) errors.append(QStringLiteral("cannot remove part %1").arg(id));
-      } catch (const Standard_Failure& failure) {
-        errors.append(QStringLiteral("part %1: %2").arg(id).arg(QString::fromUtf8(failure.what())));
-      }
+  for (const auto id : ids) {
+    try {
+      if (!m_scene.removePart(id)) errors.append(QStringLiteral("cannot remove part %1").arg(id));
+    } catch (const Standard_Failure& failure) {
+      errors.append(QStringLiteral("part %1: %2").arg(id).arg(QString::fromUtf8(failure.what())));
     }
   }
   return errors.join(QStringLiteral("; "));
@@ -124,7 +144,9 @@ std::pair<OccSceneAdapter::Presentation, QString> OccSceneAdapter::createPresent
     QList<std::pair<TopoDS_Shape, OccPartProps>> shapes;
     for (const auto& part : object.parts) {
       if (!part.visible) continue;
-      const auto shape = makeShape(part);
+      const auto* model = std::get_if<DrawingModel>(&part.geometry);
+      const auto shape = model ? modelShape(m_models, *model) : makeShape(part);
+      if (!shape && model) continue; // The controller redraws the object when the model is loaded.
       if (!shape) return {{}, QStringLiteral("Cannot construct drawing geometry.")};
       OccPartProps props;
       props.color = rgb(part.style.color[0], part.style.color[1], part.style.color[2]);
@@ -135,13 +157,16 @@ std::pair<OccSceneAdapter::Presentation, QString> OccSceneAdapter::createPresent
       props.faceBoundary = !std::holds_alternative<DrawingSphere>(part.geometry);
       props.selectionMode = part.style.decoration ? OccSelectionMode::None
           : std::holds_alternative<QList<V3d>>(part.geometry) ? OccSelectionMode::PartOnly : OccSelectionMode::All;
+      props.fitExcluded = part.style.decoration;
       shapes.append({*shape, props});
     }
+    const qsizetype diagnosticsStart = shapes.size();
     const auto markers = markerShape(object.diagnostics.markers);
     if (markers) {
       OccPartProps props;
       props.color = Quantity_Color(1.0, 0.85, 0.15, Quantity_TOC_RGB);
       props.topmost = true;
+      props.fitExcluded = true;
       props.markerSize = 3.0;
       props.wireframe = true;
       shapes.append({*markers, props});
@@ -152,16 +177,18 @@ std::pair<OccSceneAdapter::Presentation, QString> OccSceneAdapter::createPresent
       OccPartProps props;
       props.color = Quantity_Color(0.2, 0.9, 0.9, Quantity_TOC_RGB);
       props.topmost = true;
+      props.fitExcluded = true;
       props.wireframe = true;
       props.lineWidth = 2.0;
       shapes.append({*normals, props});
     }
-    for (const auto& [shape, props] : shapes) {
+    for (qsizetype i = 0; i < shapes.size(); ++i) {
+      const auto& [shape, props] = shapes.at(i);
       const auto id = m_scene.createShapePart(shape, props);
       if (!id) { error = QStringLiteral("Cannot create drawing part."); break; }
-      auto& ids = props.selectionMode == OccSelectionMode::None ? result.diagnostics : result.surfaces;
+      auto& ids = i >= diagnosticsStart ? result.diagnostics
+          : props.selectionMode == OccSelectionMode::None ? result.decorations : result.surfaces;
       ids.push_back(*id); // Retain identity before any OCCT display call.
-      if (props.selectionMode == OccSelectionMode::None) m_scene.partHandle(*id)->SetInfiniteState(true);
       if (!m_scene.setPartVisible(*id, object.visible)) {
         error = QStringLiteral("Cannot display drawing part.");
         break;
@@ -171,7 +198,7 @@ std::pair<OccSceneAdapter::Presentation, QString> OccSceneAdapter::createPresent
     error = QString::fromUtf8(failure.what());
   }
   if (!error.isEmpty()) {
-    const auto cleanup = removeParts(result.surfaces, result.diagnostics);
+    const auto cleanup = removeParts(result.parts());
     if (!cleanup.isEmpty()) error += QStringLiteral("; drawing cleanup: ") + cleanup;
     return {{}, error};
   }
@@ -184,7 +211,7 @@ ViewportOperationResult OccSceneAdapter::insertObject(const DrawingObject& objec
   if (!error.isEmpty()) return {false, error};
   const auto previous = m_parts.constFind(object.id);
   if (previous != m_parts.cend()) {
-    error = removeParts(previous->surfaces, previous->diagnostics);
+    error = removeParts(previous->parts());
   }
   m_parts.insert(object.id, std::move(replacement));
   return {true, error};
@@ -194,7 +221,7 @@ bool OccSceneAdapter::removeObject(quint32 id)
 {
   const auto it = m_parts.find(id);
   if (it == m_parts.end()) return false;
-  const QString error = removeParts(it->surfaces, it->diagnostics);
+  const QString error = removeParts(it->parts());
   if (!error.isEmpty()) qWarning().noquote() << error;
   m_parts.erase(it);
   return true;
@@ -205,10 +232,8 @@ ViewportOperationResult OccSceneAdapter::setObjectVisible(quint32 id, bool visib
   auto it = m_parts.find(id);
   if (it == m_parts.end()) return {false, QStringLiteral("Object drawing is not installed.")};
   try {
-    for (const auto part : it->surfaces)
+    for (const auto part : it->parts())
       if (!m_scene.setPartVisible(part, visible)) return {false, QStringLiteral("Cannot change object visibility.")};
-    for (const auto part : it->diagnostics)
-      if (!m_scene.setPartVisible(part, visible)) return {false, QStringLiteral("Cannot change diagnostic visibility.")};
     it->visible = visible;
     return {true, {}};
   } catch (const Standard_Failure& failure) {
@@ -246,7 +271,7 @@ ViewportOperationResult OccSceneAdapter::setDraftAxis(const std::optional<Drawin
   auto [replacement, error] = createPresentation(object);
   if (!error.isEmpty()) return {false, error};
   error = removeParts(m_axisParts);
-  m_axisParts = std::move(replacement.diagnostics);
+  m_axisParts = std::move(replacement.decorations);
   return {true, error};
 }
 

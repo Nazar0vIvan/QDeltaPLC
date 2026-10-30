@@ -9,7 +9,7 @@ ViewportAssets ViewportAssets::applicationAssets()
 {
   const QDir executable(QCoreApplication::applicationDirPath());
   return {
-    executable.filePath(QStringLiteral("resources/cad/kr10")),
+    executable.filePath(QStringLiteral("resources/cad")),
     executable.filePath(QStringLiteral("resources/occt"))
   };
 }

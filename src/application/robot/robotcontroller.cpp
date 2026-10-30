@@ -100,10 +100,11 @@ ViewportOperationResult RobotController::loadRobot()
   }
   const QDir cadDirectory(ViewportAssets::applicationAssets().cadDirectory);
   auto visuals = m_model.visuals;
-  for (LinkModel& link : visuals.links) link.fileName = cadDirectory.filePath(link.fileName);
-  // The end-effector models are fixed deployed assets, loaded with the robot links.
-  visuals.tools = {cadDirectory.filePath(QStringLiteral("MEE.brep")),
-                   cadDirectory.filePath(QStringLiteral("SEE.brep"))};
+  const QDir linkDirectory(cadDirectory.filePath(QStringLiteral("kr10")));
+  for (LinkModel& link : visuals.links) link.fileName = linkDirectory.filePath(link.fileName);
+  // Fixed end effectors, converted from STEP at build time, in RobotTool order: WP-500 probe, GDZ-65-800A spindle.
+  visuals.tools = {cadDirectory.filePath(QStringLiteral("EE_WP-500.brep")),
+                   cadDirectory.filePath(QStringLiteral("EE_GDZ-65-800A.brep"))};
   setError({});
   const auto loaded = m_viewport->loadRobot(
       visuals, drawingPose(m_initialPose ? *m_initialPose : *m_pose));

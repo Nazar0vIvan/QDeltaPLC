@@ -28,6 +28,8 @@ public:
   QString error() const { return m_error; }
   QString summary() const; // Empty while no stream is held.
   Q_INVOKABLE void prepare();
+  // Hard-coded RSI_Probe_Lin stream: WORLD +X at 1 mm/s for 100 mm; replaces a held stream and file.
+  Q_INVOKABLE void prepareTestLin();
   void shutdown();
 
 signals:
@@ -62,5 +64,6 @@ private:
   std::optional<PreparedRsiStream> m_prepared;
   QString m_error;
   bool m_preparing = false;
+  bool m_testLin = false; // The installed stream is the test LIN, not a sampled path.
   bool m_shuttingDown = false;
 };

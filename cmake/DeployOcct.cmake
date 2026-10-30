@@ -5,10 +5,42 @@ if(NOT DEFINED ROBOCRAP_DEPLOY_CONFIG)
     get_filename_component(compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     set(OCCT_RUNTIME_SEARCH_DIRS "${compiler_bin}" CACHE STRING
         "Additional directories containing OCCT third-party runtime DLLs")
+
+    # STEP sources become BREP during the build. A changed BREP relinks the target,
+    # which reruns the POST_BUILD deployment below; only BREP files are deployed.
+    file(GLOB cad_steps CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/resources/cad/*.stp")
+    set(cad_generated "${CMAKE_BINARY_DIR}/generated/cad")
+    file(MAKE_DIRECTORY "${cad_generated}")
+    # The deployment below resolves the MinGW runtime through the same search directories.
+    set(converter_dirs "${occt_prefix}/bin" ${OCCT_RUNTIME_SEARCH_DIRS})
+    string(REPLACE ";" "|" converter_dirs "${converter_dirs}")
+    set(cad_breps)
+    foreach(cad_step IN LISTS cad_steps)
+      get_filename_component(cad_name "${cad_step}" NAME_WLE)
+      set(cad_brep "${cad_generated}/${cad_name}.brep")
+      add_custom_command(OUTPUT "${cad_brep}"
+        COMMAND "${CMAKE_COMMAND}"
+          "-DCONVERTER=$<TARGET_FILE:cadstep2brep>"
+          "-DSOURCE=${cad_step}"
+          "-DOUTPUT=${cad_brep}"
+          "-DRUNTIME_DIRS=${converter_dirs}"
+          "-DOCCT_RESOURCES=${occt_prefix}/share/opencascade/resources"
+          -P "${PROJECT_SOURCE_DIR}/cmake/ConvertStep.cmake"
+        DEPENDS "${cad_step}" cadstep2brep "${PROJECT_SOURCE_DIR}/cmake/ConvertStep.cmake"
+        COMMENT "Converting ${cad_name}.stp to BREP"
+        VERBATIM
+      )
+      list(APPEND cad_breps "${cad_brep}")
+    endforeach()
+    add_custom_target(${target}_cad DEPENDS ${cad_breps})
+    add_dependencies(${target} ${target}_cad)
+    set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS ${cad_breps})
+
     set(deploy_config "${CMAKE_CURRENT_BINARY_DIR}/occt-deploy-$<CONFIG>.cmake")
     file(GENERATE OUTPUT "${deploy_config}" CONTENT
 "set(occt_prefix [==[${occt_prefix}]==])
 set(cad_source [==[${PROJECT_SOURCE_DIR}/resources/cad/kr10]==])
+set(cad_generated [==[${cad_generated}]==])
 set(calibration_source [==[${PROJECT_SOURCE_DIR}/resources/json/calibration_sphere.json]==])
 set(runtime_search [==[${OCCT_RUNTIME_SEARCH_DIRS}]==])
 set(objdump [==[${CMAKE_OBJDUMP}]==])
@@ -28,7 +60,7 @@ set(runtime_roots
         "-DROBOCRAP_DEPLOY_CONFIG=${deploy_config}"
         "-DROBOCRAP_DEPLOY_DEST=$<TARGET_FILE_DIR:${target}>"
         -P "${deploy_script}"
-      COMMENT "Deploying OCCT libraries, resources, and KR10 CAD assets"
+      COMMENT "Deploying OCCT libraries, resources, and CAD assets"
       VERBATIM
     )
     install(CODE "
@@ -41,8 +73,9 @@ set(runtime_roots
 endif()
 
 include("${ROBOCRAP_DEPLOY_CONFIG}")
-if(NOT IS_DIRECTORY "${cad_source}" OR NOT IS_DIRECTORY "${occt_prefix}/share/opencascade/resources")
-  message(FATAL_ERROR "The KR10 CAD or OCCT resource source directory is missing.")
+if(NOT IS_DIRECTORY "${cad_source}" OR NOT IS_DIRECTORY "${cad_generated}"
+   OR NOT IS_DIRECTORY "${occt_prefix}/share/opencascade/resources")
+  message(FATAL_ERROR "The KR10 CAD, generated CAD or OCCT resource source directory is missing.")
 endif()
 if(NOT EXISTS "${objdump}")
   message(FATAL_ERROR "CMAKE_OBJDUMP must identify the selected MinGW kit's objdump for OCCT deployment.")
@@ -67,6 +100,8 @@ file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}")
 file(COPY ${runtime_roots} ${resolved} DESTINATION "${ROBOCRAP_DEPLOY_DEST}")
 file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/cad/kr10")
 file(COPY "${cad_source}/" DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/cad/kr10"
+  FILES_MATCHING PATTERN "*.brep")
+file(COPY "${cad_generated}/" DESTINATION "${ROBOCRAP_DEPLOY_DEST}/resources/cad"
   FILES_MATCHING PATTERN "*.brep")
 file(MAKE_DIRECTORY "${ROBOCRAP_DEPLOY_DEST}/resources/occt")
 file(COPY "${occt_prefix}/share/opencascade/resources/"

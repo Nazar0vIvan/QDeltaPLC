@@ -1,0 +1,40 @@
+&ACCESS RVP
+&REL 1
+DEF RSI_Probe_Lin()
+   INI
+   $ADVANCE=0
+   $SEN_PINT[1]=0
+   $SEN_PINT[2]=0
+   IF RSI_RESET()<>RSIOK THEN
+      RETURN
+   ENDIF
+
+   PTP HOME  Vel= 100 % DEFAULT
+   ; Leave the A5 = 0 wrist singularity of HOME before any Cartesian RSI correction.
+   PTP TestStart
+
+   $BASE=$NULLFRAME
+   $TOOL=TOOL_DATA[5]
+   $IPO_MODE=#BASE
+   IF RSI_CREATE("RSI_Probe_Lin.rsi")<>RSIOK THEN
+      RETURN
+   ENDIF
+   ; The RSI STOP object reacts only to a rising edge of $IN[11]:
+   ; a probe that is already deflected would never stop the motion.
+   IF $IN[11] THEN
+      RETURN
+   ENDIF
+
+   IF RSI_ON(#RELATIVE)<>RSIOK THEN
+      RETURN
+   ENDIF
+   ; The PC streams +0.004 mm in WORLD X per cycle for 100 mm. RSI_MOVECORR ends when the
+   ; PC sends Stop after completion or when $IN[11] (WP-500 touch) switches on.
+   $SEN_PINT[1]=1
+   RSI_MOVECORR()
+   $SEN_PINT[1]=0
+   ; RSI_OFF is a function; its result is not needed because the program ends here.
+   IF RSI_OFF()<>RSIOK THEN
+      RETURN
+   ENDIF
+END

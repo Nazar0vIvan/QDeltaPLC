@@ -6,11 +6,11 @@
 #include <QVector>
 #include <optional>
 
-// Fixed ring scan of the calibration sphere with the measuring TCP.
-constexpr int ProbeTouchCount = 31;
+// Fixed scan of the calibration sphere on a uniform grid with the measuring TCP, in one wrist
+// configuration; transfers are CIRC arcs on the start shell.
+constexpr int ProbeTouchCount = 37;
 constexpr double ProbeApproachGap = 3.0; // mm from the start shell to the contact shell.
 constexpr double ProbeApproachFeed = 1.0; // mm/s, constant during Approach and Retract.
-constexpr double ProbeMaximumChordDegrees = 30.0; // Largest transfer chord on the start shell.
 
 // Sphere and strut of the calibration fixture, mm in BASE.
 struct ProbeTouchPlanParameters
@@ -29,17 +29,15 @@ struct ProbeTouchPlanParameters
 
 struct ProbeTouch
 {
-  QVector<M4d> transfer; // TCP waypoints from the preceding start; the last equals start; empty for T1.
-  M4d start = M4d::Identity();
+  M4d start = M4d::Identity(); // Reached from the preceding start by a CIRC around the sphere centre.
   M4d contact = M4d::Identity();
   V3d normal = V3d::Zero(); // Outward sphere normal at the contact.
-  bool unwindAfter = false; // Turn the wrist over at start after the Retract.
 };
 
 struct ProbeTouchPlan
 {
   ProbeTouchPlanParameters parameters;
-  M4d entry = M4d::Identity(); // Above the pole, with the rotation of T1.
+  M4d entry = M4d::Identity(); // Outward and above the first touch, with its rotation.
   QVector<ProbeTouch> touches;
   M4d exit = M4d::Identity(); // Outward along the last normal, with the rotation of the last touch.
 };

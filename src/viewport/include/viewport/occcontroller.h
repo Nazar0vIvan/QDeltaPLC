@@ -3,6 +3,7 @@
 #include "robotgraphics.h"
 
 #include <QObject>
+#include <QHash>
 #include <QMap>
 #include <variant>
 #include <QPointer>
@@ -42,6 +43,12 @@ struct DrawingSphere {
   double radius = 0.0;
 };
 
+// A CAD model file placed by translation; its axes stay parallel to {B}.
+struct DrawingModel {
+  QString path; // Absolute BREP path.
+  V3d origin = V3d::Zero(); // Model coordinate origin in {B}, mm.
+};
+
 struct DrawingStyle {
   std::array<int, 3> color{80, 157, 253};
   double lineWidth = 0.0;
@@ -50,7 +57,8 @@ struct DrawingStyle {
 };
 
 struct DrawingPart {
-  std::variant<DrawingPlane, DrawingCylinder, DrawingCurve, DrawingSphere, QList<V3d>, QList<std::array<V3d, 2>>> geometry;
+  std::variant<DrawingPlane, DrawingCylinder, DrawingCurve, DrawingSphere, DrawingModel,
+               QList<V3d>, QList<std::array<V3d, 2>>> geometry;
   DrawingStyle style;
   bool visible = true; // A hidden part is not installed; the object's visibility applies to the rest.
 };
@@ -73,10 +81,13 @@ struct DrawingAxis {
   double length = 0.0;
 };
 
+struct CadLoadResult;
+
 struct DrawingDocument {
   QMap<quint32, DrawingObject> objects;
   QList<quint32> selected;
   std::optional<DrawingAxis> axis;
+  QHash<QString, std::shared_ptr<const CadLoadResult>> models; // Finished DrawingModel loads, failures included.
 };
 
 struct DrawingPose {
@@ -89,7 +100,6 @@ struct DrawingPose {
 class CadLoadWorker;
 class OccViewWindow;
 class OccViewport;
-struct CadLoadResult;
 
 class OccController final : public QObject
 {
@@ -149,6 +159,9 @@ private:
   // The window's current OCCT viewer, or null without a native surface; looked up per call.
   OccViewport* viewport() const;
   void finishRobotLoad(quint64 generation);
+  // One model path at a time, separate from the robot job, so a model failure never affects the robot.
+  void startModelLoad();
+  void finishModelLoad();
   void setError(const QString& error);
 
   const QString m_occtResources;
@@ -158,6 +171,8 @@ private:
   RobotTool m_activeTool = RobotTool::Measuring;
   std::shared_ptr<const CadLoadResult> m_shapes;
   std::unique_ptr<CadLoadWorker> m_worker;
+  QStringList m_modelQueue; // Model paths waiting; the first is loading in m_modelWorker.
+  std::unique_ptr<CadLoadWorker> m_modelWorker;
   QPointer<OccViewWindow> m_window;
   QString m_error;
   quint64 m_generation = 0;

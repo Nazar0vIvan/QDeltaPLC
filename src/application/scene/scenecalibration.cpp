@@ -1,5 +1,6 @@
 #include "scenecalibration.h"
 
+#include "assetpaths.h"
 #include "geometry/spherefit.h"
 
 #include <QCoreApplication>
@@ -42,9 +43,24 @@ std::optional<double> positiveNumber(const QJsonObject& root, const QString& key
   return value.toDouble();
 }
 
+// The table object: finite positive lengthX, widthY, sphereFromMinusX, sphereFromMinusY and
+// sphereAboveTop (mm), with the sphere center over the table.
+std::optional<CalibrationTable> calibrationTable(const QJsonObject& root)
+{
+  const QJsonObject table = root.value(QStringLiteral("table")).toObject();
+  const auto lengthX = positiveNumber(table, QStringLiteral("lengthX"));
+  const auto widthY = positiveNumber(table, QStringLiteral("widthY"));
+  const auto fromMinusX = positiveNumber(table, QStringLiteral("sphereFromMinusX"));
+  const auto fromMinusY = positiveNumber(table, QStringLiteral("sphereFromMinusY"));
+  const auto aboveTop = positiveNumber(table, QStringLiteral("sphereAboveTop"));
+  if (!lengthX || !widthY || !fromMinusX || !fromMinusY || !aboveTop
+      || *fromMinusX >= *lengthX || *fromMinusY >= *widthY) return std::nullopt;
+  return CalibrationTable{*lengthX, *widthY, *fromMinusX, *fromMinusY, *aboveTop};
+}
+
 // Version 1: finite positive sphereDiameter, strutDiameter and strutRecess (mm, the recess below
-// the sphere diameter) and roughPoints entries with X, Y, Z (mm) of the ruby ball centers; other
-// keys are ignored. ballRadius (mm) compensates the fitted sphere.
+// the sphere diameter), the table object and roughPoints entries with X, Y, Z (mm) of the ruby
+// ball centers; other keys are ignored. ballRadius (mm) compensates the fitted sphere.
 SphereFileResult readSphereFile(const QString& path, double ballRadius)
 {
   const QString prefix = SceneCalibration::tr("Calibration sphere file %1: ").arg(QDir::toNativeSeparators(path));
@@ -65,6 +81,10 @@ SphereFileResult readSphereFile(const QString& path, double ballRadius)
     return {{}, prefix + SceneCalibration::tr("sphereDiameter, strutDiameter and strutRecess must be finite positive numbers.")};
   if (*strutRecess >= *diameter)
     return {{}, prefix + SceneCalibration::tr("strutRecess must be smaller than sphereDiameter.")};
+  const auto table = calibrationTable(root);
+  if (!table)
+    return {{}, prefix + SceneCalibration::tr("table needs finite positive lengthX, widthY, sphereFromMinusX, "
+                                              "sphereFromMinusY and sphereAboveTop, with the sphere over the table.")};
   QList<V3d> points;
   bool finite = true;
   for (const QJsonValue& entry : root.value(QStringLiteral("roughPoints")).toArray()) {
@@ -82,7 +102,7 @@ SphereFileResult readSphereFile(const QString& path, double ballRadius)
     return {{}, prefix + SceneCalibration::tr("the ball-center radius %1 mm does not exceed the ruby ball radius %2 mm.")
                     .arg(fit->radius, 0, 'f', 4).arg(ballRadius, 0, 'f', 4)};
   return {SceneSphere{fit->center, *diameter / 2.0, fit->radius, compensatedRadius, fit->rms, points,
-                      *strutDiameter / 2.0, *strutRecess}, {}};
+                      *strutDiameter / 2.0, *strutRecess, *table}, {}};
 }
 
 bool calibrationObject(const SceneObject* object)
@@ -123,11 +143,16 @@ void SceneCalibration::setActive(bool active)
 
 void SceneCalibration::activate()
 {
-  const auto file = readSphereFile(QDir(QCoreApplication::applicationDirPath())
-                                       .filePath(QStringLiteral("resources/json/calibration_sphere.json")),
-                                   m_effectors->rubyBallDiameter() / 2.0);
+  auto file = readSphereFile(QDir(QCoreApplication::applicationDirPath())
+                                 .filePath(QStringLiteral("resources/json/calibration_sphere.json")),
+                             m_effectors->rubyBallDiameter() / 2.0);
   setError(file.error);
-  if (file.sphere) replaceSphere(*file.sphere);
+  if (file.sphere) {
+    // Converted from resources/cad/CALIBRATION_STAND.stp at build time.
+    file.sphere->standModel = QDir(RoboCrap3D::ViewportAssets::applicationAssets().cadDirectory)
+                                  .filePath(QStringLiteral("CALIBRATION_STAND.brep"));
+    replaceSphere(*file.sphere);
+  }
   for (auto* object : m_scene->objectList()) hideOther(object);
   for (quint32 id : {m_sphereId, m_pathId})
     if (auto* object = m_scene->findObject(id)) m_scene->setObjectVisible(object, true);

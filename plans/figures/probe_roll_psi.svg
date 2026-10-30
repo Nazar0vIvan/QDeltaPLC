@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="300" viewBox="0 0 680 300" font-family="sans-serif">
+<defs>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="arrowDark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#2C2C2A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+<rect width="680" height="300" fill="#FFFFFF"/>
+<text x="340" y="40" font-size="15" font-weight="500" fill="#2C2C2A" text-anchor="middle">Вид вдоль оси стилуса</text>
+<circle cx="340" cy="170" r="50" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.8"/>
+<circle cx="340" cy="170" r="12" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<line x1="200" y1="170" x2="284" y2="170" stroke="#D85A30" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+<text x="240" y="155" font-size="13" fill="#444441" text-anchor="middle">боковой толчок</text>
+<line x1="350" y1="162" x2="404" y2="116" stroke="#2C2C2A" stroke-width="1.5" marker-end="url(#arrowDark)"/>
+<text x="412" y="112" font-size="14" font-weight="500" fill="#2C2C2A">ось x щупа</text>
+<path d="M372 170 A32 32 0 0 0 364 149" fill="none" stroke="#2C2C2A" stroke-width="1"/>
+<line x1="374" y1="160" x2="404" y2="164" stroke="#888780" stroke-width="0.6" stroke-dasharray="3 2"/>
+<text x="410" y="168" font-size="13" fill="#444441">угол 180° − ψ</text>
+<text x="340" y="250" font-size="13" fill="#444441" text-anchor="middle">Поворот щупа вокруг оси стилуса (ψ) меняет, с какой стороны корпуса приходит боковой толчок</text>
+<text x="340" y="272" font-size="13" fill="#444441" text-anchor="middle">При τ = 0 бокового толчка нет, и ψ не влияет</text>
+</svg>

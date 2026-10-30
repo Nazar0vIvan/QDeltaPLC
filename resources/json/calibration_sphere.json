@@ -3,6 +3,7 @@
   "sphereDiameter": 25.0,
   "strutDiameter": 17.8,
   "strutRecess": 2.0,
+  "table": {"lengthX": 740.0, "widthY": 935.0, "sphereFromMinusX": 160.0, "sphereFromMinusY": 135.0, "sphereAboveTop": 170.5},
   "roughPoints": [
     {"name": "XP1", "X": 1053.17981, "Y": -332.410950, "Z": 468.076385, "A": -179.999786, "B": 0.00114061497, "C": 179.999619, "S": 2, "T": 10},
     {"name": "XP2", "X": 1068.01648, "Y": -332.477753, "Z": 455.248077, "A": 179.999954, "B": 0.000960001897, "C": 179.999588, "S": 2, "T": 10},

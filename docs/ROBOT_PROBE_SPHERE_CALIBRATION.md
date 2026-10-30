@@ -256,7 +256,13 @@ paths can be aimed at it.
 The recorded poses are in `resources/calibration_sphere_jog_points.txt` (KRL `E6POS`
 declarations) and in `resources/json/calibration_sphere.json`, one `roughPoints` entry per pose
 (name, X, Y, Z, A, B, C, S, T) together with the sphere diameter; the refined sphere data from
-the calibration will be written to the same file.
+the calibration will be written to the same file. The same file holds the table top under the
+stand, measured by tape from the sphere center (object `table`, in mm): `lengthX` 740 and `widthY`
+935 are the table sides along $\bar{e}_x$ and $\bar{e}_y$ of {B}, `sphereFromMinusX` 160 and
+`sphereFromMinusY` 135 are the distances from the sphere center to the table edges at the smaller x
+and smaller y, and `sphereAboveTop` 170.5 is the height of the sphere center above the table top.
+The application draws this table top and the stand model `resources/cad/CALIBRATION_STAND.stp`
+(saved in {S}) around the sphere so that collisions of the touch motion can be checked visually.
 
 ## Measurement Procedure
 
@@ -265,9 +271,8 @@ the calibration will be written to the same file.
 3. Approach the reference sphere slowly with the ruby ball.
 4. At the probe trigger event, record the actual flange pose (its rotation matrix and the
    flange origin position, both in {B}) or the joint angles $\bar{q}_i$. The trigger reaches
-   the KR C4 as `$IN[8]` through PLC input X2.5 and output Y1.7 (the Y1.7 to EL1809 input 8
-   connection is planned; see "Additional hardware and Delta I/O wiring" in
-   [ARCHITECTURE.md](ARCHITECTURE.md)).
+   the KR C4 as `$IN[11]` through PLC input X2.0, PLC output Y1.5 and EL1809 input 11 (see
+   "Additional hardware and Delta I/O wiring" in [ARCHITECTURE.md](ARCHITECTURE.md)).
 5. Retract and repeat from different directions and flange orientations.
 6. Collect preferably 15–30 well-distributed contacts.
 7. Solve the nonlinear least-squares problem above.

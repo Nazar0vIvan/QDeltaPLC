@@ -27,7 +27,7 @@ under Measuring mode, a submode button "Calibration" appears first, before "Roug
 Clicking it reads the sphere file `<directory of robocrap.exe>/resources/json/calibration_sphere.json`,
 fits the sphere centre to the ten points the user recorded by manual jogging, and shows the sphere
 in the 3D scene. The toolbar then shows only "Measuring EE", "Generate Path", "Dry Run" and
-"Stop". "Generate Path" computes a motion that starts at HOME, touches the sphere 31 times with
+"Stop". "Generate Path" computes a motion that starts at HOME, touches the sphere 37 times with
 the probe in prescribed orientations and returns to HOME, and draws the path of the ruby ball
 centre. "Dry Run" animates the robot along that motion; "Pause" and "Stop" behave as in the
 existing chamfer Dry Run. While the Calibration submode is active, the 3D scene shows only the
@@ -182,6 +182,41 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   parameters, `onPlaybackFailed` has two, the other new members none.
 - [ ] Milestone 6 acceptance: the user builds `robocrap` and `robocrap_qmllint` and runs the
   Dry Run scenario of Milestone 6.
+- [x] (2026-10-29) Touch order replaced to remove the table collision of the wrist unwind
+  (the user ran the Dry Run: no collision and no wrist turn-over, but the robot side above the
+  equator stayed untouched, transfers were visibly LIN chords and the coverage was uneven; the
+  next entry supersedes the touch table). The 31-touch ring scan with
+  a wrist unwind after T21 became the 39-touch meridian scan of "The touch geometry", in one wrist
+  configuration; the entry moved from above the pole to outward and above the first touch.
+  Line counts, physical/nonblank, before to after: probe/probetouchplan.cpp 112/99 to 124/111
+  (the longer touch table and its explanation; `UnwindAfterTouch` removed), probe/
+  probetouchmotion.cpp 241/219 to 230/209 (`otherWrist`, the unwind step and its phase name
+  removed), include/trajectories/probetouchplan.h 53/44 to 52/43 (`unwindAfter` removed),
+  include/trajectories/probetouchmotion.h 67/56 unchanged (`ProbeSegment::Unwind` removed),
+  application/scene/sceneobject.cpp 262/241 unchanged (one condition shortened); total 0/+1.
+  Compliance pass: no new function, type or parameter; `EntryDistance` and `EntryRise` replace
+  `EntryHeight`; no lambda, template, exception or output parameter.
+- [ ] (2026-10-29) Uniform 37-touch grid with per-touch roll and CIRC transfers (completed: source
+  edits, contract update, compliance pass; the user's Dry Run showed the A4 link close to the
+  table at the lowest touches, so nine tilts were raised, see "Robot clearance above the table";
+  probe/probetouchplan.cpp 103/91 to 105/93, two comment lines; remaining: the user's build,
+  Generate and Dry Run of the raised tilts).
+  Line counts, physical/nonblank, before to after: motion/jointsegments.h 109/92 to 128/110
+  (`LinearProfile::arcCentre`, `arcAngle`, `position`, `arcProfile`, `ArcRadiusTolerance`),
+  motion/jointsegments.cpp 308/287 to 336/311 (`timedProfile` extracted from `linearProfile` and
+  shared with `arcProfile`; normal acceleration in `linearSchedule`), probe/probetouchplan.cpp
+  124/111 to 103/91 (touch table with roll; `transferPoses` and `RollDegrees` removed),
+  probe/probetouchmotion.cpp 230/209 to 231/210 (one CIRC Transfer step per touch; clearance
+  requirement g instead of the chord bound), include/trajectories/probetouchplan.h 52/43 to 51/42
+  (`ProbeMaximumChordDegrees` and `ProbeTouch::transfer` removed); docs/AGENT_CONTRACTS.md LIN
+  sampling rule extended by the CIRC normal acceleration. Total C++ +26/+22: the arc primitive
+  (+47/+42) against the removed waypoint construction (−21/−20). Smaller alternative considered:
+  keep LIN chords and shorten them (no new primitive) — rejected because the user asked for arcs,
+  which the KR C4 also executes natively as CIRC.
+  Compliance pass: `arcProfile(chord, centre)` and `timedProfile(profile)` have two and one
+  parameters and return `std::optional`; `LinearProfile::position(u)` is a const member; no
+  lambda, template, exception or output parameter; the chamfer callers of `linearProfile` keep
+  their behavior (arcCentre stays empty, the timing code is unchanged and only moved).
 - [ ] Milestone 7: documentation and contract updates, compliance pass, line counts.
 
 
@@ -236,6 +271,29 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
 
 
 ## Decision Log
+
+- Decision (2026-10-29, second revision): the touches form a uniform grid about 30° apart (37
+  reachable of 39), each with its own tilt and roll, scanned as lower bands right half, closed
+  λ = 30° and 60° rings, pole, lower bands left half; transfers are CIRC arcs on the start shell.
+  Rationale: the user asked for the robot side to be scanned, for arcs instead of LIN chords and
+  for uniform coverage of the reachable surface without singular configurations. The scratch
+  accessibility map showed that tilting the stylus towards straight down on the robot side keeps
+  |A5| ≥ 50° and A4 within ±70° on λ ≥ 30°, so those bands need no gap; only the lower bands keep
+  the A4 = ±180° gap at μ ≈ 162.5°. A free roll per touch keeps A6 bounded on the closed rings.
+  A CIRC keeps the ball exactly g outside the contact shell and maps to a KRL CIRC later.
+
+- Decision (2026-10-29, supersedes the 31-touch ring scan and its wrist unwind): the touches are
+  visited meridian by meridian from μ = 180° through the far side to μ = 150°, in one wrist
+  configuration (A5 > 0), 39 touches, with the entry outward and above the first touch.
+  Rationale: the user saw in the Dry Run, with the table drawn, that the probe passes through the
+  table during the wrist unwind (scratch: the ball reaches 212 mm below c.z, the table top is
+  170.5 mm below it). The unwind was needed only because the λ = −10° ring crossed μ ≈ 162.5°, where
+  A4 = ±180° in the A5 > 0 wrist; every touch of the old plan is also reachable in that wrist with
+  A4 between −162° and 167°, so ordering by longitude around the far side removes the unwind
+  instead of moving it. The meridian order also adds touches (far side λ = −10° with τ = 55°,
+  λ = −30° at μ = 270° and 60°, 30° spacing at λ = 50°). Near-singular touches (|A5| < 48°) are
+  left out, as before. Alternative rejected: performing the unwind at a raised pose, which keeps a
+  swing through A5 = 0 and needs its own clearance checks.
 
 - Decision: the sphere centre used for aiming is fitted from all ten jogged points together,
   with the radius left free; the fitted radius and RMS are displayed as checks only.
@@ -595,7 +653,7 @@ builds a 4×4 transform matrix.
 Probe and sphere. The ruby ball diameter is 3 mm (`SceneEndEffectors::rubyBallDiameter`). The
 sphere has a 25 mm diameter and stands on a vertical pole on a table in front of the robot. At
 contact the ball centre is d = 14 mm from the sphere centre c. The probe signal reaches the PLC
-input X2.5; this plan does not use it.
+input X2.0; this plan does not use it.
 
 Manual points. In T1 with tool TOOL_DATA[5] and base World, the user jogged the probe onto the
 sphere ten times: five times in orientation O1 (A = 180°, B = 0°, C = 180°, stylus down), five
@@ -712,23 +770,51 @@ keeps the roll unchanged along the meridian to that touch. For each touch:
 Both TCP poses of a touch have the rotation of that touch. Approach moves the TCP from p_start to
 p_contact, a translation of length g along −n; Retract moves it back.
 
-The 31 touches, in execution order, ring by ring from the top (τ = 0 unless stated):
+Since 2026-10-29 (second revision of that day) the touches form a uniform grid about 30° apart and
+each touch has its own roll ψ instead of the fixed 30°, so its rotation is R_P(μ, 90° − λ − τ, ψ).
+The grid: the pole; λ = 60° every 60°; λ = 30° every 36° (from μ = 18°); λ = 0° every 30°;
+λ = −30° every 36° (from μ = 0°). Consecutive bands are 30° apart and neighbours within a band are
+30°–31° apart along the surface. Of these 39 grid points 37 are reachable; λ = −30° at μ = 324° and
+0° (far side, below) are not. The 37 touches in execution order, written λ/μ/τ/ψ in degrees:
 
-    T1         λ = 90°:   μ = 90° (pole)
-    T2–T7      λ = 50°:   μ = 90°, 45°, 0°, 315°, 270°, 225°
-    T8–T17     λ = 20°:   μ = 210°, 240°, 270°, 300°, 330°, 0°, 30°, 60°, 90°, 120°;
-                          τ = 30° at μ = 300°, 330°, 0°, 30° (T11–T14)
-    T18–T25    λ = −10°:  μ = 60°, 90°, 120°, 150°, 180°, 210°, 240°, 270°
-    T26–T31    λ = −30°:  μ = 240°, 210°, 180°, 150°, 120°, 90°
+    lower bands, robot side right to far side:
+      0/180/0/30, −30/180/30/30, −30/216/30/0, 0/210/0/0, 0/240/0/0, −30/252/30/0, −30/288/50/0,
+      0/270/0/0, 0/300/40/30, 0/330/45/60
+    λ = 30° ring:
+      30/342/30/60, 30/18/15/90, 30/54/0/120, 30/90/0/120, 30/126/50/−150, 30/162/50/−120,
+      30/198/50/−90, 30/234/0/0, 30/270/0/0, 30/306/15/30
+    λ = 60° ring and pole:
+      60/300/0/30, 60/0/0/90, 60/60/0/150, 60/120/15/−150, 60/180/30/−90, 60/240/0/0, 90/0/0/90
+    lower bands, far side to robot side left:
+      0/0/45/90, 0/30/30/120, −30/36/55/120, 0/60/15/120, −30/72/45/120, −30/108/45/90,
+      0/90/15/90, 0/120/15/90, −30/144/30/60, 0/150/0/60
 
-θ = 90° − λ − τ is therefore 0° for T1, 40° for T2–T7 and T11–T14, 70° for T8–T10 and T15–T17,
-100° for T18–T25 and 120° for T26–T31.
+Why this order. In the A5 > 0 wrist A4 follows the stylus azimuth: A4 ≈ 0 when the stylus points
+towards the robot and A4 = ±180° when it points away from the robot, which for τ = 0 happens at
+contacts on the robot side, μ ≈ 162.5°. On the λ = 30° and 60° rings the touches on the robot side
+are tilted towards straight down (τ = 15°–50°), which also keeps |A5| ≥ 50°; A4 then stays within
+about ±70° all the way round, so these rings are closed loops. On λ = 0° and −30° the stylus cannot
+be tilted that far without the stem reaching the sphere, so A4 spans −162° … +161° and the scan
+must not cross μ ≈ 162.5° there: the lower bands are scanned from μ = 180° to the far side, then the
+two rings and the pole, and from the far side (μ = 0°) to μ = 150°. The far-side touches connect
+the parts where A4 ≈ 0 on both. The whole scan stays in one wrist configuration. The roll about the
+stylus is free (the probe and the ruby are symmetric about it); ψ is chosen per touch, in 30° steps,
+to keep A6 near its previous value within 92°–148°; with a fixed ψ the closed rings would wind A6
+past its ±350° limit.
 
-Surface regions without touches (scratch checks, below): the near-side upper positions λ = 50° at
-μ = 135° and 180° and λ = 20° at μ = 150° and 180° have |A5| of only 20°–31°, close to the A5 = 0
-wrist singularity, whereas every kept pose has |A5| ≥ 48°; the far side μ = 300°–30° has no IK
-solution within the joint limits at λ = 20° with τ = 0 (hence τ = 30° there) and none at
-λ = −10°; latitudes below −30° bring the contact closer to the strut than g.
+τ is the smallest of 0°, 15°, 30°, 40°, 45°, 50°, 55° for which the start and contact poses are
+within the joint limits with 50° ≤ |A5| ≤ 115°, the stylus stem and body stay at least 1.3 mm from
+the sphere, and the CIRC from the preceding touch keeps |A5| ≥ 45° (scratch search, below).
+Latitudes below −30° bring the contact closer to the strut than g.
+
+Robot clearance above the table (added 2026-10-29 after the user's Dry Run). With τ = 0 at
+λ = −30° the stylus points 30° upward, so the wrist centre lies about 100 mm below the ball; the
+A4 and A5 wrist housings (`resources/cad/kr10/4_WRIST1.brep`, `5_WRIST2.brep`) then reached 2–64 mm
+below the table top at λ = −30°, μ = 180°, 216°, 252°, 72°, 108° and 144° (scratch check with the
+link BREP sample points). Tilting the stylus towards horizontal lifts the wrist by about 50 mm per
+15°, so these touches use τ = 30°–45°, and λ = 0° at μ = 60°, 90°, 120° use τ = 15° (47–58 mm
+before). Every touch now keeps the robot links and the probe at least 65 mm above the table; the
+smallest value, 65 mm at λ = −30°, μ = 144°, is limited by A5 ≥ 50° (τ = 40° would give A5 = 44°).
 
 Strut clearance of a ball centre p (mm): the distance from p to the strut solid minus r_b. With
 ρ = √((p.x − c.x)² + (p.y − c.y)²) and h = p.z − z_top it is h − r_b when ρ ≤ R_s, ρ − R_s − r_b
@@ -738,23 +824,23 @@ a strut clearance of at least g. The smallest one is 3.26 mm, at the λ = −30�
 
 The motion, in order:
 
-- Entry: PTP from HOME to the entry pose E with position c + h_e · e_z and the rotation of T1,
-  then a LIN of 43 mm straight down from E to p_start of T1.
+- Entry: PTP from HOME to the entry pose E with position c + 60 mm · n_1 + 80 mm · e_z (n_1 is
+  the outward normal of the first touch, λ = 0°, μ = 180°) and the rotation of the first touch,
+  then a LIN of about 91 mm from E to its p_start. (Until 2026-10-29: E = c + h_e · e_z above the
+  pole, then a LIN of 43 mm down.)
 - Every touch: Approach, then Retract.
-- Transfer from touch i to touch i + 1: γ_i is the angle between n_i and n_(i+1), and the transfer
-  has K_i = ceil(γ_i / γ_max) chords. Waypoint k = 1 … K_i has the position
-  c + (d + g) · u_k / ‖u_k‖ with u_k = (1 − k / K_i) · n_i + (k / K_i) · n_(i+1), and the rotation
-  slerp(R_i, R_(i+1), k / K_i), where R_i is the rotation of touch i; waypoint K_i is the start
-  pose of touch i + 1. Each chord is one LIN from the preceding waypoint (the first from p_start of
-  touch i). A chord of at most γ_max keeps the ball centre at least (d + g) · cos(γ_max / 2) =
-  16.4207 mm from c, that is 2.4207 mm outside the contact shell. The 30 transfers have 35 chords.
-- Wrist unwind after the Retract of T21 (λ = −10°, μ = 150°): a PTP at p_start of T21 from the
-  current joints q to the other wrist configuration of the same TCP pose: A4 − 180° if A4 > 0,
-  else A4 + 180°; A5 replaced by −A5; A6 + 180° if A6 < 0, else A6 − 180°. Continuing to T22 with
-  the same wrist configuration would drive A4 past its +185° limit (scratch: A4 = 183.9° halfway
-  along the transfer from T21 to T22).
-- Exit: after the Retract of T31, a LIN of 25 mm from p_start of T31 outward along n_31 to the exit
-  position c + h_x · n_31 with the rotation of T31, then a PTP to HOME.
+- Transfer from touch i to touch i + 1: one CIRC on the start shell, the shorter great-circle arc
+  around c from p_start of touch i to p_start of touch i + 1, with the trapezoidal profile on the
+  arc length (radius d + g = 17 mm times the angle γ_i between n_i and n_(i+1)) and the rotation
+  slerped by traveled distance. The ball centre stays exactly g outside the contact shell.
+  `arcProfile` in `src/trajectories/motion/jointsegments.*` turns the LIN profile into this arc;
+  `linearSchedule` adds the arc's normal acceleration v²/R to the sampling criterion. (Until
+  2026-10-29: K_i = ceil(γ_i / 30°) LIN chords between waypoints on the start shell.)
+- No wrist unwind. (Until 2026-10-29 a PTP after T21 turned the wrist over in place: A4 ∓ 180°,
+  A5 negated, A6 ± 180°. With A5 passing through 0 the probe swung down to 212 mm below c.z, through
+  the table top 170.5 mm below c.z; the user saw the collision in the Dry Run animation.)
+- Exit: after the Retract of the last touch, a LIN of 25 mm from its p_start outward along its
+  normal to the exit position c + h_x · n_last with its rotation, then a PTP to HOME.
 
 Motion law: Approach and Retract run at the constant speed v = 1 mm/s without acceleration or
 deceleration ramps, 3 s each. Every other LIN uses the trapezoidal profile with `transferFeed`
@@ -774,6 +860,19 @@ swings down to 211 mm below c.z (elsewhere at most 84.5 mm below c.z); the heigh
 of the strut base is unknown, and robot links other than the probe are not checked. Retreating
 radially before the unwind does not help: at 42, 80 and 120 mm from c the swing reaches 220, 231
 and 242 mm below c.z.
+
+Scratch results for the 37-touch uniform grid (2026-10-29, scratch model written in Node.js; the
+probe is approximated as a cylinder of radius 25 mm from the flange to 97 mm and a stylus of radius
+1 mm from 1.6 mm behind the ball centre; CIRC transfers sampled at 2° steps; robot links other than
+the probe not checked; estimates): all touch start and contact poses and all sampled transfer poses
+lie within the joint limits in the A5 > 0 wrist; A4 −161.9° … 160.8° (limit ±185°); |A5| 50.9° …
+114.3° at the touches (limit 120°), at least 45° on transfers; A6 91.5° … 148.1° (limit ±350°); the
+probe stays at least 73.1 mm above the table top; the stylus stem and body stay at least 1.48 mm
+from the sphere (at the τ = 50°–55° touches) and at least 4.3 mm from the strut. The entry and exit
+PTPs were checked for the meridian scan with nearly the same first and last touches (193.4 mm and
+116.5 mm above the table). Movement duration was not estimated; the Generate console line reports
+it. (The 39-touch meridian scan of the first revision on 2026-10-29 left the robot side above the
+equator untouched and used LIN chords; the user rejected both.)
 
 
 ## Plan of Work
@@ -1282,7 +1381,8 @@ entry 3.1 s, wrist unwind 4.2 s and exit to HOME 3.2 s; in total about 248 s, ab
 
 Notes for the later RSI plan (agreed with the user on 2026-10-26, not implemented here): a real
 touch starts at p_start and moves along −n at a constant 0.004 mm per 4 ms RSI cycle (1 mm/s)
-without a ramp, stops when `$IN[8]` (the WP-500 trigger through X2.5, Y1.7 and EL1809 input 8)
+without a ramp, stops when `$IN[11]` (the WP-500 trigger through X2.0, Y1.5 and EL1809 input 11;
+until 2026-10-29 planned as `$IN[8]` through Y1.7 and EL1809 input 8)
 switches, records `$POS_ACT`/RIst at that cycle, and then retracts to p_start. The search ends
 without contact after 4.5 mm (g plus an overtravel of 1.5 mm), which is a failed touch. The
 animation's 3 mm Approach at 1 mm/s matches this motion up to the contact.
@@ -1395,3 +1495,13 @@ written (Milestone 1, "Four-parameter signatures").
   `addCalibrationObject`, availability signal, hidden late results, status text).
 - 2026-10-26: Milestone 5 accepted (console line recorded in Progress); Milestone 6 implemented,
   with its details in the Decision Log and its line counts in Progress.
+- 2026-10-29: the touch order was replaced after the user saw the probe pass through the table
+  during the wrist unwind. Purpose, Progress, the Decision Log and "The touch geometry" (touch
+  list, entry, unwind, scratch results) describe the 39-touch meridian scan; the Milestone 5 and 6
+  texts, the console examples and the duration estimate still describe the first, 31-touch
+  implementation and are superseded where they mention 31 touches, T21 or the wrist unwind.
+- 2026-10-29 (second revision): after the Dry Run of the meridian scan the user asked for the robot
+  side to be scanned, for CIRC transfers and for uniform coverage. Purpose, Progress, the Decision
+  Log and "The touch geometry" (grid, order, roll, tilt rule, CIRC transfers, scratch results) now
+  describe the 37-touch uniform grid; the fixed-input sentence about roll ψ = 30° and chord angle
+  γ_max = 30° describes the first implementation and is superseded.

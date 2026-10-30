@@ -102,6 +102,23 @@ struct SceneEdge
   std::array<quint32, 2> sources{};
 };
 
+// Table top under the calibration sphere, measured from the sphere center (mm); its sides are
+// parallel to the x- and y-axes of {B}.
+struct CalibrationTable
+{
+  double lengthX = 0.0; // Side along the x-axis.
+  double widthY = 0.0; // Side along the y-axis.
+  double sphereFromMinusX = 0.0; // Sphere center to the edge at the smaller x.
+  double sphereFromMinusY = 0.0; // Sphere center to the edge at the smaller y.
+  double sphereAboveTop = 0.0; // Sphere center above the table top.
+
+  bool operator==(const CalibrationTable& other) const
+  {
+    return lengthX == other.lengthX && widthY == other.widthY && sphereFromMinusX == other.sphereFromMinusX
+        && sphereFromMinusY == other.sphereFromMinusY && sphereAboveTop == other.sphereAboveTop;
+  }
+};
+
 // Calibration sphere fitted to the ruby ball centers of the jogged touches.
 struct SceneSphere
 {
@@ -113,12 +130,15 @@ struct SceneSphere
   QList<V3d> roughPoints; // Ball centers reported by the controller at the jogged touches.
   double strutRadius = 0.0; // mm, vertical strut under the sphere.
   double strutRecess = 0.0; // mm, strut top above the lowest sphere point.
+  CalibrationTable table;
+  QString standModel; // Absolute BREP path of the stand, saved with its origin at the sphere center.
 
   bool operator==(const SceneSphere& other) const
   {
     return center == other.center && radius == other.radius && ballCenterRadius == other.ballCenterRadius
         && compensatedRadius == other.compensatedRadius && rms == other.rms && roughPoints == other.roughPoints
-        && strutRadius == other.strutRadius && strutRecess == other.strutRecess;
+        && strutRadius == other.strutRadius && strutRecess == other.strutRecess && table == other.table
+        && standModel == other.standModel;
   }
 };
 

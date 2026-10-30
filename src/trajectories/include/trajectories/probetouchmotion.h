@@ -9,11 +9,11 @@
 #include <optional>
 #include <utility>
 
-enum class ProbeSegment { ToEntry, Descend, Transfer, Approach, Retract, Unwind, Retreat, ReturnHome };
+enum class ProbeSegment { ToEntry, Descend, Transfer, Approach, Retract, Retreat, ReturnHome };
 
 struct ProbeMotionPhase
 {
-  int touch = 0; // 1-based touch of Transfer, Approach, Retract and Unwind; 0 otherwise.
+  int touch = 0; // 1-based touch of Transfer, Approach and Retract; 0 otherwise.
   ProbeSegment segment = ProbeSegment::ToEntry;
 
   // "Entry: descend", "Touch 5/31: approach", "Exit: return HOME".

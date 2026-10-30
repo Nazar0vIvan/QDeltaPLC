@@ -12,7 +12,7 @@ OccViewport::OccViewport(Aspect_Handle handle, const DrawingDocument& document)
   : m_viewer(handle),
     m_scene(m_viewer.context(), m_viewer.view()),
     m_robot(m_scene),
-    m_application(m_scene),
+    m_application(m_scene, document.models),
     m_input(m_viewer.context(), m_viewer.view())
 {
   m_timer.setSingleShot(true);

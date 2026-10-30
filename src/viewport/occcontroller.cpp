@@ -17,6 +17,17 @@
 
 namespace RoboCrap3D {
 
+namespace {
+
+bool usesModel(const DrawingObject& object, const QString& path)
+{
+  for (const auto& part : object.parts)
+    if (const auto* model = std::get_if<DrawingModel>(&part.geometry); model && model->path == path) return true;
+  return false;
+}
+
+} // namespace
+
 OccController::OccController(QString occtResources, QObject* parent)
   : QObject(parent), m_occtResources(std::move(occtResources))
 {
@@ -27,9 +38,10 @@ OccController::~OccController()
 {
   m_shuttingDown = true;
   ++m_generation;
-  if (m_worker) {
-    m_worker->requestInterruption();
-    m_worker->wait();
+  for (auto* worker : {m_worker.get(), m_modelWorker.get()}) {
+    if (!worker) continue;
+    worker->requestInterruption();
+    worker->wait();
   }
   if (m_window) {
     detachViewWindow(m_window);
@@ -64,7 +76,15 @@ ViewportOperationResult OccController::insertObject(const DrawingObject& object)
   auto* drawing = viewport();
   const auto result = drawing ? drawing->insertObject(object) : ViewportOperationResult{true, {}};
   if (result.accepted && drawing) drawing->setSelectedObjects(m_document.selected);
-  if (result.accepted) m_document.objects.insert(object.id, object);
+  if (result.accepted) {
+    m_document.objects.insert(object.id, object);
+    // A model drawn before its load finishes is skipped; finishModelLoad redraws the object.
+    for (const auto& part : object.parts)
+      if (const auto* model = std::get_if<DrawingModel>(&part.geometry);
+          model && !m_document.models.contains(model->path) && !m_modelQueue.contains(model->path))
+        m_modelQueue.append(model->path);
+    startModelLoad();
+  }
   if (!result.error.isEmpty()) emit message(result.error, true);
   return result;
 }
@@ -262,6 +282,37 @@ void OccController::finishRobotLoad(quint64 generation)
   else
     createWindow();
   emit readyChanged();
+}
+
+void OccController::startModelLoad()
+{
+  if (m_shuttingDown || m_modelWorker || m_modelQueue.isEmpty()) return;
+  m_modelWorker = std::make_unique<CadLoadWorker>(QStringList{m_modelQueue.first()});
+  QObject::connect(m_modelWorker.get(), &QThread::finished, this, &OccController::finishModelLoad,
+                   Qt::QueuedConnection);
+  m_modelWorker->start();
+}
+
+void OccController::finishModelLoad()
+{
+  if (m_shuttingDown) return;
+  m_modelWorker->wait();
+  const auto result = std::make_shared<const CadLoadResult>(m_modelWorker->takeResult());
+  m_modelWorker.reset();
+  const QString path = m_modelQueue.takeFirst();
+  // A failed path stays recorded, so it is reported once and never retried.
+  m_document.models.insert(path, result);
+  if (!result->error.isEmpty()) {
+    emit message(result->error, true);
+  } else if (auto* drawing = viewport()) {
+    for (const auto& object : std::as_const(m_document.objects)) {
+      if (!usesModel(object, path)) continue;
+      const auto redrawn = drawing->insertObject(object);
+      if (!redrawn.error.isEmpty()) emit message(redrawn.error, true);
+    }
+    drawing->setSelectedObjects(m_document.selected);
+  }
+  startModelLoad();
 }
 
 ViewportOperationResult OccController::applyRobotTransforms(const DrawingPose& pose)

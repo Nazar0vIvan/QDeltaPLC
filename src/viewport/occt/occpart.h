@@ -24,11 +24,13 @@ public:
   [[nodiscard]] OccSelectionMode selectionMode() const;
   [[nodiscard]] bool topmost() const { return m_topmost; }
   [[nodiscard]] bool faceBoundary() const { return m_faceBoundary; }
+  [[nodiscard]] bool fitExcluded() const { return m_fitExcluded; }
 
 private:
   Handle(AIS_Shape) m_handle;
   OccSelectionMode m_selectionMode;
   bool m_topmost = false;
+  bool m_fitExcluded = false;
   bool m_faceBoundary = true;
 };
 

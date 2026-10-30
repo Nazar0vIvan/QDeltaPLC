@@ -24,6 +24,11 @@ to verify implementation claims. User instructions and the root mandatory rules 
   and a Windows 64-bit MinGW Qt kit. It publicly links Geometry and QtCore/Gui/Qml, privately OCCT,
   and has no Application/Trajectories dependency. Only include/viewport is exported, including the
   existing singleton wrapper needed by Application's C++ instance wiring.
+- tools/cadstep2brep/CMakeLists.txt owns the build-time converter cadstep2brep, the only target linking
+  TKDESTEP. robocrap_deploy_occt (cmake/DeployOcct.cmake) converts each resources/cad/*.stp through
+  cmake/ConvertStep.cmake into <build>/generated/cad/<name>.brep, rerun only when its inputs are newer;
+  a failed conversion leaves no BREP. robocrap depends on that conversion target and lists the BREPs in
+  LINK_DEPENDS, so a changed BREP relinks it and reruns the POST_BUILD deployment. No STEP file is deployed.
 - Application has no public C++ include directory. All five libraries export only their selected include
   directories (plus Eigen from Geometry). No target uses the legacy src include directory; the former
   src/pathgeneration, src/network and src/scene trees are gone. No old-path forwarders remain.
@@ -94,16 +99,24 @@ to verify implementation claims. User instructions and the root mandatory rules 
 - Actual native-surface recreation may install cached graphics in the new empty scene without
   reloading assets or republishing the model. It is not movement-error recovery. Preserve
   application presentations. End-effector models are fixed: no tool CAD selection, Browse or Retry.
-  Stop initial camera fitting after a gesture on that surface. Decorative axes are non-selectable
-  and excluded from camera-fit bounds.
+  Stop initial camera fitting after a gesture on that surface. Decorative parts (axes, markers, normals,
+  calibration table and stand) are non-selectable and excluded from camera-fit bounds: OccScene marks
+  their presentation structures infinite after display (OccPartProps::fitExcluded), never their AIS
+  objects, because AIS_Shape computes an infinite object's shaded presentation as wireframe.
 - RobotDefinition::kr10() (application/robot/robotdefinition.*) builds the fixed KR10 numerical model and
   ordered link filenames/RGB from a constant table without OCCT; changing robot geometry means editing
   that table. RobotController's HOME/FK check and Generate's validRobot guard the values.
   robotgraphics.h supplies neutral graphics, the two tool paths in RobotTool order and RobotTool;
   adapters construct OCCT values. Renderer link count comes from the supplied graphics.
 - CadLoadWorker accepts absolute .brep paths and returns ordered shapes/errors. One job loads the seven
-  links followed by MEE.brep and SEE.brep; OccRobotAdapter installs them together and shows only the
-  active tool. Serialize OCCT parsing requests. CadLoadResult is independent of the worker.
+  links followed by EE_WP-500.brep (measuring) and EE_GDZ-65-800A.brep (spindle); OccRobotAdapter
+  installs them together and shows only the active tool. Serialize OCCT parsing requests.
+  CadLoadResult is independent of the worker.
+- A DrawingModel part (absolute BREP path, translation-only origin in {B}) loads once per path on a
+  separate CadLoadWorker, one path at a time; finished loads, failures included, are kept in
+  DrawingDocument::models. Insertion accepts an object whose model is still loading or failed and
+  skips that part; a successful load redraws the document objects that use it. A failure is
+  reported once, never retried, and never affects robot readiness.
 - Application RobotController (application/robot/robotcontroller.*) owns the stable model/solver and accepted pose.
   Keep the checked initial HOME candidate unpublished until graphics acceptance; publish the model
   to machining once, and commit later poses only after returned transform acceptance. Renderer
@@ -113,9 +126,10 @@ to verify implementation claims. User instructions and the root mandatory rules 
   OCCT resource directory to OccController at construction for initialization retry/window recreation.
   Its initializeOcct retains resource checks, environment variables and external Font_FontMgr failure
   handling; no Application header or path selection occurs in Viewport.
-- CAD is BREP only: the nine files in resources/cad/kr10 (seven links, MEE, SEE) are read directly from
-  applicationDirPath()/resources/cad/kr10. There is no STEP import, BREP cache writing or TKDESTEP link.
-  cmake/DeployOcct.cmake stages OCCT DLLs/runtime resources and the *.brep files beside the executable
+- The application reads BREP only, from applicationDirPath()/resources/cad: the seven hand-maintained
+  link BREPs in its kr10 subdirectory and the BREPs generated from resources/cad/*.stp (end effectors,
+  CALIBRATION_STAND). It has no STEP import, runtime BREP cache or TKDESTEP link.
+  cmake/DeployOcct.cmake stages OCCT DLLs/runtime resources and both BREP sets beside the executable
   and at installation.
 
 ## Devices and protocols
@@ -181,7 +195,9 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
   properties list supplies the formatted {label, value} rows that the Properties panel renders.
   Preserve stable scene-allocated IDs (zero means no object), shared references and GUI-thread mutations.
   Numerical fitting/intersection belongs to Geometry; OCCT presentation belongs to adapters.
-  Decorative points/normals/axes do not participate in picking or camera-fit bounds.
+  Decorative points/normals/axes do not participate in picking or camera-fit bounds. The calibration
+  sphere's drawing adds the table top (sphere file `table`) and the CALIBRATION_STAND model as
+  decorative parts, so they share the sphere's visibility; diagnostic overlay updates keep them.
 - Before import/intersection changes, read numerical geometry factories and
   SceneSurfaceImporter/SceneModel callers; preserve units and probe-compensation semantics.
 - BoundedPlane/BoundedCylinder accept points or decoded ProbeSamples, without file factories.
@@ -231,7 +247,9 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Saved points retain no velocity field; check HOME derivatives locally with the existing timing error.
 - LIN also fixes points before IK: N=max(1,ceil(T*sqrt(a/(8*0.01mm)))) per constant-acceleration
   span, with span duration T in seconds and acceleration magnitude a in mm/s²; cruise has one
-  interval. No recursive subdivision, extra quarter-time IK checks, added central points or
+  interval. A CIRC (arcProfile: shorter great-circle arc around a centre, used for the probe
+  calibration transfers on the start shell) adds its normal acceleration peak²/R to a in every
+  span, so its cruise is subdivided too. No recursive subdivision, extra quarter-time IK checks, added central points or
   automatic retiming after IK/rate failures. The position criterion bounds neither orientation
   nor actual TCP error after joint interpolation. Preserve exact shared phase endpoints and
   continuous joint winding; never wrap saved angles modulo 360 degrees.
@@ -306,6 +324,10 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Deliver it to ControlIO as an implicitly shared QVector<V6d> plus its sampling diagnosticId through
   the queued main.cpp link; keep that identifier paired with the active corrections. Every accepted
   sampling request queues an empty stream before its worker starts, even without a held GUI result.
+- The RSI test LIN (resources/files/rsi/RSI_Probe_Lin_CONTRACT.md) is the only other stream:
+  SceneMachiningPreparation::prepareTestLin drops any held stream and shared_data.txt like a new
+  request, then queues 25000 increments of +0.004 mm WORLD X plus 50 zeros with a `test_lin_` ID
+  through the same link. A later Sampling request, startup or shutdown drops it.
 - RsiDevice answers each accepted packet once (newest of a queued burst), advances one increment per
   packet only while Start = 1, and replaces/clears its array immediately on correction updates in
   every state, resetting to Idle and index 0. The first accepted Start = 1 after installation sends

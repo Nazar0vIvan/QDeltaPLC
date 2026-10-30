@@ -3,6 +3,7 @@
 #include "geometry/utils.h"
 #include "kinematics/kr10kinematics.h"
 
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -17,6 +18,12 @@ namespace {
 
 const QString SharedDataDirectory = QStringLiteral("C:/RoboCrapJobs");
 const QString SharedDataPath = QStringLiteral("C:/RoboCrapJobs/shared_data.txt");
+
+// RSI_Probe_Lin (resources/files/rsi/RSI_Probe_Lin_CONTRACT.md): constant WORLD X increments.
+constexpr double RsiCycleSeconds = 0.004; // #IPO_FAST
+constexpr double TestLinStep = 0.004; // mm per cycle: 1 mm/s.
+constexpr int TestLinCycles = 25000; // 100 mm.
+constexpr int TestLinSettleCycles = 50; // Zero corrections before Result = 1, as for Sampling.
 
 // The worker owns its copy of the saved motion handle.
 ChamferRsiStreamResult sampleSavedMotion(std::shared_ptr<const ChamferMotion> motion)
@@ -128,6 +135,9 @@ QString SceneMachiningPreparation::unavailableReason() const
 
 QString SceneMachiningPreparation::summary() const
 {
+  if (m_testLin)
+    return tr("RSI test LIN: WORLD +X %1 mm at %2 mm/s · %3 cycles")
+        .arg(TestLinCycles * TestLinStep).arg(TestLinStep / RsiCycleSeconds).arg(TestLinCycles + TestLinSettleCycles);
   if (!m_prepared) return {};
   const auto& stream = m_prepared->stream;
   // One line for the footer status bar. One multi-argument substitution keeps a
@@ -160,6 +170,24 @@ void SceneMachiningPreparation::prepare()
   m_timer.start();
   emit preparingChanged();
   emit availabilityChanged();
+}
+
+void SceneMachiningPreparation::prepareTestLin()
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  if (m_shuttingDown || m_preparing) {
+    setError(m_shuttingDown ? tr("Application is shutting down.") : tr("RSI Sampling…"));
+    return;
+  }
+  // Like a new Sampling request: RSI_Chamfer_Hole must not find a file for another stream.
+  clearPrepared();
+  QVector<V6d> increments(TestLinCycles + TestLinSettleCycles, V6d::Zero());
+  for (int cycle = 0; cycle < TestLinCycles; ++cycle) increments[cycle][0] = TestLinStep;
+  setError({});
+  m_testLin = true;
+  emit correctionsReady(increments, QStringLiteral("test_lin_")
+      + QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
+  emit preparedChanged();
 }
 
 void SceneMachiningPreparation::finishPreparation()
@@ -198,8 +226,9 @@ void SceneMachiningPreparation::clearPrepared()
   // Without a stream KRL must not find frames from another or older path.
   if (QFile::exists(SharedDataPath) && !QFile::remove(SharedDataPath))
     qInfo().noquote() << "[ERROR] RSI Sampling: cannot remove" << SharedDataPath;
-  const bool wasPrepared = m_prepared.has_value();
+  const bool wasPrepared = m_prepared.has_value() || m_testLin;
   m_prepared.reset();
+  m_testLin = false;
   emit correctionsReady({}, {});
   if (wasPrepared) emit preparedChanged();
 }

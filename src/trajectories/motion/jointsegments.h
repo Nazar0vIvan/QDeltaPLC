@@ -6,6 +6,7 @@
 #include <QVector>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <optional>
 
 // Internal PTP/LIN/joint-spline operations shared by the generated animation motions.
@@ -49,6 +50,10 @@ struct LinearProfile
   Eigen::Quaterniond firstRotation = Eigen::Quaterniond::Identity();
   Eigen::Quaterniond lastRotation = Eigen::Quaterniond::Identity();
   LinearLimits limits;
+  // Set for a CIRC: the position follows the shorter great-circle arc of arcAngle (rad) between
+  // first and last around this centre.
+  std::optional<V3d> arcCentre;
+  double arcAngle = 0.0;
   double length = 0.0;
   double peak = 0.0;
   double ramp = 0.0;
@@ -70,13 +75,23 @@ struct LinearProfile
     return std::clamp(1.0 - rampDistance * remaining * remaining / length, 0.0, 1.0);
   }
 
+  // Position at path progress u: on the chord, or on the arc by interpolating the radius vectors.
+  V3d position(double u) const
+  {
+    const V3d start = first.block<3, 1>(0, 3);
+    const V3d end = last.block<3, 1>(0, 3);
+    if (!arcCentre) return (1.0 - u) * start + u * end;
+    return *arcCentre + (std::sin((1.0 - u) * arcAngle) * (start - *arcCentre)
+                         + std::sin(u * arcAngle) * (end - *arcCentre)) / std::sin(arcAngle);
+  }
+
   M4d target(double seconds) const
   {
     const double u = progress(seconds);
     if (u == 0.0) return first;
     if (u == 1.0) return last;
     M4d pose = first;
-    pose.block<3, 1>(0, 3) = (1.0 - u) * first.block<3, 1>(0, 3) + u * last.block<3, 1>(0, 3);
+    pose.block<3, 1>(0, 3) = position(u);
     // Preview rotation follows traveled distance, including both translational ramps.
     pose.block<3, 3>(0, 0) = firstRotation.slerp(u, lastRotation).normalized().toRotationMatrix();
     return pose;
@@ -86,6 +101,10 @@ struct LinearProfile
 // Trapezoidal speed profile, triangular when the ramps meet, constant without acceleration;
 // empty for invalid poses or limits.
 std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, const LinearLimits& limits);
+// The same ends and limits as a CIRC on the shorter great-circle arc around centre; empty when the
+// ends are not equally far from centre (ArcRadiusTolerance) or the arc is degenerate or a half circle.
+constexpr double ArcRadiusTolerance = 0.001; // mm; covers the FK reconstruction of the start pose.
+std::optional<LinearProfile> arcProfile(const LinearProfile& chord, const V3d& centre);
 
 struct LinearSchedule
 {

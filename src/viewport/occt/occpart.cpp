@@ -12,7 +12,8 @@
 namespace RoboCrap3D {
 
 OccPart::OccPart(const TopoDS_Shape& shape, const OccPartProps& props)
-    : m_selectionMode(props.selectionMode), m_topmost(props.topmost), m_faceBoundary(props.faceBoundary)
+    : m_selectionMode(props.selectionMode), m_topmost(props.topmost), m_fitExcluded(props.fitExcluded),
+      m_faceBoundary(props.faceBoundary)
 {
   if (shape.IsNull()) return;
   m_handle = new AIS_Shape(shape);

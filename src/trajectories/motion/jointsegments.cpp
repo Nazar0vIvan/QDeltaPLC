@@ -183,16 +183,12 @@ double ptpDuration(const V6d& delta, const ChamferTimingParameters& timing)
   return duration;
 }
 
-std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, const LinearLimits& limits)
+namespace {
+
+// Speed profile for the path length already stored in result.
+std::optional<LinearProfile> timedProfile(LinearProfile result)
 {
-  LinearProfile result;
-  result.first = first;
-  result.last = last;
-  result.limits = limits;
-  if (!rigid(result.first) || !rigid(result.last)) return std::nullopt;
-  result.firstRotation = Eigen::Quaterniond(M3d(result.first.block<3, 3>(0, 0))).normalized();
-  result.lastRotation = Eigen::Quaterniond(M3d(result.last.block<3, 3>(0, 0))).normalized();
-  result.length = (result.last.block<3, 1>(0, 3) - result.first.block<3, 1>(0, 3)).stableNorm();
+  const LinearLimits& limits = result.limits;
   if (!std::isfinite(result.length) || result.length <= GeomConst::Eps) return std::nullopt;
   if (limits.acceleration == 0.0) {
     result.peak = limits.feed;
@@ -216,17 +212,49 @@ std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, co
   return result;
 }
 
+} // namespace
+
+std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, const LinearLimits& limits)
+{
+  LinearProfile result;
+  result.first = first;
+  result.last = last;
+  result.limits = limits;
+  if (!rigid(result.first) || !rigid(result.last)) return std::nullopt;
+  result.firstRotation = Eigen::Quaterniond(M3d(result.first.block<3, 3>(0, 0))).normalized();
+  result.lastRotation = Eigen::Quaterniond(M3d(result.last.block<3, 3>(0, 0))).normalized();
+  result.length = (result.last.block<3, 1>(0, 3) - result.first.block<3, 1>(0, 3)).stableNorm();
+  return timedProfile(std::move(result));
+}
+
+std::optional<LinearProfile> arcProfile(const LinearProfile& chord, const V3d& centre)
+{
+  const V3d start = chord.first.block<3, 1>(0, 3) - centre;
+  const V3d end = chord.last.block<3, 1>(0, 3) - centre;
+  const double radius = start.stableNorm();
+  if (!centre.allFinite() || !(radius > GeomConst::Eps)
+      || !(std::abs(end.stableNorm() - radius) <= ArcRadiusTolerance)) return std::nullopt;
+  LinearProfile result = chord;
+  result.arcAngle = std::atan2(start.cross(end).stableNorm(), start.dot(end));
+  if (!(result.arcAngle > GeomConst::Eps) || !(result.arcAngle < GeomConst::Pi - 1e-6)) return std::nullopt;
+  result.arcCentre = centre;
+  result.length = radius * result.arcAngle;
+  return timedProfile(std::move(result));
+}
+
 LinearSchedule linearSchedule(const LinearProfile& profile, double startTime)
 {
   LinearSchedule result{profile, {}, startTime, {}};
   const std::array<double, 4> stops{0.0, profile.ramp, profile.ramp + profile.cruise, profile.duration()};
   std::array<int, 3> intervals{};
   qsizetype plannedPoints = 1;
-  // Count all points before IK. Straight TCP motion has zero normal acceleration.
+  // Count all points before IK. Straight TCP motion has zero normal acceleration; on a CIRC the
+  // normal acceleration peak^2 / R (R = length / arcAngle) bounds the chord deviation from the arc.
+  const double normal = profile.arcCentre ? profile.peak * profile.peak * profile.arcAngle / profile.length : 0.0;
   for (std::size_t stage = 0; stage < intervals.size(); ++stage) {
     const double duration = stops[stage + 1] - stops[stage];
     if (duration == 0.0) continue;
-    const double acceleration = stage == 1 ? 0.0 : profile.limits.acceleration;
+    const double acceleration = (stage == 1 ? 0.0 : profile.limits.acceleration) + normal;
     const double count = std::max(1.0, std::ceil(duration * std::sqrt(acceleration / (8.0 * TransferPositionTolerance))));
     if (!std::isfinite(duration) || duration <= 0.0 || !std::isfinite(count)
         || count > 200000 - plannedPoints || !(duration / count > 1e-9)) {

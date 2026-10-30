@@ -160,6 +160,13 @@ std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
     // Translucent, so the compensated sphere inside it stays visible.
     result.parts.append({DrawingSphere{value->center, value->ballCenterRadius},
                          {{200, 200, 200}, 0.0, false, 0.8}, showBallCenterSphere()});
+    // Decorative surroundings for the visual collision check: the table top and the stand.
+    const CalibrationTable& table = value->table;
+    const V3d tableCenter = value->center + V3d{0.5 * table.lengthX - table.sphereFromMinusX,
+                                                0.5 * table.widthY - table.sphereFromMinusY, -table.sphereAboveTop};
+    result.parts.append({DrawingPlane{tableCenter, V3d::UnitZ(), V3d::UnitX(), table.lengthX, table.widthY},
+                         {{190, 190, 190}, 0.0, true}});
+    result.parts.append({DrawingModel{value->standModel, value->center}, {{140, 140, 140}, 0.0, true}});
   } else if (const auto* motion = machiningPath()) {
     for (std::size_t phase = 0; phase + 1 < motion->boundaries().size(); ++phase) {
       const auto first = motion->boundaries()[phase];
@@ -176,7 +183,7 @@ std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
       if (positions.size() < 2) continue;
       const ProbeSegment kind = segment.phase.segment;
       const bool touching = kind == ProbeSegment::Approach || kind == ProbeSegment::Retract;
-      const bool ptp = kind == ProbeSegment::ToEntry || kind == ProbeSegment::Unwind || kind == ProbeSegment::ReturnHome;
+      const bool ptp = kind == ProbeSegment::ToEntry || kind == ProbeSegment::ReturnHome;
       const std::array<int, 3> color = touching ? std::array<int, 3>{30, 130, 45}
           : ptp ? std::array<int, 3>{90, 65, 130} : std::array<int, 3>{0, 100, 210};
       result.parts.append({std::move(positions), {color, touching ? 3.0 : 2.0}});

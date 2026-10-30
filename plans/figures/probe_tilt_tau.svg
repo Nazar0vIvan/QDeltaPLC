@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="440" viewBox="0 0 680 440" font-family="sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+<rect width="680" height="440" fill="#FFFFFF"/>
+<text x="170" y="40" font-size="15" font-weight="500" fill="#2C2C2A" text-anchor="middle">Калибровка: щуп наклонён</text>
+<text x="500" y="40" font-size="15" font-weight="500" fill="#2C2C2A" text-anchor="middle">Измерение: щуп вертикален</text>
+<rect x="172" y="315" width="16" height="45" rx="2" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<circle cx="180" cy="250" r="70" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<circle cx="180" cy="250" r="2.5" fill="#444441"/>
+<line x1="54" y1="211" x2="28" y2="189" stroke="#888780" stroke-width="16" stroke-linecap="round"/>
+<line x1="93" y1="244" x2="54" y2="211" stroke="#444441" stroke-width="2"/>
+<circle cx="100" cy="250" r="9" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<line x1="110" y1="250" x2="174" y2="250" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<line x1="107" y1="256" x2="134" y2="279" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3 3"/>
+<path d="M130 250 A30 30 0 0 1 123 269" fill="none" stroke="#2C2C2A" stroke-width="1"/>
+<text x="143" y="274" font-size="15" font-weight="500" fill="#2C2C2A" text-anchor="middle">τ</text>
+<rect x="492" y="335" width="16" height="30" rx="2" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+<circle cx="500" cy="270" r="70" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<circle cx="500" cy="270" r="2.5" fill="#444441"/>
+<line x1="551" y1="150" x2="551" y2="118" stroke="#888780" stroke-width="16" stroke-linecap="round"/>
+<line x1="551" y1="200" x2="551" y2="150" stroke="#444441" stroke-width="2"/>
+<circle cx="551" cy="209" r="9" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<line x1="545" y1="216" x2="505" y2="264" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<line x1="551" y1="218" x2="551" y2="258" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3 3"/>
+<path d="M551 239 A30 30 0 0 1 532 232" fill="none" stroke="#2C2C2A" stroke-width="1"/>
+<text x="538" y="260" font-size="15" font-weight="500" fill="#2C2C2A" text-anchor="middle">τ</text>
+<line x1="558" y1="205" x2="600" y2="190" stroke="#888780" stroke-width="0.6" stroke-dasharray="3 2"/>
+<text x="606" y="194" font-size="13" fill="#444441">шарик</text>
+<line x1="560" y1="128" x2="600" y2="128" stroke="#888780" stroke-width="0.6" stroke-dasharray="3 2"/>
+<text x="606" y="132" font-size="13" fill="#444441">корпус</text>
+<line x1="562" y1="175" x2="600" y2="160" stroke="#888780" stroke-width="0.6" stroke-dasharray="3 2"/>
+<text x="606" y="164" font-size="13" fill="#444441">стилус</text>
+<line x1="70" y1="378" x2="100" y2="378" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="108" y="382" font-size="13" fill="#444441">направление подхода к центру сферы</text>
+<line x1="70" y1="400" x2="100" y2="400" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="108" y="404" font-size="13" fill="#444441">продолжение оси стилуса</text>
+<text x="340" y="428" font-size="13" fill="#444441" text-anchor="middle">Слева τ задан наклоном щупа, справа выбором точки касания; для щупа это один и тот же толчок</text>
+</svg>

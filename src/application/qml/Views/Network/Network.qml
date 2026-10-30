@@ -180,4 +180,33 @@ QxScrollView {
       selectedRow: cbDevice.currentIndex
     }
   }
+
+  NetworkPanel {
+    id: rsiTestPanel
+
+    readonly property Backend.DeviceRunner rsi: Backend.Hub.device("rsi")
+
+    Layout.fillWidth: true
+    title: qsTr("RSI test")
+    contentHorizontalMargin: Metrics.sp12
+    contentVerticalMargin: Metrics.sp16
+    spacing: Metrics.sp8
+
+    QxButton {
+      text: qsTr("RSI test LIN")
+      enabled: rsiTestPanel.rsi && rsiTestPanel.rsi.isConnected
+               && !Backend.MachiningPreparation.preparing
+      onClicked: Backend.MachiningPreparation.prepareTestLin()
+    }
+
+    // One elided line, so status changes never resize the panel.
+    Label {
+      Layout.fillWidth: true
+      text: Backend.MachiningPreparation.error || Backend.MachiningPreparation.summary
+      textFormat: Text.PlainText
+      elide: Text.ElideRight
+      color: Colors.foreground.medium
+      font: Fonts.body
+    }
+  }
 }

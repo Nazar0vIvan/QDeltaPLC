@@ -13,7 +13,7 @@ using namespace RoboCrap3D;
 namespace {
 
 constexpr qsizetype MaximumPoints = 400000;
-constexpr double ClearanceTolerance = 0.0001; // mm
+constexpr double ClearanceTolerance = 0.001; // mm; covers the 1e-4 mm FK reconstruction of stored poses.
 
 struct MotionStep
 {
@@ -29,7 +29,7 @@ struct BuildResult
 
 bool ptpSegment(ProbeSegment segment)
 {
-  return segment == ProbeSegment::ToEntry || segment == ProbeSegment::Unwind || segment == ProbeSegment::ReturnHome;
+  return segment == ProbeSegment::ToEntry || segment == ProbeSegment::ReturnHome;
 }
 
 // Constant-speed LIN without ramps, interpolated joint-linearly in playback.
@@ -45,24 +45,13 @@ QVector<MotionStep> motionSteps(const ProbeTouchPlan& plan)
   int number = 0;
   for (const ProbeTouch& touch : plan.touches) {
     ++number;
-    for (const M4d& pose : touch.transfer) steps.append(MotionStep{{number, ProbeSegment::Transfer}, pose});
+    if (number > 1) steps.append(MotionStep{{number, ProbeSegment::Transfer}, touch.start});
     steps.append(MotionStep{{number, ProbeSegment::Approach}, touch.contact});
     steps.append(MotionStep{{number, ProbeSegment::Retract}, touch.start});
-    if (touch.unwindAfter) steps.append(MotionStep{{number, ProbeSegment::Unwind}, touch.start});
   }
   steps.append(MotionStep{{0, ProbeSegment::Retreat}, plan.exit});
   steps.append(MotionStep{{0, ProbeSegment::ReturnHome}, M4d::Identity()});
   return steps;
-}
-
-// The same TCP pose with the other wrist configuration: A4 and A6 turned by 180 deg, A5 negated.
-Kr10Kinematics::IkSolution otherWrist(Kr10Kinematics::IkSolution seed)
-{
-  seed.q[3] += seed.q[3] > 0.0 ? -180.0 : 180.0;
-  seed.q[4] = -seed.q[4];
-  seed.q[5] += seed.q[5] < 0.0 ? 180.0 : -180.0;
-  seed.status = static_cast<uint8_t>(seed.status ^ (1u << 2)); // Kr10Kinematics wrist branch bit.
-  return seed;
 }
 
 // Builds the timed points of one touch plan; borrows the plan and the worker-owned robot setup.
@@ -110,7 +99,7 @@ private:
   {
     V6d end = m_robot.model.qHome;
     if (segment != ProbeSegment::ReturnHome) {
-      const auto solved = m_solver.solveTcp(target, segment == ProbeSegment::Unwind ? otherWrist(m_previous) : m_previous);
+      const auto solved = m_solver.solveTcp(target, m_previous);
       if (!solved.solution) return solved.error;
       m_previous = *solved.solution;
       end = m_previous.q;
@@ -137,8 +126,10 @@ private:
     const auto& timing = m_robot.timing;
     const LinearLimits limits = touchSegment(phase.segment) ? LinearLimits{ProbeApproachFeed, 0.0}
                                                             : LinearLimits{timing.transferFeed, timing.transferAcceleration};
-    const auto profile = linearProfile(m_data.points.back().tcp, target, limits);
-    if (!profile) return QStringLiteral("Invalid or degenerate LIN profile.");
+    auto profile = linearProfile(m_data.points.back().tcp, target, limits);
+    // Transfers are CIRC arcs on the start shell around the sphere centre.
+    if (profile && phase.segment == ProbeSegment::Transfer) profile = arcProfile(*profile, m_plan.parameters.sphereCentre);
+    if (!profile) return QStringLiteral("Invalid or degenerate LIN or CIRC profile.");
     const auto schedule = linearSchedule(*profile, m_data.points.back().time);
     if (!schedule.error.isEmpty()) return schedule.error;
     if (schedule.localTimes.size() > MaximumPoints - m_data.points.size())
@@ -151,13 +142,12 @@ private:
   }
 
   // Strut clearance of every new point; outside touches also the ball's distance outside the
-  // contact shell, which chords of at most ProbeMaximumChordDegrees on the start shell keep.
+  // contact shell, which the CIRC transfers on the start shell keep at ProbeApproachGap.
   QString clearanceError(const ProbeMotionSegment& segment)
   {
     const auto& parameters = m_plan.parameters;
     const double contact = parameters.contactDistance();
-    const double required = (contact + ProbeApproachGap) * std::cos(0.5 * ProbeMaximumChordDegrees * GeomConst::DegToRad)
-        - contact - ClearanceTolerance;
+    const double required = ProbeApproachGap - ClearanceTolerance;
     for (qsizetype i = segment.first + 1; i <= segment.last; ++i) {
       const auto& point = m_data.points[i];
       const V3d ball = point.tcp.block<3, 1>(0, 3);
@@ -187,8 +177,8 @@ private:
 
 QString ProbeMotionPhase::text() const
 {
-  static const std::array<const char*, 8> names{"to entry", "descend", "transfer", "approach", "retract",
-                                                "wrist unwind", "retreat", "return HOME"};
+  static const std::array<const char*, 7> names{"to entry", "descend", "transfer", "approach", "retract",
+                                                "retreat", "return HOME"};
   const QString name = QString::fromLatin1(names[static_cast<std::size_t>(segment)]);
   if (touch > 0) return QStringLiteral("Touch %1/%2: %3").arg(touch).arg(ProbeTouchCount).arg(name);
   const bool entry = segment == ProbeSegment::ToEntry || segment == ProbeSegment::Descend;

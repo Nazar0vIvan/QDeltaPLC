@@ -55,6 +55,8 @@ add_subdirectory(src/kinematics)
 add_subdirectory(src/trajectories)
 add_subdirectory(src/devices)
 add_subdirectory(src/viewport)
+# Uses the OCCT imported targets made global by src/viewport.
+add_subdirectory(tools/cadstep2brep)
 add_subdirectory(qml/Modules/Styles)
 add_subdirectory(qml/Modules/Components)
 

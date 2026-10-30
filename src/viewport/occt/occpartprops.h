@@ -27,6 +27,7 @@ struct OccPartProps
   OccSelectionMode selectionMode = OccSelectionMode::None;
   bool wireframe = false;
   bool topmost = false;
+  bool fitExcluded = false; // Decoration: ignored by camera fitting, drawn as usual.
   // Face edges drawn in black, and as the selection outline; off for faces bounded only by seams.
   bool faceBoundary = true;
   double markerSize = 0.0;

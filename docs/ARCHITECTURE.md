@@ -18,7 +18,7 @@ Hardware (supplied by the user; not derivable from code):
 | PLC | Delta AS332T with AS16AP11P-A / AS16AP11T-A (8 DI + 8 DO each) | `PlcDevice` key `plc` | Custom binary over TCP to 192.168.1.2:5051, fixed source port 1234 |
 | Force/torque sensor | Schunk Delta IP68 SI-660-60 (ATI Net F/T electronics) | `FtsDevice` key `fts` | ATI RDT over UDP, peer port 49152 |
 | Touch probe | WP-500 V6 | none | No device code. Probe data enters only as JSON point files (§5.1) |
-| Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive reference sphere for touch-probe calibration, on a vertical rigid pole on a table in front of the robot. The ball sits 2 mm deep in the top of a ⌀17.8 mm strut cylinder (supplied by the user, 2026-10-26), so only the surface above the strut's top face (12.5 − 2 = 10.5 mm below the sphere center) is accessible |
+| Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive reference sphere for touch-probe calibration, on a vertical rigid pole on a table in front of the robot. The ball sits 2 mm deep in the top of a ⌀17.8 mm strut cylinder (supplied by the user, 2026-10-26), so only the surface above the strut's top face (12.5 − 2 = 10.5 mm below the sphere center) is accessible. The table top (740 mm along x, 935 mm along y of {B}, edges parallel to those axes) lies 170.5 mm below the sphere center; the center is 160 mm from the table edge at the smaller x (toward the robot) and 135 mm from the edge at the smaller y (tape measure, supplied by the user, 2026-10-29; sphere file key `table`). The stand (pole and adapter) is `resources/cad/CALIBRATION_STAND.stp`, saved with its origin at the sphere center |
 | Network switch | D-Link DGS-1005P (5-port Gigabit, 4 PoE ports, unmanaged) | none | Connects the PC's "Devices-Switch" network adapter to the PLC, force/torque sensor and VFD; the KR C4 is cabled directly to the PC |
 
 ### Network
@@ -36,6 +36,73 @@ QoS, per D-Link's datasheet for hardware version B1), RSI requests from the KR C
 reached the PC up to 19 ms late and several at once, and the controller rejected the late replies;
 with a direct cable no request was late. The cause inside the switch was not examined.
 
+**Windows firewall for RSI.** The KR C4 sends RSI requests to 172.31.1.47:5555; if Windows drops
+them, the KRL program stops at RSI with `RSITimeout` after the share has already been mounted and
+read (the share's TCP 139 is still allowed, see below). Inbound RSI must be allowed by this rule,
+which covers all profiles and is restricted to the RSI address pair:
+
+| Rule | Direction / protocol | Local | Remote | Program | Profiles | Action |
+|---|---|---|---|---|---|---|
+| `RoboCrap RSI from KUKA` | In / UDP | 172.31.1.47, port 5555 | 172.31.1.147 | `build\Felgo_SDK_Desktop_Qt_6_8_3_MinGW_64_bit-Debug\robocrap.exe` | Domain, Private, Public | Allow |
+
+After the 2026-10-23 network split this rule still had the old addresses (local 192.168.1.100,
+remote 192.168.1.200) and therefore matched nothing; found on 2026-10-27 after an `RSITimeout`.
+Update it in an Administrator PowerShell:
+
+```powershell
+Set-NetFirewallRule -DisplayName "RoboCrap RSI from KUKA" -LocalAddress 172.31.1.47 -RemoteAddress 172.31.1.147
+```
+
+The rule is bound to the program path, so a build in another folder (Release, another PC) needs its
+own rule. Windows also created program rules named `robocrap` on the first run (Allow TCP/UDP for
+Private; Block TCP and a disabled Block UDP for Public). They allow RSI only while "KRC4-Direct"
+is Private, which is why the dedicated rule above must not depend on the profile. Windows applies
+Block rules before Allow rules, so the Public `robocrap` UDP Block rule must stay disabled.
+
+**Network profile of "KRC4-Direct".** Windows remembers a network's profile by the MAC address of
+its default gateway. Without a gateway the connection was listed as "Неопознанная сеть"
+(unidentified network) and returned to Public after every reconnect of the USB adapter or restart
+of the KR C4, even after it had been set to Private by hand (observed on 2026-10-27). The profile
+matters for RSI through the `robocrap` program rules and for the share through the Private-only
+TCP 139 rule (on Public the built-in NB-Session-In rule allows TCP 139 instead, see
+`KR_C4_WINDOWS10_SHARED_FOLDER_SETUP.md`).
+
+Since 2026-10-27 the profile is fixed by a default route on "KRC4-Direct" through the KR C4
+Windows interface, which answers ARP and so gives the network an identity ("Сеть"):
+
+```powershell
+# Administrator; stored in both the active and the persistent route store
+New-NetRoute -InterfaceAlias "KRC4-Direct" -DestinationPrefix "0.0.0.0/0" -NextHop 192.168.2.200 -RouteMetric 9999
+Disable-NetAdapter -Name "KRC4-Direct" -Confirm:$false; Enable-NetAdapter -Name "KRC4-Direct"
+Set-NetConnectionProfile -InterfaceAlias "KRC4-Direct" -NetworkCategory Private   # once; Windows keeps it
+```
+
+- The KR C4 does not route; the gateway exists only to identify the network. Metric 9999 keeps
+  this default route behind the Wi-Fi one (metric 0) and the VPN, so Internet traffic never goes to
+  the KR C4. Without it the wired adapter's automatic metric (25) would win over Wi-Fi and the PC
+  would lose Internet access.
+- The identity is bound to the MAC address of the KR C4 KLI. Replacing the controller or its
+  network card creates a new network, which must be set to Private again.
+- Identification needs the KR C4 to answer when the link comes up; Windows re-identifies the
+  network on each link-up, for example after the KR C4 is switched on.
+- `secpol.msc` → Network List Manager Policies → Unidentified Networks → Private was not used: it
+  would make every unidentified network on the PC Private.
+
+Checked on 2026-10-27 after the change: "KRC4-Direct" is "Сеть", Private, `LocalNetwork`; route to
+172.31.1.147 through "KRC4-Direct"; route to 8.8.8.8 not through "KRC4-Direct". Persistence across
+a second adapter reconnect was not yet re-checked.
+
+Check before a run (no administrator rights needed):
+
+```powershell
+Get-NetConnectionProfile -InterfaceAlias "KRC4-Direct"                        # Name "Сеть", Private
+Get-NetRoute -DestinationPrefix "0.0.0.0/0"                                  # KRC4-Direct route metric 9999
+Find-NetRoute -RemoteIPAddress 8.8.8.8 | Select-Object InterfaceAlias -First 1   # not KRC4-Direct
+netsh advfirewall firewall show rule name="RoboCrap RSI from KUKA" verbose   # LocalIP / RemoteIP
+Get-NetUDPEndpoint -LocalPort 5555                                           # App socket on 172.31.1.47
+ping -S 172.31.1.47 172.31.1.147
+```
+
 ### Key device specifications
 
 Taken from the manuals folder (checked 2026-10-24) unless marked as supplied by the user. The
@@ -52,7 +119,7 @@ component, not measurements of this installation.
 | Beckhoff EL1809 | 16 DI, 24 VDC (−15 %/+20 %), EN 61131-2 type 1/3; "0" −3…+5 V, "1" 11…30 V; typ. 3 mA; **input filter typ. 3.0 ms**; reference ground = 0 V power contact. | Datasheet EL1809 |
 | Beckhoff EL2809 | 16 DO, 24 VDC, 0.5 A per channel (short-circuit-proof); **switching times typ. TON 60 µs, TOFF 300 µs**. | Datasheet EL2809 |
 | Schunk FTS Delta SI-660-60 (ATI Net F/T) | Sensing ranges Fx, Fy ±660 N; Fz ±1980 N; Tx, Ty, Tz ±60 Nm. Applied loads must be within range on all six axes. RDT streaming over UDP port 49152. | FT Transducer manual §5.10 |
-| WP-500 touch probe | Wired optical touch probe; body Ø42 mm, stylus thread M3, standard stylus 30 mm with Ø3 mm ruby ball; repeatability 0.001 mm; XY travel 20°, Z travel 3 mm; IP67; CR2032 battery (approx. 6 months standby); 3 m two-core signal cable with Type-C connector. Output (supplied by the user): normally open NPN, conducting on trigger; it cannot drive the EL1809 inputs and is wired to AS16AP11T-A input X2.5 (working, user-verified 2026-10-24); the signal path to the KR C4 is described under "Additional hardware and Delta I/O wiring". An external LED on the probe lights on contact (supplied by the user), so touches made in jog mode need no signal connection. **The user states the probe can operate from 24 V power; the WP-500 manual (ENG and CHN) does not mention a 24 V supply.** | WP-500 manual, Technical Specifications, Wiring (table values matched by row order from garbled PDF text) |
+| WP-500 touch probe | Wired optical touch probe; body Ø42 mm, stylus thread M3, standard stylus 30 mm with Ø3 mm ruby ball; repeatability 0.001 mm; XY travel 20°, Z travel 3 mm; IP67; CR2032 battery (approx. 6 months standby); 3 m two-core signal cable with Type-C connector. Output (supplied by the user): normally open NPN, conducting on trigger; it cannot drive the EL1809 inputs and is wired to AS16AP11T-A input X2.0 (working, user-verified 2026-10-24); the signal path to the KR C4 is described under "Additional hardware and Delta I/O wiring". An external LED on the probe lights on contact (supplied by the user), so touches made in jog mode need no signal connection. **The user states the probe can operate from 24 V power; the WP-500 manual (ENG and CHN) does not mention a 24 V supply.** | WP-500 manual, Technical Specifications, Wiring (table values matched by row order from garbled PDF text) |
 
 Discrete signal path between KR C4 and PLC (component datasheet values, not measured). A KR C4
 output `$OUT[n]` switches an EL2809 output (typ. 60 µs on, 300 µs off), which drives an
@@ -76,8 +143,9 @@ supplied by the user):
 | AS16AP11P-A | X1.0–X1.7; sourcing scheme; S/S connected to 0 V | Y1.0–Y1.7; sourcing scheme; C0 connected to +24 V |
 | AS16AP11T-A | X2.0–X2.7; sinking scheme; S/S connected to +24 V | Y2.0–Y2.7; sinking scheme; C0 connected to 0 V |
 
-X2.5 receives the WP-500 NPN output; the S/S connection to +24 V suits an NPN output, which
-switches the input to 0 V.
+X2.0 receives the WP-500 NPN output; the S/S connection to +24 V suits an NPN output, which
+switches the input to 0 V. Y2.0 drives the RUN (motor run) command input of the H100-1.5S2-1B
+frequency inverter (VFD) that runs the GDZ-65-800A spindle (supplied by the user, 2026-10-29).
 
 The EK1100 connects to the KR C4 via EtherCAT. The EL1809 and EL2809 terminals connect
 to the EK1100. WorkVisual maps all 16 channels of each terminal to the controller signals:
@@ -87,32 +155,60 @@ to the EK1100. WorkVisual maps all 16 channels of each terminal to the controlle
 | EL1809 input n, for n = 1–16 | `$IN[n]` |
 | EL2809 output n, for n = 1–16 | `$OUT[n]` |
 
-Only the first six channels in each direction are used for the PLC connection. KR C4
-outputs drive EL2809 outputs wired to AS16AP11P-A inputs; AS16AP11P-A outputs drive
-EL1809 inputs read by KR C4:
+Channels 1–3 and 9–11 in each direction are used for the PLC connection (supplied by the user,
+2026-10-29). KR C4 outputs drive EL2809 outputs wired to AS16AP11P-A inputs; AS16AP11P-A outputs
+drive EL1809 inputs read by KR C4:
 
 | KR C4 output | EL2809 output | AS16AP11P-A input | AS16AP11P-A output | EL1809 input | KR C4 input |
 |---|---|---|---|---|---|
 | `$OUT[1]` | 1 | X1.0 | Y1.0 | 1 | `$IN[1]` |
 | `$OUT[2]` | 2 | X1.1 | Y1.1 | 2 | `$IN[2]` |
 | `$OUT[3]` | 3 | X1.2 | Y1.2 | 3 | `$IN[3]` |
-| `$OUT[4]` | 4 | X1.3 | Y1.3 | 4 | `$IN[4]` |
-| `$OUT[5]` | 5 | X1.4 | Y1.4 | 5 | `$IN[5]` |
-| `$OUT[6]` | 6 | X1.5 | Y1.5 | 6 | `$IN[6]` |
+| `$OUT[9]` | 9 | X1.3 | Y1.3 | 9 | `$IN[9]` |
+| `$OUT[10]` | 10 | X1.4 | Y1.4 | 10 | `$IN[10]` |
+| `$OUT[11]` | 11 | X1.5 | Y1.5 | 11 | `$IN[11]` |
 
 The left and right halves of this table describe separate signal directions; they do not
-imply a PLC logic connection between the X and Y signals on the same row. Channels 7–16
-remain mapped in WorkVisual; apart from EL1809 input 8 (planned probe signal, below) they are
-not used.
+imply a PLC logic connection between the X and Y signals on the same row. Channels 4–8 and 12–16
+remain mapped in WorkVisual but are not wired.
 
-Probe trigger path (supplied by the user, 2026-10-24). The PLC connects input X2.5 (WP-500
-output) to output Y1.7 of the AS16AP11P-A. Y1.7 currently drives a test LED; it is planned to be
-wired to EL1809 input 8, so that the WP-500 trigger reaches the KR C4 as `$IN[8]`. Delays on
-this path are datasheet values, not measured: AS16AP11T-A input (< 20 µs in hardware, then the
-software filter, default 10 ms), the PLC scan, the AS16AP11P-A output (at most 0.5 ms) and the
-EL1809 input filter (typ. 3.0 ms).
+Probe trigger path (assigned by the user, 2026-10-29; replaces the earlier plan X2.0 → Y1.7 →
+EL1809 input 8 → `$IN[8]`). The PLC copies input X2.0 (WP-500 output, TRUE while the probe is
+deflected) to output Y1.5 of the AS16AP11P-A, which is wired to EL1809 input 11, so the WP-500
+trigger reaches the KR C4 as `$IN[11]`. Delays on this path are datasheet values, not measured:
+AS16AP11T-A input (< 20 µs in hardware, then the software filter, default 10 ms), the PLC scan,
+the AS16AP11P-A output (at most 0.5 ms) and the EL1809 input filter (typ. 3.0 ms).
 
-`db.json` also lists a VFD (`driver: "vfd"`) that has no device class.
+`db.json` also lists a VFD (`driver: "vfd"`, 192.168.1.4) that has no device class; the spindle's
+inverter is the H100-1.5S2-1B, started through PLC output Y2.0 (above).
+
+### Automatic External configuration
+
+Automatic External is switched off and none of its signals uses the wired channels `$IN`/`$OUT`
+1–16 (set by the user on the smartPAD, Configuration > Inputs/outputs > Automatic External,
+2026-10-29). `$IN[1025]` is always TRUE and `$IN[1026]` always FALSE; outputs above 16 are not
+mapped to the EL2809. Outputs 138 (`$PR_MODE`) and 139 (`$SS_MODE`) are taken by other machine-data
+signals; assigning them again causes KSS00251 "Signal allocation conflict".
+
+| Inputs | Value | | Outputs | Value |
+|---|---|---|---|---|
+| PGNO_TYPE | 1 (binary) | | `$RC_RDY1` | 137 |
+| PGNO_LENGTH | 2 | | `$ALARM_STOP` | 1013 |
+| PGNO_FBIT | 4001 | | `$USER_SAF` | 1011 |
+| PGNO_PARITY | 0 (no evaluation) | | `$PERI_RDY` | 143 |
+| PGNO_VALID | 0 (edge of `$EXT_START`) | | `$ROB_CAL` | 1001 |
+| `$EXT_START` | 1026 | | `$I_O_ACTCONF` | 140 |
+| `$MOVE_ENABLE` | 1025 | | `$STOPMESS` | 144 |
+| `$CONF_MESS` | 1026 | | `$ALARM_STOP_INTERN` | 1002 |
+| `$DRIVES_OFF` (low-active) | 1025 | | `$PRO_ACT` | 141 |
+| `$DRIVES_ON` | 1026 | | PGNO_REQ | 33 |
+| `$I_O_ACT` (interface active) | 1026 | | APPL_RUN | 142 |
+| | | | `$PRO_MOVE` | 1022 |
+| | | | `$T1`, `$T2`, `$AUT`, `$EXT` | 993, 994, 995, 996 |
+| | | | `$IN_HOME`, `$ON_PATH`, `$NEAR_POSRET` | 1000, 997, 147 |
+
+The last output row comes from the 17 Oct copy `resources/files/KR C4/STEU/Mada/$machine.dat`;
+the Robot position tab was not checked on the controller.
 
 ### Controller tool data
 
@@ -204,7 +300,7 @@ Classes live under src/application/scene on the GUI thread. They reach QML throu
 | `SceneSurfaceImporter` | Synchronous, GUI-thread JSON point import of planes and cylinders, both compensated for the probe. It sets `busy` true and emits `busyChanged` before reading/fitting, then clears it before returning; event-loop painting waits for the call to return. |
 | `SceneEndEffectors` | Stores the active tool, measuring stylus data, the collet frame `FLANGE_ER` and accepted spindle XYZABC with its reconstructed transform (`spindleTcpFrame`). A collet change emits `spindleColletChanged` then `spindleTcpChanged`; a TCP-only change emits the latter; unchanged values emit neither. The tool CAD models are fixed and are not stored here. |
 | `SceneMachining` | Coordinates Generate and Dry Run (§5.2). It holds the `Kr10KinematicModel` copy received once from `RobotController` after initial graphics acceptance, a robot-setup revision counter (incremented when the robot model or the spindle TCP transform changes), and the playback state. It derives the signed unit draft-axis direction and 5–40 mm display length from the selected source/settings and emits the drawing value. |
-| `SceneMachiningPreparation` | RSI Sampling (`App.MachiningPreparation`). For the selected compatible saved path, an `std::async` worker runs `sampleChamferRsiStream` on a copied motion handle, polled by a 30 ms timer; the GUI thread accepts only a result whose path still exists, is compatible and holds the same motion. It then writes `C:/RoboCrapJobs/shared_data.txt` and emits `correctionsReady(QVector<V6d>, QString diagnosticId)` (file format, S/T export, KRL reader and stream lifetime: "Machining and playback" in AGENT_CONTRACTS.md). QML reads `canPrepare`, `unavailableReason`, `preparing`, `error` and `summary`. |
+| `SceneMachiningPreparation` | RSI Sampling (`App.MachiningPreparation`). For the selected compatible saved path, an `std::async` worker runs `sampleChamferRsiStream` on a copied motion handle, polled by a 30 ms timer; the GUI thread accepts only a result whose path still exists, is compatible and holds the same motion. It then writes `C:/RoboCrapJobs/shared_data.txt` and emits `correctionsReady(QVector<V6d>, QString diagnosticId)` (file format, S/T export, KRL reader and stream lifetime: "Machining and playback" in AGENT_CONTRACTS.md). QML reads `canPrepare`, `unavailableReason`, `preparing`, `error` and `summary`. `prepareTestLin` (Network page, "RSI test LIN") instead installs the hard-coded `RSI_Probe_Lin` stream (`resources/files/rsi/RSI_Probe_Lin_CONTRACT.md`). |
 
 QML singletons (`application/backendqmltypes.h`):
 
@@ -251,11 +347,11 @@ Ownership, replay, failure and readiness rules: "Viewport and CAD" in AGENT_CONT
 
 | Class | Responsibility |
 |---|---|
-| `OccController` | Viewport3D singleton; owns the native window, the single robot CAD worker, neutral ordered graphics, the accepted `DrawingDocument`/`DrawingPose` and tool display state. |
+| `OccController` | Viewport3D singleton; owns the native window, the robot CAD worker, a model CAD worker that loads `DrawingModel` BREPs one path at a time (results kept in `DrawingDocument::models`), neutral ordered graphics, the accepted `DrawingDocument`/`DrawingPose` and tool display state. |
 | `OccViewWindow` | QWindow hosted by RobotViewport's WindowContainer. Owns native-surface lifetime, input events, robot installation and the active tool; exposes `viewport()`. First expose builds the viewport. |
 | `OccViewport`, `OccViewer`, `OccScene`, `OccPart`, `OccInputController`, `OccViewCube`, `OccWorldAxes` | OCCT stack: `OpenGl_GraphicDriver` → `V3d_Viewer`/`V3d_View` on a `WNT_Window`, plus `AIS_InteractiveContext`. Rendering is coalesced with a 0 ms single-shot `QTimer` on the GUI thread, except robot installation (`OccViewport::setRobot`), which draws immediately so the robot is on screen before `ready` is reported and the status-bar loading indicator hides. There is no render thread and no `QOpenGLContext`. |
 | `OccRobotAdapter` | Converts supplied Eigen matrices to gp_Trsf for existing links, tools and axes (`toOccTransform`). One installation creates the seven links and then the measuring and spindle tools (`m_partIds`: links in model order, then tools). |
-| `OccSceneAdapter` | Turns supplied analytic patches/curves, polylines and diagnostic/axis drawing values into OCCT parts; picking returns the stable application ID. |
+| `OccSceneAdapter` | Turns supplied analytic patches/curves, polylines, loaded `DrawingModel` shapes (moved to their origin; skipped until loaded) and diagnostic/axis drawing values into OCCT parts; picking returns the stable application ID. Each object keeps surfaces, decorative parts and diagnostics in separate lists, so a diagnostic update keeps its decorative parts. |
 | `CadLoadWorker` | `QThread` subclass; a function-local static mutex serializes parsing. It reads each absolute `.brep` path through `QFile` bytes into `BRepTools::Read` and returns ordered shapes or `Cannot read CAD file: <path>`. |
 | `RobotDefinition` / `RobotController` (application target) | `RobotDefinition::kr10()` builds the fixed numerical model and link filename/RGB records from a constant table. RobotController owns that model (const), the solver, a temporary checked initial HOME candidate and one optional accepted pose. It is not a QML type; its public operations are `loadRobot()` and `applyPlayback(joints, flangeToTcp)`, both returning `ViewportOperationResult`; internally `initialize` and `forward` return `RobotPoseResult` (optional link transforms and error text). There is no manual FK/IK command. |
 | `ViewportAssets` (private Application assetpaths.*) | Selects the CAD and OCCT resource directories beside the executable. |
@@ -275,7 +371,7 @@ Ownership, replay, failure and readiness rules: "Viewport and CAD" in AGENT_CONT
 - **Device panels.** They use `App.Hub.device(key)`, `isConnected`, `data.<key>` and `invoke(name, map)`. Every `invoke` name used in QML exists as a `Q_INVOKABLE` on the target device. The RSI status label in Main shows `data.rsiState` while the RSI socket is bound.
 - **Tools and placeholders.** Dry Scan only toggles `Main.qml` flags; no scan motion is prepared or played. Scan and Start Machining use the toolbar action's default `available: false` and remain disabled. Measuring name/ball diameter/stylus length are displayed read-only; spindle ER coordinates are disabled read-only fields, while TCP relative to ER has Apply, which passes the original ER coordinates, not their four-decimal display values. This UI does not implement measuring calibration or scan execution.
 - **Reusable modules.** `Components` contains the `Qx*` wrappers around Qt Quick Controls. `Styles` contains the singletons `Colors`, `Fonts` and `Metrics`. Both are NO_PLUGIN static modules with maintained `qmldir` files.
-- **Resources.** `pics.qrc`: SVG icons; `fonts.qrc`: Roboto; `json.qrc`: `db.json`. `resources/files` retains its blade/RSI inputs; they are not embedded in a qrc. `cmake/DeployOcct.cmake` copies the nine `*.brep` files (seven KR10 links, `MEE`, `SEE`) beside the executable; there are no STEP sources.
+- **Resources.** `pics.qrc`: SVG icons; `fonts.qrc`: Roboto; `json.qrc`: `db.json`. `resources/files` retains its blade/RSI inputs; they are not embedded in a qrc. CAD sources: the seven KR10 link BREPs in `resources/cad/kr10` and the STEP files in `resources/cad` (`EE_WP-500.stp`, the measuring tool; `EE_GDZ-65-800A.stp`, the spindle tool; `CALIBRATION_STAND.stp`). The build converts each STEP file to `<build>/generated/cad/<name>.brep` with `tools/cadstep2brep`, and `cmake/DeployOcct.cmake` copies the link BREPs to `resources/cad/kr10` and the generated BREPs to `resources/cad` beside the executable; no STEP file is deployed.
 - **Properties panel.** `PropertiesPanel.qml` renders `selectedObject.properties` with one `Repeater` of `PropertyValue` rows; the label column width comes from a fixed label list, so it does not change with the selection.
 
 ## 4. Threading and ownership model
@@ -288,7 +384,7 @@ Ownership, replay, failure and readiness rules: "Viewport and CAD" in AGENT_CONT
 | Generate worker (`std::async`) | `ChamferMotion::create` on a copied `ChamferPath` + `ChamferRobotSetup`; polled by a 30 ms GUI timer | `SceneMachining::generate` |
 | RSI sampling worker (`std::async`) | `sampleChamferRsiStream` on a copied `shared_ptr<const ChamferMotion>`; polled by a 30 ms timer | `SceneMachiningPreparation::prepare` |
 | FTS save worker (`std::async`) | JSON write of a copied sample buffer | `FtsDevice` |
-| CAD worker (`QThread` subclass) | BREP loading of the seven links and two tools, serialized by a static mutex | `OccController` |
+| CAD workers (`QThread` subclass) | BREP loading of the seven links and two tools (robot job), and of each `DrawingModel` path (model job); all reads serialized by a static mutex | `OccController` |
 
 Ownership and lifetime rules:
 
@@ -314,11 +410,20 @@ Ownership and lifetime rules:
 
 **BREP CAD for robot and end effectors.** This goes to the viewport only. main.cpp calls
 `RobotController::loadRobot` once; RobotController checks its constant HOME candidate and supplies
-the absolute paths of the seven link BREPs plus `MEE.brep` and `SEE.brep`, the link RGB and
-matrices; OccController's CAD worker loads the nine files and one installation inserts links and
-tools; on graphics readiness RobotController accepts HOME and supplies the model to SceneMachining
-once. Switching Measuring/Machining calls `SceneEndEffectors::setActiveTool`, and OccController
-only toggles which tool part is visible.
+the absolute paths of the seven link BREPs (`resources/cad/kr10`) plus `EE_WP-500.brep` and
+`EE_GDZ-65-800A.brep` (`resources/cad`), the link RGB and matrices; OccController's CAD worker
+loads the nine files and one installation inserts links and tools; on graphics readiness
+RobotController accepts HOME and supplies the model to SceneMachining once. Switching
+Measuring/Machining calls `SceneEndEffectors::setActiveTool`, and OccController only toggles which
+tool part is visible.
+
+**Calibration stand and table.** Entering the Calibration submode reads the sphere file, including
+its `table` object; `SceneCalibration::activate` sets the sphere's `standModel` to
+`resources/cad/CALIBRATION_STAND.brep`. `SceneObject::drawing()` adds to the sphere two decorative
+parts: the table top (`DrawingPlane` centered at the sphere center plus
+(lengthX/2 − sphereFromMinusX, widthY/2 − sphereFromMinusY, −sphereAboveTop)) and the stand
+(`DrawingModel` at the sphere center). OccController loads the stand on its model worker and
+redraws the sphere when the load finishes.
 
 ### 5.2 Generate → Dry Run
 
@@ -364,7 +469,7 @@ the socket; the network connection waits for an explicit `invoke("connect", conf
    - `stopAll()` asserts that the caller is outside both I/O threads: a blocking queued stop from its receiving thread would deadlock. The current shutdown caller is the GUI thread.
 3. **`app.exec()` returns.** Stack objects are destroyed in reverse declaration order:
    1. `QQmlApplicationEngine`. QML is destroyed; `RobotViewport` `onDestruction` calls `detachViewWindow`.
-   2. RobotController marks machining unavailable; OccController then interrupts and **waits** for the CAD worker (a BREP read cannot be interrupted mid-file), then deletes the window.
+   2. RobotController marks machining unavailable; OccController then interrupts and **waits** for the robot and model CAD workers (a BREP read cannot be interrupted mid-file), then deletes the window.
    3. `SceneMachiningPreparation`. Its destructor calls `shutdown()` again, which is a no-op.
    4. `SceneMachining`. There is no explicit wait, but destroying a `std::future` returned by `std::async` blocks until an in-flight `ChamferMotion::create` finishes.
    5. `SceneEndEffectors`, then `SceneModel`.
@@ -374,7 +479,7 @@ the socket; the network connection waits for an explicit `invoke("connect", conf
 ## 6. External-library boundaries
 
 - **Qt 6.8 / QML.** `USE_HOT_RELOAD` defaults to OFF in the root CMakeLists.txt (QML embedded and loaded with `engine.loadFromModule("robocrap_qml_module", "Main")`); an existing build cache can hold a different value. `FAST_QML_BUILD=ON` (default) adds `NO_CACHEGEN`. Numerical code uses only QtCore: containers, JSON, `QElapsedTimer`.
-- **OCCT 8.0.0.** Used only by src/viewport/occt, src/viewport/adapters and OccController's initialization/drawing implementation; the public `OccController` header exposes no OCCT types. Only Release OCCT libraries are mapped. `ready` requires the robot CAD to be presented, so Generate depends on OCCT initialization and the BREP load; while the native surface is destroyed and not yet rebuilt (on exit or during Felgo hot reload), availability is false and a Generate result arriving then is rejected (user-confirmed behavior).
+- **OCCT 8.0.0.** Used only by src/viewport/occt, src/viewport/adapters and OccController's initialization/drawing implementation; the public `OccController` header exposes no OCCT types. Only Release OCCT libraries are mapped. The build-time converter `tools/cadstep2brep` is the only code linking `TKDESTEP`; `cmake/ConvertStep.cmake` runs it with the OCCT and MinGW DLL directories on `PATH`. `ready` requires the robot CAD to be presented, so Generate depends on OCCT initialization and the BREP load; while the native surface is destroyed and not yet rebuilt (on exit or during Felgo hot reload), availability is false and a Generate result arriving then is rejected (user-confirmed behavior).
 - **Eigen 5.0.0.** Header-only, vendored in `libs/`, exported PUBLIC by `RoboCrapGeometry` because `mathtypes.h`, `utils.h`, the kinematics and the path types expose Eigen in their headers.
 - **Felgo.** Only in hot-reload builds (`FelgoApplication`, `FelgoHotReload` in `main.cpp`).
 - **Standard library concurrency.** `std::async` / `std::future` is used for the Generate, RSI sampling and FTS save workers. `QtConcurrent` is not used.
@@ -399,12 +504,12 @@ RSI items not yet verified are listed in RSI_Chamfer_Hole_CONTRACT.md.
 **Data and units**
 - Imported files contain no unit tag that the importer validates or converts; point coordinates and probe radius must already use scene units (millimeters).
 - `SceneEndEffectors` uses a hard-coded collet frame `FLANGE_ER`: the ER y-axis direction and origin from CMM data, with the roll fixed by projecting the flange z-axis perpendicular to that y-axis. The frame only serves as a convenient reference for entering the spindle TCP relative to ER (user, 2026-10-24); the "provisional roll" code comment does not mean pending data.
-- The nine BREPs in `resources/cad/kr10` are the only CAD inputs; there are no STEP sources to regenerate them from. Their compatibility with the linked OCCT version is not checked beyond `BRepTools::Read` succeeding.
+- The seven link BREPs in `resources/cad/kr10` have no STEP sources to regenerate them from; the end-effector and stand BREPs are regenerated from `resources/cad/*.stp` by every build in which a STEP file is newer than its BREP. Compatibility with the linked OCCT version is not checked beyond `BRepTools::Read` succeeding. The end-effector STEP files must be saved in the flange coordinate system and the stand in the sphere coordinate system {S}; the application moves models only by translation.
 - `IkSolution::status` selects the next animation IK branch; `turn` remains angle-sign metadata, and nearest winding uses the preceding six angles. Exact compatibility of the project's bit mapping with installed KUKA controller semantics remains unverified.
 
 **Retained interfaces and code hygiene**
 - `SceneModel` is registered under both `SceneModel` and the singleton `Scene`; one C++ class under two QML names is not a documented Qt pattern, though the build has used it.
 - `FtsDevice::dataSampleHFReady`, `dataBatchReady` and `streamReset` have no active connections; they and the queued `RDTResponse` metatype registrations are kept for future force-controlled motion (user decision). `ChamferPathSample`/`ChamferPathResult` serve analytical evaluation/construction.
 - Additional operation-status/error properties and QML error displays for device/viewport diagnostics are deferred at the user's request.
-- Retained assets: nine KR10/tool BREPs and `resources/files` blade/RSI inputs; lack of embedding does not make them disposable.
+- Retained assets: seven KR10 link BREPs, the CAD STEP sources and `resources/files` blade/RSI inputs; lack of embedding does not make them disposable.
 - The `devicehub.h:12-17` comment still mentions a single shared I/O thread.

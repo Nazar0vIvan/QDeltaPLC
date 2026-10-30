@@ -10,6 +10,7 @@
 
 #include <Graphic3d_ZLayerId.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <PrsMgr_Presentation.hxx>
 
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopoDS_Shape.hxx>
@@ -179,6 +180,10 @@ bool OccScene::displayPart(OccPart& part)
   }
 
   m_context->Display(handle, handle->DisplayMode(), selectionMode, false);
+  // FitAll skips infinite structures. Marking the AIS object infinite instead would make
+  // AIS_Shape compute its shaded presentation as wireframe.
+  if (part.fitExcluded())
+    for (const auto& presentation : handle->Presentations()) presentation->SetInfiniteState(true);
 
   if (part.topmost()) m_context->SetZLayer(handle, Graphic3d_ZLayerId_Topmost);
 

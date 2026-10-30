@@ -9,26 +9,38 @@
 
 namespace {
 
-constexpr double EntryHeight = 60.0; // mm above the sphere centre.
+constexpr double EntryDistance = 60.0; // mm from the sphere centre along the first normal...
+constexpr double EntryRise = 80.0; // ...and this much higher.
 constexpr double ExitDistance = 42.0; // mm from the sphere centre along the last normal.
-constexpr double RollDegrees = 30.0;
-constexpr std::size_t UnwindAfterTouch = 21; // A4 would pass +185 deg on the way to T22.
 
 struct TouchRow
 {
   double latitude; // deg
-  double longitude; // deg; the pole uses the longitude of the following touch.
+  double longitude; // deg
   double tilt; // deg, stylus turned in the meridian plane from -normal towards straight down.
+  double roll; // deg about the stylus; free for the axisymmetric probe, chosen to keep A6 at 90-150 deg.
 };
 
+// A uniform grid about 30 deg apart: the pole, latitude 60 every 60 deg, 30 every 36 deg, 0 every
+// 30 deg and -30 every 36 deg. Unreachable: latitude -30 at longitudes 324 and 0 (far side, below).
+// In the A5 > 0 wrist A4 follows the stylus azimuth and is +-180 deg where the stylus points away from
+// the robot (longitude 162.5 deg). Latitudes 30 and 60 are closed rings: tilting the stylus towards
+// straight down near the robot keeps A4 within +-70 deg there. Latitudes 0 and -30 span A4 from -162
+// to +161 deg and must not cross longitude 162.5 deg: they are scanned from longitude 180 around the
+// far side to 330, then the upper rings and the pole, then from longitude 0 to 150. Tilts keep
+// 51 deg <= |A5| <= 115 deg; everything stays in one wrist configuration. On the low touches the
+// tilt also lifts the A4/A5 wrist housings, which hang below the stylus when it points upwards: each
+// 15 deg raises them by about 50 mm, to at least 65 mm above the stand's table (scratch estimate).
 constexpr std::array<TouchRow, ProbeTouchCount> Touches{{
-    {90, 90, 0},
-    {50, 90, 0}, {50, 45, 0}, {50, 0, 0}, {50, 315, 0}, {50, 270, 0}, {50, 225, 0},
-    {20, 210, 0}, {20, 240, 0}, {20, 270, 0}, {20, 300, 30}, {20, 330, 30}, {20, 0, 30}, {20, 30, 30},
-    {20, 60, 0}, {20, 90, 0}, {20, 120, 0},
-    {-10, 60, 0}, {-10, 90, 0}, {-10, 120, 0}, {-10, 150, 0},
-    {-10, 180, 0}, {-10, 210, 0}, {-10, 240, 0}, {-10, 270, 0},
-    {-30, 240, 0}, {-30, 210, 0}, {-30, 180, 0}, {-30, 150, 0}, {-30, 120, 0}, {-30, 90, 0}}};
+    {0, 180, 0, 30}, {-30, 180, 30, 30}, {-30, 216, 30, 0}, {0, 210, 0, 0}, {0, 240, 0, 0},
+    {-30, 252, 30, 0}, {-30, 288, 50, 0}, {0, 270, 0, 0}, {0, 300, 40, 30}, {0, 330, 45, 60},
+    {30, 342, 30, 60}, {30, 18, 15, 90}, {30, 54, 0, 120}, {30, 90, 0, 120}, {30, 126, 50, -150},
+    {30, 162, 50, -120}, {30, 198, 50, -90}, {30, 234, 0, 0}, {30, 270, 0, 0}, {30, 306, 15, 30},
+    {60, 300, 0, 30}, {60, 0, 0, 90}, {60, 60, 0, 150}, {60, 120, 15, -150}, {60, 180, 30, -90},
+    {60, 240, 0, 0},
+    {90, 0, 0, 90},
+    {0, 0, 45, 90}, {0, 30, 30, 120}, {-30, 36, 55, 120}, {0, 60, 15, 120}, {-30, 72, 45, 120},
+    {-30, 108, 45, 90}, {0, 90, 15, 90}, {0, 120, 15, 90}, {-30, 144, 30, 60}, {0, 150, 0, 60}}};
 
 V3d sphereNormal(const TouchRow& row)
 {
@@ -41,27 +53,8 @@ V3d sphereNormal(const TouchRow& row)
 M3d touchRotation(const TouchRow& row)
 {
   const M4d rotation = makeRotation(row.longitude, Axis::Z) * makeRotation(90.0 - row.latitude - row.tilt, Axis::Y)
-      * makeRotation(180.0, Axis::X) * makeRotation(RollDegrees, Axis::Z);
+      * makeRotation(180.0, Axis::X) * makeRotation(row.roll, Axis::Z);
   return rotation.block<3, 3>(0, 0);
-}
-
-// Waypoints on the start shell at most ProbeMaximumChordDegrees apart, rotations slerped
-// between the two touches.
-QVector<M4d> transferPoses(const ProbeTouch& from, const ProbeTouch& to, const V3d& centre)
-{
-  const double degrees = std::acos(std::clamp(from.normal.dot(to.normal), -1.0, 1.0)) * GeomConst::RadToDeg;
-  const int chords = std::max(1, static_cast<int>(std::ceil(degrees / ProbeMaximumChordDegrees - 1e-9)));
-  const double shell = (from.start.block<3, 1>(0, 3) - centre).norm();
-  const Eigen::Quaterniond first(M3d(from.start.block<3, 3>(0, 0)));
-  const Eigen::Quaterniond last(M3d(to.start.block<3, 3>(0, 0)));
-  QVector<M4d> poses;
-  for (int chord = 1; chord < chords; ++chord) {
-    const double u = static_cast<double>(chord) / chords;
-    const V3d direction = ((1.0 - u) * from.normal + u * to.normal).normalized();
-    poses.append(makeTransform(first.slerp(u, last).toRotationMatrix(), centre + shell * direction));
-  }
-  poses.append(to.start);
-  return poses;
 }
 
 bool positive(double value)
@@ -96,17 +89,17 @@ ProbeTouchPlanResult createProbeTouchPlan(const ProbeTouchPlanParameters& parame
     const M3d rotation = touchRotation(Touches[index]);
     touch.start = makeTransform(rotation, centre + (contact + ProbeApproachGap) * touch.normal);
     touch.contact = makeTransform(rotation, centre + contact * touch.normal);
-    touch.unwindAfter = index + 1 == UnwindAfterTouch;
     const double clearance = std::min(parameters.strutClearance(touch.start.block<3, 1>(0, 3)),
                                       parameters.strutClearance(touch.contact.block<3, 1>(0, 3)));
     if (clearance < ProbeApproachGap)
       return {{}, QStringLiteral("Touch %1/%2: strut clearance %3 mm is below %4 mm.")
                       .arg(index + 1).arg(ProbeTouchCount).arg(clearance, 0, 'f', 4).arg(ProbeApproachGap)};
-    if (!plan.touches.isEmpty()) touch.transfer = transferPoses(plan.touches.back(), touch, centre);
     plan.touches.append(touch);
   }
+  const ProbeTouch& first = plan.touches.front();
   const ProbeTouch& last = plan.touches.back();
-  plan.entry = makeTransform(plan.touches.front().start.block<3, 3>(0, 0), centre + EntryHeight * V3d::UnitZ());
+  plan.entry = makeTransform(first.start.block<3, 3>(0, 0),
+                             centre + EntryDistance * first.normal + EntryRise * V3d::UnitZ());
   plan.exit = makeTransform(last.start.block<3, 3>(0, 0), centre + ExitDistance * last.normal);
   return {std::move(plan), {}};
 }
