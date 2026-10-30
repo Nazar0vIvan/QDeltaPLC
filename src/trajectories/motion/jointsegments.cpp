@@ -128,6 +128,34 @@ bool validTiming(const ChamferTimingParameters& timing)
       && timing.auxiliaryScale <= 1.0;
 }
 
+// Peak speed, ramps and cruise of a profile whose poses, limits and path length are set.
+std::optional<LinearProfile> timedProfile(LinearProfile result)
+{
+  const LinearLimits& limits = result.limits;
+  if (!std::isfinite(result.length) || result.length <= GeomConst::Eps) return std::nullopt;
+  if (limits.acceleration == 0.0) {
+    result.peak = limits.feed;
+    result.ramp = 0.0;
+    result.cruise = result.length / limits.feed;
+    const bool valid = std::isfinite(result.peak) && result.peak > 0.0 && std::isfinite(result.cruise) && result.cruise > 0.0;
+    return valid ? std::optional<LinearProfile>{result} : std::nullopt;
+  }
+  // Compare requested ramp distance before multiplying acceleration by length.
+  const double requestedRamp = limits.feed / limits.acceleration;
+  const bool triangular = !std::isfinite(requestedRamp)
+      || limits.feed * requestedRamp >= result.length;
+  result.peak = triangular ? std::sqrt(result.length) * std::sqrt(limits.acceleration)
+                           : limits.feed;
+  result.ramp = result.peak / limits.acceleration;
+  result.cruise = triangular ? 0.0 : (result.length - result.peak * result.ramp) / result.peak;
+  if (!std::isfinite(result.peak) || result.peak <= 0.0 || !std::isfinite(result.ramp)
+      || result.ramp <= 1e-9 || !std::isfinite(result.cruise) || result.cruise < 0.0
+      || !std::isfinite(result.duration()) || result.duration() <= result.ramp
+      || (result.cruise > 0.0 && result.ramp + result.cruise <= result.ramp))
+    return std::nullopt;
+  return result;
+}
+
 } // namespace
 
 RobotSetupResult ratedRobotSetup(const ChamferRobotSetup& robot)
@@ -149,11 +177,6 @@ RobotSetupResult ratedRobotSetup(const ChamferRobotSetup& robot)
 double smoothProgress(double u)
 {
   return u * u * u * (10.0 + u * (-15.0 + 6.0 * u));
-}
-
-double smoothVelocity(double u)
-{
-  return 30.0 * u * u * (1.0 - u) * (1.0 - u);
 }
 
 double inverseProgress(double progress)
@@ -183,37 +206,6 @@ double ptpDuration(const V6d& delta, const ChamferTimingParameters& timing)
   return duration;
 }
 
-namespace {
-
-// Speed profile for the path length already stored in result.
-std::optional<LinearProfile> timedProfile(LinearProfile result)
-{
-  const LinearLimits& limits = result.limits;
-  if (!std::isfinite(result.length) || result.length <= GeomConst::Eps) return std::nullopt;
-  if (limits.acceleration == 0.0) {
-    result.peak = limits.feed;
-    result.cruise = result.length / limits.feed;
-    const bool valid = std::isfinite(result.peak) && result.peak > 0.0 && std::isfinite(result.cruise) && result.cruise > 0.0;
-    return valid ? std::optional<LinearProfile>{result} : std::nullopt;
-  }
-  // Compare requested ramp distance before multiplying acceleration by length.
-  const double requestedRamp = limits.feed / limits.acceleration;
-  const bool triangular = !std::isfinite(requestedRamp)
-      || limits.feed * requestedRamp >= result.length;
-  result.peak = triangular ? std::sqrt(result.length) * std::sqrt(limits.acceleration)
-                           : limits.feed;
-  result.ramp = result.peak / limits.acceleration;
-  result.cruise = triangular ? 0.0 : (result.length - result.peak * result.ramp) / result.peak;
-  if (!std::isfinite(result.peak) || result.peak <= 0.0 || !std::isfinite(result.ramp)
-      || result.ramp <= 1e-9 || !std::isfinite(result.cruise) || result.cruise < 0.0
-      || !std::isfinite(result.duration()) || result.duration() <= result.ramp
-      || (result.cruise > 0.0 && result.ramp + result.cruise <= result.ramp))
-    return std::nullopt;
-  return result;
-}
-
-} // namespace
-
 std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, const LinearLimits& limits)
 {
   LinearProfile result;
@@ -227,30 +219,33 @@ std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, co
   return timedProfile(std::move(result));
 }
 
-std::optional<LinearProfile> arcProfile(const LinearProfile& chord, const V3d& centre)
+std::optional<LinearProfile> circularProfile(const LinearProfile& chord, const V3d& centre)
 {
-  const V3d start = chord.first.block<3, 1>(0, 3) - centre;
-  const V3d end = chord.last.block<3, 1>(0, 3) - centre;
-  const double radius = start.stableNorm();
-  if (!centre.allFinite() || !(radius > GeomConst::Eps)
-      || !(std::abs(end.stableNorm() - radius) <= ArcRadiusTolerance)) return std::nullopt;
+  const V3d from = chord.first.block<3, 1>(0, 3) - centre;
+  const V3d to = chord.last.block<3, 1>(0, 3) - centre;
+  const V3d normal = from.cross(to);
+  const double radius = from.stableNorm();
+  if (!centre.allFinite() || !std::isfinite(radius) || radius <= GeomConst::Eps
+      || std::abs(to.stableNorm() - radius) > TransferPositionTolerance
+      || !(normal.stableNorm() > 1e-6 * radius * radius))
+    return std::nullopt;
   LinearProfile result = chord;
-  result.arcAngle = std::atan2(start.cross(end).stableNorm(), start.dot(end));
-  if (!(result.arcAngle > GeomConst::Eps) || !(result.arcAngle < GeomConst::Pi - 1e-6)) return std::nullopt;
-  result.arcCentre = centre;
-  result.length = radius * result.arcAngle;
+  result.centre = centre;
+  result.axis = normal.normalized();
+  result.angle = std::atan2(normal.stableNorm(), from.dot(to));
+  result.length = radius * result.angle;
   return timedProfile(std::move(result));
 }
 
-LinearSchedule linearSchedule(const LinearProfile& profile, double startTime)
+LinearSchedule linearSchedule(const LinearProfile& profile)
 {
-  LinearSchedule result{profile, {}, startTime, {}};
+  LinearSchedule result;
   const std::array<double, 4> stops{0.0, profile.ramp, profile.ramp + profile.cruise, profile.duration()};
   std::array<int, 3> intervals{};
   qsizetype plannedPoints = 1;
-  // Count all points before IK. Straight TCP motion has zero normal acceleration; on a CIRC the
-  // normal acceleration peak^2 / R (R = length / arcAngle) bounds the chord deviation from the arc.
-  const double normal = profile.arcCentre ? profile.peak * profile.peak * profile.arcAngle / profile.length : 0.0;
+  // Count all points before IK. A straight LIN has zero normal acceleration; an arc adds the
+  // bound peak^2 / radius to every stage.
+  const double normal = profile.angle == 0.0 ? 0.0 : profile.peak * profile.peak * profile.angle / profile.length;
   for (std::size_t stage = 0; stage < intervals.size(); ++stage) {
     const double duration = stops[stage + 1] - stops[stage];
     if (duration == 0.0) continue;

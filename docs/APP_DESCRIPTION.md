@@ -8,7 +8,8 @@ the controller/PC protocol is in
 [RSI_Chamfer_Hole_CONTRACT.md](../resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md).
 
 Terms used below: TCP is the tool center point. PTP is a synchronized joint motion to a target;
-LIN is a straight Cartesian motion. P_s is the staging point on the hole axis, outside the hole.
+LIN is a straight Cartesian motion; CIRC is a circular-arc Cartesian motion. P_s is the staging
+point on the hole axis, outside the hole.
 
 ## Fixed equipment and editable settings
 
@@ -18,19 +19,33 @@ LIN is a straight Cartesian motion. P_s is the staging point on the hole axis, o
   displayed read-only. The TCP pose relative to the ER collet is edited and committed with Apply.
   Changing it invalidates every generated path until it is regenerated.
 - Measuring EE (Measuring mode): name, ruby ball diameter and stylus length are displayed
-  read-only. Measuring-tool calibration is not implemented.
+  read-only. The ruby ball centre relative to the flange (default: controller TOOL_DATA[5]) is
+  edited and committed with Apply; it is not saved between runs. Changing it removes the
+  calibration path.
 - Only workpiece surfaces are imported, as JSON point files measured with a touch probe.
 
 ## Workflow
 
-1. **Load measured geometry (Measuring mode, Rough submode).**
+1. **Prepare and animate the probe calibration (Measuring mode, Calibration submode).**
+   Entering the submode reads `resources/json/calibration_sphere.json` beside the executable
+   (copied there by the build only when absent): the 25 mm sphere, the strut that holds it and ten
+   ruby ball centres recorded by jogging onto the sphere. The fitted sphere is shown as the
+   ball-centre sphere and the compensated sphere; every other scene object is hidden until the
+   submode is left. *Generate Path* computes a fixed motion: PTP from HOME to 60 mm above the
+   sphere, 37 touches on a uniform grid about 30° apart (the pole and latitudes 60°, 30°, 0° and
+   −30°) in one wrist configuration, each a 3 mm LIN approach and retract at a constant 1 mm/s,
+   CIRC transfers 3 mm above the sphere surface, and PTP back to HOME. *Dry Run* animates it. No real touch,
+   RSI run or least-squares solution of the ball centre is implemented; editing the file and
+   entering the submode again uses the new sphere.
+
+2. **Load measured geometry (Measuring mode, Rough submode).**
    Import the workpiece end surface with *Plane from JSON* and the hole with *Cylinder from JSON*.
    Each file is fitted and compensated for the probe ball radius. Select both surfaces and run
    *Intersect Selected* to create their intersection edge: an ellipse when the end plane is
    inclined to the hole axis. *Cone from JSON* and the Precise submode (Dry Scan, Scan) are
    placeholders without an implementation.
 
-2. **Generate the animation trajectory (Machining mode).**
+3. **Generate the animation trajectory (Machining mode).**
    Select the intersection edge and open *Generate Path*. Settings: chamfer size (mm) and angle
    (degrees from the hole axis), outward direction, axial distance of P_s from the hole (mm),
    lead-in and lead-out axial clearance (mm) and span (degrees of the ellipse parameter), machining
@@ -45,13 +60,13 @@ LIN is a straight Cartesian motion. P_s is the staging point on the hole axis, o
    or if joint limits, rated joint speeds or the Cartesian acceleration bound (10000 mm/s², the
    controller's `$ACC_MA.CP`) are violated.
 
-3. **Inspect and play (Dry Run).**
+4. **Inspect and play (Dry Run).**
    The path is drawn in the 3D scene; the Scene and Properties panels select objects, control
    visibility and show saved path settings. *Dry Run* plays the saved joint motion without
    computing new points. Pause/resume keeps the current position; *Stop* returns the preview to
    HOME. Generation is blocked during playback.
 
-4. **Prepare the robot run (RSI Sampling).**
+5. **Prepare the robot run (RSI Sampling).**
    With a compatible generated path selected and the RSI UDP socket bound (Network settings),
    *RSI Sampling* computes one Cartesian correction per 4 ms RSI cycle for lead-in, machining and
    lead-out, followed by 50 zero corrections. It writes `C:/RoboCrapJobs/shared_data.txt`
@@ -62,7 +77,7 @@ LIN is a straight Cartesian motion. P_s is the staging point on the hole axis, o
    diagnostic plan CSV in `records/` beside the executable; UDP exchanges are captured with the
    same identifier.
 
-5. **Run on the controller (T1, manual start).**
+6. **Run on the controller (T1, manual start).**
    The operator starts `RSI_Chamfer_Hole.src`/`.dat` with the helpers in
    `resources/files/rsi/FILE_UTILS/` and the RSI Visual context. KRL reads the shared file,
    moves HOME, PTP PsIn, LIN LeadStart, follows the streamed corrections under RSI, and only after

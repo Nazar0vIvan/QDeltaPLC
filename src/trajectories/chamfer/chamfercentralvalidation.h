@@ -1,47 +1,26 @@
 #pragma once
 
 #include "trajectories/chamfercentralmotion.h"
-#include "trajectories/chamfermotion.h"
-#include "kinematics/kr10kinematics.h"
-
-struct ChamferCentralJointSample
-{
-  double time = 0.0; // Seconds from lead-in start, unchanged prescribed timing.
-  ChamferCentralPose target;
-  RoboCrap3D::Kr10Kinematics::IkSolution solution; // Degrees with continuous winding, Status and Turn.
-  M4d actualTcp = M4d::Identity(); // FK-derived TCP, retained for nodal-point construction.
-};
-
-struct ChamferCentralValidationData
-{
-  QVector<ChamferCentralJointSample> samples; // Predetermined animation points, not RSI cycles.
-};
-
-struct ChamferCentralValidationResult
-{
-  std::optional<ChamferCentralValidationData> data;
-  QString error;
-};
+#include "../motion/motionbuilder.h"
 
 struct ChamferCentralPreviewSpan
 {
   double start = 0.0;
   double end = 0.0;
   int intervals = 0;
-  QString phase;
+  QString phase; // "Lead-in", "Machining" or "Lead-out".
 };
 
 // Internal Generate stage. Borrowed path/timing outlive this worker-local cache.
-// Construction is lazy, after the first candidate's incoming LIN and seed checks.
+// Construction is lazy, after the first candidate's incoming LIN.
 class ChamferCentralPreparation
 {
 public:
   ChamferCentralPreparation(const ChamferPath& path, const ChamferTimingParameters& timing);
 
-  // Model/tool/timing were accepted by ChamferMotion::create; each call checks a fresh joint sequence.
-  ChamferCentralValidationResult validate(const ChamferRobotSetup& robot,
-                                        const RoboCrap3D::Kr10Kinematics::IkSolution& initialSeed);
-  // Available after successful validate(); retained through later candidate failures.
+  // Builds the central motion and its point schedule once; later calls return the first result.
+  QString prepare();
+  // Available after a successful prepare(); retained through later candidate failures.
   const ChamferCentralMotion& motion() const { return *m_motion; }
   const QVector<ChamferCentralPreviewSpan>& spans() const { return m_spans; }
   qsizetype plannedSamples() const { return m_plannedSamples; }
@@ -50,8 +29,6 @@ public:
   std::optional<ChamferCentralPose> evaluateTarget(qsizetype index, double seconds) const;
 
 private:
-  QString prepare();
-
   const ChamferPath& m_path;
   const ChamferTimingParameters& m_timing;
   std::optional<ChamferCentralMotion> m_motion;
@@ -60,4 +37,16 @@ private:
   bool m_attempted = false;
   QString m_error;
   mutable QVector<std::optional<ChamferCentralPose>> m_targets;
+};
+
+// The lead-in, machining and lead-out of a prepared central motion as one Cartesian path.
+class CentralPath final : public TimedPath
+{
+public:
+  explicit CentralPath(const ChamferCentralPreparation& preparation) : m_preparation(preparation) {}
+  PathSchedule schedule() const override;
+  std::optional<PathTarget> target(qsizetype index, double seconds) const override;
+
+private:
+  const ChamferCentralPreparation& m_preparation;
 };

@@ -27,9 +27,10 @@ struct ProbeTouchPlanParameters
   double strutClearance(const V3d& ball) const;
 };
 
+// The transfer into a touch is the CIRC on the start shell from the preceding start.
 struct ProbeTouch
 {
-  M4d start = M4d::Identity(); // Reached from the preceding start by a CIRC around the sphere centre.
+  M4d start = M4d::Identity();
   M4d contact = M4d::Identity();
   V3d normal = V3d::Zero(); // Outward sphere normal at the contact.
 };

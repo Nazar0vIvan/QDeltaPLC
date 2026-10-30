@@ -1,10 +1,8 @@
 #include "trajectories/probetouchmotion.h"
 
-#include "../chamfer/chamfertcpsolver.h"
-#include "../motion/jointsegments.h"
+#include "../motion/motionbuilder.h"
 
 #include <algorithm>
-#include <cmath>
 #include <limits>
 #include <utility>
 
@@ -12,7 +10,6 @@ using namespace RoboCrap3D;
 
 namespace {
 
-constexpr qsizetype MaximumPoints = 400000;
 constexpr double ClearanceTolerance = 0.001; // mm; covers the 1e-4 mm FK reconstruction of stored poses.
 
 struct MotionStep
@@ -23,7 +20,8 @@ struct MotionStep
 
 struct BuildResult
 {
-  ProbeTouchMotionData data;
+  std::optional<TimedMotion> motion;
+  ProbeClearances clearances;
   QString error;
 };
 
@@ -59,118 +57,76 @@ class TouchMotionBuilder
 {
 public:
   TouchMotionBuilder(const ProbeTouchPlan& plan, const ChamferRobotSetup& robot)
-    : m_plan(plan), m_robot(robot), m_solver(robot) {}
+    : m_plan(plan), m_robot(robot), m_motion(robot) {}
 
   BuildResult build()
   {
-    const V6d& home = m_robot.model.qHome;
-    m_previous = m_solver.kinematics().configuration(home, m_solver.kinematics().solveFK(home));
-    m_data.points.append(m_solver.forward(home, 0.0));
-    m_data.minimumTransferClearance = std::numeric_limits<double>::infinity();
-    m_data.minimumStrutClearance = std::numeric_limits<double>::infinity();
+    m_clearances = {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
     for (const auto& [phase, target] : motionSteps(m_plan)) {
-      const QString error = append(phase, target);
+      const qsizetype first = m_motion.points().size() - 1;
+      QString error = append(phase, target);
+      if (error.isEmpty()) error = clearanceError(phase, first);
       if (error.isEmpty()) continue;
-      // solveLinear already prefixes most of its errors with the phase text.
+      // MotionBuilder errors already start with the phase text.
       const QString label = phase.text();
-      return {{}, error.startsWith(label) ? error : label + QStringLiteral(": ") + error};
+      return {std::nullopt, {}, error.startsWith(label) ? error : label + QStringLiteral(": ") + error};
     }
-    return {std::move(m_data), {}};
+    return {m_motion.finish(), m_clearances, {}};
   }
 
 private:
   QString append(const ProbeMotionPhase& phase, const M4d& target)
   {
-    const qsizetype first = m_data.points.size() - 1;
-    const QString error = ptpSegment(phase.segment) ? appendPtp(phase.segment, target) : appendLinear(phase, target);
-    if (!error.isEmpty()) return error;
-    ProbeMotionSegment segment{first, m_data.points.size() - 1, -1, phase};
-    if (!ptpSegment(phase.segment) && !touchSegment(phase.segment)) {
-      const auto spline = clampedJointSpline(m_data.points.mid(first, segment.last - first + 1), m_robot);
-      if (!spline.error.isEmpty()) return spline.error;
-      segment.spline = m_data.splines.size();
-      m_data.splines.append(spline.coefficients);
-    }
-    m_data.segments.append(segment);
-    return clearanceError(segment);
-  }
-
-  QString appendPtp(ProbeSegment segment, const M4d& target)
-  {
-    V6d end = m_robot.model.qHome;
-    if (segment != ProbeSegment::ReturnHome) {
-      const auto solved = m_solver.solveTcp(target, m_previous);
+    const QString label = phase.text();
+    if (phase.segment == ProbeSegment::ReturnHome) return m_motion.appendPtp(m_motion.home(), label);
+    if (ptpSegment(phase.segment)) {
+      const auto solved = m_motion.solver().solveTcp(target, m_motion.seed());
       if (!solved.solution) return solved.error;
-      m_previous = *solved.solution;
-      end = m_previous.q;
+      return m_motion.appendPtp(*solved.solution, label);
     }
-    const V6d start = m_data.points.back().joints;
-    const double startTime = m_data.points.back().time;
-    auto points = m_solver.samplePtp(start, end);
-    if (points.size() > MaximumPoints - m_data.points.size())
-      return QStringLiteral("Complete motion exceeds the 400000-point limit.");
-    const double duration = ptpDuration(end - start, m_robot.timing);
-    double lastTime = startTime;
-    for (auto& point : points) {
-      point.time = startTime + duration * inverseProgress(point.progress);
-      if (!std::isfinite(point.time) || point.time <= lastTime)
-        return QStringLiteral("Motion timing exceeds numerical resolution.");
-      lastTime = point.time;
-    }
-    m_data.points.append(points);
-    return {};
-  }
-
-  QString appendLinear(const ProbeMotionPhase& phase, const M4d& target)
-  {
     const auto& timing = m_robot.timing;
-    const LinearLimits limits = touchSegment(phase.segment) ? LinearLimits{ProbeApproachFeed, 0.0}
-                                                            : LinearLimits{timing.transferFeed, timing.transferAcceleration};
-    auto profile = linearProfile(m_data.points.back().tcp, target, limits);
+    const bool touching = touchSegment(phase.segment);
+    const LinearLimits limits = touching ? LinearLimits{ProbeApproachFeed, 0.0}
+                                         : LinearLimits{timing.transferFeed, timing.transferAcceleration};
+    auto profile = linearProfile(m_motion.points().back().tcp, target, limits);
     // Transfers are CIRC arcs on the start shell around the sphere centre.
-    if (profile && phase.segment == ProbeSegment::Transfer) profile = arcProfile(*profile, m_plan.parameters.sphereCentre);
+    if (profile && phase.segment == ProbeSegment::Transfer)
+      profile = circularProfile(*profile, m_plan.parameters.sphereCentre);
     if (!profile) return QStringLiteral("Invalid or degenerate LIN or CIRC profile.");
-    const auto schedule = linearSchedule(*profile, m_data.points.back().time);
-    if (!schedule.error.isEmpty()) return schedule.error;
-    if (schedule.localTimes.size() > MaximumPoints - m_data.points.size())
-      return QStringLiteral("Complete motion exceeds the 400000-point limit.");
-    const auto samples = m_solver.solveLinear(schedule, m_previous, phase.text());
-    if (!samples.error.isEmpty()) return samples.error;
-    m_data.points.append(samples.points);
-    m_previous = samples.last;
-    return {};
+    return m_motion.appendPath(LinearPath(*profile, label),
+                               touching ? MotionInterpolation::JointLinear : MotionInterpolation::Spline);
   }
 
-  // Strut clearance of every new point; outside touches also the ball's distance outside the
-  // contact shell, which the CIRC transfers on the start shell keep at ProbeApproachGap.
-  QString clearanceError(const ProbeMotionSegment& segment)
+  // Strut clearance of every point after first; outside touches also the ball's distance outside
+  // the contact shell, which the CIRC transfers on the start shell keep at ProbeApproachGap.
+  QString clearanceError(const ProbeMotionPhase& phase, qsizetype first)
   {
     const auto& parameters = m_plan.parameters;
+    const auto& points = m_motion.points();
     const double contact = parameters.contactDistance();
     const double required = ProbeApproachGap - ClearanceTolerance;
-    for (qsizetype i = segment.first + 1; i <= segment.last; ++i) {
-      const auto& point = m_data.points[i];
+    for (qsizetype i = first + 1; i < points.size(); ++i) {
+      const auto& point = points[i];
       const V3d ball = point.tcp.block<3, 1>(0, 3);
       const double strut = parameters.strutClearance(ball);
       if (strut < ProbeApproachGap - ClearanceTolerance)
         return QStringLiteral("strut clearance %1 mm is below %2 mm at %3 s.")
             .arg(strut, 0, 'f', 4).arg(ProbeApproachGap).arg(point.time, 0, 'g', 12);
-      m_data.minimumStrutClearance = std::min(m_data.minimumStrutClearance, strut);
-      if (touchSegment(segment.phase.segment)) continue;
+      m_clearances.strut = std::min(m_clearances.strut, strut);
+      if (touchSegment(phase.segment)) continue;
       const double gap = (ball - parameters.sphereCentre).norm() - contact;
       if (gap < required)
         return QStringLiteral("ball clearance to the sphere %1 mm is below %2 mm at %3 s.")
             .arg(gap, 0, 'f', 4).arg(required, 0, 'f', 4).arg(point.time, 0, 'g', 12);
-      m_data.minimumTransferClearance = std::min(m_data.minimumTransferClearance, gap);
+      m_clearances.transfer = std::min(m_clearances.transfer, gap);
     }
     return {};
   }
 
   const ProbeTouchPlan& m_plan;
   const ChamferRobotSetup& m_robot;
-  ChamferTcpSolver m_solver;
-  ProbeTouchMotionData m_data;
-  Kr10Kinematics::IkSolution m_previous;
+  MotionBuilder m_motion;
+  ProbeClearances m_clearances;
 };
 
 } // namespace
@@ -192,40 +148,5 @@ ProbeTouchMotionResult ProbeTouchMotion::create(const ProbeTouchPlan& plan, cons
   if (plan.touches.isEmpty()) return {{}, QStringLiteral("The touch plan has no touches.")};
   auto built = TouchMotionBuilder(plan, *rated.robot).build();
   if (!built.error.isEmpty()) return {{}, built.error};
-  return {ProbeTouchMotion(*rated.robot, std::move(built.data)), {}};
-}
-
-std::optional<std::pair<V6d, ProbeMotionPhase>> ProbeTouchMotion::evaluateJoints(double seconds) const
-{
-  const auto& points = m_data.points;
-  if (!std::isfinite(seconds) || m_data.segments.isEmpty()) return std::nullopt;
-  const double time = std::clamp(seconds, 0.0, duration());
-  auto segment = m_data.segments.cbegin();
-  while (segment + 1 != m_data.segments.cend() && time > points[segment->last].time) ++segment;
-  V6d joints = V6d::Zero();
-  if (ptpSegment(segment->phase.segment)) {
-    const auto& first = points[segment->first];
-    const auto& last = points[segment->last];
-    const double u = (time - first.time) / (last.time - first.time);
-    joints = first.joints + smoothProgress(u) * (last.joints - first.joints);
-  } else {
-    qsizetype low = segment->first;
-    qsizetype high = segment->last;
-    while (low + 1 < high) {
-      const auto middle = low + (high - low) / 2;
-      if (points[middle].time <= time) low = middle;
-      else high = middle;
-    }
-    const auto& a = points[low];
-    const auto& b = points[high];
-    const double fraction = (time - a.time) / (b.time - a.time);
-    if (segment->spline < 0) joints = a.joints + fraction * (b.joints - a.joints);
-    else {
-      const auto& coefficients = m_data.splines[segment->spline + low - segment->first];
-      joints = ((coefficients[3] * fraction + coefficients[2]) * fraction + coefficients[1]) * fraction
-          + coefficients[0];
-    }
-  }
-  if (!withinLimits(joints, m_robot.model)) return std::nullopt;
-  return std::pair{joints, segment->phase};
+  return {ProbeTouchMotion(std::move(*built.motion), built.clearances), {}};
 }

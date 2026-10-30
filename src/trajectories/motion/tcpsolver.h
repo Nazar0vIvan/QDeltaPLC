@@ -1,0 +1,101 @@
+#pragma once
+
+#include "jointsegments.h"
+#include "geometry/utils.h"
+#include "kinematics/kr10kinematics.h"
+#include "trajectories/timedmotion.h"
+
+#include <QString>
+#include <cmath>
+#include <optional>
+#include <utility>
+
+inline QString chamferJointPositionError(const V6d& joints, const RoboCrap3D::Kr10KinematicModel& model)
+{
+  if (!joints.allFinite()) return QStringLiteral("Nonfinite joint coordinates.");
+  for (std::size_t axis = 0; axis < RoboCrap3D::DofCount; ++axis) {
+    const auto& joint = model.joints[axis];
+    if (joints[axis] < joint.qMin || joints[axis] > joint.qMax)
+      return QStringLiteral("A%1 position %2 deg is outside [%3, %4].")
+          .arg(axis + 1).arg(joints[axis], 0, 'g', 12).arg(joint.qMin).arg(joint.qMax);
+  }
+  return {};
+}
+
+// Bounds come from the model speeds accepted by ChamferMotion::create.
+inline QString chamferJointSpeedError(const V6d& velocity, const V6d& limits)
+{
+  if (!velocity.allFinite()) return QStringLiteral("Nonfinite sampled joint velocity.");
+  for (std::size_t axis = 0; axis < RoboCrap3D::DofCount; ++axis) {
+    if (std::abs(velocity[axis]) > limits[axis] * (1.0 + 1e-6))
+      return QStringLiteral("A%1 speed %2 deg/s exceeds bound %3.")
+          .arg(axis + 1).arg(std::abs(velocity[axis]), 0, 'g', 12).arg(limits[axis]);
+  }
+  return {};
+}
+
+struct ChamferTcpIkResult
+{
+  std::optional<RoboCrap3D::Kr10Kinematics::IkSolution> solution; // Configuration from the same FK.
+  M4d actualTcp = M4d::Identity(); // FK flange * flangeToTcp.
+  QString error;
+};
+
+// Checked TCP inverse kinematics shared by MotionBuilder, the chamfer start search and RSI
+// sampling.
+// Borrows the worker-owned robot setup, which must outlive this solver.
+class ChamferTcpSolver
+{
+public:
+  explicit ChamferTcpSolver(const ChamferRobotSetup& robot)
+    : m_robot(robot), m_kinematics(robot.model),
+      m_tcpToFlange(inverseRigidTransform(robot.flangeToTcp)) {}
+
+  const RoboCrap3D::Kr10Kinematics& kinematics() const { return m_kinematics; }
+
+  // Seeded angle-only IK for a TCP target, then joint limits, one FK and
+  // flange/TCP residual checks against the existing KR10 tolerances.
+  ChamferTcpIkResult solveTcp(const M4d& tcp, const RoboCrap3D::Kr10Kinematics::IkSolution& seed) const
+  {
+    const M4d flange = tcp * m_tcpToFlange;
+    const auto solution = m_kinematics.calculateIK(flange, seed);
+    if (!solution) return {{}, M4d::Identity(), QStringLiteral("IK failed: unreachable, singular or outside the seeded configuration/limits.")};
+    const QString error = chamferJointPositionError(solution->q, m_robot.model);
+    if (!error.isEmpty()) return {{}, M4d::Identity(), error};
+    const auto transforms = m_kinematics.solveFK(solution->q);
+    if (!RoboCrap3D::Kr10Kinematics::matchesFlange(flange, transforms.back()))
+      return {{}, M4d::Identity(), QStringLiteral("Flange FK reconstruction exceeds 0.0001 mm or 0.000001 rotation-entry tolerance.")};
+    const M4d actual = transforms.back() * m_robot.flangeToTcp;
+    if (!actual.allFinite()
+        || (actual.block<3, 1>(0, 3) - tcp.block<3, 1>(0, 3)).norm() > RoboCrap3D::Kr10PosEps
+        || (actual.block<3, 3>(0, 0) - tcp.block<3, 3>(0, 0)).cwiseAbs().maxCoeff() > RoboCrap3D::Kr10RotEps)
+      return {{}, M4d::Identity(), QStringLiteral("TCP FK reconstruction exceeds 0.0001 mm or 0.000001 rotation-entry tolerance.")};
+    return {m_kinematics.configuration(solution->q, transforms), actual, {}};
+  }
+
+  // Joint coordinates with their FK TCP; progress is phase-local, time is set by the caller.
+  ChamferJointPoint forward(const V6d& joints, double progress) const
+  {
+    return {joints, m_kinematics.solveFK(joints).back() * m_robot.flangeToTcp, progress};
+  }
+
+  // Seeded IK, joint limits and one flange FK check, used to probe start configurations;
+  // returns the configuration from that FK and the FK-derived TCP.
+  std::optional<std::pair<RoboCrap3D::Kr10Kinematics::IkSolution, M4d>> inverse(
+      const M4d& tcp, const RoboCrap3D::Kr10Kinematics::IkSolution& seed) const
+  {
+    const M4d flange = tcp * m_tcpToFlange;
+    const auto solution = m_kinematics.calculateIK(flange, seed);
+    if (!solution || !withinLimits(solution->q, m_robot.model)) return std::nullopt;
+    const auto transforms = m_kinematics.solveFK(solution->q);
+    if (!RoboCrap3D::Kr10Kinematics::matchesFlange(flange, transforms.back()))
+      return std::nullopt;
+    return std::pair{m_kinematics.configuration(solution->q, transforms),
+                     M4d(transforms.back() * m_robot.flangeToTcp)};
+  }
+
+private:
+  const ChamferRobotSetup& m_robot;
+  RoboCrap3D::Kr10Kinematics m_kinematics;
+  M4d m_tcpToFlange = M4d::Identity();
+};

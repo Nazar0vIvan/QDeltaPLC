@@ -201,7 +201,9 @@ void SceneCalibration::dryRun()
   if (!canPlay()) { setError(tr("Generate the calibration path before Dry Run.")); return; }
   if (m_playback->active()) { m_playback->resume(); return; }
   setError({});
-  m_playback->start(path()->motion, m_pathId);
+  const auto& motion = path()->motion;
+  // Aliasing handle: points at the stored timed motion and keeps the path's motion alive.
+  m_playback->start(std::shared_ptr<const TimedMotion>(motion, &motion->timed()), m_pathId);
 }
 
 void SceneCalibration::replaceSphere(const SceneSphere& sphere)

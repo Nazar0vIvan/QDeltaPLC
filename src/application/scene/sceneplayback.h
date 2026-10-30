@@ -2,21 +2,15 @@
 
 #include "scenemodel.h"
 #include "kinematics/kr10kinematicmodel.h"
-#include "trajectories/chamfermotion.h"
-#include "trajectories/probetouchmotion.h"
+#include "trajectories/timedmotion.h"
 
 #include <QElapsedTimer>
 #include <QPointer>
 #include <QTimer>
 #include <memory>
 #include <optional>
-#include <variant>
 
 namespace RoboCrap3D { class RobotController; }
-
-// An immutable saved motion, chamfer machining or probe calibration; monostate when none.
-using PlaybackMotion = std::variant<std::monostate, std::shared_ptr<const ChamferMotion>,
-                                    std::shared_ptr<const ProbeTouchMotion>>;
 
 // Dry Run of one immutable saved motion, shared by the motion coordinators, plus the robot
 // model and preview availability that RobotController publishes.
@@ -30,7 +24,7 @@ class ScenePlayback : public QObject
   Q_PROPERTY(QString phase READ phase NOTIFY playbackChanged)
 public:
   explicit ScenePlayback(SceneModel* scene);
-  bool active() const { return !std::holds_alternative<std::monostate>(m_motion); }
+  bool active() const { return bool(m_motion); }
   bool playing() const { return m_playing; }
   double elapsed() const { return m_elapsed; }
   double duration() const { return m_duration; }
@@ -38,7 +32,9 @@ public:
   // Scene object id of the path whose motion is played; 0 when nothing is active.
   quint32 ownerId() const { return m_ownerId; }
   // Presents time zero, then plays from it.
-  void start(PlaybackMotion motion, quint32 ownerId);
+  // The handle may alias the timed() motion of a saved ChamferMotion or ProbeTouchMotion,
+  // keeping that owner alive.
+  void start(std::shared_ptr<const TimedMotion> motion, quint32 ownerId);
   // Continues a paused motion from its elapsed time.
   void resume();
   Q_INVOKABLE void pause();
@@ -70,7 +66,7 @@ private:
   bool m_robotAvailable = false;
   QTimer m_timer;
   QElapsedTimer m_clock;
-  PlaybackMotion m_motion;
+  std::shared_ptr<const TimedMotion> m_motion;
   quint32 m_ownerId = 0;
   bool m_playing = false;
   double m_elapsed = 0.0;

@@ -1,11 +1,9 @@
 #pragma once
 
-#include "trajectories/chamfermotion.h"
 #include "trajectories/probetouchplan.h"
+#include "trajectories/timedmotion.h"
 
 #include <QString>
-#include <QVector>
-#include <array>
 #include <optional>
 #include <utility>
 
@@ -20,21 +18,11 @@ struct ProbeMotionPhase
   QString text() const;
 };
 
-struct ProbeMotionSegment
+// Smallest ball clearances of a probe motion, mm.
+struct ProbeClearances
 {
-  qsizetype first = 0; // Inclusive point range; the first point is the preceding segment's last.
-  qsizetype last = 0;
-  qsizetype spline = -1; // First interval in the spline coefficients for Descend/Transfer/Retreat.
-  ProbeMotionPhase phase;
-};
-
-struct ProbeTouchMotionData
-{
-  QVector<ChamferJointPoint> points;
-  QVector<ProbeMotionSegment> segments;
-  QVector<std::array<V6d, 4>> splines;
-  double minimumTransferClearance = 0.0; // mm between the ball and the sphere outside touches.
-  double minimumStrutClearance = 0.0; // mm between the ball and the strut.
+  double transfer = 0.0; // To the sphere, outside Approach and Retract.
+  double strut = 0.0; // To the strut, at every point.
 };
 
 struct ProbeTouchMotionResult;
@@ -44,20 +32,19 @@ class ProbeTouchMotion
 {
 public:
   static ProbeTouchMotionResult create(const ProbeTouchPlan& plan, const ChamferRobotSetup& robot);
-  const QVector<ChamferJointPoint>& points() const { return m_data.points; }
-  const QVector<ProbeMotionSegment>& segments() const { return m_data.segments; }
-  const ChamferRobotSetup& robot() const { return m_robot; }
-  double duration() const { return m_data.points.back().time; }
-  double minimumTransferClearance() const { return m_data.minimumTransferClearance; }
-  double minimumStrutClearance() const { return m_data.minimumStrutClearance; }
-  // Absolute elapsed seconds; finite times outside the motion clamp to its ends.
-  std::optional<std::pair<V6d, ProbeMotionPhase>> evaluateJoints(double seconds) const;
+  const QVector<ChamferJointPoint>& points() const { return m_timed.points(); }
+  const ChamferRobotSetup& robot() const { return m_timed.robot(); }
+  double duration() const { return m_timed.duration(); }
+  double minimumTransferClearance() const { return m_clearances.transfer; }
+  double minimumStrutClearance() const { return m_clearances.strut; }
+  // One playback segment and one phase per motion step, labelled with ProbeMotionPhase::text().
+  const TimedMotion& timed() const { return m_timed; }
 
 private:
-  ProbeTouchMotion(const ChamferRobotSetup& robot, ProbeTouchMotionData data)
-    : m_robot(robot), m_data(std::move(data)) {}
-  ChamferRobotSetup m_robot;
-  ProbeTouchMotionData m_data;
+  ProbeTouchMotion(TimedMotion timed, const ProbeClearances& clearances)
+    : m_timed(std::move(timed)), m_clearances(clearances) {}
+  TimedMotion m_timed;
+  ProbeClearances m_clearances;
 };
 
 struct ProbeTouchMotionResult

@@ -177,13 +177,13 @@ std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
       result.parts.append({std::move(positions), {color, phase == 3 ? 3.0 : 2.0}});
     }
   } else if (const auto* value = touchPath()) {
-    // Approach/Retract green, PTP purple, the other LIN transfers blue, as for machining paths.
-    for (const auto& segment : value->motion->segments()) {
+    // Constant-speed Approach/Retract green, PTP purple, the other LIN/CIRC transfers blue, as for
+    // machining paths.
+    for (const auto& segment : value->motion->timed().segments()) {
       auto positions = tcpPolyline(value->motion->points().mid(segment.first, segment.last - segment.first + 1));
       if (positions.size() < 2) continue;
-      const ProbeSegment kind = segment.phase.segment;
-      const bool touching = kind == ProbeSegment::Approach || kind == ProbeSegment::Retract;
-      const bool ptp = kind == ProbeSegment::ToEntry || kind == ProbeSegment::ReturnHome;
+      const bool touching = segment.interpolation == MotionInterpolation::JointLinear;
+      const bool ptp = segment.interpolation == MotionInterpolation::Smoothstep;
       const std::array<int, 3> color = touching ? std::array<int, 3>{30, 130, 45}
           : ptp ? std::array<int, 3>{90, 65, 130} : std::array<int, 3>{0, 100, 210};
       result.parts.append({std::move(positions), {color, touching ? 3.0 : 2.0}});

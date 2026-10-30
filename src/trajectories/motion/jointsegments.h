@@ -1,15 +1,14 @@
 #pragma once
 
-#include "trajectories/chamfermotion.h"
+#include "trajectories/timedmotion.h"
 
 #include <QString>
 #include <QVector>
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <optional>
 
-// Internal PTP/LIN/joint-spline operations shared by the generated animation motions.
+// Internal PTP/LIN/CIRC/joint-spline operations shared by the motion builder and the motions.
 
 constexpr double TransferPositionTolerance = 0.01; // mm; prescribed TCP chord criterion only.
 // mm/s, $VEL_MA.CP of the installed KR C4 (resources/files/KR C4/R1/Mada/$machine.dat).
@@ -17,6 +16,7 @@ constexpr double MaximumTransferFeed = 3000.0;
 
 bool rigid(const M4d& transform);
 bool withinLimits(const V6d& joints, const RoboCrap3D::Kr10KinematicModel& model);
+
 struct RobotSetupResult
 {
   std::optional<ChamferRobotSetup> robot;
@@ -27,9 +27,8 @@ struct RobotSetupResult
 // checks shared by the generated motions.
 RobotSetupResult ratedRobotSetup(const ChamferRobotSetup& robot);
 
-// Quintic smoothstep s(u) = 10u^3 - 15u^4 + 6u^5, its derivative and its inverse.
+// Quintic smoothstep s(u) = 10u^3 - 15u^4 + 6u^5 and its inverse.
 double smoothProgress(double u);
-double smoothVelocity(double u);
 double inverseProgress(double progress);
 
 // Synchronized PTP duration for the joint difference: rated joint speeds and configured
@@ -43,6 +42,7 @@ struct LinearLimits
   double acceleration = 0.0; // mm/s^2, same acceleration and deceleration; 0 means constant feed.
 };
 
+// Timed straight LIN, or CIRC on the arc around centre when angle is nonzero.
 struct LinearProfile
 {
   M4d first = M4d::Identity();
@@ -50,11 +50,10 @@ struct LinearProfile
   Eigen::Quaterniond firstRotation = Eigen::Quaterniond::Identity();
   Eigen::Quaterniond lastRotation = Eigen::Quaterniond::Identity();
   LinearLimits limits;
-  // Set for a CIRC: the position follows the shorter great-circle arc of arcAngle (rad) between
-  // first and last around this centre.
-  std::optional<V3d> arcCentre;
-  double arcAngle = 0.0;
-  double length = 0.0;
+  V3d centre = V3d::Zero(); // Arc centre.
+  V3d axis = V3d::Zero(); // Unit arc axis, from first towards last by the right-hand rule.
+  double angle = 0.0; // rad; 0 for a straight LIN.
+  double length = 0.0; // Path length, mm.
   double peak = 0.0;
   double ramp = 0.0;
   double cruise = 0.0;
@@ -75,23 +74,15 @@ struct LinearProfile
     return std::clamp(1.0 - rampDistance * remaining * remaining / length, 0.0, 1.0);
   }
 
-  // Position at path progress u: on the chord, or on the arc by interpolating the radius vectors.
-  V3d position(double u) const
-  {
-    const V3d start = first.block<3, 1>(0, 3);
-    const V3d end = last.block<3, 1>(0, 3);
-    if (!arcCentre) return (1.0 - u) * start + u * end;
-    return *arcCentre + (std::sin((1.0 - u) * arcAngle) * (start - *arcCentre)
-                         + std::sin(u * arcAngle) * (end - *arcCentre)) / std::sin(arcAngle);
-  }
-
   M4d target(double seconds) const
   {
     const double u = progress(seconds);
     if (u == 0.0) return first;
     if (u == 1.0) return last;
     M4d pose = first;
-    pose.block<3, 1>(0, 3) = position(u);
+    pose.block<3, 1>(0, 3) = angle == 0.0
+        ? V3d((1.0 - u) * first.block<3, 1>(0, 3) + u * last.block<3, 1>(0, 3))
+        : V3d(centre + Eigen::AngleAxisd(u * angle, axis) * V3d(first.block<3, 1>(0, 3) - centre));
     // Preview rotation follows traveled distance, including both translational ramps.
     pose.block<3, 3>(0, 0) = firstRotation.slerp(u, lastRotation).normalized().toRotationMatrix();
     return pose;
@@ -101,21 +92,18 @@ struct LinearProfile
 // Trapezoidal speed profile, triangular when the ramps meet, constant without acceleration;
 // empty for invalid poses or limits.
 std::optional<LinearProfile> linearProfile(const M4d& first, const M4d& last, const LinearLimits& limits);
-// The same ends and limits as a CIRC on the shorter great-circle arc around centre; empty when the
-// ends are not equally far from centre (ArcRadiusTolerance) or the arc is degenerate or a half circle.
-constexpr double ArcRadiusTolerance = 0.001; // mm; covers the FK reconstruction of the start pose.
-std::optional<LinearProfile> arcProfile(const LinearProfile& chord, const V3d& centre);
+// The CIRC between the end poses of chord around centre, with the limits of chord; empty when the
+// end radii differ by more than TransferPositionTolerance or the end directions are (anti)parallel.
+std::optional<LinearProfile> circularProfile(const LinearProfile& chord, const V3d& centre);
 
 struct LinearSchedule
 {
-  LinearProfile profile;
-  QVector<double> localTimes; // Seconds from the transfer start, one per point after the start.
-  double startTime = 0.0; // Motion time of the preceding point.
+  QVector<double> localTimes; // Seconds from the path start, one per point after the start.
   QString error;
 };
 
-// Fixes every LIN point time before IK from the chord criterion of each constant-acceleration span.
-LinearSchedule linearSchedule(const LinearProfile& profile, double startTime);
+// Fixes every LIN/CIRC point time before IK from the chord criterion of each constant-acceleration span.
+LinearSchedule linearSchedule(const LinearProfile& profile);
 
 struct JointSplineResult
 {

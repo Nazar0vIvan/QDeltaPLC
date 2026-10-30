@@ -38,12 +38,13 @@ to verify implementation claims. User instructions and the root mandatory rules 
   RoboCrap.Backend URI is retired; its existing element names are registered by private Application's
   backendqmltypes.h. Main uses App; other QML files may retain Backend as an alias for the application URI.
   RDTResponse remains the same queued Q_GADGET value, with rdtResponse registered by an Application foreign wrapper.
-- Application singletons (Machining, MachiningPreparation, EndEffectors, Scene, Hub, WorkspaceController)
-  return main()-owned instances through create() and the shared claimQmlSingleton check in
+- Application singletons (Machining, MachiningPreparation, Playback, Calibration, EndEffectors, Scene, Hub,
+  WorkspaceController) return main()-owned instances through create() and the shared claimQmlSingleton check in
   backendqmltypes.h: qFatal on a null instance, wrong thread or second live engine, then CppOwnership.
   Qt 6.8 is the minimum, so QQmlEngine::setExternalSingletonInstance (Qt 6.12) is not available.
-  RobotController is not a QML type. Keep construction/lifetime order: main constructs workspace after
-  its document, machining and end-effector owners. Do not add diagnostic context properties.
+  RobotController is not a QML type. Keep construction/lifetime order: main constructs ScenePlayback
+  after the document and before machining and calibration, and workspace after its document, machining
+  and end-effector owners. Do not add diagnostic context properties.
 - Both hot-reload branches declare the same application module. QML_OPTIONS contains build flags only.
   Application QML/config files live under src/application/qml; source paths relative to Application
   preserve the qml/... resource paths and the ON branch's /qml/config.json resource. Root
@@ -53,13 +54,15 @@ to verify implementation claims. User instructions and the root mandatory rules 
   (plus the normal configuration suffix); preserve explicit CMAKE_RUNTIME_OUTPUT_DIRECTORY overrides.
 - Attach the existing OCCT POST_BUILD deployment helper from Application, the executable's declaring
   directory; root owns deployment setup and installation. Keep deployed CAD/resources beside the executable.
+  The helper copies resources/json/calibration_sphere.json to <exe dir>/resources/json/ only when that
+  file is absent, so a build never overwrites an edited deployed sphere file; it is not in a qrc.
   File/type moves require owning source-list/import updates; asset moves require resource-URL updates.
 
 ## Viewport and CAD
 
 - The public controller header defines concrete drawing values with no OCCT math types or scene/
-  machining objects. SceneObject supplies analytic patches/curves, saved FK TCP phase polylines and
-  bounded diagnostic positions; SceneMachining supplies the normalized signed draft axis and length.
+  machining objects. SceneObject supplies analytic patches/curves/spheres, saved FK TCP phase or
+  segment polylines and bounded diagnostic positions; SceneMachining supplies the normalized signed draft axis and length.
   Preserve 256 markers/128 normal positions, 64 ellipse markers and one edge-centre normal. SceneModel
   requests drawing acceptance before publishing renderable objects; failed installation leaves the
   old document object and accepted drawing cache intact. main attaches the empty document first.
@@ -80,6 +83,9 @@ to verify implementation claims. User instructions and the root mandatory rules 
   and retain unchanged outlines. Same application IDs can resolve to hidden/replaced parts.
   Keep unfinished outline handles/completion state through external failures; remove selection
   before hiding/deleting parts. Preserve selection styling and decorative picking/fit exclusion.
+  A part without face boundaries (DrawingSphere: its seam and pole edges are not drawn) gets no
+  selection outline; a hidden DrawingPart is not installed. A transparent part gets its own copies of
+  the Selected/LocalDynamic highlight styles with its transparency, so its highlight stays translucent.
 - RobotViewport.qml hosts a native QWindow; Qt Quick items cannot draw over it. Busy state is
   shown in the status bar; docs/OCCT_SCENE_OVERLAY.md records the verified way to draw over
   the scene if that is required again. CadLoadWorker parses CAD; robot state, QML properties
@@ -119,7 +125,7 @@ to verify implementation claims. User instructions and the root mandatory rules 
   reported once, never retried, and never affects robot readiness.
 - Application RobotController (application/robot/robotcontroller.*) owns the stable model/solver and accepted pose.
   Keep the checked initial HOME candidate unpublished until graphics acceptance; publish the model
-  to machining once, and commit later poses only after returned transform acceptance. Renderer
+  to ScenePlayback once, and commit later poses only after returned transform acceptance. Renderer
   drawing values/CAD results restore surfaces/windows without a robot-state/model pointer or a
   model revision change.
 - Application assetpaths.* selects the deployed CAD and OCCT resource directories; main passes the
@@ -189,8 +195,11 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
   in that order. Commit coupled list/frame values before notifications; unchanged values must not
   invalidate paths. Retain TCP notification on collet changes even when TCP is equivalent, and
   preserve the flange-based Kr10Kinematics FK/IK APIs. There is no manual robot FK/IK command.
+  The measuring TCP (ruby ball centre, TOOL_DATA[5] by default) is applied with applyMeasuringTcp,
+  reconstructed as measuringTcpFrame and not persisted; an unchanged value emits nothing.
 - SceneModel owns SceneObject; QML changes scene state through model methods. SceneObject stores a
-  fitted plane, cylinder or intersection edge (with its two source IDs) by value in a std::variant;
+  fitted plane, cylinder, intersection edge (with its two source IDs), calibration sphere or
+  calibration path (SceneTouchPath, the shared immutable ProbeTouchMotion) by value in a std::variant;
   only a machining path has a child QObject (SceneMachiningPath, exposed as geometry). Its CONSTANT
   properties list supplies the formatted {label, value} rows that the Properties panel renders.
   Preserve stable scene-allocated IDs (zero means no object), shared references and GUI-thread mutations.
@@ -202,6 +211,16 @@ producer/consumer. Read Viewport and CAD when changing OCCT adapters or robot pr
   SceneSurfaceImporter/SceneModel callers; preserve units and probe-compensation semantics.
 - BoundedPlane/BoundedCylinder accept points or decoded ProbeSamples, without file factories.
   SceneSurfaceImporter reads/decodes plane and cylinder inputs; there is no circle import.
+- fitSphere (Geometry) is the algebraic least-squares sphere fit on mean-centred points (JacobiSVD);
+  it rejects fewer than four or nonfinite points, a smallest singular value below 1e-9 times the
+  largest and a nonpositive squared radius. SceneCalibration reads the deployed sphere file on the GUI
+  thread at every entry into the Calibration submode (version 1, positive sphereDiameter,
+  strutDiameter and strutRecess below the diameter, at least four finite roughPoints X/Y/Z; other keys
+  ignored). The fitted centre and the ball-centre radius come from the readings; the compensated
+  radius subtracts the ruby ball radius; the nominal radius only sizes the touch plan. A changed sphere
+  replaces the object. While Calibration is active only the sphere and the calibration path are
+  visible and listed; entry records and hides the other visible objects (also ones added meanwhile),
+  exit shows the recorded ones that still exist. Neither calibration object can be deleted.
 
 ## Machining and playback
 
@@ -211,10 +230,11 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
 - SceneMachining exposes SceneMachiningSettings as settings. Main calls App.Machining.generate(),
   implemented by SceneMachining::generate. Keep it separate from dryRun, which only plays a prepared
   immutable ChamferMotion. End-effector Apply actions are separate.
-- Animation implementations live in src/trajectories/chamfer, with published values under
-  src/trajectories/include/trajectories, and invoke no scene/device APIs. Inspect
-  the relevant producer/consumer: chamferpath, chamferarclength, chamfercentralmotion,
-  chamfercentralvalidation and chamfermotion.
+- Animation implementations live in src/trajectories/chamfer and src/trajectories/probe, built on
+  the motion module src/trajectories/motion, with published values under
+  src/trajectories/include/trajectories, and invoke no scene/device APIs. Inspect the relevant
+  producer/consumer: chamferpath, chamferarclength, chamfercentralmotion, chamfercentralvalidation,
+  chamfermotion, probetouchmotion and motion/{timedmotion,motionbuilder,tcpsolver,jointsegments}.
   ChamferPath provides analytical evaluation/differentials; arc maps expose progressAtDistance.
 - Keep geometric parameter, traveled distance and physical time distinct. Recover TCP position/
   orientation by evaluating the analytical curve at the inverse arc-length parameter; do not
@@ -231,12 +251,28 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Charge only reached work at the original check positions.
 - Fix central animation points/times before IK using curvature/time. Within one Generate worker,
   share three central arc-length maps, timing and schedule; construct them only when a candidate
-  reaches central validation. Cache analytical targets/failures only at reached scheduled indices;
-  solve/check joints anew for each seed.
-- Dry Run uses ChamferMotion::evaluateJoints(seconds), returning optional angles/phase without FK.
-  SceneMachining calls RobotController::applyPlayback directly with those angles and the saved
-  tool transform; main attaches its guarded collaborator after both existing owners are constructed.
-  Keep the local immutable motion alive through readiness/pose callbacks. RobotController runs one
+  reaches the curve (ChamferCentralPreparation::prepare). Cache analytical targets/failures only at
+  reached scheduled indices (CentralPath::target); solve/check joints anew for each seed.
+- MotionBuilder builds every generated motion from HOME: appendPtp (joint steps of at most 2°,
+  ptpDuration and quintic smoothstep timing) and appendPath for a TimedPath (LinearPath for LIN and
+  CIRC, CentralPath for the chamfer curve). appendPath checks, in order: the path start against the
+  preceding stored TCP (0.0001 mm, 0.000001 rotation entries); for each scheduled point seeded
+  ChamferTcpSolver::solveTcp and the joint speed of the new interval; then the grouped rate
+  inspection (secants of at least 1e-4 s from rest to rest: grouped joint speeds, XYZ acceleration of
+  the prescribed targets, the stop at the segment end); then the segment's spline. A segment is
+  stored only after all its checks pass. Errors read "<phase label>: <message> (t=<path-local s> s)";
+  the first failure is the first failing point in point order (user decision, 2026-10-26).
+- ScenePlayback owns Dry Run, the robot model copy and robot availability. It plays a
+  std::shared_ptr<const TimedMotion> that aliases the timed() motion of a saved ChamferMotion or
+  ProbeTouchMotion and so keeps that owner alive. TimedMotion::evaluateJoints(seconds) returns
+  optional angles and the phase index without FK (smoothstep on PTP segments, stored cubics on
+  spline segments, joint-linear interpolation on constant-speed segments, exact stored knots; a
+  point shared by two segments or phases belongs to the ending one); ScenePlayback calls
+  RobotController::applyPlayback directly with those angles and the saved tool transform; main
+  attaches its guarded collaborator after both owners are constructed. present keeps a local copy of
+  the motion handle, because readiness/pose callbacks may release the active motion. The coordinator owning the
+  playing path starts/resumes it; stateChanged reports start/resume/pause/end, playbackChanged every
+  presented time, failed(ownerId, error) a failure. RobotController runs one
   FK, checks all link matrices and the saved-tool TCP even when its axes are hidden, and reuses that
   checked TCP in drawing. Commit the robot pose only after drawing acceptance; advance elapsed/phase
   only after returned success while playback remains active. Numerical errors use the robot console
@@ -247,28 +283,30 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Saved points retain no velocity field; check HOME derivatives locally with the existing timing error.
 - LIN also fixes points before IK: N=max(1,ceil(T*sqrt(a/(8*0.01mm)))) per constant-acceleration
   span, with span duration T in seconds and acceleration magnitude a in mm/s²; cruise has one
-  interval. A CIRC (arcProfile: shorter great-circle arc around a centre, used for the probe
-  calibration transfers on the start shell) adds its normal acceleration peak²/R to a in every
-  span, so its cruise is subdivided too. No recursive subdivision, extra quarter-time IK checks, added central points or
+  interval. Acceleration 0 means a constant-speed LIN without ramps (one interval). A CIRC
+  (circularProfile: arc around a centre, rotation slerp; used for the probe calibration transfers
+  on the start shell) adds the normal-acceleration bound peak²/radius to a of every span, so its
+  cruise is subdivided too. No recursive subdivision, extra quarter-time IK checks, added central points or
   automatic retiming after IK/rate failures. The position criterion bounds neither orientation
   nor actual TCP error after joint interpolation. Preserve exact shared phase endpoints and
   continuous joint winding; never wrap saved angles modulo 360 degrees.
-- During Generate, prepare one independent clamped joint spline per LIN and one shared central
-  spline, with zero endpoint joint velocities. Check polynomial position/speed extrema.
+- During Generate, prepare one independent clamped joint spline per LIN/CIRC and one shared central
+  spline, with zero endpoint joint velocities; constant-speed probe Approach/Retract have no spline
+  and play joint-linearly between their two points. Check polynomial position/speed extrema.
   Write checked intervals into the candidate's final coefficient array; discard the candidate on failure.
   Reject failures without adding points or retiming. Dry Run performs no IK, geometry integration,
   inverse-map/spline construction or pauses to prepare more points. Displayed TCP between saved
   points is approximate; spline smoothness gives no exact Cartesian error guarantee.
   Curvature derivation: plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
 - Rated joint-speed bounds come from the robot model (equal to the KR C4 machine data), without fixed
-  simulation caps. ChamferMotion::create accepts model/tool/timing once and resolves jointSpeed
-  before central validation or spline preparation; inner candidates reuse that immutable setup.
-  Central, LIN and RSI vector speeds share chamferJointSpeedError. Central rate inspection skips
+  simulation caps. ChamferMotion::create and ProbeTouchMotion::create accept model/tool/timing once
+  through ratedRobotSetup and resolve jointSpeed before IK or spline preparation; inner candidates reuse that immutable setup.
+  Path and RSI vector speeds share chamferJointSpeedError. The grouped rate inspection skips
   adjacent speed comparisons already accepted while appending; retain checks of grouped intervals.
   The Cartesian XYZ bound defaults to $ACC_MA.CP = 10000 mm/s², the KSS ceiling for
   programmed CP path acceleration; the controller does not monitor it for RSI. The controller has no
   fixed joint-acceleration value (dynamic model), so joint-acceleration magnitude rejection stays
-  disabled in central preview, LIN (including terminal stops), spline checks and RSI Sampling. Retain
+  disabled in the path rate inspection (including terminal stops), spline checks and RSI Sampling. Retain
   acceleration finiteness, joint position/speed and XYZ acceleration checks. HOME timing still uses
   configured joint acceleration. Do not restore joint-acceleration rejection without a user request.
 - Generate workers own copied numerical inputs and return cohesive results through futures.
@@ -276,15 +314,24 @@ RSI_Chamfer_Hole run; force correction is out of scope. Apply Geometry and scene
   Publish only complete motions. Insert a successful replacement before removing its old object,
   preserving name/visibility. Wait for remaining workers at shutdown.
 - Saved paths own immutable geometry/model/TCP/settings snapshots and survive source deletion.
-  Robot model or TCP transform changes invalidate playback until regeneration. Preserve pause/resume,
+  Robot model or TCP transform changes invalidate playback until regeneration; for the calibration
+  path a sphere replacement, measuring TCP change or robot model change removes the path. Preserve pause/resume,
   Stop-to-HOME, completion-at-HOME and cleanup on readiness loss, mode change or path deletion.
   Selection cannot replace running motion; block generation during playback.
-- Generate has no profiling command or timing/statistics output. Central validation and RSI sampling share
-  ChamferTcpSolver (chamfertcpsolver.h) for checked TCP IK; LIN transfers use its solveLinear (plain seeded
-  Kr10Kinematics IK, flange and TCP residual checks), not solveTcp. Shared PTP/LIN/joint-spline numerics live
+- Generate has no profiling command or timing/statistics output. MotionBuilder and RSI sampling share
+  ChamferTcpSolver (motion/tcpsolver.h) for checked TCP IK (solveTcp); the chamfer start search uses
+  its inverse. Shared PTP/LIN/CIRC/joint-spline numerics and ratedRobotSetup live
   in src/trajectories/motion/jointsegments. After a Generate worker finishes, SceneMachining logs one console line: point count and movement seconds, or
-  the error. The candidate's last error string remains the UI error. Keep inverse-map knots,
+  the error; SceneCalibration logs touches, points, movement seconds and minimum transfer and strut
+  clearances, or the error. The candidate's last error string remains the UI error. Keep inverse-map knots,
   animation points and RSI samples distinct.
+- Calibration Generate builds createProbeTouchPlan (the fixed uniform 37-touch grid with per-touch
+  tilt and roll in one wrist configuration; only the sphere centre, radii and strut come from inputs)
+  and ProbeTouchMotion::create on a worker: PTP HOME to entry, LIN descend, per touch a CIRC transfer
+  on the start shell, constant 1 mm/s LIN Approach and Retract, LIN retreat, PTP HOME. Every stored
+  point keeps the ball at least 3 mm from the strut; every point outside Approach/Retract keeps it at
+  least 3 mm from the sphere (0.001 mm tolerance). Errors start with the phase text ("Touch 22/37: transfer: ..."), which
+  Dry Run also shows. No RSI, KRL or real touch exists for calibration.
 - Before RSI edits, read resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md, then chamferrsistream,
   scenemachiningpreparation and devices/rsi/rsidevice. Sampling success, a bound socket and a
   delivered reply are not controller readiness and never grant permission to move the robot.
@@ -356,7 +403,7 @@ modules when changing registration, module names or resources.
   Do not add explanatory/tutorial labels; use concise field names, units, statuses and actionable
   errors. Keep explanations in documentation/chat.
 - Measuring EE/Machining EE settings open in the right Properties area; Close restores object
-  properties. End-effector numeric fields display four decimals and accept at most four fractional
+  properties. Measuring EE edits the ruby ball centre TCP with Apply. End-effector numeric fields display four decimals and accept at most four fractional
   digits. Read-only ER rounding does not change the stored ER transform.
 - Use implicitWidth/implicitHeight for natural preferred size; preserve useful inherited sizing.
   Before overriding styled Controls, inspect contentItem/background sizes, padding and insets.
@@ -369,6 +416,11 @@ modules when changing registration, module names or resources.
   drawing notifications. Before applying new input settings, notify QML so Cancel restores the
   old editor settings; successful Generate closes its editor before requesting selection.
   Main creation resets Measuring/Rough/empty selection using existing Stop-to-HOME behavior.
+  In the Calibration submode the toolbar shows only Measuring EE, Generate Path, Dry Run/Pause and
+  Stop; Generate Path calls App.Calibration.generate() without an editor; the Scene panel lists only
+  the Calibration group; Delete removes nothing; the status bar shows the calibration error, playback
+  status or unavailable reason in its existing label. WorkspaceController emits
+  calibrationActiveChanged(false) before changing the tool, so calibration playback stops first.
   Keep selected input, captured Generate source and active playback separate; UI drafts/focus/
   panel visibility/group expansion remain QML. Cached renderer replay already restores selection.
 - Give reusable components explicit inputs, not caller IDs/context. Use known concrete QML types;
