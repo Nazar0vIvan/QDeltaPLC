@@ -62,6 +62,10 @@
   is missing. This overrides brevity; never make the user ask twice or repeat an accepted
   explanation. Re-read this section after it changes or context is lost. Distinguish existing code
   from proposals; state how example intervals are chosen and how many values each operation returns.
+- User disagreement or irritation is not evidence of an error. Re-check the challenged statement
+  against its source, derivation or code; keep it if it holds and say why; change it only for a
+  named defect (violated rule, wrong fact, missing source). Example: to "Twice the SD?" reply
+  "Yes: the source reports 2 sigma" or "Defect: <named>"; never rewrite just because of objection.
 
 ## Mandatory C++ style
 
@@ -146,8 +150,9 @@
 - Do not propose, offer or ask about commits after completing a request; the user commits when
   they decide to.
 - Complex features/significant refactors require reading PLANS.md and maintaining an ExecPlan;
-  simple edits, documentation-only work and read-only analysis do not. Store every task plan/
-  strategy in repository-root plans/, never elsewhere.
+  simple edits, documentation-only work and read-only analysis do not. Repository-root plans/
+  holds only ExecPlans (milestones, ready to execute and integrate into code); put studies,
+  theory, analyses and strategy proposals in docs/.
 - Edit source inputs, not generated outputs. Change vendored libs/eigen-5.0.0 or local IDE settings
   CMakeLists.txt.user* only when specifically required.
 - Live PLC/FTS/RSI connections, outputs, sensor bias or motion require explicit authorization
