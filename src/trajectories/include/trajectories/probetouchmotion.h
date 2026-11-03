@@ -14,7 +14,7 @@ struct ProbeMotionPhase
   int touch = 0; // 1-based touch of Transfer, Approach and Retract; 0 otherwise.
   ProbeSegment segment = ProbeSegment::ToEntry;
 
-  // "Entry: descend", "Touch 5/31: approach", "Exit: return HOME".
+  // "Entry: descend", "Touch 5/37: approach", "Exit: return HOME".
   QString text() const;
 };
 

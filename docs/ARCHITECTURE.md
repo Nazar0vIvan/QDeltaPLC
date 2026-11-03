@@ -220,7 +220,7 @@ and the ruby ball centre was measured in {AD}. On the robot those surfaces locat
 the flange, so {AD} is assumed to coincide with the flange coordinate system {F}, and the CMM
 coordinates are used as the ball centre relative to {F}. Mounting clearances and the difference
 between the physical flange and the controller's FLANGE frame are not included; they are why the
-sphere calibration (`docs/ROBOT_PROBE_SPHERE_CALIBRATION.md`) determines the actual value.
+sphere calibration (`docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md`) determines the actual value.
 With TOOL_DATA[5] and base $NULLFRAME, HOME is X 1017.00, Y −0.1, Z 1080.05 mm, A 0°, B 90°,
 C 0°, S 110, T 111010 (smartPAD bit notation; decimal S 6, T 58): the stylus points
 horizontally along +X of WORLD.
@@ -321,7 +321,7 @@ Cartesian transfer, CIRC a prescribed circular arc and PTP a synchronized joint 
 | Stage | File | Product |
 |---|---|---|
 | Analytical curve | `chamferpath` | `ChamferPath::evaluate(angleRad)` evaluates the machining curve at an ellipse parameter in radians; `evaluatePhase(phase, progress)` evaluates LeadIn, Machining or LeadOut at dimensionless phase-local progress in [0,1]. The path also supplies staging point P_s; `create(parameters)` validates the input. |
-| Arc length | `chamferarclength` | Per-phase map from progress to distance in mm: adaptive Gauss–Kronrod (G7/K15) integration and a piecewise quintic Hermite inverse (see the [numerical study](../plans/CHAMFER_ARCLENGTH_STUDY.md)). `progressAtDistance` evaluates the inverse; there is no public distanceAt lookup. |
+| Arc length | `chamferarclength` | Per-phase map from progress to distance in mm: adaptive Gauss–Kronrod (G7/K15) integration and a piecewise quintic Hermite inverse (see the [numerical study](CHAMFER_ARCLENGTH_STUDY.md)). `progressAtDistance` evaluates the inverse; there is no public distanceAt lookup. |
 | Central timing | `chamfercentralmotion` | For elapsed seconds: traveled distance in mm, then phase-local progress through the inverse arc-length map, then the analytical TCP pose. All three phases use `machiningFeed`, with an acceleration ramp over `accelerationDistanceFraction` of each lead; there are no separate lead feeds. |
 | Point schedule | `chamfercentralvalidation` | `ChamferCentralPreparation` (owned by `MotionCompiler` for one `ChamferMotion::create` call) builds the central maps, timing and 0.01 mm curvature/acceleration point schedule on the first reached central attempt and caches the analytical targets; `CentralPath` presents them as one `TimedPath` with the phases Lead-in, Machining and Lead-out. |
 | Whole motion | `chamfermotion` | `ChamferMotion::create(path, robot)` tries start configurations; for each, one `MotionBuilder` appends HOME to P_s (PTP), P_s to lead-in start (LIN), the central curve (one spline over its three phases), lead-out end to P_s (LIN) and P_s to HOME (PTP). The motion stores the resulting `TimedMotion` (`timed()`), the 8 phase boundaries, `ChamferPathParameters` and the `ChamferCentralMotion`, which holds the complete `ChamferPath`. |

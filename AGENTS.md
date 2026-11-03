@@ -29,9 +29,14 @@
   Do not use arrows as a substitute for explaining a calculation or relationship.
 - Always denote vectors in explanations with lowercase, regular (non-bold) letters and an overbar,
   for example `\bar{p}`, `\bar{k}`, `\bar{r}`. Do not use uppercase or bold letters or arrow accents
-  for vectors.
-- Always denote axis unit vectors with lowercase e, an overbar, and the axis subscript x, y,
-  or z: `\bar{e}_x`, `\bar{e}_y`, `\bar{e}_z`.
+  for vectors. Never use l for a vector.
+- Give every vector its frame as a pre-superscript; a vector between points also names both
+  points, from first to second: `{}^{B}\bar{r}_{sr}` runs from s to r, coordinates in {B}.
+- Denote every unit vector (ort) by lowercase e with an overbar and the subscript of its axis or
+  of the vector it normalizes: `\bar{e}_x`, `\bar{e}_y`, `\bar{e}_z`,
+  `{}^{B}\bar{e}_{sr} = {}^{B}\bar{r}_{sr}/\|{}^{B}\bar{r}_{sr}\|`. Reserve e for orts.
+- The same vector normalized or expressed in another frame keeps its letter; change only the
+  frame index. One symbol denotes one quantity throughout a document.
 - Denote transform matrices in LaTeX as `{}^{j}A_i`, from coordinate system i to
   coordinate system j. Call the matrix a transform matrix, never calibration.
 - LaTeX in chat renders only as follows; otherwise it appears as plain text. Inline math uses

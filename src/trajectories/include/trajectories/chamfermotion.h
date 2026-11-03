@@ -11,7 +11,8 @@ class ChamferMotion
 public:
   static ChamferMotionResult create(const ChamferPath& path, const ChamferRobotSetup& robot);
   const QVector<ChamferJointPoint>& points() const { return m_timed.points(); }
-  // Inclusive ranges, in ChamferMotionPhase order. Junction points are shared.
+  // Inclusive ranges of the seven phases: HOME to P_s, P_s to lead-in, Lead-in, Machining, Lead-out,
+  // Lead-out to P_s, P_s to HOME. Junction points are shared.
   const std::array<qsizetype, 8>& boundaries() const { return m_boundaries; }
   const ChamferRobotSetup& robot() const { return m_timed.robot(); }
   const ChamferPathParameters& parameters() const { return m_parameters; }

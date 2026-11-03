@@ -17,7 +17,7 @@ are added (`AGENTS.md`). Every `AGENTS.md` rule applies to every line written fo
 The robot carries a WP-500 touch probe whose ruby ball centre must be known relative to the robot
 flange before the probe can be used for surface scanning. The centre is found by touching a fixed
 25 mm calibration sphere from many directions and probe orientations and solving the
-least-squares problem described in `docs/ROBOT_PROBE_SPHERE_CALIBRATION.md`. This plan covers only
+least-squares problem described in `docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md`. This plan covers only
 the first part: preparing and animating the touch motion inside the application. It does not move
 the real robot and adds no RSI streaming, no KRL program and no least-squares solution for the
 ball centre; those belong to later plans.
@@ -216,7 +216,7 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   signatures are recorded with their reasons (Milestone 1 reductions, `SceneCalibration`,
   `setSphereDisplay`, `linearProfile`, `solveLinear`). No findings required a fix.
 - [x] (2026-10-31) Merge of the home branch (the 2026-10-26 entries above and the unified motion
-  module of `plans/UNIFIED_MOTION_MODULE_EXECPLAN.md`) into the work branch (the 2026-10-29 entries
+  module `src/trajectories/motion`) into the work branch (the 2026-10-29 entries
   below): the code keeps the home CIRC (`circularProfile`, `LinearProfile::centre`, `axis`,
   `angle`), which `MotionBuilder` uses, instead of `arcProfile`; the probe clearance tolerance stays
   0.001 mm; the Milestone 7 documentation now describes the 37-touch grid without wrist unwind.

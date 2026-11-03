@@ -48,7 +48,7 @@ struct MachiningDerivativeBounds
   double transverseFirst = 0.0; // Lower transverse first-derivative norm, mm per radian.
 };
 
-// Coefficient-based bounds derived in plans/SPATIAL_LEADS_CURVATURE_STEP1_RU.md.
+// Coefficient-based bounds.
 // Includes the chamfer offset and the actual (rounded) ellipse projection coefficients.
 std::optional<MachiningDerivativeBounds> machiningDerivativeBounds(const ChamferPath& path)
 {
