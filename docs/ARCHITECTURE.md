@@ -220,7 +220,7 @@ and the ruby ball centre was measured in {AD}. On the robot those surfaces locat
 the flange, so {AD} is assumed to coincide with the flange coordinate system {F}, and the CMM
 coordinates are used as the ball centre relative to {F}. Mounting clearances and the difference
 between the physical flange and the controller's FLANGE frame are not included; they are why the
-sphere calibration (`docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md`) determines the actual value.
+sphere calibration (`docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md`) determines the actual value.
 With TOOL_DATA[5] and base $NULLFRAME, HOME is X 1017.00, Y −0.1, Z 1080.05 mm, A 0°, B 90°,
 C 0°, S 110, T 111010 (smartPAD bit notation; decimal S 6, T 58): the stylus points
 horizontally along +X of WORLD.
