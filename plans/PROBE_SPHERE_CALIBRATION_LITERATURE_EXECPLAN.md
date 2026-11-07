@@ -25,9 +25,9 @@ style») и `docs/DOCUMENT_STYLE_RU.md` целиком; перед каждым 
 ранжирование (главный шаг); 4) построение ММК — математической зависимости КТК от факторов
 влияния; 5) процедуры количественного определения отдельных факторов на реальной установке;
 6) выбор метода калибровки, который минимизирует КТК. Шаги 1–4 описываются в
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md` (далее «теория»): только абстрактная математика
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md` (далее «теория»): только абстрактная математика
 и данные публикаций, без сведений о реальной установке. Шаги 5–6 — в
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md` (далее «документ метода»): реальная установка.
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md` (далее «документ метода»): реальная установка.
 
 Этот план выполняет шаг 1. После него в теории есть раздел «Анализ литературы», в котором для
 каждого из 32 источников записана карточка: на каком оборудовании получены результаты, какие
@@ -53,7 +53,7 @@ style») и `docs/DOCUMENT_STYLE_RU.md` целиком; перед каждым 
   (3.1 — поля карточки и таблица L1–L32, 3.2 — ФВ1–ФВ21, 3.3–3.6 — группы карточек, 3.7 — сводка «не
   составлена»); подразделы прежнего раздела 1 перенесены в карточки 3.3.1 (L1), 3.3.2 (L2) и 3.5.1
   (L3); прежний подраздел 1.5 удалён. Ссылки на прежний раздел 1 и «документ стратегии» заменены.
-  Документ метода: 18 строк со ссылками на теорию. `docs/ARCHITECTURE.md:223`,
+  Документ метода: 18 строк со ссылками на теорию. `docs/context/ARCHITECTURE.md:223`,
   `docs/DOCUMENT_STYLE_RU.md` (путь `F=` и `\x5c` в проверке 2) исправлены;
   `docs/ROBOT_PROBE_SPHERE_CALIBRATION_LITERATURE_PLAN_RU.md` удалён. Проверки: механические
   проверки 1, 3, 4, 5 по строкам 1–320 теории (разделы 1–3) и проверка 2 по всему файлу — без
@@ -252,7 +252,7 @@ style») и `docs/DOCUMENT_STYLE_RU.md` целиком; перед каждым 
   содержания.
 - Observation: устаревшие ссылки. Теория (строки 5, 15, 234, 1672, 1834) и прежний план
   литературы ссылаются на удалённый «документ стратегии»
-  (`docs/ROBOT_PROBE_SPHERE_CALIBRATION_STRATEGY_RU.md`). `docs/ARCHITECTURE.md:223` и
+  (`docs/ROBOT_PROBE_SPHERE_CALIBRATION_STRATEGY_RU.md`). `docs/context/ARCHITECTURE.md:223` и
   `docs/DOCUMENT_STYLE_RU.md:39` ссылаются на несуществующий
   `docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md`.
 
@@ -481,7 +481,7 @@ IRB 1600 — около 1 мм, в шаре Ø400 мм после калибро
 
 Документы, которые меняет план:
 
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md` — теория. Сейчас (до этапа 0) её разделы:
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md` — теория. Сейчас (до этапа 0) её разделы:
 1 «Назначение документа и анализ литературы» (подразделы 1.1 «Источники» с источниками L1–L3,
 1.2 и 1.3 — результаты L1 и L2 о щупах Renishaw и схеме касаний сферы, 1.4 — результаты L3 об
 ошибках робота ABB IRB 1600, 1.5 — список статей «не проанализированы»); 2 «Термины и
@@ -493,7 +493,7 @@ IRB 1600 — около 1 мм, в шаре Ø400 мм после калибро
 столбцом «Из источников»); 11 «Выводы». Формулы нумеруются по ГОСТ в пределах раздела второго
 уровня: `\tag{5.2.11}` — одиннадцатая формула раздела 5.2; ссылка в тексте — «(5.2.11)».
 
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md` — документ метода (реальная установка). План
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md` — документ метода (реальная установка). План
 меняет в нём только ссылки на разделы и формулы теории; ссылки документа метода на собственные
 разделы не меняются.
 
@@ -728,12 +728,12 @@ Progress и остановкой.
 Шаг 5. Исправить ссылки вне теории. В документе метода — каждую ссылку на раздел или формулу
 теории (строки, где есть слово «теори», найти командой из Concrete Steps; около 20 строк) по
 соответствию шага 2; ссылки документа метода на собственные разделы не трогать. В
-`docs/ARCHITECTURE.md:223` заменить `docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md` на
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md`, в `docs/DOCUMENT_STYLE_RU.md:39` — пример пути
-`F=` на `docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`, а в механической проверке 2 того же
+`docs/context/ARCHITECTURE.md:223` заменить `docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md` на
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md`, в `docs/DOCUMENT_STYLE_RU.md:39` — пример пути
+`F=` на `docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`, а в механической проверке 2 того же
 раздела обе записи двух обратных косых черт перед `tag` — на `\x5c` (Surprises & Discoveries). В
 теории «документ стратегии» заменить
-на «документ метода» (`docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md`).
+на «документ метода» (`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md`).
 
 Шаг 6. Удалить `docs/ROBOT_PROBE_SPHERE_CALIBRATION_LITERATURE_PLAN_RU.md` (решение в Decision Log).
 
@@ -830,7 +830,7 @@ Progress и остановкой.
 
 Этап 0, шаг 1 — копия теории:
 
-    T=docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md
+    T=docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md
     cp "$T" "$W/theory_before_stage0.md"
 
 Этап 0, шаг 2 — перенумерация одним проходом (запускать один раз; повторный запуск сдвинет номера
@@ -854,7 +854,7 @@ Progress и остановкой.
 
 Этап 0, шаг 5 — ссылки документа метода на теорию и проверка устаревших путей:
 
-    grep -nE 'теори' docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md
+    grep -nE 'теори' docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md
     grep -rnE 'STRATEGY_RU|CALIBRATION_RU\.md|LITERATURE_PLAN|документ[а-я]* стратегии' docs AGENTS.md
 
 Ожидаемый результат второй команды после этапа 0: нет строк.
@@ -874,7 +874,7 @@ Progress и остановкой.
 
 После каждого этапа:
 
-1. Механические проверки раздела 0 `docs/DOCUMENT_STYLE_RU.md` с `F=docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`.
+1. Механические проверки раздела 0 `docs/DOCUMENT_STYLE_RU.md` с `F=docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`.
    Каждая находка в изменённых строках разобрана: исправлена или объяснено, почему это не
    нарушение. Проверка 2 (номер формулы без ссылки, ссылка на несуществующий номер) запускается
    с `\x5c` вместо двух обратных косых черт и по всему файлу не выдаёт ни одной строки: до этапа 0
@@ -887,11 +887,11 @@ Progress и остановкой.
    есть), в Surprises & Discoveries — неожиданное.
 
 Этап 0 принят, если дополнительно: заголовки верхнего уровня теории идут по порядку 1–12
-(`grep -n '^## ' docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`); проверка защищённых разделов
+(`grep -n '^## ' docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`); проверка защищённых разделов
 выводит `SAME`; поиск устаревших путей ничего не находит; файл прежнего плана литературы удалён.
 
 Этап 8 принят, если дополнительно: в таблице 3.1 у всех 32 источников указан класс объектов;
-`grep -c '^#### 3\.[3-6]\.[0-9]*\. L[0-9]*:' docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`
+`grep -c '^#### 3\.[3-6]\.[0-9]*\. L[0-9]*:' docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`
 выводит 32; у каждого ФВ в таблице 3.7.2 есть значение с местом или «нет данных»; в теории нет
 строки «не проанализирован».
 
@@ -930,9 +930,9 @@ HEAD:docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md` плюс незакомм
 изображений страниц — инструмент чтения PDF агента с параметром страниц. `perl` и `grep` из Git
 Bash — для механических проверок `docs/DOCUMENT_STYLE_RU.md` и перенумерации. Код, сборка и
 зависимости проекта не затрагиваются. Изменяемые файлы:
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`,
-`docs/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md` (только ссылки на теорию),
-`docs/ARCHITECTURE.md` (строка 223), `docs/DOCUMENT_STYLE_RU.md` (строка 39), удаляемый
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`,
+`docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md` (только ссылки на теорию),
+`docs/context/ARCHITECTURE.md` (строка 223), `docs/DOCUMENT_STYLE_RU.md` (строка 39), удаляемый
 `docs/ROBOT_PROBE_SPHERE_CALIBRATION_LITERATURE_PLAN_RU.md` и этот план.
 
 

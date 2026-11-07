@@ -19,9 +19,9 @@ DEF RSI_Probe_Lin()
    IF RSI_CREATE("RSI_Probe_Lin.rsi")<>RSIOK THEN
       RETURN
    ENDIF
-   ; The RSI STOP object reacts only to a rising edge of $IN[11]:
+   ; The RSI STOP object reacts only to a rising edge of $IN[8]:
    ; a probe that is already deflected would never stop the motion.
-   IF $IN[11] THEN
+   IF $IN[8] THEN
       RETURN
    ENDIF
 
@@ -29,7 +29,7 @@ DEF RSI_Probe_Lin()
       RETURN
    ENDIF
    ; The PC streams +0.004 mm in WORLD X per cycle for 100 mm. RSI_MOVECORR ends when the
-   ; PC sends Stop after completion or when $IN[11] (WP-500 touch) switches on.
+   ; PC sends Stop after completion or when $IN[8] (WP-500 touch) switches on.
    $SEN_PINT[1]=1
    RSI_MOVECORR()
    $SEN_PINT[1]=0

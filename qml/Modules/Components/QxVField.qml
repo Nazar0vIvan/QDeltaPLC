@@ -11,6 +11,7 @@ Item {
   property alias color: label.color
   property alias labelColor: label.color
   property alias spacing: cl.spacing
+  property int labelAlignment: Qt.AlignLeft | Qt.AlignVCenter
   default property alias content: slot.data
 
   implicitWidth: cl.implicitWidth
@@ -24,6 +25,7 @@ Item {
     Label {
       id: label
 
+      Layout.alignment: root.labelAlignment
       color: Colors.foreground.medium
       font: Fonts.body
     }

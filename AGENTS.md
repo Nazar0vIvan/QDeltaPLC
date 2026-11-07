@@ -140,6 +140,9 @@
   inspect definitions and custom base types: properties, signals, default content and sizing.
 - Stay within the task; preserve unrelated edits/formatting. Reuse suitable project/Qt helpers;
   add abstractions only for a current requirement.
+- Carry out an explicitly stated scope completely: "read all documents in X" means every file in
+  full. Never narrow it by your own relevance judgement to save time or context. If full
+  compliance is impossible, say so before starting and ask; never silently do less.
 - Exclude directories named build, libs or python, and names beginning with old, from routine
   searches/inspections unless explicitly targeted.
 - Preserve public/protected C++ APIs, QML APIs/module URIs, dependencies and minimum versions
@@ -172,21 +175,21 @@
 ## Read contracts for the affected area
 
 Before changing or reviewing the areas below, read the matching sections of
-[docs/AGENT_CONTRACTS.md](docs/AGENT_CONTRACTS.md), then the indicated producers/consumers.
+[docs/context/AGENT_CONTRACTS.md](docs/context/AGENT_CONTRACTS.md), then the indicated producers/consumers.
 They are mandatory project constraints unless the user requests a redesign. Read all matching
 sections for work crossing boundaries; do not read unrelated sections for every request.
-Use [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) when a broader implementation map is needed.
+Use [docs/context/ARCHITECTURE.md](docs/context/ARCHITECTURE.md) when a broader implementation map is needed.
 Update only affected constraints in their owning document. Do not add completion reports, task
 history, tutorials or repeated implementation descriptions.
 
 | Work area | Required contract sections |
 | --- | --- |
-| CMake, target ownership, dependencies, QML registration, modules or resources | [Build and modules](docs/AGENT_CONTRACTS.md#build-and-modules) |
-| OCCT viewport, CAD loading, robot assets or presentation | [Viewport and CAD](docs/AGENT_CONTRACTS.md#viewport-and-cad) |
-| Devices, protocols, device UI or thread/shutdown changes | [Devices and protocols](docs/AGENT_CONTRACTS.md#devices-and-protocols) |
-| Numerical geometry, kinematics, scene objects/imports/intersections or tool transforms | [Geometry and scene](docs/AGENT_CONTRACTS.md#geometry-and-scene) |
-| Machining generation, trajectory preparation, playback, diagnostics or authorized RSI work | [Machining and playback](docs/AGENT_CONTRACTS.md#machining-and-playback) and [Geometry and scene](docs/AGENT_CONTRACTS.md#geometry-and-scene) |
-| QML controls/layouts, delegates, settings UI or component exports | [QML](docs/AGENT_CONTRACTS.md#qml) |
+| CMake, target ownership, dependencies, QML registration, modules or resources | [Build and modules](docs/context/AGENT_CONTRACTS.md#build-and-modules) |
+| OCCT viewport, CAD loading, robot assets or presentation | [Viewport and CAD](docs/context/AGENT_CONTRACTS.md#viewport-and-cad) |
+| Devices, protocols, device UI or thread/shutdown changes | [Devices and protocols](docs/context/AGENT_CONTRACTS.md#devices-and-protocols) |
+| Numerical geometry, kinematics, scene objects/imports/intersections or tool transforms | [Geometry and scene](docs/context/AGENT_CONTRACTS.md#geometry-and-scene) |
+| Machining generation, trajectory preparation, playback, diagnostics or authorized RSI work | [Machining and playback](docs/context/AGENT_CONTRACTS.md#machining-and-playback) and [Geometry and scene](docs/context/AGENT_CONTRACTS.md#geometry-and-scene) |
+| QML controls/layouts, delegates, settings UI or component exports | [QML](docs/context/AGENT_CONTRACTS.md#qml) |
 
 ## Validation and handoff
 

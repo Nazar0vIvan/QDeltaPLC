@@ -17,7 +17,7 @@ are added (`AGENTS.md`). Every `AGENTS.md` rule applies to every line written fo
 The robot carries a WP-500 touch probe whose ruby ball centre must be known relative to the robot
 flange before the probe can be used for surface scanning. The centre is found by touching a fixed
 25 mm calibration sphere from many directions and probe orientations and solving the
-least-squares problem described in `docs/ROBOT_PROBE_SPHERE_CALIBRATION_RU.md`. This plan covers only
+least-squares problem described in `docs/calibration/ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md`. This plan covers only
 the first part: preparing and animating the touch motion inside the application. It does not move
 the real robot and adds no RSI streaming, no KRL program and no least-squares solution for the
 ball centre; those belong to later plans.
@@ -107,7 +107,7 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   resources/pics/calibration.svg 5/5. The growth is the required new behavior (sphere file
   parsing with its error texts, the fit, the drawing part, the scene value, the submode and the
   visibility record); the smaller alternative of fitting inside `SceneCalibration` was rejected
-  because numerical fitting belongs to `RoboCrapGeometry` (`docs/AGENT_CONTRACTS.md`, Geometry
+  because numerical fitting belongs to `RoboCrapGeometry` (`docs/context/AGENT_CONTRACTS.md`, Geometry
   and scene). Compliance pass: every new or changed signature has at most two parameters, results
   return through values (`SphereFileResult`, `std::optional<SphereFit>`), no lambdas, templates or
   output parameters; `SceneModel::addSphere` uses `SceneObject`'s private `setShape` method like
@@ -195,17 +195,17 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
 - [x] (2026-10-26) Milestone 6 acceptance: the user built `robocrap` and `robocrap_qmllint`, ran
   the Dry Run scenario of Milestone 6 with the CIRC transfers and reported all checks as passed.
 - [x] (2026-10-26) Milestone 7 (completed, before the user's Milestone 6 checks at the user's
-  request "let's finish calibration plan"): `docs/AGENT_CONTRACTS.md` (Build and modules:
+  request "let's finish calibration plan"): `docs/context/AGENT_CONTRACTS.md` (Build and modules:
   singletons, construction order, copy-if-absent sphere file; Viewport and CAD: sphere parts,
   transparent highlight, model published to `ScenePlayback`; Geometry and scene: measuring TCP,
   sphere and calibration path objects, `fitSphere`, sphere file, Calibration visibility;
   Machining and playback: `ScenePlayback`, constant-speed LIN, CIRC, splines, `ratedRobotSetup`,
   calibration path invalidation, console line, calibration Generate; QML: Calibration toolbar,
-  status and Scene panel), `docs/ARCHITECTURE.md` (3.1 `spherefit`, 3.2 `ScenePlayback` and
+  status and Scene panel), `docs/context/ARCHITECTURE.md` (3.1 `spherefit`, 3.2 `ScenePlayback` and
   `SceneCalibration`, 3.3 shared numerics and probe plan/motion, 3.5 sphere parts, 3.6 status bar,
   submodes, Calibration tools and panels, resources, 4 threads and ownership, 5.1, 5.2 Dry Run
   through `ScenePlayback`, 5.4 shutdown order, new 5.5 calibration trace, 6 workers, 7 open
-  calibration clearance question) and `docs/APP_DESCRIPTION.md` (CIRC term, measuring TCP, the
+  calibration clearance question) and `docs/context/APP_DESCRIPTION.md` (CIRC term, measuring TCP, the
   Calibration workflow step). Documentation lines: AGENT_CONTRACTS.md 361 to 401,
   ARCHITECTURE.md 410 to 426, APP_DESCRIPTION.md 82 to 97.
   Compliance pass over every C++ file changed by Milestones 1–7 (jointsegments, chamfertcpsolver,
@@ -247,7 +247,7 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   124/111 to 103/91 (touch table with roll; `transferPoses` and `RollDegrees` removed),
   probe/probetouchmotion.cpp 230/209 to 231/210 (one CIRC Transfer step per touch; clearance
   requirement g instead of the chord bound), include/trajectories/probetouchplan.h 52/43 to 51/42
-  (`ProbeMaximumChordDegrees` and `ProbeTouch::transfer` removed); docs/AGENT_CONTRACTS.md LIN
+  (`ProbeMaximumChordDegrees` and `ProbeTouch::transfer` removed); docs/context/AGENT_CONTRACTS.md LIN
   sampling rule extended by the CIRC normal acceleration. Total C++ +26/+22: the arc primitive
   (+47/+42) against the removed waypoint construction (−21/−20). Smaller alternative considered:
   keep LIN chords and shorten them (no new primitive) — rejected because the user asked for arcs,
@@ -355,7 +355,7 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
   Z 127 mm, A = B = C = 0, so the axes of {P} equal the flange axes and the {P} z-axis points
   away from the flange along the stylus. It is editable with Apply in the Measuring EE panel and
   is not persisted, like the spindle TCP.
-  Rationale: user-supplied CMM values; `docs/ARCHITECTURE.md` "Controller tool data".
+  Rationale: user-supplied CMM values; `docs/context/ARCHITECTURE.md` "Controller tool data".
   Date/Author: 2026-10-24, user.
 - Decision (superseded on 2026-10-26 by the ring scan): the motion is HOME, PTP to the first via pose, then for every touch LIN via→start,
   LIN start→contact at the approach feed, LIN contact→start, LIN start→via, PTP to the next via
@@ -378,7 +378,7 @@ Record every stopping point here with a UTC timestamp, splitting a partially com
 - Decision: Generate fails with an error naming the touch and segment when any IK, joint-limit,
   speed, spline or clearance check fails; there is no retiming, reordering or skipping. The first
   IK is seeded from HOME only.
-  Rationale: the same rule as chamfer Generate (`docs/AGENT_CONTRACTS.md`, Machining and playback).
+  Rationale: the same rule as chamfer Generate (`docs/context/AGENT_CONTRACTS.md`, Machining and playback).
   Date/Author: 2026-10-24, agent.
 - Decision: reuse `ChamferRobotSetup`, `ChamferTimingParameters`, `ChamferJointPoint` and
   `ChamferTcpSolver` for the touch motion; their chamfer names remain.
@@ -696,7 +696,7 @@ first. Its mandatory rules apply to every change: no C++ lambdas, no project tem
 four function parameters, where four is chosen only after attempts to reduce the count to three
 or fewer have failed and those attempts are recorded in this plan, results only through return
 values, try/catch only around external-library calls, no project tests. Before each milestone
-read the `docs/AGENT_CONTRACTS.md` sections it names; they are binding constraints, and
+read the `docs/context/AGENT_CONTRACTS.md` sections it names; they are binding constraints, and
 Milestone 7 updates the ones this plan changes.
 
 The program is a Windows Qt Quick application (C++17, Qt ≥ 6.8, CMake ≥ 3.16, bundled Eigen) that
@@ -1391,12 +1391,12 @@ different measuring TCP removes the path and disables Dry Run.
 
 ### Milestone 7: documentation, contracts and compliance
 
-Update `docs/AGENT_CONTRACTS.md`: in "Machining and playback", playback and the robot model copy
+Update `docs/context/AGENT_CONTRACTS.md`: in "Machining and playback", playback and the robot model copy
 now belong to `ScenePlayback`, `RobotController` publishes the model to it once, and the
 calibration Generate, touch motion and its checks are added; in "Geometry and scene", the sphere
 fit and sphere object; in "Viewport and CAD", the sphere drawing part; in "Build and modules", the
-copy-if-absent sphere file; in "QML", the Calibration toolbar. Update `docs/ARCHITECTURE.md`
-(sections 3.2, 3.3, 3.5, 3.6, 4 and 5) and `docs/APP_DESCRIPTION.md` (a Calibration workflow
+copy-if-absent sphere file; in "QML", the Calibration toolbar. Update `docs/context/ARCHITECTURE.md`
+(sections 3.2, 3.3, 3.5, 3.6, 4 and 5) and `docs/context/APP_DESCRIPTION.md` (a Calibration workflow
 step). Then perform the `AGENTS.md` compliance pass on every changed declaration, body and caller
 (parameter counts and recorded reasons, result channels, no lambdas or templates, ownership,
 repetition), fix findings within scope, and record the findings and the line counts against the
@@ -1458,8 +1458,8 @@ entry 3.1 s, wrist unwind 4.2 s and exit to HOME 3.2 s; in total about 248 s, ab
 
 Notes for the later RSI plan (agreed with the user on 2026-10-26, not implemented here): a real
 touch starts at p_start and moves along −n at a constant 0.004 mm per 4 ms RSI cycle (1 mm/s)
-without a ramp, stops when `$IN[11]` (the WP-500 trigger through X2.0, Y1.5 and EL1809 input 11;
-until 2026-10-29 planned as `$IN[8]` through Y1.7 and EL1809 input 8)
+without a ramp, stops when `$IN[8]` (the WP-500 trigger through X2.0, Y1.7 and EL1809 input 8,
+assigned 2026-11-06; from 2026-10-29 to 2026-11-06 `$IN[11]` through Y1.5 and EL1809 input 11)
 switches, records `$POS_ACT`/RIst at that cycle, and then retracts to p_start. The search ends
 without contact after 4.5 mm (g plus an overtravel of 1.5 mm), which is a failed touch. The
 animation's 3 mm Approach at 1 mm/s matches this motion up to the contact.
