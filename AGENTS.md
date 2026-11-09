@@ -140,6 +140,8 @@
   inspect definitions and custom base types: properties, signals, default content and sizing.
 - Stay within the task; preserve unrelated edits/formatting. Reuse suitable project/Qt helpers;
   add abstractions only for a current requirement.
+- Text the user deleted from a .md document stays deleted: never restore it, wholly or in part,
+  in later edits unless the user asks for it.
 - Carry out an explicitly stated scope completely: "read all documents in X" means every file in
   full. Never narrow it by your own relevance judgement to save time or context. If full
   compliance is impossible, say so before starting and ask; never silently do less.

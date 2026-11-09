@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="410" viewBox="0 0 800 410" font-family="sans-serif">
+<defs>
+<marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#D85A30" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#993C1D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="arrowDark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#2C2C2A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+<rect width="800" height="410" fill="#FFFFFF"/>
+
+<!-- reference sphere -->
+<circle cx="640" cy="200" r="110" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<circle cx="640" cy="200" r="2.5" fill="#444441"/>
+<text x="690" y="262" font-size="13" fill="#0F6E56" text-anchor="middle">эталонная сфера</text>
+<text x="640" y="224" font-size="14" fill="#2C2C2A" text-anchor="middle">p̄<tspan font-size="10" dy="4">s</tspan></text>
+
+<!-- extension of the outward normal -->
+<line x1="30" y1="200" x2="640" y2="200" stroke="#888780" stroke-width="1" stroke-dasharray="5 4"/>
+
+<!-- unit vectors -->
+<line x1="270" y1="70" x2="200" y2="70" stroke="#2C2C2A" stroke-width="1.5" marker-end="url(#arrowDark)"/>
+<text x="280" y="75" font-size="14" fill="#2C2C2A" text-anchor="start">ē<tspan font-size="10" dy="4">n</tspan><tspan dy="-4"> — внешняя нормаль сферы в точке касания</tspan></text>
+<line x1="200" y1="110" x2="270" y2="110" stroke="#2C2C2A" stroke-width="1.5" marker-end="url(#arrowDark)"/>
+<text x="280" y="115" font-size="14" fill="#2C2C2A" text-anchor="start">ē<tspan font-size="10" dy="4">a</tspan><tspan dy="-4"> — направление подхода</tspan></text>
+
+<!-- ball positions -->
+<circle cx="140" cy="200" r="10" fill="none" stroke="#993C1D" stroke-width="0.8" stroke-dasharray="3 2"/>
+<circle cx="140" cy="200" r="2.5" fill="#993C1D"/>
+<circle cx="400" cy="200" r="10" fill="none" stroke="#993C1D" stroke-width="0.8" stroke-dasharray="3 2"/>
+<circle cx="400" cy="200" r="2.5" fill="#993C1D"/>
+<circle cx="520" cy="200" r="10" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<circle cx="520" cy="200" r="2.5" fill="#993C1D"/>
+<line x1="530" y1="196" x2="538" y2="204" stroke="#2C2C2A" stroke-width="1.5"/>
+<line x1="530" y1="204" x2="538" y2="196" stroke="#2C2C2A" stroke-width="1.5"/>
+
+<!-- segments -->
+<line x1="150" y1="200" x2="388" y2="200" stroke="#D85A30" stroke-width="2.5" marker-end="url(#arrowOrange)"/>
+<text x="270" y="186" font-size="14" font-weight="500" fill="#D85A30" text-anchor="middle">предподход, L<tspan font-size="10" dy="3">pre</tspan></text>
+<text x="270" y="166" font-size="13" fill="#D85A30" text-anchor="middle">v<tspan font-size="9" dy="3">pre</tspan><tspan dy="-3"> &gt; v</tspan><tspan font-size="9" dy="3">s</tspan></text>
+<line x1="410" y1="200" x2="529" y2="200" stroke="#993C1D" stroke-width="2.5" marker-end="url(#arrowRed)"/>
+<text x="462" y="186" font-size="14" font-weight="500" fill="#993C1D" text-anchor="middle">поиск, L<tspan font-size="10" dy="3">srch</tspan></text>
+<text x="462" y="166" font-size="13" fill="#993C1D" text-anchor="middle">v<tspan font-size="9" dy="3">s</tspan><tspan dy="-3"> = const</tspan></text>
+
+<!-- point designations -->
+<text x="140" y="232" font-size="14" fill="#2C2C2A" text-anchor="middle">p̄<tspan font-size="10" dy="4">st</tspan></text>
+<text x="400" y="232" font-size="14" fill="#2C2C2A" text-anchor="middle">p̄<tspan font-size="10" dy="4">so</tspan></text>
+<text x="510" y="232" font-size="14" fill="#2C2C2A" text-anchor="middle">p̄<tspan font-size="10" dy="4">c</tspan></text>
+<line x1="534" y1="194" x2="560" y2="150" stroke="#888780" stroke-width="0.8"/>
+<text x="563" y="146" font-size="14" fill="#2C2C2A" text-anchor="start">p̄<tspan font-size="10" dy="4">det</tspan></text>
+
+<!-- extension lines for dimensions -->
+<line x1="140" y1="212" x2="140" y2="384" stroke="#888780" stroke-width="0.6"/>
+<line x1="400" y1="240" x2="400" y2="354" stroke="#888780" stroke-width="0.6"/>
+<line x1="520" y1="240" x2="520" y2="324" stroke="#888780" stroke-width="0.6"/>
+<line x1="534" y1="206" x2="534" y2="274" stroke="#888780" stroke-width="0.6"/>
+<line x1="640" y1="312" x2="640" y2="384" stroke="#888780" stroke-width="0.6"/>
+
+<!-- L_app -->
+<line x1="142" y1="268" x2="532" y2="268" stroke="#2C2C2A" stroke-width="1" marker-start="url(#arrowDark)" marker-end="url(#arrowDark)"/>
+<text x="300" y="262" font-size="14" font-weight="500" fill="#2C2C2A" text-anchor="middle">подход, L<tspan font-size="10" dy="3">app</tspan></text>
+<!-- L -->
+<line x1="522" y1="320" x2="638" y2="320" stroke="#2C2C2A" stroke-width="1" marker-start="url(#arrowDark)" marker-end="url(#arrowDark)"/>
+<text x="580" y="314" font-size="13" fill="#2C2C2A" text-anchor="middle">L = r<tspan font-size="10" dy="3">b</tspan><tspan dy="-3"> + r</tspan><tspan font-size="10" dy="3">s</tspan></text>
+<!-- L_so -->
+<line x1="402" y1="350" x2="638" y2="350" stroke="#2C2C2A" stroke-width="1" marker-start="url(#arrowDark)" marker-end="url(#arrowDark)"/>
+<text x="460" y="344" font-size="13" fill="#2C2C2A" text-anchor="middle">L<tspan font-size="10" dy="3">so</tspan></text>
+<!-- L_st -->
+<line x1="142" y1="380" x2="638" y2="380" stroke="#2C2C2A" stroke-width="1" marker-start="url(#arrowDark)" marker-end="url(#arrowDark)"/>
+<text x="270" y="374" font-size="13" fill="#2C2C2A" text-anchor="middle">L<tspan font-size="10" dy="3">st</tspan></text>
+</svg>
