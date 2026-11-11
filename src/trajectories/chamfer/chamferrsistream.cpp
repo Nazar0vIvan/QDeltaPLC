@@ -1,5 +1,6 @@
 #include "trajectories/chamferrsistream.h"
 
+#include "../motion/rsicoordinates.h"
 #include "../motion/tcpsolver.h"
 #include "geometry/utils.h"
 
@@ -21,30 +22,11 @@ using namespace RoboCrap3D;
 constexpr double CyclePeriod = 0.004; // s, RSI IPO_FAST controller cycle.
 constexpr int SettleCycles = 50; // Zero corrections before Result = 1.
 constexpr double MaximumCycles = 200000.0;
-constexpr double WireScale = 1e6; // Six fixed decimal places on the wire.
 constexpr double RateTolerance = 1e-6;
-
-V3d principalEulerDegrees(const M3d& rotation)
-{
-  // atan2 retains pitch accuracy near +/-90 degrees, where asin can lose it.
-  const double cosinePitch = std::hypot(rotation(0, 0), rotation(1, 0));
-  if (cosinePitch <= GeomConst::Eps)
-    return {std::atan2(-rotation(0, 1), rotation(1, 1)) * GeomConst::RadToDeg,
-            std::copysign(90.0, -rotation(2, 0)), 0.0};
-  return {std::atan2(rotation(1, 0), rotation(0, 0)) * GeomConst::RadToDeg,
-          std::atan2(-rotation(2, 0), cosinePitch) * GeomConst::RadToDeg,
-          std::atan2(rotation(2, 1), rotation(2, 2)) * GeomConst::RadToDeg};
-}
 
 double rotationEntryError(const M3d& target, const V3d& angles)
 {
   return (euler2rot(angles[0], angles[1], angles[2]) - target).cwiseAbs().maxCoeff();
-}
-
-// The value the controller parses from six fixed decimal places.
-V6d wireValues(const V6d& values)
-{
-  return ((values * WireScale).array().round() / WireScale).matrix();
 }
 
 QString atTime(const QString& error, double seconds)

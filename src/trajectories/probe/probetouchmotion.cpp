@@ -12,12 +12,6 @@ namespace {
 
 constexpr double ClearanceTolerance = 0.001; // mm; covers the 1e-4 mm FK reconstruction of stored poses.
 
-struct MotionStep
-{
-  ProbeMotionPhase phase;
-  M4d target; // TCP pose at the end of the segment; unused by ReturnHome.
-};
-
 struct BuildResult
 {
   std::optional<TimedMotion> motion;
@@ -36,35 +30,6 @@ bool touchSegment(ProbeSegment segment)
   return segment == ProbeSegment::Approach || segment == ProbeSegment::Retract;
 }
 
-// A pass in another probe orientation is reached through the previous exit, a PTP to its entry and a
-// descent; a pass in the same orientation by a transfer, omitted when it starts where the previous
-// pass ended (a zero-length CIRC is degenerate).
-QVector<MotionStep> motionSteps(const ProbeTouchPlan& plan)
-{
-  QVector<MotionStep> steps;
-  for (int index = 0; index < plan.passes.size(); ++index) {
-    const ProbeTouchPass& pass = plan.passes[index];
-    const M4d& first = pass.touches.front().start;
-    if (index == 0 || pass.group != plan.passes[index - 1].group) {
-      if (index > 0) steps.append(MotionStep{{index - 1, 0, ProbeSegment::Retreat}, plan.passes[index - 1].exit});
-      steps.append(MotionStep{{index, 0, ProbeSegment::ToEntry}, pass.entry});
-      steps.append(MotionStep{{index, 0, ProbeSegment::Descend}, first});
-    } else if (first != plan.passes[index - 1].touches.back().start) {
-      steps.append(MotionStep{{index, 1, ProbeSegment::Transfer}, first});
-    }
-    int number = 0;
-    for (const ProbeTouch& touch : pass.touches) {
-      ++number;
-      if (number > 1) steps.append(MotionStep{{index, number, ProbeSegment::Transfer}, touch.start});
-      steps.append(MotionStep{{index, number, ProbeSegment::Approach}, touch.contact});
-      steps.append(MotionStep{{index, number, ProbeSegment::Retract}, touch.start});
-    }
-  }
-  steps.append(MotionStep{{static_cast<int>(plan.passes.size()) - 1, 0, ProbeSegment::Retreat}, plan.passes.back().exit});
-  steps.append(MotionStep{{-1, 0, ProbeSegment::ReturnHome}, M4d::Identity()});
-  return steps;
-}
-
 // Builds the timed points of one touch plan; borrows the plan and the worker-owned robot setup.
 class TouchMotionBuilder
 {
@@ -75,7 +40,7 @@ public:
   BuildResult build()
   {
     m_clearances = {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
-    for (const auto& [phase, target] : motionSteps(m_plan)) {
+    for (const auto& [phase, target] : probeMotionSteps(m_plan)) {
       const qsizetype first = m_motion.points().size() - 1;
       QString error = append(phase, target);
       if (error.isEmpty()) error = clearanceError(phase, first);
@@ -145,6 +110,33 @@ private:
 };
 
 } // namespace
+
+QVector<ProbeMotionStep> probeMotionSteps(const ProbeTouchPlan& plan)
+{
+  QVector<ProbeMotionStep> steps;
+  for (int index = 0; index < plan.passes.size(); ++index) {
+    const ProbeTouchPass& pass = plan.passes[index];
+    const M4d& first = pass.touches.front().start;
+    if (index == 0 || pass.group != plan.passes[index - 1].group) {
+      if (index > 0) steps.append(ProbeMotionStep{{index - 1, 0, ProbeSegment::Retreat}, plan.passes[index - 1].exit});
+      steps.append(ProbeMotionStep{{index, 0, ProbeSegment::ToEntry}, pass.entry});
+      steps.append(ProbeMotionStep{{index, 0, ProbeSegment::Descend}, first});
+    } else if (first != plan.passes[index - 1].touches.back().start) {
+      steps.append(ProbeMotionStep{{index, 1, ProbeSegment::Transfer}, first});
+    }
+    int number = 0;
+    for (const ProbeTouch& touch : pass.touches) {
+      ++number;
+      if (number > 1) steps.append(ProbeMotionStep{{index, number, ProbeSegment::Transfer}, touch.start});
+      steps.append(ProbeMotionStep{{index, number, ProbeSegment::Approach}, touch.contact});
+      steps.append(ProbeMotionStep{{index, number, ProbeSegment::Retract}, touch.start});
+    }
+  }
+  steps.append(ProbeMotionStep{{static_cast<int>(plan.passes.size()) - 1, 0, ProbeSegment::Retreat},
+                               plan.passes.back().exit});
+  steps.append(ProbeMotionStep{{-1, 0, ProbeSegment::ReturnHome}, M4d::Identity()});
+  return steps;
+}
 
 QString ProbeMotionPhase::text(const ProbeTouchPlan& plan) const
 {

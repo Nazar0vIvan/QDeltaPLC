@@ -4,6 +4,7 @@ qt_add_library(RoboCrapTrajectories STATIC
   include/trajectories/timedmotion.h
   motion/timedmotion.cpp
   motion/tcpsolver.h
+  motion/rsicoordinates.h
   motion/motionbuilder.h
   motion/motionbuilder.cpp
   include/trajectories/chamferpath.h
@@ -22,6 +23,8 @@ qt_add_library(RoboCrapTrajectories STATIC
   probe/probetouchplan.cpp
   include/trajectories/probetouchmotion.h
   probe/probetouchmotion.cpp
+  include/trajectories/probersistream.h
+  probe/probersistream.cpp
 )
 target_include_directories(RoboCrapTrajectories PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(RoboCrapTrajectories PUBLIC RoboCrapKinematics)

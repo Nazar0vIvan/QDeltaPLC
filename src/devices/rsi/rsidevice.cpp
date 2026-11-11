@@ -21,14 +21,6 @@ namespace {
 
 constexpr qsizetype TraceCapacity = 64 * 1024 * 1024;
 
-// Fields of a controller <Rob> packet used by RSI_Chamfer_Hole; other elements are ignored.
-struct Request
-{
-  quint64 ipoc = 0;
-  bool start = false;
-  qint64 result = 0;
-};
-
 bool isDigits(const QString& text)
 {
   if (text.isEmpty()) return false;
@@ -38,14 +30,16 @@ bool isDigits(const QString& text)
 }
 
 // Requires exactly one IPOC, Start (0/1) and Result (LONG) in a well-formed <Rob> document.
-std::optional<Request> decodeRequest(const QByteArray& datagram)
+// An optional single TouchIndex is a decimal index or, from an unconnected input, "not linked:<n>" (0).
+std::optional<RsiDevice::Request> decodeRequest(const QByteArray& datagram)
 {
   QXmlStreamReader xml(datagram);
   if (!xml.readNextStartElement() || xml.name() != QLatin1String("Rob")) return std::nullopt;
-  Request request;
+  RsiDevice::Request request;
   bool hasIpoc = false;
   bool hasStart = false;
   bool hasResult = false;
+  bool hasTouchIndex = false;
   while (xml.readNextStartElement()) {
     if (xml.name() == QLatin1String("IPOC")) {
       const QString text = xml.readElementText().trimmed();
@@ -63,6 +57,12 @@ std::optional<Request> decodeRequest(const QByteArray& datagram)
       request.result = xml.readElementText().trimmed().toLongLong(&ok);
       if (hasResult || !ok) return std::nullopt;
       hasResult = true;
+    } else if (xml.name() == QLatin1String("TouchIndex")) {
+      const QString text = xml.readElementText().trimmed();
+      bool ok = text.startsWith(QLatin1String("not linked:"));
+      if (!ok && isDigits(text)) request.touchIndex = text.toLongLong(&ok);
+      if (hasTouchIndex || !ok) return std::nullopt;
+      hasTouchIndex = true;
     } else {
       xml.skipCurrentElement();
     }
@@ -174,7 +174,7 @@ void RsiDevice::disconnect()
   qInfo().noquote() << "[OK]" << objectName() + ":" << "Socket disconnected";
 }
 
-void RsiDevice::setCorrections(const QVector<V6d>& increments, const QString& diagnosticId)
+void RsiDevice::setCorrections(const QVector<QVector<V6d>>& streams, const QString& diagnosticId)
 {
   // Buffered requests belong to the outgoing stream, not the new array.
   while (m_sock && m_sock->hasPendingDatagrams()) {
@@ -184,13 +184,15 @@ void RsiDevice::setCorrections(const QVector<V6d>& increments, const QString& di
                 + datagram.data().toBase64() + '\n');
   }
   saveTrace();
-  if (m_corrections.diagnosticId != diagnosticId) m_tracePart = 0;
-  m_corrections = {increments, diagnosticId};
+  if (m_diagnosticId != diagnosticId) m_tracePart = 0;
+  m_streams = streams;
+  m_diagnosticId = diagnosticId;
+  m_activeStream = 0;
   m_index = 0;
   m_state = RunState::Idle;
   m_pp = 0;
-  qInfo().noquote() << "[INFO]" << objectName() + ": RSI corrections installed:"
-                    << increments.size();
+  qInfo().noquote() << "[INFO]" << objectName() + ": RSI correction streams installed:"
+                    << streams.size();
   publishState();
 }
 
@@ -225,7 +227,7 @@ void RsiDevice::onReadyRead()
     return;
   }
   const qsizetype index = m_index;
-  Reply reply = advance(newest->start, newest->result);
+  Reply reply = advance(*newest);
   reply.ipoc = newest->ipoc;
   const QByteArray encoded = encodeReply(reply);
   const qint64 sentNs = m_traceClock.nsecsElapsed();
@@ -271,13 +273,13 @@ void RsiDevice::saveTrace()
   }
   m_traceTimer->stop();
   if (!m_trace.isEmpty()) {
-    QString id = m_corrections.diagnosticId;
+    QString id = m_diagnosticId;
     if (id.isEmpty()) id = QStringLiteral("unassigned_%1").arg(
         QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
     ++m_tracePart;
     const QString part = m_tracePart == 1 ? QString{} : QStringLiteral("_part%1").arg(m_tracePart);
     const QString fileName = QStringLiteral("rsi_packets_%1%2.csv").arg(id, part);
-    m_trace.append("# plan_id," + m_corrections.diagnosticId.toUtf8()
+    m_trace.append("# plan_id," + m_diagnosticId.toUtf8()
                    + "\n# dropped_rows," + QByteArray::number(m_traceDropped) + '\n');
     m_traceSaves.push_back(std::async(std::launch::async, &RsiDevice::writeTrace,
                                      std::exchange(m_trace, {}), fileName));
@@ -307,27 +309,38 @@ QString RsiDevice::writeTrace(QByteArray rows, QString fileName)
   return QStringLiteral("[OK] saved RSI diagnostic %1").arg(file.fileName());
 }
 
-RsiDevice::Reply RsiDevice::advance(bool start, qint64 echoedResult)
+RsiDevice::Reply RsiDevice::advance(const Request& request)
 {
-  if (!start) {
+  if (!request.start) {
     resetRun();
     return {};
   }
-  if (m_state == RunState::Idle)
-    setState(m_corrections.increments.isEmpty() ? RunState::Stopping : RunState::Streaming);
+  // Consecutive searches may send no Start = 0 packet between them; another touch's
+  // request must not continue this run's stream.
+  if (m_state != RunState::Idle && request.touchIndex != m_activeStream) resetRun();
+  if (m_state == RunState::Idle) {
+    m_activeStream = request.touchIndex;
+    setState(activeStreamSize() == 0 ? RunState::Stopping : RunState::Streaming);
+  }
   if (m_state == RunState::Streaming) {
     Reply reply;
-    reply.correction = m_corrections.increments[m_index++];
-    if (m_index == m_corrections.increments.size()) setState(RunState::Finished);
+    // const access: no detach of the implicitly shared table inside the reply path.
+    reply.correction = m_streams.at(m_activeStream).at(m_index++);
+    if (m_index == activeStreamSize()) setState(RunState::Finished);
     return reply;
   }
   // Stop only after the controller echoes Result = 1, so KRL sees completion.
-  if (m_state == RunState::Finished && echoedResult == 1) setState(RunState::Stopping);
+  if (m_state == RunState::Finished && request.result == 1) setState(RunState::Stopping);
   Reply reply;
   reply.stop = m_state == RunState::Stopping;
   // Stopping is reached only from Finished or from Start without a stream.
-  reply.result = m_corrections.increments.isEmpty() ? 0 : 1;
+  reply.result = activeStreamSize() == 0 ? 0 : 1;
   return reply;
+}
+
+qsizetype RsiDevice::activeStreamSize() const
+{
+  return m_activeStream < m_streams.size() ? m_streams[m_activeStream].size() : 0;
 }
 
 // Runs on every Start = 0 packet; publishes only an actual change.
@@ -349,5 +362,5 @@ void RsiDevice::publishState()
   static const char* const names[4] = {"idle", "streaming", "finished", "stopping"};
   const char* name = names[static_cast<int>(m_state)];
   emit stateReady({{"rsiState", QString::fromLatin1(name)},
-                   {"rsiCorrections", m_corrections.increments.size()}});
+                   {"rsiCorrections", activeStreamSize()}});
 }

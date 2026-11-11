@@ -33,6 +33,8 @@ public:
   bool canPlay() const;
   // Resumes the paused calibration playback or starts the calibration path from HOME.
   Q_INVOKABLE void dryRun();
+  // The generated calibration path, or null.
+  const SceneTouchPath* path() const;
 
 signals:
   void errorChanged();
@@ -42,7 +44,6 @@ private:
   void activate();
   void deactivate();
   const SceneSphere* sphere() const;
-  const SceneTouchPath* path() const;
   bool ownsPlayback() const;
   void onPlaybackFailed(quint32 ownerId, const QString& error);
   void replaceSphere(const SceneSphere& sphere);

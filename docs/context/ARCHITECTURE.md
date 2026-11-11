@@ -2,8 +2,8 @@
 
 Map of the code and hardware for new sessions. Paths are repository-relative; named functions and
 files are authoritative. Not repeated here: binding constraints ([AGENT_CONTRACTS.md](AGENT_CONTRACTS.md)),
-controller/PC protocols ([RSI_Chamfer_Hole_CONTRACT.md](../../resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md),
-[RSI_Probe_Lin_CONTRACT.md](../../resources/files/rsi/WP-500_test/RSI_Probe_Lin_CONTRACT.md)) and operator
+controller/PC protocols ([RSI_Chamfer_Hole_CONTRACT.md](../../resources/files/rsi/Chamfer/RSI_Chamfer_Hole_CONTRACT.md),
+[RSI_Probe_Check_CONTRACT.md](../../resources/files/rsi/ProbeCheck/RSI_Probe_Check_CONTRACT.md)) and operator
 procedures ([HARDWARE_SETUP.md](HARDWARE_SETUP.md)). Unverified items are in §7; this document
 verifies neither compilation nor runtime behavior.
 
@@ -159,7 +159,7 @@ Plain value types with `std::optional` factories; no QObjects, signals or mutabl
 | `ScenePlayback` | Dry Run (`App.Playback`): `shared_ptr<const TimedMotion>`, owner path id, 16 ms PreciseTimer, pause/resume, Stop to HOME, phase text, the robot model copy and availability. |
 | `SceneMachining` | Chamfer Generate and Dry Run (§5.2); robot-setup revision (robot model, spindle TCP); signed draft-axis direction with 5–40 mm display length. |
 | `SceneCalibration` | Calibration submode (`App.Calibration`, §5.5): sphere file, object hiding, Generate worker, calibration path id and revision (sphere, measuring TCP, robot model). |
-| `SceneMachiningPreparation` | RSI Sampling (`App.MachiningPreparation`): `sampleChamferRsiStream` worker, `shared_data.txt`, `correctionsReady(QVector<V6d>, QString diagnosticId)`; QML reads `canPrepare`, `unavailableReason`, `preparing`, `error`, `summary`. `prepareTestLin` (Network page, "RSI test LIN") installs the `RSI_Probe_Lin` stream. |
+| `SceneMachiningPreparation` | RSI Sampling (`App.MachiningPreparation`): `sampleChamferRsiStream` worker, `shared_data.txt`, `correctionsReady(QVector<V6d>, QString diagnosticId)`; QML reads `canPrepare`, `unavailableReason`, `preparing`, `error`, `summary`. `prepareTestLin` (Network page, "RSI test LIN") installs the `RSI_Probe_Check` stream. |
 
 QML singletons from `application/backendqmltypes.h`: `App.Scene`, `App.Hub`, `App.Machining`,
 `App.MachiningPreparation`, `App.Playback`, `App.Calibration`, `App.EndEffectors` and

@@ -322,7 +322,7 @@ run; force correction is out of scope. Apply Geometry and scene to numerical cha
   point outside Approach/Retract ≥ 3 mm from the sphere (0.001 mm tolerance). Errors start with the
   phase text ("Calibration G2 pass 1, touch 12/19: transfer: ..."), also shown by Dry Run.
   ProbeTouchMotion keeps its plan. No RSI, KRL or real touch exists for calibration.
-- RSI: before edits read resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md (frames, signals, PC
+- RSI: before edits read resources/files/rsi/Chamfer/RSI_Chamfer_Hole_CONTRACT.md (frames, signals, PC
   behavior, offset reconstruction, diagnostics, shared_data.txt and the KRL reader), then
   chamferrsistream, scenemachiningpreparation and devices/rsi/rsidevice. The constraints below are not
   repeated there:
@@ -338,7 +338,7 @@ run; force correction is out of scope. Apply Geometry and scene to numerical cha
   - The stream belongs to its sampled path, not the selection. Deliver it to ControlIO as an implicitly
     shared QVector<V6d> plus its diagnosticId through the queued main.cpp link; keep that identifier
     paired with the active corrections.
-  - The RSI test LIN (resources/files/rsi/WP-500_test/RSI_Probe_Lin_CONTRACT.md) is the only other stream:
+  - The RSI test LIN (resources/files/rsi/ProbeCheck/RSI_Probe_Check_CONTRACT.md) is the only other stream:
     prepareTestLin drops any held stream and shared_data.txt like a new request and queues 25000
     increments of +0.004 mm WORLD X plus 50 zeros with a `test_lin_` ID through the same link; a later
     Sampling request, startup or shutdown drops it.

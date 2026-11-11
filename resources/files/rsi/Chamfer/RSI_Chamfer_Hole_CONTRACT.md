@@ -3,7 +3,8 @@
 The sequence is HOME, PTP PsIn, LIN LeadStart, lead-in / machining / lead-out
 under RSI, LIN PsOut and HOME. Only completed RSI permits return. Force correction is disabled.
 
-Controller files:
+Controller files (in the repository the SRC/DAT are in `resources/files/rsi/Chamfer/`, the Ethernet
+configuration and `FILE_UTILS/` in `resources/files/rsi/`):
 - `RSI_Chamfer_Hole.src` and `RSI_Chamfer_Hole.dat`: the KRL program (module `RSI_Chamfer_Hole`)
   with its local `READ_JOB()` file reader.
 - `RSI_Chamfer_Hole.rsi`, `RSI_Chamfer_Hole.rsi.xml` and `RSI_Chamfer_Hole.rsi.diagram`: the RSI Visual context, loaded by `RSI_CREATE("RSI_Chamfer_Hole.rsi")`. Copy these from the RSI Visual export; do not hand-edit them.
@@ -38,7 +39,10 @@ ImFree). The KR C4 RSI interface is 172.31.1.147/24 on the KLI, cabled directly 
 USB network adapter ("KRC4-Direct"); no switch may be in this path: the D-Link DGS-1005P held
 requests for up to 19 ms (`plans/RSI_NETWORK_SPLIT_EXECPLAN.md`). The controller also
 sends RIst, AIPos, MACur and Delay (late-packet count, `DEF_Delay`); the PC ignores them, and
-`python/rsi_packet_timing.py` reads RIst and Delay from the packet capture.
+`python/rsi_packet_timing.py` reads RIst and Delay from the packet capture. The shared
+configuration also sends `TouchIndex` (LONG, In3) and `Touch` (BOOL, In4) for
+`RSI_Probe_Calibration`; this context leaves both inputs unconnected, and the controller then
+sends the texts `not linked:3` and `not linked:4` in them (RSI_Probe_Check capture, 2026-11-11).
 
 | Direction | Port | XML | Connection |
 | --- | --- | --- | --- |

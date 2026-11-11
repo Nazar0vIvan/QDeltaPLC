@@ -7,7 +7,7 @@ Packet capture (rsi_packets_ID.csv): one row per controller request ("rx") and p
 reply ("tx"): pc_ns, direction, stream_index, write_bytes, write_ns, xml_base64, optionally
 followed by entry_ns, sleep_ns, wake_ns, prev_done_ns on reply rows (handler entry, last
 event-loop sleep and wake, end of the previous replying handler; format in
-resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md). The script reports late reads, replies the
+resources/files/rsi/Chamfer/RSI_Chamfer_Hole_CONTRACT.md). The script reports late reads, replies the
 controller rejected and, with the plan file, how far the rejected corrections moved the
 final pose.
 """

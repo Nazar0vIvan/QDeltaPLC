@@ -5,7 +5,7 @@ machining with a KUKA KR 10 R1420 on a KR C4 controller (KSS 8.3, RobotSensorInt
 The current implementation supports chamfering the edge of a hole; other edge geometries are part
 of the broader intended scope. Implementation details are in [ARCHITECTURE.md](ARCHITECTURE.md);
 the controller/PC protocol is in
-[RSI_Chamfer_Hole_CONTRACT.md](../../resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md).
+[RSI_Chamfer_Hole_CONTRACT.md](../../resources/files/rsi/Chamfer/RSI_Chamfer_Hole_CONTRACT.md).
 
 Terms used below: TCP is the tool center point. PTP is a synchronized joint motion to a target;
 LIN is a straight Cartesian motion; CIRC is a circular-arc Cartesian motion. P_s is the staging
@@ -82,7 +82,7 @@ point on the hole axis, outside the hole.
    same identifier.
 
 6. **Run on the controller (T1, manual start).**
-   The operator starts `RSI_Chamfer_Hole.src`/`.dat` with the helpers in
+   The operator starts `resources/files/rsi/Chamfer/RSI_Chamfer_Hole.src`/`.dat` with the helpers in
    `resources/files/rsi/FILE_UTILS/` and the RSI Visual context. KRL reads the shared file,
    moves HOME, PTP PsIn, LIN LeadStart, follows the streamed corrections under RSI, and only after
    the PC reports completion moves LIN PsOut and PTP HOME. The file is deleted whenever its path
@@ -98,5 +98,5 @@ point on the hole axis, outside the hole.
 - The user reported on 2026-10-24 that RSI Sampling works and the real robot motion matches it.
 - Device panels (PLC, force/torque sensor, network settings) show and control the connected
   devices; the Network page also starts the *RSI test LIN* probe-stop test
-  ([RSI_Probe_Lin_CONTRACT.md](../../resources/files/rsi/WP-500_test/RSI_Probe_Lin_CONTRACT.md)).
+  ([RSI_Probe_Check_CONTRACT.md](../../resources/files/rsi/ProbeCheck/RSI_Probe_Check_CONTRACT.md)).
   *Start Machining* is disabled.

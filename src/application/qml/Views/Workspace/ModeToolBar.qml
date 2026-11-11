@@ -213,7 +213,7 @@ ToolBar {
       }
 
       Rectangle {
-        visible: !root.rough && !root.calibration
+        visible: !root.rough
         width: Metrics.w1
         height: Metrics.sz36
         y: Metrics.sp12
@@ -221,7 +221,7 @@ ToolBar {
       }
 
       Tool {
-        visible: !root.measuring
+        visible: !root.measuring || root.calibration
         text: root.preparing ? qsTr("Sampling…") : qsTr("RSI Sampling")
         iconSource: "qrc:/pics/rsi_sampling.svg"
         available: root.preparationAvailable

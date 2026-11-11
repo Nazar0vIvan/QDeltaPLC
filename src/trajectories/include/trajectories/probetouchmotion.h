@@ -19,6 +19,19 @@ struct ProbeMotionPhase
   QString text(const ProbeTouchPlan& plan) const;
 };
 
+// One motion step: its phase and the TCP pose at its end (unused by ReturnHome).
+struct ProbeMotionStep
+{
+  ProbeMotionPhase phase;
+  M4d target = M4d::Identity();
+};
+
+// Steps of the plan in execution order; ProbeTouchMotion stores one TimedMotion phase per step.
+// A pass in another probe orientation is reached through the previous exit, a PTP to its entry and a
+// descent; a pass in the same orientation by a transfer, omitted when it starts where the previous
+// pass ended (a zero-length CIRC is degenerate).
+QVector<ProbeMotionStep> probeMotionSteps(const ProbeTouchPlan& plan);
+
 // Smallest ball clearances of a probe motion, mm.
 struct ProbeClearances
 {

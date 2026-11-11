@@ -1,0 +1,138 @@
+&ACCESS RVP
+&REL 1
+DEF RSI_Probe_Calibration()
+   DECL INT Step
+   DECL INT Last
+   DECL E6POS SearchStart
+
+   INI
+   $ADVANCE=0
+   $SEN_PINT[1]=0
+   $SEN_PINT[2]=0
+   $SEN_PINT[3]=0
+   IF RSI_RESET()<>RSIOK THEN
+      RETURN
+   ENDIF
+
+   PTP HOME  Vel= 100 % DEFAULT
+
+   IF NOT READ_JOB() THEN
+      RETURN
+   ENDIF
+   $BASE=$NULLFRAME
+   $TOOL=ToolFrame
+   $IPO_MODE=#BASE
+   $ORI_TYPE=#CONSTANT
+   $VEL.CP=TransferVelocity
+   $ACC.CP=TransferAcceleration
+   FOR Step=1 TO 6
+      $VEL_AXIS[Step]=20
+      $ACC_AXIS[Step]=20
+   ENDFOR
+   IF RSI_CREATE("RSI_Probe_Calibration.rsi")<>RSIOK THEN
+      RETURN
+   ENDIF
+
+   ; StepLimit 1..StepCount-1 executes only the first StepLimit steps (first robot runs).
+   Last=StepCount
+   IF (StepLimit>0) AND (StepLimit<StepCount) THEN
+      Last=StepLimit
+   ENDIF
+   FOR Step=1 TO Last
+      SWITCH StepKind[Step]
+      CASE 1
+         PTP StepTarget[Step]
+      CASE 2
+         LIN StepTarget[Step]
+      CASE 3
+         CIRC StepAux[Step],StepTarget[Step]
+      CASE 4
+         ; $POS_ACT stops the advance run: the robot stands at the search start when $IN[8] is read.
+         SearchStart=$POS_ACT
+         ; The rising-edge STOP cannot detect a probe that is already deflected.
+         IF $IN[8] THEN
+            RETURN
+         ENDIF
+         ; A missed touch returns to the search start and ends near the sphere, without a PTP.
+         IF NOT SEARCH(StepTouch[Step]) THEN
+            LIN SearchStart
+            RETURN
+         ENDIF
+      CASE 5
+         ; Plain form: keeps the 20 % axis velocity and acceleration of the session.
+         PTP XHOME
+      ENDSWITCH
+   ENDFOR
+   ; StepLimit ended the loop right after a search: retract, then end without a further motion.
+   IF StepKind[Last]==4 THEN
+      LIN SearchStart
+   ENDIF
+END
+
+DEFFCT BOOL SEARCH(Touch:IN)
+   DECL INT Touch
+   DECL BOOL Touched
+
+   ; The PC streams touch Touch's search, selected by TouchIndex ($SEN_PINT[3]); STOP1 ends
+   ; RSI_MOVECORR at the rising edge of $IN[8] or at the PC's Stop. TRUE only if the probe is
+   ; deflected afterwards and RSI_OFF succeeded.
+   $SEN_PINT[3]=Touch
+   IF RSI_ON(#RELATIVE)<>RSIOK THEN
+      RETURN FALSE
+   ENDIF
+   ; Start = 0 packets end the PC's previous run (12 ms: one interpolation cycle, three RSI cycles).
+   WAIT SEC 0.012
+   $SEN_PINT[1]=1
+   RSI_MOVECORR()
+   Touched=$IN[8]
+   $SEN_PINT[1]=0
+   RETURN (RSI_OFF()==RSIOK) AND Touched
+ENDFCT
+
+DEFFCT BOOL READ_JOB()
+   DECL STATE_T State
+   DECL MODUS_T Mode
+   DECL INT File
+   DECL INT Version
+   DECL INT Step
+   DECL BOOL Ok
+
+   ; Version 1 of /RoboCrapJobs/calibration_data.txt (RSI_Probe_Calibration_CONTRACT.md).
+   Mode=#SYNC
+   File=0
+   Version=0
+   StepCount=0
+   IF NOT REMOUNT_SHARE() THEN
+      RETURN FALSE
+   ENDIF
+   CWRITE($FCT_CALL,State,Mode,"krl_fopen","/RoboCrapJobs/calibration_data.txt","r",File)
+   IF State.RET1<>#DATA_OK THEN
+      RETURN FALSE
+   ENDIF
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%d",Version)
+   Ok=(State.RET1==#DATA_OK) AND (Version==1)
+   ToolFrame=READ_FRAME(File,Ok)
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%f",TransferVelocity)
+   Ok=Ok AND (State.RET1==#DATA_OK)
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%f",TransferAcceleration)
+   Ok=Ok AND (State.RET1==#DATA_OK)
+   CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%d",StepCount)
+   Ok=Ok AND (State.RET1==#DATA_OK) AND (StepCount>=1) AND (StepCount<=600)
+   Step=1
+   WHILE Ok AND (Step<=StepCount)
+      ; Reset first: values left from a previous job must not survive a partial conversion.
+      StepKind[Step]=0
+      StepTouch[Step]=0
+      CWRITE($FCT_CALL,State,Mode,"krl_fscanf",File,"%d;%d",StepKind[Step],StepTouch[Step])
+      Ok=(State.RET1==#DATA_OK) AND (StepKind[Step]>=1) AND (StepKind[Step]<=5)
+      IF Ok AND (StepKind[Step]==3) THEN
+         StepAux[Step]=READ_POS(File,Ok)
+      ENDIF
+      IF Ok AND (StepKind[Step]<=3) THEN
+         StepTarget[Step]=READ_POS(File,Ok)
+      ENDIF
+      Step=Step+1
+   ENDWHILE
+   CWRITE($FCT_CALL,State,Mode,"krl_fclose",File)
+   RETURN Ok AND (State.RET1==#DATA_OK)
+ENDFCT

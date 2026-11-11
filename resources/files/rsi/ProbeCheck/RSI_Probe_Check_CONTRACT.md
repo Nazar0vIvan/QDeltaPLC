@@ -1,15 +1,21 @@
-# RSI_Probe_Lin test run: controller/PC contract
+# RSI_Probe_Check test run: controller/PC contract
 
 A hard-coded RSI LIN for testing the WP-500 stop: from HOME and a PTP to `TestStart`, the PC streams a constant
 +0.004 mm per 4 ms cycle along WORLD X (1 mm/s) for 100 mm, followed by 50 zero cycles. The RSI
 context stops the motion when `$IN[8]` (WP-500 touch) switches on. After the stop or the
-completed 100 mm the program only ends: no retract, no return to HOME.
+completed 100 mm the program only ends: no retract, no return to HOME. Until 2026-11-11 the
+program, its context and this contract were named `RSI_Probe_Lin` (folder `WP-500_test/`); the
+records of earlier runs in this repository now use the new name. The application keeps the
+"RSI test LIN" button, `prepareTestLin` and the `test_lin_` capture prefix.
 
-Controller files:
-- `RSI_Probe_Lin.src` and `RSI_Probe_Lin.dat` (module `RSI_Probe_Lin`).
-- `RSI_Probe_Lin.rsi`, `.rsi.xml` and `.rsi.diagram`: the RSI Visual context described below,
-  loaded by `RSI_CREATE("RSI_Probe_Lin.rsi")`. Copy them from the RSI Visual export.
-- `RSI_EthernetConfig.xml`: unchanged, shared with `RSI_Chamfer_Hole`.
+Controller files (in the repository the SRC, DAT and this contract are in
+`resources/files/rsi/ProbeCheck/`, the Ethernet configuration in `resources/files/rsi/`):
+- `RSI_Probe_Check.src` and `RSI_Probe_Check.dat` (module `RSI_Probe_Check`).
+- `RSI_Probe_Check.rsi`, `.rsi.xml` and `.rsi.diagram`: the RSI Visual context described below,
+  loaded by `RSI_CREATE("RSI_Probe_Check.rsi")`. Copy them from the RSI Visual export.
+- `RSI_EthernetConfig.xml`: shared with `RSI_Chamfer_Hole`. It also sends `TouchIndex` (LONG, In3)
+  and `Touch` (BOOL, In4) for `RSI_Probe_Calibration`; this context leaves both inputs unconnected,
+  so the controller sends the texts `not linked:3` and `not linked:4` in them.
 
 PC side: the "RSI test LIN" button on the Network page calls
 `SceneMachiningPreparation::prepareTestLin` (`src/application/scene/scenemachiningpreparation.cpp`),
@@ -30,14 +36,14 @@ X ≈ 1079.6 mm, where A5 is about 35.7° (scratch model estimate, not controlle
 The constant speed has no ramp; the step from standstill to 1 mm/s is the same as in the
 calibration Approach segment.
 
-## RSI Visual context `RSI_Probe_Lin`
+## RSI Visual context `RSI_Probe_Check`
 
 Start from a copy of the `RSI_Chamfer_Hole` context (File > Save as) and change only DIGIN1, OR1,
 the STOP1 input and the POSCORR1 limits.
 
 | Object | Parameters | Connections |
 | --- | --- | --- |
-| ETHERNET1 | ConfigFile `RSI_EthernetConfig.xml`, Timeout 10, Precision 1 (as in RSI_Chamfer_Hole) | In1 ← SEN_PINT1.Out1, In2 ← SEN_PINT2.Out1 |
+| ETHERNET1 | ConfigFile `RSI_EthernetConfig.xml`, Timeout 10, Precision 6 (sent values have six decimals; RSI_Chamfer_Hole keeps 1) | In1 ← SEN_PINT1.Out1, In2 ← SEN_PINT2.Out1 |
 | SEN_PINT1 | Index 1 (`$SEN_PINT[1]`, Start) | Out1 → ETHERNET1.In1 |
 | SEN_PINT2 | Index 2 (`$SEN_PINT[2]`, Result) | Out1 → ETHERNET1.In2 |
 | POSCORR1 | RefCorrSys World; X limits must allow at least +100 mm (e.g. ±110 mm), Y/Z small (e.g. ±5 mm), rotation limit small (e.g. 1°) | CorrX..CorrC ← ETHERNET1.Out1..Out6 |
@@ -67,6 +73,12 @@ about 0.015 mm at 1 mm/s, within the WP-500's 3 mm stylus travel.
 - The stop on `$IN[8]` with the SRC and context of this contract (user, 2026-11-11); this also
   confirms that the SRC compiles, that the DIGIN/OR/STOP parameters are set and that STOP1 reacts
   to OR1. The earlier `$IN[11]` wiring was verified before 2026-11-06.
+- The run with the extended `RSI_EthernetConfig.xml` and Precision 6 (capture
+  `rsi_packets_test_lin_20261111_115130_773.csv`): 6759 packets, every one answered, Delay 0;
+  AIPos and RIst with six decimals; 6757 increments of +0.004 mm, after which RSI_MOVECORR ended
+  without a PC Stop, consistent with the stop on `$IN[8]`; RIst X advanced 26.94 mm.
+- The renamed program `RSI_Probe_Check` (module, DAT and context `RSI_Probe_Check.rsi`) compiles and
+  runs on the controller (user, 2026-11-11).
 
 ## Not yet verified on the controller
 

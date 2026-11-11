@@ -231,14 +231,22 @@ ApplicationWindow {
       if (root.calibrationActive && App.Playback.active && !App.Calibration.error)
         return qsTr("%1 · %2 · %3 / %4 s").arg(App.Playback.playing ? qsTr("Playing") : qsTr("Paused"))
                .arg(App.Playback.phase).arg(App.Playback.elapsed.toFixed(2)).arg(App.Playback.duration.toFixed(2))
-      if (root.calibrationActive) return App.Calibration.error || App.Calibration.unavailableReason
-      if (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen) return ""
+      if (statusBar.calibrationStatus) return statusBar.calibrationStatus
+      if (!root.calibrationActive && (root.workflowMode !== WorkflowPanel.Machining || root.chamferEditorOpen))
+        return ""
       const preparation = App.MachiningPreparation
       const status = preparation.error || preparation.summary
-                     || preparation.unavailableReason || qsTr("Ready for RSI Sampling.")
+                     || (root.calibrationActive ? preparation.calibrationUnavailableReason
+                                                : preparation.unavailableReason)
+                     || qsTr("Ready for RSI Sampling.")
       return statusBar.rsi && statusBar.rsi.isConnected
              ? status + "\n" + qsTr("Controller: %1").arg(statusBar.rsi.data.rsiState ?? "idle") : status
     }
+    // Calibration error or the reason Generate is unavailable; preparation status otherwise.
+    readonly property string calibrationStatus: root.calibrationActive
+                                                ? App.Calibration.error || App.Calibration.unavailableReason : ""
+    readonly property bool errorShown: statusBar.calibrationStatus ? App.Calibration.error.length > 0
+                                                                   : App.MachiningPreparation.error.length > 0
 
     padding: Metrics.sp8
     implicitHeight: Metrics.h40
@@ -268,9 +276,7 @@ ApplicationWindow {
         textFormat: Text.PlainText
         horizontalAlignment: Text.AlignRight
         elide: Text.ElideRight
-        color: statusBar.message.length > 0 && !surfaceImporter.busy && !statusBar.busy
-               && (root.calibrationActive ? App.Calibration.error.length > 0
-                                          : App.MachiningPreparation.error.length > 0)
+        color: statusBar.message.length > 0 && !surfaceImporter.busy && !statusBar.busy && statusBar.errorShown
                ? Colors.maxColor : Colors.foreground.medium
         font: Fonts.body
         Accessible.name: statusBar.message
@@ -351,10 +357,15 @@ ApplicationWindow {
         playbackAvailable: root.calibrationActive ? App.Calibration.canPlay : App.Machining.canPlay
         playing: App.Playback.playing
         playbackActive: App.Playback.active
-        preparationAvailable: !root.chamferEditorOpen && App.MachiningPreparation.canPrepare
+        preparationAvailable: !root.chamferEditorOpen
+                              && (root.calibrationActive ? App.MachiningPreparation.canPrepareCalibration
+                                                         : App.MachiningPreparation.canPrepare)
                               && statusBar.rsi && statusBar.rsi.isConnected
         preparing: App.MachiningPreparation.preparing
-        onPreparationRequested: App.MachiningPreparation.prepare()
+        onPreparationRequested: {
+          if (root.calibrationActive) App.MachiningPreparation.prepareCalibration()
+          else App.MachiningPreparation.prepare()
+        }
         onPauseRequested: App.Playback.pause()
         scanActive: root.dryScanActive
         scanRunning: root.dryScanRunning

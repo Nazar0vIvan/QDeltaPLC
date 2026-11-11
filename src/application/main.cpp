@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 
   qRegisterMetaType<RDTResponse>("RDTResponse");
   qRegisterMetaType<QVector<RDTResponse>>("QVector<RDTResponse>");
-  qRegisterMetaType<QVector<V6d>>("QVector<V6d>");
+  qRegisterMetaType<QVector<QVector<V6d>>>("QVector<QVector<V6d>>");
 
   auto* plcDev = new PlcDevice(QStringLiteral("PLC_AS332T"));
   auto* ftsDev = new FtsDevice(QStringLiteral("FTS_Delta"));
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
   SceneCalibration calibration(&scene, &endEffectors, &playback);
   SceneCalibrationQml::s_inst = &calibration;
 
-  SceneMachiningPreparation preparation(&scene, &machining);
+  SceneMachiningPreparation preparation(&scene, &machining, &calibration);
   SceneMachiningPreparationQml::s_inst = &preparation;
   // Implicitly shared corrections and their log identifier cross to ControlIO together.
   QObject::connect(&preparation, &SceneMachiningPreparation::correctionsReady,

@@ -1,6 +1,6 @@
 &ACCESS RVP
 &REL 1
-DEF RSI_Probe_Lin()
+DEF RSI_Probe_Check()
    INI
    $ADVANCE=0
    $SEN_PINT[1]=0
@@ -16,7 +16,7 @@ DEF RSI_Probe_Lin()
    $BASE=$NULLFRAME
    $TOOL=TOOL_DATA[5]
    $IPO_MODE=#BASE
-   IF RSI_CREATE("RSI_Probe_Lin.rsi")<>RSIOK THEN
+   IF RSI_CREATE("RSI_Probe_Check.rsi")<>RSIOK THEN
       RETURN
    ENDIF
    ; The RSI STOP object reacts only to a rising edge of $IN[8]:

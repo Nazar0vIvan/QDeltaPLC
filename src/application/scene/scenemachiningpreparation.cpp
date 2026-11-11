@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QSaveFile>
 #include <QStringList>
 #include <QThread>
@@ -18,8 +19,9 @@ namespace {
 
 const QString SharedDataDirectory = QStringLiteral("C:/RoboCrapJobs");
 const QString SharedDataPath = QStringLiteral("C:/RoboCrapJobs/shared_data.txt");
+const QString CalibrationDataPath = QStringLiteral("C:/RoboCrapJobs/calibration_data.txt");
 
-// RSI_Probe_Lin (resources/files/rsi/RSI_Probe_Lin_CONTRACT.md): constant WORLD X increments.
+// RSI_Probe_Check (resources/files/rsi/ProbeCheck/RSI_Probe_Check_CONTRACT.md): constant WORLD X increments.
 constexpr double RsiCycleSeconds = 0.004; // #IPO_FAST
 constexpr double TestLinStep = 0.004; // mm per cycle: 1 mm/s.
 constexpr int TestLinCycles = 25000; // 100 mm.
@@ -29,6 +31,11 @@ constexpr int TestLinSettleCycles = 50; // Zero corrections before Result = 1, a
 ChamferRsiStreamResult sampleSavedMotion(std::shared_ptr<const ChamferMotion> motion)
 {
   return sampleChamferRsiStream(*motion);
+}
+
+ProbeCalibrationRsiResult sampleSavedCalibration(std::shared_ptr<const ProbeTouchMotion> motion)
+{
+  return sampleProbeCalibrationRsi(*motion);
 }
 
 QString number(double value)
@@ -41,6 +48,48 @@ QString frameRow(const V6d& coordinates)
   QStringList fields;
   for (double value : coordinates) fields.append(number(value));
   return fields.join(QLatin1Char(';'));
+}
+
+// Atomically replaces one job file in the folder that KRL mounts as /RoboCrapJobs.
+QString replaceJobFile(const QString& path, const QByteArray& contents)
+{
+  const QString name = QFileInfo(path).fileName();
+  if (!QDir().mkpath(SharedDataDirectory))
+    return QStringLiteral("Cannot create %1.").arg(SharedDataDirectory);
+  QSaveFile file(path);
+  file.setDirectWriteFallback(false);
+  if (!file.open(QIODevice::WriteOnly) || file.write(contents) != contents.size()) {
+    const QString error = file.errorString();
+    file.cancelWriting();
+    return QStringLiteral("Cannot write %1: %2").arg(name, error);
+  }
+  if (!file.commit())
+    return QStringLiteral("Cannot replace %1: %2").arg(name, file.errorString());
+  return {};
+}
+
+// One KRL POS row: six-decimal XYZABC and the step's S/T.
+QString poseRow(const V6d& coordinates, const ProbeRsiStep& step)
+{
+  return frameRow(coordinates) + QStringLiteral(";%1;%2\r\n").arg(step.status).arg(step.turn);
+}
+
+// Version 1 (RSI_Probe_Calibration): ToolFrame, transfer $VEL.CP in m/s and $ACC.CP in m/s^2, the
+// step count, then per step "kind;touch" and the target row (PTP, LIN), the auxiliary and target
+// rows (CIRC) or no row (Search, HOME).
+QString writeCalibrationData(const ProbeCalibrationRsi& job, const ChamferTimingParameters& timing)
+{
+  QString contents = QStringLiteral("1\r\n") + frameRow(job.toolCoordinates) + QStringLiteral("\r\n")
+      + number(timing.transferFeed / 1000.0) + QStringLiteral("\r\n")
+      + number(timing.transferAcceleration / 1000.0) + QStringLiteral("\r\n")
+      + QString::number(job.steps.size()) + QStringLiteral("\r\n");
+  for (const ProbeRsiStep& step : job.steps) {
+    contents += QStringLiteral("%1;%2\r\n").arg(static_cast<int>(step.kind)).arg(step.touch);
+    if (step.kind == ProbeRsiStepKind::Circ) contents += poseRow(step.auxiliary, step);
+    if (step.kind != ProbeRsiStepKind::Search && step.kind != ProbeRsiStepKind::Home)
+      contents += poseRow(step.target, step);
+  }
+  return replaceJobFile(CalibrationDataPath, contents.toLatin1());
 }
 
 // Version 2: PsIn/LeadStart/LeadEnd XYZABC+S/T, PsOut S/T, ToolFrame, CP rates.
@@ -74,33 +123,27 @@ QString writeSharedData(const ChamferRsiStream& stream, const ChamferMotion& mot
   contents += (frameRow(stream.toolCoordinates) + QStringLiteral("\r\n")
                + number(timing.transferFeed / 1000.0) + QStringLiteral("\r\n")
                + number(timing.transferAcceleration / 1000.0) + QStringLiteral("\r\n")).toLatin1();
-  if (!QDir().mkpath(SharedDataDirectory))
-    return QStringLiteral("Cannot create %1.").arg(SharedDataDirectory);
-  QSaveFile file(SharedDataPath);
-  file.setDirectWriteFallback(false);
-  if (!file.open(QIODevice::WriteOnly) || file.write(contents) != contents.size()) {
-    const QString error = file.errorString();
-    file.cancelWriting();
-    return QStringLiteral("Cannot write shared_data.txt: %1").arg(error);
-  }
-  if (!file.commit())
-    return QStringLiteral("Cannot replace shared_data.txt: %1").arg(file.errorString());
-  return {};
+  return replaceJobFile(SharedDataPath, contents);
 }
 
 } // namespace
 
 SceneMachiningPreparation::SceneMachiningPreparation(SceneModel* scene, SceneMachining* machining,
-                                                     QObject* parent)
-  : QObject(parent), m_scene(scene), m_machining(machining)
+                                                     SceneCalibration* calibration)
+  : m_scene(scene), m_machining(machining), m_calibration(calibration)
 {
-  Q_ASSERT(scene && machining);
-  Q_ASSERT(scene->thread() == thread() && machining->thread() == thread());
+  Q_ASSERT(scene && machining && calibration);
+  Q_ASSERT(scene->thread() == thread() && machining->thread() == thread() && calibration->thread() == thread());
   // SceneMachining emits this after selection, removal and compatibility updates.
   connect(machining, &SceneMachining::availabilityChanged, this,
           &SceneMachiningPreparation::onAvailabilityChanged);
+  // SceneCalibration emits this when its path is inserted, replaced or removed.
+  connect(calibration, &SceneCalibration::availabilityChanged, this,
+          &SceneMachiningPreparation::onCalibrationAvailabilityChanged);
   m_timer.setInterval(30);
+  // One worker runs at a time; each completion slot ignores the other's future.
   connect(&m_timer, &QTimer::timeout, this, &SceneMachiningPreparation::finishPreparation);
+  connect(&m_timer, &QTimer::timeout, this, &SceneMachiningPreparation::finishCalibration);
   // No stream exists yet, so a file left by an earlier session is stale.
   clearPrepared();
 }
@@ -123,6 +166,21 @@ bool SceneMachiningPreparation::isCurrent(const PreparedRsiStream& prepared) con
   return path && path->compatible() && path->data().motion == prepared.motion;
 }
 
+bool SceneMachiningPreparation::isCurrentCalibration(const std::shared_ptr<const ProbeTouchMotion>& motion) const
+{
+  const auto* path = m_calibration->path();
+  return motion && path && path->motion == motion;
+}
+
+QString SceneMachiningPreparation::calibrationUnavailableReason() const
+{
+  if (m_shuttingDown) return tr("Application is shutting down.");
+  if (m_preparing) return tr("RSI Sampling…");
+  if (m_calibration->calculating()) return tr("Calculating trajectory…");
+  if (!m_calibration->path()) return tr("Generate the calibration path first.");
+  return {};
+}
+
 QString SceneMachiningPreparation::unavailableReason() const
 {
   if (m_shuttingDown) return tr("Application is shutting down.");
@@ -138,6 +196,9 @@ QString SceneMachiningPreparation::summary() const
   if (m_testLin)
     return tr("RSI test LIN: WORLD +X %1 mm at %2 mm/s · %3 cycles")
         .arg(TestLinCycles * TestLinStep).arg(TestLinStep / RsiCycleSeconds).arg(TestLinCycles + TestLinSettleCycles);
+  if (m_preparedCalibration)
+    return tr("RSI calibration: %1 touches · %2 steps")
+        .arg(m_preparedCalibration->touchCount).arg(m_preparedCalibration->stepCount);
   if (!m_prepared) return {};
   const auto& stream = m_prepared->stream;
   // One line for the footer status bar. One multi-argument substitution keeps a
@@ -152,6 +213,12 @@ QString SceneMachiningPreparation::summary() const
 void SceneMachiningPreparation::onAvailabilityChanged()
 {
   if (m_prepared && !isCurrent(*m_prepared)) clearPrepared();
+  emit availabilityChanged();
+}
+
+void SceneMachiningPreparation::onCalibrationAvailabilityChanged()
+{
+  if (m_preparedCalibration && !isCurrentCalibration(m_preparedCalibration->motion)) clearPrepared();
   emit availabilityChanged();
 }
 
@@ -172,6 +239,22 @@ void SceneMachiningPreparation::prepare()
   emit availabilityChanged();
 }
 
+void SceneMachiningPreparation::prepareCalibration()
+{
+  Q_ASSERT(QThread::currentThread() == thread());
+  const QString reason = calibrationUnavailableReason();
+  if (!reason.isEmpty()) { setError(reason); return; }
+  m_pendingCalibration = m_calibration->path()->motion;
+  // A new request replaces the previous stream and job file, even if it fails.
+  clearPrepared();
+  setError({});
+  m_preparing = true;
+  m_calibrationFuture = std::async(std::launch::async, &sampleSavedCalibration, m_pendingCalibration);
+  m_timer.start();
+  emit preparingChanged();
+  emit availabilityChanged();
+}
+
 void SceneMachiningPreparation::prepareTestLin()
 {
   Q_ASSERT(QThread::currentThread() == thread());
@@ -185,7 +268,7 @@ void SceneMachiningPreparation::prepareTestLin()
   for (int cycle = 0; cycle < TestLinCycles; ++cycle) increments[cycle][0] = TestLinStep;
   setError({});
   m_testLin = true;
-  emit correctionsReady(increments, QStringLiteral("test_lin_")
+  emit correctionsReady({increments}, QStringLiteral("test_lin_")
       + QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
   emit preparedChanged();
 }
@@ -210,7 +293,7 @@ void SceneMachiningPreparation::finishPreparation()
     if (writeError.isEmpty()) {
       m_pending.stream = std::move(*result.stream);
       m_prepared = std::move(m_pending);
-      emit correctionsReady(m_prepared->stream.increments, m_prepared->stream.diagnosticId);
+      emit correctionsReady({m_prepared->stream.increments}, m_prepared->stream.diagnosticId);
       emit preparedChanged();
     }
     setError(writeError);
@@ -221,14 +304,47 @@ void SceneMachiningPreparation::finishPreparation()
   emit availabilityChanged();
 }
 
+void SceneMachiningPreparation::finishCalibration()
+{
+  if (!m_calibrationFuture.valid()
+      || m_calibrationFuture.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+  m_timer.stop();
+  auto result = m_calibrationFuture.get();
+  if (result.job)
+    qInfo().noquote() << QStringLiteral("RSI calibration sampling: %1 touches, %2 steps")
+                             .arg(result.job->touchCount).arg(result.job->steps.size());
+  else
+    qInfo().noquote() << "RSI calibration sampling failed:" << result.error;
+  if (!isCurrentCalibration(m_pendingCalibration)) {
+    setError(tr("The calibration path changed. Run RSI Sampling again."));
+  } else if (!result.job) {
+    setError(result.error);
+  } else {
+    const QString writeError = writeCalibrationData(*result.job, m_pendingCalibration->robot().timing);
+    if (writeError.isEmpty()) {
+      m_preparedCalibration = PreparedCalibration{m_pendingCalibration, result.job->touchCount,
+                                                  result.job->steps.size()};
+      emit correctionsReady(result.job->streams, result.job->diagnosticId);
+      emit preparedChanged();
+    }
+    setError(writeError);
+  }
+  m_pendingCalibration.reset();
+  m_preparing = false;
+  emit preparingChanged();
+  emit availabilityChanged();
+}
+
 void SceneMachiningPreparation::clearPrepared()
 {
   // Without a stream KRL must not find frames from another or older path.
-  if (QFile::exists(SharedDataPath) && !QFile::remove(SharedDataPath))
-    qInfo().noquote() << "[ERROR] RSI Sampling: cannot remove" << SharedDataPath;
-  const bool wasPrepared = m_prepared.has_value() || m_testLin;
+  for (const QString& path : {SharedDataPath, CalibrationDataPath})
+    if (QFile::exists(path) && !QFile::remove(path))
+      qInfo().noquote() << "[ERROR] RSI Sampling: cannot remove" << path;
+  const bool wasPrepared = m_prepared.has_value() || m_testLin || m_preparedCalibration.has_value();
   m_prepared.reset();
   m_testLin = false;
+  m_preparedCalibration.reset();
   emit correctionsReady({}, {});
   if (wasPrepared) emit preparedChanged();
 }
@@ -246,8 +362,11 @@ void SceneMachiningPreparation::shutdown()
   m_shuttingDown = true;
   m_timer.stop();
   if (m_future.valid()) m_future.wait();
+  if (m_calibrationFuture.valid()) m_calibrationFuture.wait();
   m_future = {};
+  m_calibrationFuture = {};
   m_pending = {};
+  m_pendingCalibration.reset();
   m_preparing = false;
   clearPrepared();
   emit preparingChanged();

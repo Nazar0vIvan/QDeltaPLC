@@ -1,0 +1,15 @@
+&ACCESS RVP
+&REL 1
+DEFDAT RSI_Probe_Calibration
+   ; Number of job steps to execute; 0 executes all. Set on the smartPAD for the first runs.
+   DECL INT StepLimit=0
+   ; Filled by READ_JOB from /RoboCrapJobs/calibration_data.txt.
+   DECL INT StepCount=0
+   DECL INT StepKind[600]
+   DECL INT StepTouch[600]
+   DECL POS StepTarget[600]
+   DECL POS StepAux[600]
+   DECL FRAME ToolFrame
+   DECL REAL TransferVelocity=0.0
+   DECL REAL TransferAcceleration=0.0
+ENDDAT
