@@ -30,25 +30,38 @@ bool ptpSegment(ProbeSegment segment)
   return segment == ProbeSegment::ToEntry || segment == ProbeSegment::ReturnHome;
 }
 
-// Constant-speed LIN without ramps, interpolated joint-linearly in playback.
+// Segments inside the start shell, exempt from the sphere clearance check.
 bool touchSegment(ProbeSegment segment)
 {
   return segment == ProbeSegment::Approach || segment == ProbeSegment::Retract;
 }
 
+// A pass in another probe orientation is reached through the previous exit, a PTP to its entry and a
+// descent; a pass in the same orientation by a transfer, omitted when it starts where the previous
+// pass ended (a zero-length CIRC is degenerate).
 QVector<MotionStep> motionSteps(const ProbeTouchPlan& plan)
 {
-  QVector<MotionStep> steps{MotionStep{{0, ProbeSegment::ToEntry}, plan.entry},
-                            MotionStep{{0, ProbeSegment::Descend}, plan.touches.front().start}};
-  int number = 0;
-  for (const ProbeTouch& touch : plan.touches) {
-    ++number;
-    if (number > 1) steps.append(MotionStep{{number, ProbeSegment::Transfer}, touch.start});
-    steps.append(MotionStep{{number, ProbeSegment::Approach}, touch.contact});
-    steps.append(MotionStep{{number, ProbeSegment::Retract}, touch.start});
+  QVector<MotionStep> steps;
+  for (int index = 0; index < plan.passes.size(); ++index) {
+    const ProbeTouchPass& pass = plan.passes[index];
+    const M4d& first = pass.touches.front().start;
+    if (index == 0 || pass.group != plan.passes[index - 1].group) {
+      if (index > 0) steps.append(MotionStep{{index - 1, 0, ProbeSegment::Retreat}, plan.passes[index - 1].exit});
+      steps.append(MotionStep{{index, 0, ProbeSegment::ToEntry}, pass.entry});
+      steps.append(MotionStep{{index, 0, ProbeSegment::Descend}, first});
+    } else if (first != plan.passes[index - 1].touches.back().start) {
+      steps.append(MotionStep{{index, 1, ProbeSegment::Transfer}, first});
+    }
+    int number = 0;
+    for (const ProbeTouch& touch : pass.touches) {
+      ++number;
+      if (number > 1) steps.append(MotionStep{{index, number, ProbeSegment::Transfer}, touch.start});
+      steps.append(MotionStep{{index, number, ProbeSegment::Approach}, touch.contact});
+      steps.append(MotionStep{{index, number, ProbeSegment::Retract}, touch.start});
+    }
   }
-  steps.append(MotionStep{{0, ProbeSegment::Retreat}, plan.exit});
-  steps.append(MotionStep{{0, ProbeSegment::ReturnHome}, M4d::Identity()});
+  steps.append(MotionStep{{static_cast<int>(plan.passes.size()) - 1, 0, ProbeSegment::Retreat}, plan.passes.back().exit});
+  steps.append(MotionStep{{-1, 0, ProbeSegment::ReturnHome}, M4d::Identity()});
   return steps;
 }
 
@@ -68,7 +81,7 @@ public:
       if (error.isEmpty()) error = clearanceError(phase, first);
       if (error.isEmpty()) continue;
       // MotionBuilder errors already start with the phase text.
-      const QString label = phase.text();
+      const QString label = phase.text(m_plan);
       return {std::nullopt, {}, error.startsWith(label) ? error : label + QStringLiteral(": ") + error};
     }
     return {m_motion.finish(), m_clearances, {}};
@@ -77,7 +90,7 @@ public:
 private:
   QString append(const ProbeMotionPhase& phase, const M4d& target)
   {
-    const QString label = phase.text();
+    const QString label = phase.text(m_plan);
     if (phase.segment == ProbeSegment::ReturnHome) return m_motion.appendPtp(m_motion.home(), label);
     if (ptpSegment(phase.segment)) {
       const auto solved = m_motion.solver().solveTcp(target, m_motion.seed());
@@ -85,16 +98,18 @@ private:
       return m_motion.appendPtp(*solved.solution, label);
     }
     const auto& timing = m_robot.timing;
-    const bool touching = touchSegment(phase.segment);
-    const LinearLimits limits = touching ? LinearLimits{ProbeApproachFeed, 0.0}
-                                         : LinearLimits{timing.transferFeed, timing.transferAcceleration};
+    // Only the Approach measures: constant search feed without ramps, interpolated joint-linearly in
+    // playback. Retract and the other LIN/CIRC moves use the transfer limits.
+    const bool searching = phase.segment == ProbeSegment::Approach;
+    const LinearLimits limits = searching ? LinearLimits{m_plan.parameters.searchFeed, 0.0}
+                                          : LinearLimits{timing.transferFeed, timing.transferAcceleration};
     auto profile = linearProfile(m_motion.points().back().tcp, target, limits);
     // Transfers are CIRC arcs on the start shell around the sphere centre.
     if (profile && phase.segment == ProbeSegment::Transfer)
       profile = circularProfile(*profile, m_plan.parameters.sphereCentre);
     if (!profile) return QStringLiteral("Invalid or degenerate LIN or CIRC profile.");
     return m_motion.appendPath(LinearPath(*profile, label),
-                               touching ? MotionInterpolation::JointLinear : MotionInterpolation::Spline);
+                               searching ? MotionInterpolation::JointLinear : MotionInterpolation::Spline);
   }
 
   // Strut clearance of every point after first; outside touches also the ball's distance outside
@@ -131,22 +146,26 @@ private:
 
 } // namespace
 
-QString ProbeMotionPhase::text() const
+QString ProbeMotionPhase::text(const ProbeTouchPlan& plan) const
 {
   static const std::array<const char*, 7> names{"to entry", "descend", "transfer", "approach", "retract",
                                                 "retreat", "return HOME"};
   const QString name = QString::fromLatin1(names[static_cast<std::size_t>(segment)]);
-  if (touch > 0) return QStringLiteral("Touch %1/%2: %3").arg(touch).arg(ProbeTouchCount).arg(name);
-  const bool entry = segment == ProbeSegment::ToEntry || segment == ProbeSegment::Descend;
-  return (entry ? QStringLiteral("Entry: ") : QStringLiteral("Exit: ")) + name;
+  if (pass < 0) return QStringLiteral("Exit: ") + name;
+  const ProbeTouchPass& owner = plan.passes[pass];
+  if (touch > 0)
+    return QStringLiteral("%1, touch %2/%3: %4").arg(owner.label()).arg(touch).arg(owner.touches.size()).arg(name);
+  return owner.label() + QStringLiteral(": ") + name;
 }
 
 ProbeTouchMotionResult ProbeTouchMotion::create(const ProbeTouchPlan& plan, const ChamferRobotSetup& robot)
 {
   const auto rated = ratedRobotSetup(robot);
   if (!rated.robot) return {{}, rated.error};
-  if (plan.touches.isEmpty()) return {{}, QStringLiteral("The touch plan has no touches.")};
+  if (plan.passes.isEmpty()) return {{}, QStringLiteral("The touch plan has no passes.")};
+  for (const ProbeTouchPass& pass : plan.passes)
+    if (pass.touches.isEmpty()) return {{}, pass.label() + QStringLiteral(": the pass has no touches.")};
   auto built = TouchMotionBuilder(plan, *rated.robot).build();
   if (!built.error.isEmpty()) return {{}, built.error};
-  return {ProbeTouchMotion(std::move(*built.motion), built.clearances), {}};
+  return {ProbeTouchMotion(std::move(*built.motion), plan, built.clearances), {}};
 }

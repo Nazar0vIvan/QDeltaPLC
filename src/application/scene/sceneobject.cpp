@@ -177,8 +177,8 @@ std::optional<RoboCrap3D::DrawingObject> SceneObject::drawing() const
       result.parts.append({std::move(positions), {color, phase == 3 ? 3.0 : 2.0}});
     }
   } else if (const auto* value = touchPath()) {
-    // Constant-speed Approach/Retract green, PTP purple, the other LIN/CIRC transfers blue, as for
-    // machining paths.
+    // Constant-speed Approach green and wider (the Retract retraces it as a blue LIN), PTP purple,
+    // the other LIN/CIRC transfers blue, as for machining paths.
     for (const auto& segment : value->motion->timed().segments()) {
       auto positions = tcpPolyline(value->motion->points().mid(segment.first, segment.last - segment.first + 1));
       if (positions.size() < 2) continue;

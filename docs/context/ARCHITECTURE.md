@@ -3,7 +3,7 @@
 Map of the code and hardware for new sessions. Paths are repository-relative; named functions and
 files are authoritative. Not repeated here: binding constraints ([AGENT_CONTRACTS.md](AGENT_CONTRACTS.md)),
 controller/PC protocols ([RSI_Chamfer_Hole_CONTRACT.md](../../resources/files/rsi/RSI_Chamfer_Hole_CONTRACT.md),
-[RSI_Probe_Lin_CONTRACT.md](../../resources/files/rsi/RSI_Probe_Lin_CONTRACT.md)) and operator
+[RSI_Probe_Lin_CONTRACT.md](../../resources/files/rsi/WP-500_test/RSI_Probe_Lin_CONTRACT.md)) and operator
 procedures ([HARDWARE_SETUP.md](HARDWARE_SETUP.md)). Unverified items are in §7; this document
 verifies neither compilation nor runtime behavior.
 
@@ -183,8 +183,8 @@ src/trajectories/include/trajectories.
 | Whole motion | `chamfermotion` | `ChamferMotion::create(path, robot)` tries start configurations; per attempt one `MotionBuilder` appends PTP HOME→P_s, LIN P_s→lead-in start, the central curve (one spline), LIN lead-out end→P_s, PTP P_s→HOME. Stores `timed()`, 8 phase boundaries, `ChamferPathParameters` and `ChamferCentralMotion`. |
 | Motion module | `timedmotion`, `motion/motionbuilder`, `motion/tcpsolver` | `TimedMotion` (published): timed joint points, smoothstep/spline/joint-linear segments, labelled phases, spline coefficients, `evaluateJoints(seconds)`. `MotionBuilder`: `appendPtp`, `appendPath(TimedPath, interpolation)`; `LinearPath` adapts a LIN/CIRC `LinearProfile`. `ChamferTcpSolver`: checked TCP IK. |
 | Motion numerics | `motion/jointsegments` | `ptpDuration`, quintic smoothstep, `linearProfile`/`circularProfile` (trapezoidal, triangular, or constant speed at acceleration 0), `linearSchedule`, `clampedJointSpline`, `ratedRobotSetup`. |
-| Probe touch plan | `probetouchplan` | `createProbeTouchPlan(parameters)`: entry pose, 37 touches (start/contact poses, normal), exit pose. |
-| Probe touch motion | `probetouchmotion` | `ProbeTouchMotion::create(plan, robot)`: one `MotionBuilder`, clearance checks after each step, one phase per step, minimum clearances. |
+| Probe touch plan | `probetouchplan` | `createProbeTouchPlan(parameters)`: 6 calibration passes (114 touches) and 2 verification passes (44 touches); each pass has purpose, group (fixed probe orientation), repetition, entry pose, touches (start/contact poses, normal, tilt, roll) and exit pose. |
+| Probe touch motion | `probetouchmotion` | `ProbeTouchMotion::create(plan, robot)`: one `MotionBuilder`, pass transitions, clearance checks after each step, one phase per step, minimum clearances; keeps the plan. |
 | RSI sampling | `chamferrsistream` | `sampleChamferRsiStream(motion)`: one correction per 4 ms plus 50 zero cycles; start/composed-end/staging frames and excursion summary. |
 
 ### 3.4 Devices (`RoboCrapDevices`; GUI adaptation in src/application/devices)
@@ -226,8 +226,8 @@ pattern adds timestamps; `logViewportMessage` in main formats viewport messages.
   `visible`. Tool windows hold the device panels: PLC `DeltaPanel`, FTS `FtsPanel`, Settings/`Network`.
 - Status bar (right-aligned): "Loading…" while `OccController.ready` is false without
   `errorString`; "Calculating trajectory…" while machining or calibration calculates; "RSI Sampling…";
-  in Calibration the calibration error, playback status ("Playing · Touch 5/37: approach · 34.12 /
-  246.19 s") or the reason Generate is unavailable. A `QxBusyIndicator` is a child of the label,
+  in Calibration the calibration error, playback status ("Playing · Calibration G2 pass 1, touch
+  5/19: approach · 34.12 / 246.19 s") or the reason Generate is unavailable. A `QxBusyIndicator` is a child of the label,
   outside the layout. Nothing draws over the native OCCT window (`docs/OCCT_SCENE_OVERLAY.md`).
   Generate has no modal window; while calculating only Generate, Dry Run and RSI Sampling are
   unavailable.
@@ -384,8 +384,9 @@ Controller-side RSI items are listed in the RSI contracts.
   shutdown blocking durations (Generate, sampling, BREP reads); Felgo hot reload with the one-engine
   `qFatal` checks; OccScene outline reuse, picking, replacement, partial OCCT failures and replay.
 - **Calibration clearance.** Generate checks only the ball centre against sphere and strut; links are
-  not checked against the fixture. Touch tilts keep links and probe ≥ 65 mm above the table (scratch
-  check, "Robot clearance above the table" in plans/PROBE_SPHERE_CALIBRATION_EXECPLAN.md).
+  not checked against the fixture. The fixed probe orientations never point the stylus upward; link
+  clearance to the table and stand is not computed, only seen in Dry Run (user reported it works,
+  2026-11-11).
 - **Data and units.** Imported files carry no validated unit; coordinates and probe radius must be mm.
   `FLANGE_ER` is hard-coded from CMM data (ER y-axis and origin; roll from projecting the flange
   z-axis), only a reference for entering the spindle TCP (user, 2026-10-24). Link BREPs have no STEP

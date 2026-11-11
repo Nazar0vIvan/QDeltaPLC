@@ -31,10 +31,14 @@ point on the hole axis, outside the hole.
    (copied there by the build only when absent): the 25 mm sphere, the strut that holds it and ten
    ruby ball centres recorded by jogging onto the sphere. The fitted sphere is shown as the
    ball-centre sphere and the compensated sphere; every other scene object is hidden until the
-   submode is left. *Generate Path* computes a fixed motion: PTP from HOME to 60 mm above the
-   sphere, 37 touches on a uniform grid about 30° apart (the pole and latitudes 60°, 30°, 0° and
-   −30°) in one wrist configuration, each a 3 mm LIN approach and retract at a constant 1 mm/s,
-   CIRC transfers 3 mm above the sphere surface, and PTP back to HOME. *Dry Run* animates it. No real touch,
+   submode is left. *Generate Path* computes a fixed motion from HOME back to HOME: 114
+   calibration touches in six passes and then 44 verification touches in two passes. Each pass
+   keeps one probe orientation: G1 stylus down, G2 stylus along +X (as at HOME), G3 stylus down
+   with the flange turned 180°; calibration runs G1, G2, G3, G3, G2, G1 and verification G1, G2.
+   Each touch is a 3 mm LIN approach at a constant 1 mm/s and a LIN retract at the transfer
+   speed (10 mm/s, 20 mm/s²); touches are joined by CIRC
+   transfers 3 mm above the sphere surface, and passes of different orientations by a retreat, a
+   PTP turn of the probe and a descent. *Dry Run* animates it. No real touch,
    RSI run or least-squares solution of the ball centre is implemented; editing the file and
    entering the submode again uses the new sphere.
 
@@ -94,5 +98,5 @@ point on the hole axis, outside the hole.
 - The user reported on 2026-10-24 that RSI Sampling works and the real robot motion matches it.
 - Device panels (PLC, force/torque sensor, network settings) show and control the connected
   devices; the Network page also starts the *RSI test LIN* probe-stop test
-  ([RSI_Probe_Lin_CONTRACT.md](../../resources/files/rsi/RSI_Probe_Lin_CONTRACT.md)).
+  ([RSI_Probe_Lin_CONTRACT.md](../../resources/files/rsi/WP-500_test/RSI_Probe_Lin_CONTRACT.md)).
   *Start Machining* is disabled.

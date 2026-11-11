@@ -260,9 +260,12 @@ void SceneCalibration::finishCalculation()
   m_calculationTimer.stop();
   auto result = m_calculation.get();
   if (result.motion)
-    qInfo().noquote() << QStringLiteral("Probe calibration preparation: %1 touches, %2 points, %3 s movement, "
-                                        "minimum transfer clearance %4 mm, minimum strut clearance %5 mm")
-                             .arg(ProbeTouchCount).arg(result.motion->points().size())
+    qInfo().noquote() << QStringLiteral("Probe calibration preparation: %1 calibration and %2 verification touches, "
+                                        "%3 points, %4 s movement, minimum transfer clearance %5 mm, "
+                                        "minimum strut clearance %6 mm")
+                             .arg(result.motion->plan().touchCount(ProbeTouchPurpose::Calibration))
+                             .arg(result.motion->plan().touchCount(ProbeTouchPurpose::Verification))
+                             .arg(result.motion->points().size())
                              .arg(result.motion->duration(), 0, 'g', 12)
                              .arg(result.motion->minimumTransferClearance(), 0, 'f', 4)
                              .arg(result.motion->minimumStrutClearance(), 0, 'f', 4);

@@ -62,11 +62,13 @@ EL1809 input 8 (`docs/context/ARCHITECTURE.md`, "Additional hardware and Delta I
 delays on this path are about 15 ms (PLC input filter 10 ms, PLC scan, EL1809 filter 3 ms), that is
 about 0.015 mm at 1 mm/s, within the WP-500's 3 mm stylus travel.
 
+## Verified on the controller
+
+- The stop on `$IN[8]` with the SRC and context of this contract (user, 2026-11-11); this also
+  confirms that the SRC compiles, that the DIGIN/OR/STOP parameters are set and that STOP1 reacts
+  to OR1. The earlier `$IN[11]` wiring was verified before 2026-11-06.
+
 ## Not yet verified on the controller
 
-- Compilation of the SRC, the DIGIN/OR/STOP parameter names and that STOP1 reacts to OR1.
-- The stop on `$IN[8]`: the stop was verified only with the earlier `$IN[11]` wiring (until
-  2026-11-06). The controller's RSI_Probe_Lin context must have DIGIN1 changed to input 8 in
-  RSI Visual, and the changed SRC must be copied to the controller.
 - Braking distance after ExitMoveCorr at 1 mm/s.
 - That the POSCORR1 limits accept the 100 mm X correction.

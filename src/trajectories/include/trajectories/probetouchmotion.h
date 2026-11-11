@@ -11,11 +11,12 @@ enum class ProbeSegment { ToEntry, Descend, Transfer, Approach, Retract, Retreat
 
 struct ProbeMotionPhase
 {
+  int pass = -1; // Index into ProbeTouchPlan::passes; -1 for the return to HOME.
   int touch = 0; // 1-based touch of Transfer, Approach and Retract; 0 otherwise.
   ProbeSegment segment = ProbeSegment::ToEntry;
 
-  // "Entry: descend", "Touch 5/37: approach", "Exit: return HOME".
-  QString text() const;
+  // "Calibration G1 pass 1: descend", "Calibration G2 pass 1, touch 5/19: approach", "Exit: return HOME".
+  QString text(const ProbeTouchPlan& plan) const;
 };
 
 // Smallest ball clearances of a probe motion, mm.
@@ -32,6 +33,8 @@ class ProbeTouchMotion
 {
 public:
   static ProbeTouchMotionResult create(const ProbeTouchPlan& plan, const ChamferRobotSetup& robot);
+  // Nominal touch poses of the calibration and verification passes that the motion executes.
+  const ProbeTouchPlan& plan() const { return m_plan; }
   const QVector<ChamferJointPoint>& points() const { return m_timed.points(); }
   const ChamferRobotSetup& robot() const { return m_timed.robot(); }
   double duration() const { return m_timed.duration(); }
@@ -41,9 +44,10 @@ public:
   const TimedMotion& timed() const { return m_timed; }
 
 private:
-  ProbeTouchMotion(TimedMotion timed, const ProbeClearances& clearances)
-    : m_timed(std::move(timed)), m_clearances(clearances) {}
+  ProbeTouchMotion(TimedMotion timed, ProbeTouchPlan plan, const ProbeClearances& clearances)
+    : m_timed(std::move(timed)), m_plan(std::move(plan)), m_clearances(clearances) {}
   TimedMotion m_timed;
+  ProbeTouchPlan m_plan;
   ProbeClearances m_clearances;
 };
 
