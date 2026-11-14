@@ -1,28 +1,59 @@
-Продолжаем исследование: калибровка центра шарика щупа WP-500 на KUKA KR 10 R1420 по эталонной сфере.
+Read, analyze:
 
-## Прочитай и сформируй контекст
+1) E:\Qt\QtProjects\manuals\Delta\ISPSoft User Manual.pdf
+2) E:\Qt\QtProjects\manuals\Delta\AS Series. Programming Manual.pdf
+3) E:\Qt\QtProjects\manuals\Delta\KUKA KSS 8.3. Operating and Programming Instructions for SI [ENG].pdf
+4) E:\Qt\QtProjects\RoboCrap\docs\plc_project_snapshot
 
-1. AGENTS.md
-2. docs/DOCUMENT_STYLE_RU.md
-3. Целиком документы в docs/calibration:
-- ROBOT_PROBE_SPHERE_CALIBRATION_THEORY_RU.md — теория (далее - THEORY);
-- ROBOT_PROBE_SPHERE_CALIBRATION_METHOD_RU.md — установка и метод (далее - METHOD);
-- ROBOT_PROBE_SPHERE_CALIBRATION_LITERATURE_RU.md — анализ литературы (далее - LITERATURE).
+The global task is to run some test src file from the application. In plc_project_snapshot a special program RobotHandler (SFC diagram) is allocated for this purpose. Now it is certainly not ideal and most likely does not work, it is outdated. And some aspects of PCHandler also most likely require improvement, especially in terms of reading custom variables from the PC.
 
-Файл ROBOT_PROBE_SPHERE_CALIBRATION_MODELS_RU.md (далее - MODELS) нужно иметь ввиду, но на нем не основывать свои рассуждение до шага 5, потому что сейчас не тот шаг исследования, чтобы определять ММК. ММК должна основываться на предшествующих шагах.
+In the plc_project_snapshot folder, the LD and SFC diagrams are stored as draw.io XML files. Do not draw diagrams using text characters in the chat. If diagrams need to be created or modified, use the draw.io XML format.
 
-Изменения в документах должно проходить проверку docs/DOCUMENT_STYLE_RU.md.
+At a high level, the tasks are as follows:
 
-Термины проверяй по E:\Qt\QtProjects\manuals\Calibration\ISO-ГОСТ, в первую очередь РМГ 29-2013, Р 50.1.040-2002, ГОСТ Р ИСО 10360-5, JCGM
+1) Review the documentation, with particular attention to the AUT EXT mode.
+2) Review the existing ISPSoft project (plc_project_snapshot) as a starting point, but do not treat it as the definitive source of truth.
+3) Propose an optimal solution for extending PC ↔ PLC communication to meet the requirements of the task, including:
 
-## Правила, которых нет в AGENTS.md
+3.1) ISPSoft program overview. 
 
-- Мой вопрос — не просьба что-то менять. В документы пишешь только по прямому указанию.
-- Убери соглашательный стиль общения, если я чем-то недоволен - это не повод что-то менять, опирайся на факты, особенно если он подтверждается математически
+Provide a high-level description of the ISPSoft program (prefer text-based formats wherever possible) for launching KRL programs on the robot, taking into account the following requirements:
+- The application must allow the user to select one of four KRL programs.
+- Minimize the number of PLC digital inputs and outputs used, considering that the AS16AP11P-A has only 8 available inputs for the EL2809 and 7 remaining outputs for the EL1809.
+- The current KRC4 input and output assignments for AUT EXT are documented in HARDWARE_SETUP.md.
 
-## Где остановились
+3.2) plcdevice modifications
 
-THEORY: разделы 1–4 приведены в более менее в порядок
-THEORY: раздел 5 написан в первом приближении
+Describe the required additions to plcdevice, including new messages.
 
-Подтверди прочтение и жди моего вопроса.
+3.3) PCHandler modifications
+
+Describe the changes required in PCHandler to receive and process messages from the PC.
+
+3.4) Other PLC-side modifications
+
+Describe any necessary changes to other PLC components, such as the Main Table, DUTs, etc., if they need to be modified.
+
+Important: Your task is only to provide a concise, high-level description of the proposed solution. Do not implement it or go into excessive technical detail.
+
+If diagrams for your proposal are absolutely necessary, create them in draw.io XML format and place them in `docs\plc_project_snapshot\PLC_AUT_EXT_task`
+
+
+
+В папке plc_project_snapshot LD и SFC диаграммы представлены в виде xml файлов drawio. Не надо в чате символами рисовать диаграммы. Если надо создавать или изменять диаграммы, то используй xml формат для drawio. 
+
+В общих чертах, задачи следующие:
+1) Изучить документацию, особенно режим AUT EXT
+2) Изучить текущий ISPSoft проект plc_project_snapshot, как основу, но не как истину в последней инстанции
+3) Предложить оптимальное решение для расширения ПК <-> ПЛК обмена для решения поставленной задачи, включающее:
+3.1) Описание в общих чертах ISPSoft программы (текстовые форматы в приоритете если это возможно) для запуска KRL программ на роботе, при этом:
+- Можно через приложение выбирать из 4 KRL программ;
+- Задействовать минимум цифровых входов и выходов ПЛК, учитывая, что AS16AP11P-A имеет только 8 свободных входов для EL2809, и 7 оставшихся выходов для EL1809;
+- текущие значения входов и выходов KRC4 для AUT EXT описаны в HARDWARE_SETUP.md
+3.2) Описать соответствующие дополнения к plcdevice, включая новые сообщения
+3.3) Описать изменения в PCHandler для чтения сообщений от ПК
+3.4) Описать дополнения к остальным частям со стороны ПЛК: Main Table, DUT и пр. Если они подвергунться изменения
+
+Запомни, твоя задача лишь в общих чертах лаконично описать решение, не конкретно железное и во всех поробностях.
+
+Если нужно всё же рисовать диаграммы, то рисуй формате xml для drawio и помещай их `docs\plc_project_snapshot\PLC_AUT_EXT_task

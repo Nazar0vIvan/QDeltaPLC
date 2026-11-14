@@ -9,6 +9,7 @@
 #include <QApplication>
 
 #include <QFontDatabase>
+#include <QLocale>
 #include <QMetaType>
 #include <QQmlApplicationEngine>
 #include <QQmlEngine>
@@ -39,6 +40,7 @@ void logViewportMessage(const QString& text, bool error)
 
 int main(int argc, char* argv[])
 {
+  QLocale::setDefault(QLocale::English);
   QApplication app(argc, argv);
   qSetMessagePattern(QStringLiteral("[%{time yyyy-MM-dd hh:mm:ss}] %{message}"));
 

@@ -158,6 +158,10 @@
   simple edits, documentation-only work and read-only analysis do not. Repository-root plans/
   holds only ExecPlans (milestones, ready to execute and integrate into code); put studies,
   theory, analyses and strategy proposals in docs/.
+- A new KRL module (.src/.dat) starts from the controller template `resources/files/KR C4/Template/vorgabe.src`
+  and `vorgabe.dat`: keep the header lines and the DAT EXTERNAL DECLARATIONS folds, replace `MODULE_NAME`.
+  The INI fold and the PTP HOME folds belong only to programs that are started (selected, or called by
+  CELL as a program); omit them in subprograms called from other programs.
 - Edit source inputs, not generated outputs. Change vendored libs/eigen-5.0.0 or local IDE settings
   CMakeLists.txt.user* only when specifically required.
 - Live PLC/FTS/RSI connections, outputs, sensor bias or motion require explicit authorization

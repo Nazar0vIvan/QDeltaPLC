@@ -19,7 +19,7 @@ Supplied by the user unless a source is named.
 | Spindle | GDZ-65-800A on an H100-1.5S2-1B frequency inverter (VFD) | none | Started through PLC output Y2.0 |
 | Touch probe | WP-500 V6 | none | Probe data enters only as JSON point files (§5.1) |
 | Calibration sphere | ⌀25 mm bearing ball, grade G40, ISO 3290 | none | Passive, on a vertical pole on a table in front of the robot; sits 2 mm deep in the top of a ⌀17.8 mm strut, so only the surface above 10.5 mm below its centre is reachable. Strut and table geometry (table top 170.5 mm below the centre, tape-measured 2026-10-29) are in `resources/json/calibration_sphere.json`; the stand CAD `resources/cad/CALIBRATION_STAND.stp` has its origin at the sphere centre |
-| EtherCAT I/O | Beckhoff EK1100 coupler, EL1809 (16 DI), EL2809 (16 DO) on the KR C4 | none | No code addresses them; wiring below |
+| EtherCAT I/O | Beckhoff EK1100 coupler, EL1809 (16 DI), EL2809 (16 DO) on the KR C4 | none | Automatic External interface and probe signal to/from the PLC (wiring below); no PC code addresses them |
 | Network switch | D-Link DGS-1005P (5 Gigabit ports, 4 PoE, unmanaged) | none | Connects the PC to the PLC, sensor and VFD |
 
 ### Network
@@ -66,18 +66,25 @@ Supplied by the user. Delta expansion modules:
 | AS16AP11P-A | X1.0–X1.7; sourcing; S/S to 0 V | Y1.0–Y1.7; sourcing; C0 to +24 V |
 | AS16AP11T-A | X2.0–X2.7; sinking; S/S to +24 V, which suits the NPN WP-500 output pulling the input to 0 V | Y2.0–Y2.7; sinking; C0 to 0 V |
 
-All connected PLC terminals (2026-11-06; every other terminal, including the onboard X0.x/Y0.x, is
+All connected PLC terminals (2026-11-13; every other terminal, including the onboard X0.x/Y0.x, is
 unconnected):
 
 | PLC terminal | Connected to |
 |---|---|
+| X1.0, X1.2 … X1.7 | EL2809 outputs 1, 3 … 8: `$I_O_ACTCONF`, `$PERI_RDY`, `$STOPMESS`, `$PRO_ACT`, PGNO_REQ, APPL_RUN, `$IN_HOME` |
+| X1.1 | EL2809 output 2 (`$OUT[2]`, unassigned) |
 | X2.0 | WP-500 NPN output |
+| Y1.0 … Y1.4 | EL1809 inputs 1–5: `$EXT_START`, `$DRIVES_ON`, `$CONF_MESS`, PGNO bits 0 and 1 |
 | Y1.7 | EL1809 input 8 (`$IN[8]`); the PLC program copies X2.0 to Y1.7 |
 | Y2.0 | VFD terminal X1 |
 | Y2.3, Y2.4, Y2.5, Y2.6, Y2.7 | Door panel lamps LED_RUN, LED_GREEN, LED_RED3, LED_RED2, LED_RED1 |
 
-WorkVisual maps EL1809 input n to `$IN[n]` and EL2809 output n to `$OUT[n]` for n = 1–16. Only
-EL1809 input 8 is wired; no `$OUT` reaches the PLC.
+WorkVisual maps EL1809 input n to `$IN[n]` and EL2809 output n to `$OUT[n]` for n = 1–16. EL1809
+inputs 1–5 and 8 and EL2809 outputs 1–8 are wired; inputs 1–5 and outputs 1 and 3–8 carry the
+Automatic External signals listed in [HARDWARE_SETUP.md](HARDWARE_SETUP.md). The PLC programs
+`RobotIo` and `RobotHandler` (text snapshot in `docs/plc_project_snapshot/ISPSoft project.md`) drive
+Y1.0 … Y1.4 only while X1.0 (`$I_O_ACTCONF`) is ON; RoboCrap's panel shows them display-only and the
+PLC refuses WRITE_IO for module 1.
 
 Probe trigger path: WP-500 → X2.0 → PLC program → Y1.7 → EL1809 input 8 → `$IN[8]`, TRUE while the
 probe is deflected (since 2026-11-06; from 2026-10-29 it was Y1.5 → input 11 → `$IN[11]`). Datasheet
@@ -85,8 +92,21 @@ delays in order: AS16AP11T-A input (< 20 µs, then the software filter, default 
 Y1.7 (≤ 0.5 ms), the EL1809 filter (typ. 3.0 ms), EtherCAT. The AS filter dominates on the PLC side,
 the EL1809 filter on the KR C4 side.
 
-Automatic External is switched off and none of its signals uses `$IN`/`$OUT` 1–16; its signal
-assignments are in [HARDWARE_SETUP.md](HARDWARE_SETUP.md).
+Automatic External is configured on `$IN[1..5]` and `$OUT[1..8]` (2026-11-13); its signal
+assignments, `CELL.SRC` (override 100 %, PTP velocity by operating mode through `INIT_PTP_VEL`) and the
+PC power settings that RSI needs are in [HARDWARE_SETUP.md](HARDWARE_SETUP.md).
+
+Starting a KRL program from RoboCrap (Automatic External; `plans/PLC_AUT_EXT_PROGRAM_START_EXECPLAN.md`):
+the panel sends SET_VAR RUN_PROG with program k = 1 … 4; the PLC checks AUT EXT, `$IN_HOME` and
+APPL_RUN OFF, then its 4-step SFC `RobotHandler` runs ST_PREP (`$DRIVES_ON` pulse 0–200 ms,
+`$CONF_MESS` pulse 300–500 ms, waits for `$PERI_RDY` and no `$STOPMESS`, at most 5 s), ST_START
+(PGNO bits = k − 1, `$EXT_START` from 0.1 s until `$PRO_ACT`, at most 30 s) and ST_SELECT (`$EXT_START`
+again until P00 acknowledges the number: APPL_RUN ON, PGNO_REQ OFF, at most 2 s). Program 1 is
+`RSI_Probe_Calibration` (CASE 0 of CELL). ROBOT_RESUME continues an interrupted program (APPL_RUN ON,
+`$PRO_ACT` OFF) without a program number; it also requires `$STOPMESS` OFF and no operating-mode
+change since the interruption (`ResumeBlocked`). ROBOT_ABORT ends only the start sequence. Running,
+finished and interrupted are derived on the PC from X1; the PLC does not supervise a running program
+(`$MOVE_ENABLE` and `$DRIVES_OFF` stay on `$IN[1025]`).
 
 ### Controller tool data
 
@@ -194,7 +214,7 @@ src/trajectories/include/trajectories.
 | `DeviceHub` | Owns I/O threads `ControlIO` and `GeneralIO`, started in the constructor; public slots `startAll`/`stopAll` (§5.4). `add()` moves a parentless device to its thread, connects `QThread::finished` to `deleteLater` and creates a child `DeviceRunner`. |
 | `DeviceRunner` | GUI-thread QML proxy: `data` (`QQmlPropertyMap` pre-filled with `connectionConfig`), `socketState`, `isConnected` (Connected or Bound), `isDisconnected`; all device links queued. |
 | `AbstractDevice` | Slots `start`, `stop`, `invoke` guarded by `m_started`; signals `stateReady`, `socketStateReady`; `attachSocket()` forwards state and logs socket errors. |
-| `PlcDevice` (GeneralIO) | `QTcpSocket` bound to a local port, then `connectToHost`. Invokables `connect`, `disconnect`, `setOutput`, `writeMessage` (raw WRITE_RAW/WRITE_REG/SET_VAR frames; no QML caller). `PlcMessageManager`: 6-byte big-endian header (0xAA55, version, type, transaction id, length) plus command, whole frame swapped in 16-bit words; strict 8/16-bit readers; fixed 32-byte responses. SNAPSHOT on connect. State keys `x1`, `y1`, `x2`, `y2` (8 bools each), `cellState`. The framing is defined by the PLC program (not in the repository); the user confirmed it works on 2026-10-13. |
+| `PlcDevice` (GeneralIO) | `QTcpSocket` bound to a local port, then `connectToHost`; `disconnect` sets `SO_LINGER` {1, 0} and aborts, so the close sends RST and the fixed source port has no TIME_WAIT that would make the next connect fail with "The bound address is already in use". Requests are queued and sent one at a time (the PLC has one receive buffer); a reply must arrive within 1 s, otherwise "PLC reply timeout" is logged and the next request is sent; requests while not connected are dropped. A SNAPSHOT heartbeat every 2 s while idle keeps the PLC socket below its 10 s keep-alive; no request is sent at connect (the PLC never answered it) because the PLC sends an IO change frame on every new connection. Invokables `connect`, `disconnect`, `setOutput`, `writeMessage` (raw frames; no QML caller), `runRobotProgram({program: 1..4})`, `resumeRobot`, `abortRobotStart`. `PlcMessageManager`: 6-byte big-endian header (0xAA55, version, type, transaction id, length) plus command, whole frame swapped in 16-bit words; strict 8/16-bit readers; fixed 32-byte PLC frames; `VAR_TYPE` codes equal the PLC DUT `E_VARTYPE`. The IO change frame (payload 8) and the SNAPSHOT reply (payload 9) carry X1, Y1, X2, Y2 and the PLC start-sequence step, program and result, so the heartbeat repairs a lost change frame within 2 s. State keys `x1`, `y1`, `x2`, `y2` (8 bools each), `robotStep` (PLC `E_RSTEP`), `robotProgram`, `robotResult` (`E_RRESULT`), `robotProgramState` (0 unknown, 1 running, 2 finished, 3 interrupted, from X1.4/X1.5/X1.6), `robotResumeBlocked` (mirror of the PLC's `ResumeBlocked`; not known after a reconnect while the PLC already holds it); all reset on disconnect. Each connection writes `records/plc_io_<yyyyMMdd_HHmmss>.csv`: one row per change of X1/Y1 (heartbeat repeats are not logged), of step/program/result, per robot command, PLC error reply, reply timeout and unreadable frame; times are PC receive times. The framing is defined by the PLC program (snapshot `docs/plc_project_snapshot/ISPSoft project.md`). |
 | `FtsDevice` (ControlIO) | `QUdpSocket`; invokables `connect`, `disconnect`, `startStreaming`, `stopStreaming`, `bias`, `startLogRecording`, `stopLogRecording`, `saveLogToDefaultFile`. RDT request 0x1234, command, count 0; one 36-byte record per datagram; timestamps from sequence difference at an assumed 7000 Hz; 1e6 counts per unit. Each packet emits `dataSampleHFReady`; after ≥ 16 ms `processBatch` publishes the last sample (all axes first, then changes ≥ 0.05). Recording saves through `std::async` + `QSaveFile` to `<appDir>/records/`. |
 | `RsiDevice` (ControlIO, src/devices/rsi) | `QUdpSocket`; answers the newest valid `<Rob>`; states Idle → Streaming → Finished → Stopping. Invokables `connect`, `disconnect`; slot `setCorrections(QVector<V6d>, QString)`; publishes `rsiState`, `rsiCorrections`. Behavior: RSI_Chamfer_Hole_CONTRACT.md "PC behavior". |
 | `DeviceProfileModel` | Read-only table from `:/json/db.json`: default endpoints for the Network view. |
@@ -238,7 +258,11 @@ pattern adds timestamps; `logViewportMessage` in main formats viewport messages.
   `MachiningPanel` owns draft text, `draftFlipAxis` and captured settings; `EndEffectorPanel` owns
   pose drafts.
 - Device panels use `App.Hub.device(key)`, `isConnected`, `data.<key>` and `invoke(name, map)`.
-  `DeltaPanel` labels the PLC terminals and the door panel lamps (§1 wiring).
+  `DeltaPanel` labels the PLC terminals and the door panel lamps (§1 wiring); module 1 outputs are
+  display-only. Its `RobotStartPanel` (program 1–4, Run, Resume, Abort, one elided status line) repeats
+  the PLC's checks: Run with step IDLE, X1.0, X1.7 ON and X1.6 OFF; Resume with step IDLE, X1.0 ON, an
+  interrupted program (X1.6 ON, X1.4 OFF), X1.3 OFF and `robotResumeBlocked` FALSE; Abort while the
+  step is not IDLE.
 - Placeholders: Dry Scan only toggles Main flags; Scan and Start Machining are disabled
   (`available: false`); Cone import and the Precise submode do nothing.
 - In Calibration the Scene panel lists only the "Calibration" group; sphere Geometry rows show the
@@ -319,9 +343,9 @@ stand (`DrawingModel` at the centre); the sphere is redrawn when the stand load 
 
 `DeltaModuleAP.qml` → `plc.invoke("setOutput", {module, index, enabled})` → `DeviceRunner::invoke`
 emits `invokeReq` (queued) → GeneralIO `AbstractDevice::invoke` looks up `m_api` and calls the method
-directly → `PlcDevice::setOutput` writes a WRITE_IO frame → `readyRead` matches 32-byte responses by
-transaction id and command → `stateReady(QVariantHash)` (queued) → `DeviceRunner::onStateReady`
-inserts into `data`. Socket state: `stateChanged` → `onSocketStateChanged` → `socketStateReady` →
+directly → `PlcDevice::setOutput` queues a WRITE_IO request, written when no reply is pending →
+`readyRead` matches 32-byte responses by transaction id and command → `stateReady(QVariantHash)`
+(queued) → `DeviceRunner::onStateReady` inserts into `data`. Socket state: `stateChanged` → `onSocketStateChanged` → `socketStateReady` →
 `onSockState` → `isConnected`. Startup: `hub.startAll()` → `startReq` → `buildApi()` +
 `startDevice()` creates sockets; connecting waits for `invoke("connect", config)` from `Network.qml`.
 
@@ -373,10 +397,10 @@ Controller-side RSI items are listed in the RSI contracts.
 - **Net F/T.** The manual confirms header 0x1234, commands 0x0000 stop / 0x0002 streaming / 0x0042
   bias, UDP 49152, internal 7000 Hz with RDT output 1–7000 Hz, and calibration-defined counts per
   unit. Unverified: the configured RDT rate (code assumes 7000 Hz) and counts (hard-coded 1e6).
-- **PLC pending lifetime.** `availableTid()` scans 256 IDs; if writes succeed but replies never come
-  on an open connection, pending entries fill all IDs and writes fail with "All PLC transaction ids
-  are pending". Matched replies (errors included), failed/partial writes, disconnect, socket
-  UnconnectedState and device stop clear entries; no timeout/retry. Derived from code, not observed.
+- **PLC change frames.** Frames the PLC sends right after another frame are often lost (the
+  DRIVES_ON pulse after a command reply is rarely logged); the 2 s SNAPSHOT heartbeat repairs the
+  state. Likely cause, unverified: `PCHandler` takes a send as complete from socket flags that are
+  refreshed only by socket instructions (AS manual).
 - **VFD endpoint.** `db.json` names the 192.168.1.4 device "VFD ATV320U40N4C" (`driver: "vfd"`,
   Modbus TCP) with no device class, while the spindle inverter is the H100-1.5S2-1B.
 - **Not exercised at runtime:** binding notification for every key of

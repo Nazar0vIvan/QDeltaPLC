@@ -113,8 +113,16 @@ user draws.
   measured values are in `Surprises & Discoveries`. The context has large POSCORR1 limits, so the
   POSCORR1 reset across `RSI_OFF`/`RSI_ON` was not tested; with those limits it does not matter
   (decision after Milestone 4). The user verified the renamed `RSI_Probe_Check` on the controller.
-- [ ] Milestone 5: full session on the robot, touch file checked, documents in `docs/context`
-  updated.
+- [x] (2026-11-14) Milestone 5, run: full session in AUT EXT started from RoboCrap through the PLC
+  (`plans/PLC_AUT_EXT_PROGRAM_START_EXECPLAN.md`, PTP 5 %, transfers 10 mm/s, override 100 %), plan id
+  `20261114_170013_165`, PLC log `plc_io_20261114_195852.csv`: STARTED 20:00:41.535, finished with
+  `PTP XHOME` at 20:17:22.962 (16 min 41 s). `python/rsi_touches.py`: 158 captures, 158 searches,
+  158 touches, touch numbers 1–158 once each, detection 770–863 cycles; largest PC receive gap
+  10.9 ms, largest reply latency 0.81 ms. An earlier attempt (`20261114_163247_675`) stopped at
+  search 93 with RSITimeout after a 171.6 ms receive stall; the user then set display-off and sleep
+  to Never, USB selective suspend to Disabled, cleared the adapter's "Allow the computer to turn off
+  this device" and disabled its Energy-Efficient Ethernet (`docs/context/HARDWARE_SETUP.md`).
+- [ ] Milestone 5, documents in `docs/context` updated.
 
 
 ## Surprises & Discoveries

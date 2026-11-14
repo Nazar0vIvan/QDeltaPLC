@@ -95,6 +95,20 @@ PlcMessageManager::ParseResult PlcMessageManager::outputRequest(const QVariantMa
   }};
 }
 
+PlcMessageManager::ParseResult PlcMessageManager::robotProgramRequest(const QVariantMap& args) const
+{
+  // RoboCrap programs 1..4; the PLC presents program - 1 on its two PGNO outputs.
+  const auto program = readUInt8(args.value("program"));
+  if (!program || *program < 1 || *program > 4)
+    return {QVariant(), BAD_DATA, args.value("program")};
+
+  return {QVariantMap{
+    {"cmd", CMD::SET_VAR},
+    {"var", VAR_TYPE::RUN_PROG},
+    {"attr", *program}
+  }};
+}
+
 PlcMessageManager::ParseResult PlcMessageManager::parseMessage(const QByteArray& resp) const
 {
   if (resp.size() < HEADER_SIZE)
@@ -353,15 +367,19 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
     }
 
     case CMD::SNAPSHOT: {
-      if (payload.size() != 6)
+      // Same content as the IO change frame, so the heartbeat repairs a lost change frame.
+      if (payload.size() != 9)
         return {QVariant(), BAD_PLEN, payload.size()};
 
       quint8 x1 = 0;
       quint8 y1 = 0;
       quint8 x2 = 0;
       quint8 y2 = 0;
+      quint8 step = 0;
+      quint8 program = 0;
+      quint8 result = 0;
 
-      ds >> x1 >> y1 >> x2 >> y2;
+      ds >> x1 >> y1 >> x2 >> y2 >> step >> program >> result;
       if (ds.status() != QDataStream::Ok)
         return {QVariant(), BAD_PLEN, payload.size()};
 
@@ -369,6 +387,9 @@ PlcMessageManager::ParseResult PlcMessageManager::parseRespOk(const QByteArray& 
       out["y1"] = byteToBits(y1);
       out["x2"] = byteToBits(x2);
       out["y2"] = byteToBits(y2);
+      out["robotStep"] = step;
+      out["robotProgram"] = program;
+      out["robotResult"] = result;
       break;
     }
 
@@ -440,15 +461,20 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
 
   switch (chg) {
     case IOs: {
-      if (payload.size() != 5)
+      // Module bytes X1, Y1, X2, Y2, then the PLC start sequence: E_RSTEP step,
+      // program (0 = resume) and E_RRESULT result.
+      if (payload.size() != 8)
         return {QVariant(), BAD_PLEN, payload.size()};
 
       quint8 x1 = 0;
       quint8 y1 = 0;
       quint8 x2 = 0;
       quint8 y2 = 0;
+      quint8 step = 0;
+      quint8 program = 0;
+      quint8 result = 0;
 
-      ds >> x1 >> y1 >> x2 >> y2;
+      ds >> x1 >> y1 >> x2 >> y2 >> step >> program >> result;
       if (ds.status() != QDataStream::Ok)
         return {QVariant(), BAD_PLEN, payload.size()};
 
@@ -456,20 +482,9 @@ PlcMessageManager::ParseResult PlcMessageManager::parseStateChange(const QByteAr
       out["y1"] = byteToBits(y1);
       out["x2"] = byteToBits(x2);
       out["y2"] = byteToBits(y2);
-      break;
-    }
-
-    case CELL_STATE: {
-      if (payload.size() != 2)
-        return {QVariant(), BAD_PLEN, payload.size()};
-
-      quint8 state = 0;
-
-      ds >> state;
-      if (ds.status() != QDataStream::Ok)
-        return {QVariant(), BAD_PLEN, payload.size()};
-
-      out["cellState"] = state;
+      out["robotStep"] = step;
+      out["robotProgram"] = program;
+      out["robotResult"] = result;
       break;
     }
 
@@ -508,8 +523,9 @@ bool PlcMessageManager::isValidDev(quint16 dev) const {
 }
 
 bool PlcMessageManager::isValidVar(quint8 var) const {
-  return var == VAR_TYPE::START_CELL ||
-         var == VAR_TYPE::SFY_OK;
+  return var == VAR_TYPE::RUN_PROG ||
+         var == VAR_TYPE::ROBOT_RESUME ||
+         var == VAR_TYPE::ROBOT_ABORT;
 }
 
 QVariantList PlcMessageManager::byteToBits(quint8 value) const {

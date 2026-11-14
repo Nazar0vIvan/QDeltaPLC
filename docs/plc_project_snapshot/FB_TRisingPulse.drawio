@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device" compressed="false">
+  <diagram id="FB_TRisingPulse" name="FB_TRisingPulse">
+    <mxGraphModel dx="1000" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="FB_TRisingPulse" vertex="1" parent="1" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=20;fontStyle=1;fontColor=#202936;align=left;">
+          <mxGeometry x="32" y="16" width="920" height="32" as="geometry" />
+        </mxCell>
+        <object id="network_1" label="" ldType="network" networkNumber="1" sourcePng="FB_TRisingPulse.png">
+          <mxCell vertex="1" parent="1" style="group;">
+            <mxGeometry x="24" y="60" width="920" height="270" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="network_1_title" value="Network 1" vertex="1" parent="network_1" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;fontColor=#536579;align=left;">
+          <mxGeometry x="16" y="0" width="400" height="24" as="geometry" />
+        </mxCell>
+        <object id="network_1_left_rail" label="" ldType="leftPowerRail">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;strokeColor=none;fillColor=#202936;">
+            <mxGeometry x="20" y="42" width="2" height="208" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="pulse_input" label="Q" ldType="contact" contactType="normallyOpen">
+          <mxCell vertex="1" parent="network_1" style="shape=mxgraph.electrical.plc_ladder.contact;html=0;strokeColor=#202936;strokeWidth=2;fillColor=none;align=center;verticalAlign=bottom;verticalLabelPosition=top;labelPosition=center;labelWidth=340;spacingBottom=10;whiteSpace=wrap;overflow=visible;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="190" y="92" width="72" height="36" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="timer_instruction" label="TMR" ldType="appliedInstruction" instruction="TMR">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;html=0;strokeWidth=2;strokeColor=#202936;fillColor=#FFFFFF;align=center;verticalAlign=top;spacingTop=10;fontStyle=1;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="570" y="70" width="250" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="timer_en" value="En" vertex="1" parent="timer_instruction" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;align=left;">
+          <mxGeometry x="8" y="28" width="42" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="timer_s1" value="S1" vertex="1" parent="timer_instruction" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;align=left;">
+          <mxGeometry x="8" y="73" width="42" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="timer_s2" value="S2" vertex="1" parent="timer_instruction" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;align=left;">
+          <mxGeometry x="8" y="118" width="42" height="24" as="geometry" />
+        </mxCell>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;entryX=0;entryY=0.5;entryPerimeter=0;" id="timer_enable_source" value="" edge="1" parent="network_1" target="pulse_input">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="22" y="110" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.5;exitPerimeter=0;entryX=0;entryY=0.25;entryPerimeter=0;" id="timer_enable" value="" edge="1" parent="network_1" source="pulse_input" target="timer_instruction">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <object id="timer_device" label="T0" ldType="operand" pin="S1">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;html=0;strokeColor=#98A6B5;strokeWidth=1;fillColor=#FFFFFF;align=right;verticalAlign=middle;spacingRight=10;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="350" y="141" width="160" height="28" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.5;exitPerimeter=0;entryX=0;entryY=0.53125;entryPerimeter=0;" id="timer_device_wire" value="" edge="1" parent="network_1" source="timer_device" target="timer_instruction">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <object id="timer_preset" label="T_ms" ldType="operand" pin="S2">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;html=0;strokeColor=#98A6B5;strokeWidth=1;fillColor=#FFFFFF;align=right;verticalAlign=middle;spacingRight=10;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="350" y="186" width="160" height="28" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.5;exitPerimeter=0;entryX=0;entryY=0.8125;entryPerimeter=0;" id="timer_preset_wire" value="" edge="1" parent="network_1" source="timer_preset" target="timer_instruction">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <object id="network_2" label="" ldType="network" networkNumber="2" sourcePng="FB_TRisingPulse.png">
+          <mxCell vertex="1" parent="1" style="group;">
+            <mxGeometry x="24" y="350" width="920" height="180" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="network_2_title" value="Network 2" vertex="1" parent="network_2" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;fontColor=#536579;align=left;">
+          <mxGeometry x="16" y="0" width="400" height="24" as="geometry" />
+        </mxCell>
+        <object id="network_2_left_rail" label="" ldType="leftPowerRail">
+          <mxCell vertex="1" parent="network_2" style="rounded=0;strokeColor=none;fillColor=#202936;">
+            <mxGeometry x="20" y="42" width="2" height="118" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="timer_done" label="T0" ldType="contact" contactType="normallyOpen">
+          <mxCell vertex="1" parent="network_2" style="shape=mxgraph.electrical.plc_ladder.contact;html=0;strokeColor=#202936;strokeWidth=2;fillColor=none;align=center;verticalAlign=bottom;verticalLabelPosition=top;labelPosition=center;labelWidth=340;spacingBottom=10;whiteSpace=wrap;overflow=visible;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="190" y="92" width="72" height="36" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="pulse_reset" label="Q" ldType="coil" coilType="RST">
+          <mxCell vertex="1" parent="network_2" style="shape=mxgraph.electrical.plc_ladder.output_1;html=0;strokeColor=#202936;strokeWidth=2;fillColor=none;align=center;verticalAlign=bottom;verticalLabelPosition=top;labelPosition=center;labelWidth=260;spacingBottom=10;whiteSpace=wrap;overflow=visible;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="650" y="92" width="72" height="36" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="pulse_reset_operation" value="R" vertex="1" parent="pulse_reset" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=18;">
+          <mxGeometry x="24" y="0" width="24" height="36" as="geometry" />
+        </mxCell>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;entryX=0;entryY=0.5;entryPerimeter=0;" id="reset_condition" value="" edge="1" parent="network_2" target="timer_done">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="22" y="110" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.5;exitPerimeter=0;entryX=0;entryY=0.5;entryPerimeter=0;" id="reset_output" value="" edge="1" parent="network_2" source="timer_done" target="pulse_reset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

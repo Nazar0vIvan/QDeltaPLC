@@ -61,13 +61,14 @@ QxGroupBox {
         xStates: root.x1
         yStates: root.y1
 
-        xTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D"]
-        yTags: ["N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "N/D", "PROBE"]
+        // KUKA Automatic External interface: EL2809 outputs -> X1, Y1 -> EL1809 inputs.
+        xTags: ["AUT EXT", "N/D", "PERI_RDY", "STOPMESS", "PRO_ACT", "PGNO_REQ", "APPL_RUN", "IN_HOME"]
+        yTags: ["EXT_START", "DRV_ON", "CONF_MESS", "PGNO0", "PGNO1", "N/D", "N/D", "PROBE"]
         xLabel: 'IN / <font color="red">SOURCE</font>'
         yLabel: 'OUT / <font color="red">SOURCE</font>'
-        xPlugged: [0, 0, 0, 0, 0, 0, 0, 0]
-        yPlugged: [0, 0, 0, 0, 0, 0, 0, 1]
-        yDisplayOnly: [7] // copied from X2.0 by the PLC program
+        xPlugged: [1, 0, 1, 1, 1, 1, 1, 1]
+        yPlugged: [1, 1, 1, 1, 1, 0, 0, 1]
+        yDisplayOnly: [0, 1, 2, 3, 4, 7] // driven by the PLC program (RobotIo, ProbeMap)
         moduleIndex: 1
       }
 
@@ -88,6 +89,13 @@ QxGroupBox {
         yPlugged: [1, 0, 0, 1, 1, 1, 1, 1]
         moduleIndex: 2
       }
+    }
+
+    RobotStartPanel {
+      Layout.fillWidth: true
+
+      plc: root.plc
+      x1: root.x1
     }
   }
 }

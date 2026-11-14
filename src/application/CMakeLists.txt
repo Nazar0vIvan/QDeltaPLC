@@ -72,6 +72,7 @@ else()
       "qml/Views/Dashboard/DeltaPanel/LedsPanel.qml"
       "qml/Views/Dashboard/DeltaPanel/DeltaModuleInput.qml"
       "qml/Views/Dashboard/DeltaPanel/DeltaModuleOutput.qml"
+      "qml/Views/Dashboard/DeltaPanel/RobotStartPanel.qml"
       "qml/Views/Dashboard/FtsPanel/FtsPanel.qml"
       "qml/Views/Dashboard/FtsPanel/FtsBars.qml"
       "qml/Views/Network/Network.qml"

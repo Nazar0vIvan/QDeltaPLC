@@ -1,0 +1,71 @@
+&ACCESS RVP
+&REL 3
+&COMMENT HANDLER on external automatic (RoboCrap: programs 1..4 = PGNO 0..3)
+DEF  CELL ( )
+  ;EXT EXAMPLE1 ( )
+  ;EXT EXAMPLE2 ( )
+  ;EXT EXAMPLE3 ( )
+  EXT RSI_Probe_Calibration ( )
+  
+  ;FOLD INIT
+  DECL CHAR DMY[3]
+  DMY[]="---"
+  ; P00 clears APPL_RUN only in INIT_EXT and at the next number request, so a program that was
+  ; stopped and then deselected leaves it ON. The BCO run of a newly selected CELL executes this.
+  $OUT[APPL_RUN]=FALSE
+  ;ENDFOLD (INIT)
+	
+  ;FOLD BASISTECH INI
+  GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+  INTERRUPT ON 3 
+  BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+	
+  ;FOLD CHECK HOME
+  $H_POS=XHOME
+  IF CHECK_HOME==TRUE THEN
+    P00 (#CHK_HOME,#PGNO_GET,DMY[],0 ) ;Testing Home-Position 
+  ENDIF
+  ;ENDFOLD (CHECK HOME)
+	
+  ; PTP HOME at the operating-mode velocity of INIT_PTP_VEL (no inline form: its Vel would
+  ; overwrite that velocity).
+  $H_POS=XHOME
+  PDAT_ACT=PDEFAULT
+  BAS (#PTP_DAT )
+  FDAT_ACT=FHOME
+  BAS (#FRAMES )
+  INIT_PTP_VEL ( )
+  PTP  XHOME
+	
+  ;FOLD AUTOEXT INI
+  P00 (#INIT_EXT,#PGNO_GET,DMY[],0 ) ; Initialize extern mode
+  ;ENDFOLD (AUTOEXT INI)
+  LOOP
+    ; Programs set their own velocities (INIT_PTP_VEL, $VEL.CP) and run at 100 % override in
+    ; AUT EXT; re-applied before every program number, so a smartPAD change only lasts one program.
+    $OV_PRO=100
+    P00 (#EXT_PGNO,#PGNO_GET,DMY[],0 )
+    SWITCH  PGNO ; Select with Programnumber
+
+    CASE 0
+      P00 (#EXT_PGNO,#PGNO_ACKN,DMY[],0 ) ; Reset Progr.No.-Request
+      RSI_Probe_Calibration ( ) ; program 1: probe sphere calibration
+
+    CASE 1
+      P00 (#EXT_PGNO,#PGNO_ACKN,DMY[],0 ) ; Reset Progr.No.-Request
+      WAIT SEC 5 ; program 2: placeholder without motion
+
+    CASE 2
+      P00 (#EXT_PGNO,#PGNO_ACKN,DMY[],0 ) ; Reset Progr.No.-Request
+      WAIT SEC 5 ; program 3: placeholder without motion
+
+    CASE 3
+      P00 (#EXT_PGNO,#PGNO_ACKN,DMY[],0 ) ; Reset Progr.No.-Request
+      WAIT SEC 5 ; program 4: placeholder without motion
+
+    DEFAULT
+      P00 (#EXT_PGNO,#PGNO_FAULT,DMY[],0 )
+    ENDSWITCH
+  ENDLOOP
+END

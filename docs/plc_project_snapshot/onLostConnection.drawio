@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device" compressed="false">
+  <diagram id="onLostConnection" name="onLostConnection">
+    <mxGraphModel dx="1000" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="onLostConnection" vertex="1" parent="1" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=20;fontStyle=1;fontColor=#202936;align=left;">
+          <mxGeometry x="32" y="16" width="920" height="32" as="geometry" />
+        </mxCell>
+        <object id="network_1" label="" ldType="network" networkNumber="1" sourcePng="onLostConnection.png">
+          <mxCell vertex="1" parent="1" style="group;">
+            <mxGeometry x="24" y="60" width="920" height="200" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="network_1_title" value="Network 1" vertex="1" parent="network_1" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;fontColor=#536579;align=left;">
+          <mxGeometry x="16" y="0" width="400" height="24" as="geometry" />
+        </mxCell>
+        <object id="network_1_left_rail" label="" ldType="leftPowerRail">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;strokeColor=none;fillColor=#202936;">
+            <mxGeometry x="20" y="42" width="2" height="138" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="connection_falling" label="TCP_CONNECTED" ldType="contact" contactType="fallingEdge">
+          <mxCell vertex="1" parent="network_1" style="shape=mxgraph.electrical.plc_ladder.contact;html=0;strokeColor=#202936;strokeWidth=2;fillColor=none;align=center;verticalAlign=bottom;verticalLabelPosition=top;labelPosition=center;labelWidth=340;spacingBottom=10;whiteSpace=wrap;overflow=visible;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="190" y="92" width="72" height="36" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="connection_falling_edge_symbol" value="↓" vertex="1" parent="connection_falling" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=28;">
+          <mxGeometry x="24" y="0" width="24" height="36" as="geometry" />
+        </mxCell>
+        <object id="shutdown_call" label="FB_RunShutdown" ldType="functionBlock" instance="runShutdown">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;html=0;strokeWidth=2;strokeColor=#202936;fillColor=#FFFFFF;align=center;verticalAlign=top;spacingTop=10;fontStyle=1;fontFamily=Consolas;fontSize=16;fontColor=#214E78;">
+            <mxGeometry x="460" y="50" width="280" height="100" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="shutdown_instance" value="runShutdown" vertex="1" parent="shutdown_call" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontColor=#214E78;">
+          <mxGeometry x="0" y="-30" width="280" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="shutdown_en" value="En" vertex="1" parent="shutdown_call" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;align=left;">
+          <mxGeometry x="8" y="48" width="42" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="shutdown_eno" value="Eno" vertex="1" parent="shutdown_call" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;align=right;">
+          <mxGeometry x="230" y="48" width="42" height="24" as="geometry" />
+        </mxCell>
+        <object id="network_1_right_rail" label="" ldType="rightPowerRail">
+          <mxCell vertex="1" parent="network_1" style="rounded=0;strokeColor=none;fillColor=#202936;">
+            <mxGeometry x="880" y="92" width="2" height="36" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;entryX=0;entryY=0.5;entryPerimeter=0;" id="connection_wire" value="" edge="1" parent="network_1" target="connection_falling">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="22" y="110" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.5;exitPerimeter=0;entryX=0;entryY=0.6;entryPerimeter=0;" id="shutdown_enable" value="" edge="1" parent="network_1" source="connection_falling" target="shutdown_call">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.6;exitPerimeter=0;entryX=0;entryY=0.5;entryPerimeter=0;" id="shutdown_eno_wire" value="" edge="1" parent="network_1" source="shutdown_call" target="network_1_right_rail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

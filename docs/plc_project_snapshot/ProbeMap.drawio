@@ -1,0 +1,46 @@
+<mxfile host="Electron" compressed="false">
+  <diagram id="ProbeMap" name="ProbeMap">
+    <mxGraphModel dx="1417" dy="1240" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1100" pageHeight="850" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=20;fontStyle=1;fontColor=#202936;align=left;" value="ProbeMap" vertex="1">
+          <mxGeometry height="32" width="920" x="32" y="16" as="geometry" />
+        </mxCell>
+        <object label="" ldType="network" networkNumber="1" sourcePng="ProbeMap.png" id="network_1">
+          <mxCell parent="1" style="group;" vertex="1">
+            <mxGeometry height="240" width="920" y="100" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="network_1_title" parent="network_1" style="text;html=0;whiteSpace=wrap;overflow=visible;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Consolas;fontSize=16;fontColor=#202936;fontSize=14;fontColor=#536579;align=left;" value="Network 1" vertex="1">
+          <mxGeometry height="24" width="400" x="16" as="geometry" />
+        </mxCell>
+        <object label="" ldType="leftPowerRail" id="network_1_left_rail">
+          <mxCell parent="network_1" style="rounded=0;strokeColor=none;fillColor=#202936;" vertex="1">
+            <mxGeometry height="178" width="2" x="20" y="42" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="X2.0" ldType="contact" contactType="normallyOpen" id="probe_input">
+          <mxCell parent="network_1" style="shape=mxgraph.electrical.plc_ladder.contact;html=0;strokeColor=#202936;strokeWidth=2;fillColor=none;align=center;verticalAlign=bottom;verticalLabelPosition=top;labelPosition=center;labelWidth=340;spacingBottom=10;whiteSpace=wrap;overflow=visible;fontFamily=Consolas;fontSize=16;fontColor=#214E78;" vertex="1">
+            <mxGeometry height="36" width="72" x="190" y="92" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="Y1.7" ldType="coil" coilType="OUT" id="probe_output">
+          <mxCell parent="network_1" style="shape=mxgraph.electrical.plc_ladder.output_1;html=0;strokeColor=#202936;strokeWidth=2;fillColor=none;align=center;verticalAlign=bottom;verticalLabelPosition=top;labelPosition=center;labelWidth=260;spacingBottom=10;whiteSpace=wrap;overflow=visible;fontFamily=Consolas;fontSize=16;fontColor=#214E78;" vertex="1">
+            <mxGeometry height="36" width="72" x="650" y="92" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="input_wire" edge="1" parent="network_1" style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;entryX=0;entryY=0.5;entryPerimeter=0;" target="probe_input" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="22" y="110" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="branch_feed" edge="1" parent="network_1" source="probe_input" style="edgeStyle=none;rounded=0;html=0;startArrow=none;endArrow=none;strokeWidth=2;strokeColor=#202936;exitX=1;exitY=0.5;exitPerimeter=0;entryX=0;entryY=0.5;entryPerimeter=0;entryDx=0;entryDy=0;" target="probe_output" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="507" y="110.00000000000011" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

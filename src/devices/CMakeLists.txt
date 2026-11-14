@@ -18,4 +18,6 @@ target_include_directories(RoboCrapDevices
 )
 # Geometry supplies V6d for the public RSI correction stream.
 target_link_libraries(RoboCrapDevices PUBLIC RoboCrapGeometry Qt6::Network)
+# Winsock setsockopt(SO_LINGER): Qt has no linger option for the PLC reset close.
+target_link_libraries(RoboCrapDevices PRIVATE ws2_32)
 qt_extract_metatypes(RoboCrapDevices)

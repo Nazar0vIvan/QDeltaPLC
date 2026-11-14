@@ -24,15 +24,32 @@ which runs `sampleProbeCalibrationRsi` (`src/trajectories/probe/probersistream.c
 calibration path, writes `C:\RoboCrapJobs\calibration_data.txt` and installs one correction stream
 per touch in `RsiDevice` (`src/devices/rsi/rsidevice.cpp`).
 
+## AUT EXT start
+
+In Automatic External the program is program 1 of RoboCrap's PLC panel: the PLC sends program number
+PGNO 0 and `CELL.SRC` calls `RSI_Probe_Calibration ( )` in CASE 0 (`resources/files/AutExt/cell.src`,
+`plans/PLC_AUT_EXT_PROGRAM_START_EXECPLAN.md`). A new start requires `$IN_HOME`, because the program
+begins with `PTP HOME` and in AUT EXT there is no BCO run; after a `StepLimit` end or a missed search
+the robot stands near the sphere (3 mm from it after a search), so jog it clear in T1, select CELL and
+make its BCO run to HOME before the next Run. CELL runs the program at override 100 %; the PTP velocity comes from
+`INIT_PTP_VEL` (5 % in AUT EXT) and the transfers from the job file. RSI Sampling must run in the same
+RoboCrap session before Run (the PC deletes the job file at start-up; without it the program returns
+after HOME). The full session (485 steps) took 16 min 41 s in AUT EXT and needs the PC power settings
+of `docs/context/HARDWARE_SETUP.md` "Power settings for RSI".
+
 ## Frames and motion
 
 KRL: `$BASE=$NULLFRAME` (BASE = WORLD; `$ROBROOT` is zero in the archived machine data),
 `$TOOL=ToolFrame` from the job file (the measuring flange-to-TCP transform of the sampled path, not a
 `TOOL_DATA` entry), `$IPO_MODE=#BASE`, `$ORI_TYPE=#CONSTANT` (the probe orientation is fixed within
 each pass), `$VEL.CP`/`$ACC.CP` from the job file (the Generate transfer feed and acceleration, by
-default 0.01 m/s and 0.02 m/s²), `$VEL_AXIS[1..6]` and `$ACC_AXIS[1..6]` = 20 % for every PTP of the
-session. The first `PTP HOME Vel= 100 % DEFAULT` runs before these assignments; the final HOME step
-is the plain `PTP XHOME`, so it keeps 20 %. XYZ are mm; ABC are principal Z-Y-X Euler angles in
+default 0.01 m/s and 0.02 m/s²), `$ACC_AXIS[1..6]` = 20 % for every PTP of the session. The PTP
+velocity comes from `INIT_PTP_VEL ( )` (`resources/files/AutExt/INIT_PTP_VEL.src`, since 2026-11-14),
+called after `BAS (#PTP_PARAMS,20 )` of the first `PTP HOME`, which is plain KRL, not an inline form:
+`$VEL_AXIS[1..6]` = 100 % in T1 (limited by the controller to 250 mm/s) and `PtpVelAuto` (5 %) in
+AUT EXT, AUT and T2. Every later PTP, including the final `PTP XHOME`, keeps it. In AUT EXT CELL sets
+the program override to 100 %, so `$VEL.CP` is the real transfer speed
+(`plans/PLC_AUT_EXT_PROGRAM_START_EXECPLAN.md`). XYZ are mm; ABC are principal Z-Y-X Euler angles in
 degrees. POSCORR1 uses RefCorrSys = World; a search stream carries only X/Y/Z increments.
 
 Each search starts at the touch's start pose, 3 mm outside the nominal contact on the outward
@@ -188,10 +205,15 @@ Runs of 2026-11-11 with `StepLimit` = 10 (plan id `20261111_150029_843`, touches
 The context uses large POSCORR1 limits (user, 2026-11-11), so these runs do not show whether
 POSCORR1 starts every search from zero; with those limits it does not matter.
 
+Full session in AUT EXT, 2026-11-14 (plan id `20261114_170013_165`, started from RoboCrap through
+the PLC, PTP 5 %, transfers 10 mm/s, override 100 %): 485 steps in 16 min 41 s, 158 searches all
+stopped on `$IN[8]`, touch numbers 1–158 once each, detection 770–863 cycles after the search start.
+
 ## Not yet verified on the controller
 
-- That `$VEL_AXIS`/`$ACC_AXIS` = 20 % are kept through the RSI calls for the PTP moves between
-  passes (the first pass has no such PTP after a search).
+- That the `INIT_PTP_VEL` velocity and `$ACC_AXIS` = 20 % are kept through the RSI calls for the PTP
+  moves between passes (the first pass has no such PTP after a search); the full AUT EXT session of
+  2026-11-14 showed no visible difference, nothing was measured.
 - The 2 mm of search beyond the nominal contact are not checked for reachability by the animation.
 - Braking distance after ExitMoveCorr at 1 mm/s.
 - A missed search and its `LIN SearchStart` exit (no search missed so far).

@@ -64,24 +64,17 @@ public:
   };
   Q_ENUM(CMD)
 
-  enum VAR_TYPE : quint8 { // C
-    START_CELL = 0xC0,
-    SFY_OK     = 0xC3,
+  enum VAR_TYPE : quint8 { // C, equal to the PLC DUT E_VARTYPE
+    RUN_PROG     = 0xC0,
+    ROBOT_RESUME = 0xC3,
+    ROBOT_ABORT  = 0xC5
   };
   Q_ENUM(VAR_TYPE)
 
   enum CHG_TYPE : quint8 { // D
-    IOs        = 0xD0,
-    CELL_STATE = 0xD3
+    IOs        = 0xD0  // IO bytes and the start-sequence step/program/result
   };
   Q_ENUM(CHG_TYPE)
-
-	enum CELL : quint8 {
-		IDLE = 0xD0,
-		RUN  = 0xD3,
-		FIN  = 0xDC
-	};
-  Q_ENUM(CELL)
 
   enum DEV : quint16 {
     X = 0x0058,
@@ -108,6 +101,7 @@ public:
 
   ParseResult buildReq(const QVariantMap& req, quint8 tid) const;
   ParseResult outputRequest(const QVariantMap& args) const;
+  ParseResult robotProgramRequest(const QVariantMap& args) const;
 	ParseResult parseMessage(const QByteArray& message) const;
 
 private:

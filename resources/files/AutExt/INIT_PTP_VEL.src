@@ -1,0 +1,23 @@
+&ACCESS RV
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+DEF INIT_PTP_VEL( )
+  ; Sets the PTP velocity $VEL_AXIS[1..6] (% of $VEL_AXIS_MA) for the current operating mode;
+  ; every following plain PTP uses it until something overwrites $VEL_AXIS (BAS (#INITMOV),
+  ; BAS (#PTP_PARAMS) or BAS (#VEL_PTP), an inline-form PTP). Call it after those.
+  ;   T1: 100 %, limited by the controller to 250 mm/s.
+  ;   AUT EXT, AUT, T2: PtpVelAuto from INIT_PTP_VEL.dat.
+  ; Velocities are fixed when the advance run plans a motion, so after an operating-mode change
+  ; a stopped program is restarted from CELL, never resumed (PLC ResumeBlocked).
+  ; No INI fold and no PTP HOME: this subprogram is called from other programs, and BAS (#INITMOV)
+  ; would reset their motion parameters.
+  DECL INT I
+  WAIT SEC 0 ; advance run stop: the mode is read when the robot reaches this line
+  FOR I=1 TO 6
+    IF $MODE_OP==#T1 THEN
+      $VEL_AXIS[I]=100
+    ELSE
+      $VEL_AXIS[I]=PtpVelAuto
+    ENDIF
+  ENDFOR
+END

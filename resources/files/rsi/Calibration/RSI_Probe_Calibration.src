@@ -1,20 +1,41 @@
-&ACCESS RVP
-&REL 1
-DEF RSI_Probe_Calibration()
-   DECL INT Step
-   DECL INT Last
-   DECL E6POS SearchStart
+&ACCESS RVO
+&REL 3
+&PARAM DISKPATH = KRC:\R1\Program\RSI
+DEF RSI_Probe_Calibration( )
 
-   INI
-   $ADVANCE=0
-   $SEN_PINT[1]=0
-   $SEN_PINT[2]=0
-   $SEN_PINT[3]=0
-   IF RSI_RESET()<>RSIOK THEN
-      RETURN
-   ENDIF
+DECL INT Step
+DECL INT Last
+DECL E6POS SearchStart
 
-   PTP HOME  Vel= 100 % DEFAULT
+;FOLD INI;%{PE}
+  ;FOLD BASISTECH INI
+    GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+    INTERRUPT ON 3 
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+
+$ADVANCE=0
+$SEN_PINT[1]=0
+$SEN_PINT[2]=0
+$SEN_PINT[3]=0
+IF RSI_RESET()<>RSIOK THEN
+   RETURN
+ENDIF
+
+; PTP HOME at the operating-mode velocity of INIT_PTP_VEL, which also serves every later PTP
+; (no inline form: its Vel would overwrite that velocity).
+$BWDSTART = FALSE
+PDAT_ACT=PDEFAULT
+FDAT_ACT=FHOME
+BAS (#PTP_PARAMS,20 )
+INIT_PTP_VEL ( )
+$H_POS=XHOME
+PTP  XHOME
 
    IF NOT READ_JOB() THEN
       RETURN
@@ -26,14 +47,12 @@ DEF RSI_Probe_Calibration()
    $VEL.CP=TransferVelocity
    $ACC.CP=TransferAcceleration
    FOR Step=1 TO 6
-      $VEL_AXIS[Step]=20
       $ACC_AXIS[Step]=20
    ENDFOR
    IF RSI_CREATE("RSI_Probe_Calibration.rsi")<>RSIOK THEN
       RETURN
    ENDIF
 
-   ; StepLimit 1..StepCount-1 executes only the first StepLimit steps (first robot runs).
    Last=StepCount
    IF (StepLimit>0) AND (StepLimit<StepCount) THEN
       Last=StepLimit
@@ -47,23 +66,18 @@ DEF RSI_Probe_Calibration()
       CASE 3
          CIRC StepAux[Step],StepTarget[Step]
       CASE 4
-         ; $POS_ACT stops the advance run: the robot stands at the search start when $IN[8] is read.
          SearchStart=$POS_ACT
-         ; The rising-edge STOP cannot detect a probe that is already deflected.
          IF $IN[8] THEN
             RETURN
          ENDIF
-         ; A missed touch returns to the search start and ends near the sphere, without a PTP.
          IF NOT SEARCH(StepTouch[Step]) THEN
             LIN SearchStart
             RETURN
          ENDIF
       CASE 5
-         ; Plain form: keeps the 20 % axis velocity and acceleration of the session.
          PTP XHOME
       ENDSWITCH
    ENDFOR
-   ; StepLimit ended the loop right after a search: retract, then end without a further motion.
    IF StepKind[Last]==4 THEN
       LIN SearchStart
    ENDIF
@@ -72,15 +86,12 @@ END
 DEFFCT BOOL SEARCH(Touch:IN)
    DECL INT Touch
    DECL BOOL Touched
-
-   ; The PC streams touch Touch's search, selected by TouchIndex ($SEN_PINT[3]); STOP1 ends
-   ; RSI_MOVECORR at the rising edge of $IN[8] or at the PC's Stop. TRUE only if the probe is
-   ; deflected afterwards and RSI_OFF succeeded.
+   
    $SEN_PINT[3]=Touch
    IF RSI_ON(#RELATIVE)<>RSIOK THEN
       RETURN FALSE
    ENDIF
-   ; Start = 0 packets end the PC's previous run (12 ms: one interpolation cycle, three RSI cycles).
+
    WAIT SEC 0.012
    $SEN_PINT[1]=1
    RSI_MOVECORR()

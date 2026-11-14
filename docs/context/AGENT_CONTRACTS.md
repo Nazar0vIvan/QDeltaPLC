@@ -17,11 +17,12 @@ instructions and the root mandatory rules still apply. The class/file map is in
   (animation and RSI sampling) are owned by src/{geometry,kinematics,trajectories}/CMakeLists.txt.
   Kinematics publicly links Geometry; Trajectories publicly links Kinematics. Each library exports only
   include/<capability>; Geometry also exports Eigen.
-- RoboCrapDevices (src/devices, including src/devices/rsi) links QtNetwork and publicly links Geometry
-  only for the `QVector<V6d>` RSI stream; no Trajectories dependency, QML registration or
-  QQmlPropertyMap; its metatype metadata is extracted for consumers. DeviceHub, DeviceRunner and
-  DeviceProfileModel are private Application code. PlcMessageManager remains a QObject with
-  dictionary APIs and a published header for the PlcDevice/PlcMessage enums.
+- RoboCrapDevices (src/devices, including src/devices/rsi) links QtNetwork, privately ws2_32 for the
+  PLC RST close (`SO_LINGER`), and publicly links Geometry only for the `QVector<V6d>` RSI stream; no
+  Trajectories dependency, QML registration or QQmlPropertyMap; its metatype metadata is extracted for
+  consumers. DeviceHub, DeviceRunner and DeviceProfileModel are private Application code.
+  PlcMessageManager remains a QObject with dictionary APIs and a published header for the
+  PlcDevice/PlcMessage enums.
 - RoboCrap3D (src/viewport, URI RoboCrap.Viewport3D) requires bundled OCCT 8.0.0 and a Windows
   64-bit MinGW Qt kit; it publicly links Geometry and QtCore/Gui/Qml, privately OCCT, and has no
   Application/Trajectories dependency. It exports only include/viewport, including the singleton
@@ -163,6 +164,12 @@ src/application/main.cpp; for QML registration also Build and modules.
 - Protocol changes preserve or explicitly update framing, byte order, state keys and endpoint
   validation with their consumers; validate with offline inputs or local simulation. The root
   hardware-authorization rule applies.
+- PLC: keep one request in flight with the reply timeout and the idle SNAPSHOT heartbeat (below the
+  PLC socket keep-alive), and send nothing at connect. The IO change frame and the SNAPSHOT reply both
+  carry the start-sequence step/program/result; `VAR_TYPE` and the step/result codes equal the PLC
+  DUTs. A PLC protocol or check change updates `docs/plc_project_snapshot/ISPSoft project.md`, and
+  RobotStartPanel's enable rules and `robotResumeBlocked` repeat the PLC's FB_RunSetVar/RobotIo
+  checks; change both sides together. The panel never drives module 1 outputs.
 
 ## Geometry and scene
 
